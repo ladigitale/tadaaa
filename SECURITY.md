@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please open a **private** security advisory on GitHub, or contact the maintainers of [La Digitale](https://ladigitale.dev). Do not open a public issue for sensitive reports.
+Please open a **private** security advisory on GitHub. Do not open a public issue for sensitive reports.
 
 ## Hardening checklist (operators)
 

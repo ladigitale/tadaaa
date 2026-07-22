@@ -2,7 +2,7 @@
 
 **Offline-first todos**, optional cloud sync, and an **MCP** server for AI agents.
 
-A [La Digitale](https://ladigitale.dev) project — Lit / Concorde front + Symfony 8 / API Platform API.
+Lit / Concorde front + Symfony 8 / API Platform API.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -100,4 +100,4 @@ MIT — see [LICENSE](LICENSE).
 
 ---
 
-Built with ☕ for [La Digitale](https://ladigitale.dev).
+Built with ☕.
