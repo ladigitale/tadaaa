@@ -1,0 +1,4 @@
+# Importe la route HTTP MCP (/mcp)
+mcp:
+    resource: .
+    type: mcp

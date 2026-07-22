@@ -1,0 +1,13 @@
+---
+description: Scope — inherited API, form, and icon defaults (not UI)
+globs: src/**/*.ts, index.html
+alwaysApply: false
+---
+
+# Scope
+
+Skill **`concorde-scope`** · **`/concepts/scope`**
+
+- Say **scope** in prose; element is `<sonic-scope>`
+- API: `serviceURL` → `@get`, list, queue · or DataProvider config
+- Theme (colors/fonts) is separate — `/ui`

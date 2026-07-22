@@ -1,0 +1,22 @@
+# config/packages/mcp.yaml
+mcp:
+    app: tadaaa
+    version: '0.3.0'
+    description: 'Tadaaa — todos & tags cloud pour agents MCP'
+    client_transports:
+        http: true
+        stdio: false
+    http:
+        path: /mcp
+        # Hosts autorisés (protection DNS rebinding) — CSV via MCP_ALLOWED_HOSTS
+        allowed_hosts: '%env(csv:MCP_ALLOWED_HOSTS)%'
+        session:
+            store: file
+            directory: '%kernel.cache_dir%/mcp-sessions'
+            ttl: 3600
+    discovery:
+        scan_dirs:
+            - src
+        exclude_dirs:
+            - Entity
+            - Repository

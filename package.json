@@ -1,0 +1,25 @@
+{
+  "name": "tada-monorepo",
+  "private": true,
+  "version": "1.2.1",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "yarn --cwd apps/web dev",
+    "build": "yarn --cwd apps/web build",
+    "preview": "yarn --cwd apps/web preview",
+    "build:demo-api-sw": "yarn --cwd apps/web build:demo-api-sw",
+    "ai:sync": "node scripts/sync-ai.mjs",
+    "api:up": "docker compose up --build -d",
+    "api:down": "docker compose down",
+    "api:logs": "docker compose logs -f php database",
+    "api:console": "docker compose exec php bin/console",
+    "api:migrate": "docker compose exec php bin/console doctrine:migrations:migrate --no-interaction",
+    "api:prod:up": "docker compose -f compose.prod.yaml up --build -d",
+    "api:prod:down": "docker compose -f compose.prod.yaml down",
+    "web:build": "yarn --cwd apps/web build",
+    "web:install": "bash .ops/scripts/install-httpd-web-ssl.sh"
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+}

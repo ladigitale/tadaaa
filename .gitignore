@@ -1,0 +1,89 @@
+# Dependencies
+node_modules/
+jspm_packages/
+apps/api/vendor/
+
+# Logs & diagnostics
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime / caches
+pids/
+*.pid
+*.seed
+*.pid.lock
+.cache/
+.npm/
+.eslintcache
+*.tsbuildinfo
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+.lib-cov/
+coverage/
+*.lcov
+.nyc_output/
+.fusebox/
+.dynamodb/
+.tern-port
+.serverless/
+.grunt/
+.nuxt/
+.next/
+.vuepress/dist/
+
+# Builds & générés
+dist/
+apps/web/dist/
+*.tgz
+.yarn-integrity
+public/demo-api-sw.js
+public/demo-api-sw.js.map
+apps/web/public/demo-api-sw.js
+apps/web/public/demo-api-sw.js.map
+
+# Données locales mock API
+.data/
+apps/web/.data/
+
+# Secrets & environnement
+/.env
+.env.test
+.env.local
+**/.env.local
+**/.env.*.local
+apps/api/.env.local
+apps/api/.env.*.local
+apps/api/.env.local.php
+# apps/api/.env et .env.dev / .env.*.dist restent versionnés (placeholders)
+
+# Symfony runtime
+apps/api/var/
+apps/api/public/bundles/
+apps/api/config/secrets/prod/prod.decrypt.private.php
+
+# JWT & certificats (ne jamais publier)
+apps/api/config/jwt/*.pem
+.ops/certs/
+*.pem
+!apps/api/config/jwt/.gitkeep
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+*~
+
+# Divers
+bower_components/
+typings/
+build/Release/
+.lock-wscript

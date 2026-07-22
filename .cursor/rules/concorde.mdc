@@ -1,0 +1,42 @@
+---
+description: Patterns Concorde — DataProvider, décorateurs, templates Lit list/queue, pas sonic-fetch
+globs: **/*.{ts,tsx,js,mjs}
+alwaysApply: false
+---
+
+# Concorde — patterns
+
+Référence : `.cursor/skills/concorde/SKILL.md` + `.cursor/skills/concorde-imports/SKILL.md`
+
+## Imports (chemins courts)
+
+| Besoin | Import |
+|--------|--------|
+| Composant UI | `@supersoniks/concorde/{menu,button,input,…}` |
+| List / queue / router | `@supersoniks/concorde/{list,queue,router}` |
+| Décorateurs | `@supersoniks/concorde/decorators` |
+| Utils / Endpoint | `@supersoniks/concorde/utils`, `/utils/endpoint` |
+| DataProviderKey | `@supersoniks/concorde/dataProviderKey` |
+
+❌ Éviter : `ui/…`, `functional/…`, `core/components/…`, `core/utils/…`
+
+## Vocabulaire
+
+- **DataProvider** (jamais « publisher »)
+- Accès : **`get` / `set`** — pas `PublisherManager`
+
+## Interdits (nouveau code)
+
+- `sonic-fetch` → `sonic-queue` + filtre, ou `@get`
+- `@onAssign` → `@handle` + `DataProviderKey`
+- `data-bind` HTML → `@subscribe` / `sub()`
+- `sonic-input` + `@input` → `formDataProvider` + `name`
+- Templates HTML sur list/queue → `.items`, `.separator`, `.noItems`, `.skeleton`
+
+## DataProviderKey dynamique
+
+```typescript
+new DataProviderKey<T, { userIndex: number }>("users.${userIndex}")
+```
+
+Placeholder `${prop}` = chaîne normale, résolu depuis le composant hôte.

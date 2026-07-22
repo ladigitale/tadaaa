@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :host {
+    line-height: 1.2;
+    font-family: var(--sc-font-family-base), sans-serif;
+  }
+}

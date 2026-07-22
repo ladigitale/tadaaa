@@ -1,0 +1,15 @@
+---
+description: Concorde UI kit — component choice by use case (button, badge, card, alert, forms)
+globs: src/**/*.ts, index.html
+alwaysApply: false
+---
+
+# Concorde UI
+
+- Demo: `/ui` in starter · skill **`concorde-ui`** · imports: **`concorde-imports`**
+- **Actions** → `sonic-button` (type + variant); **labels** → `sonic-badge` (same type API)
+- **Panels** → `sonic-card` + `sonic-card-header`; **feedback** → `sonic-alert`
+- **Forms** → `sonic-input` / `select` / `checkbox` + `formDataProvider` (not raw HTML forms)
+- **Navigation** → `sonic-menu` (skill `concorde-menu`); **data lists** → `sonic-list` / `sonic-queue`
+- Theme: `<sonic-theme>` + CSS variables in `src/css/app.css`
+- **Scope** (API / forms / icons): skill **`concorde-scope`** — not UI

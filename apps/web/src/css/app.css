@@ -1,0 +1,102 @@
+@import url("https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&display=swap");
+
+/*
+Génération d'un thème de couleur
+https://delanfranchi.github.io/concordecolors/
+Beta 
+*/
+:root {
+  /* base / content */
+
+  --sc-base: #fafaf9;
+  --sc-base-content: #1c1917;
+
+  /* neutral colors */
+  --sc-base-50: #f0f0ef;
+  --sc-base-100: #e6e5e4;
+  --sc-base-200: #cdcccb;
+  --sc-base-300: #bcbbba;
+  --sc-base-400: #999795;
+  --sc-base-500: #82807e;
+  --sc-base-600: #615e5d;
+  --sc-base-700: #423f3d;
+  --sc-base-800: #2e2b29;
+  --sc-base-900: #1c1917;
+
+  /*Semantic colors*/
+  --sc-primary: #10298e;
+  --sc-primary-content: #ffffff;
+  --sc-info: #27b2ff;
+  --sc-info-content: #ffffff;
+  --sc-success: #00cc57;
+  --sc-success-content: #111827;
+  --sc-warning: #ff5a29;
+  --sc-warning-content: #ffffff;
+  --sc-danger: #f40e44;
+  --sc-danger-content: #ffffff;
+
+  /*base style*/
+  --sc-rounded: 0.5rem; /* 0 for none */
+  --sc-btn-rounded: 9999px; /* button as pills */
+  --sc-border-width: max(
+    2px,
+    0.125rem
+  ); /* border width in forms / dividers etc. */
+
+  /* FONTS */
+  --sc-font-family-base: "Hanken Grotesk", sans-serif;
+  --sc-headings-font-family: var(--sc-font-family-base);
+}
+
+/* set global styles */
+:root {
+  background-color: var(--sc-base);
+  color: var(--sc-base-content);
+  font-family: var(--sc-font-family-base);
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Chaîne de hauteur jusqu’au layout (custom elements = inline par défaut) */
+sonic-theme,
+app-router-host,
+sonic-scope,
+sonic-router {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Scrollbar type docs Concorde — fine, visible au survol */
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.custom-scroll:hover {
+  scrollbar-color: var(--sc-base-500) transparent;
+}
+
+.custom-scroll::-webkit-scrollbar {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: solid 0.15rem transparent;
+  border-radius: var(--sc-rounded);
+  background: transparent;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  transition: box-shadow 0.2s;
+  border: solid 0.15rem transparent;
+  border-radius: var(--sc-rounded);
+  box-shadow: inset 0 0 0 0 transparent;
+}
+
+.custom-scroll:hover::-webkit-scrollbar-thumb {
+  box-shadow: inset 0 0 2rem 2rem var(--sc-base-800);
+}

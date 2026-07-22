@@ -1,0 +1,21 @@
+---
+description: Starter learning kit — src/starter/, UI kit, mock API, sidebar sections
+globs: src/starter/**,scripts/**,ai/**
+alwaysApply: false
+---
+
+# Starter kit
+
+Reference: `.cursor/skills/starter-kit/SKILL.md`
+
+- All kit code in **`src/starter/`** — removable
+- Menu: Data concepts → **UI kit** → Scope → Functional patterns → Advanced patterns
+- UI components: `/ui` + skill **`concorde-ui`**
+- Mock: `/mock-api` via `src/starter/demo/api/`
+- Sync agents: `yarn ai:sync`
+
+Do not document local-only tooling in this repo.
+
+## Concorde imports
+
+Short paths — skill `concorde-imports`: `@supersoniks/concorde/menu`, `/button`, `/badge`, `/list`, etc.

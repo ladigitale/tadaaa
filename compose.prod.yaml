@@ -1,0 +1,80 @@
+# Production — edge Caddy (TLS) + API FrankenPHP + PostgreSQL + SPA
+# Usage :
+#   cp .env.prod.example .env
+#   VITE_API_BASE_URL=https://api.example.com yarn build
+#   docker compose -f compose.prod.yaml up -d --build
+#
+# DNS : APP_SERVER_NAME + API_SERVER_NAME → IP du VPS
+
+services:
+  edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      APP_SERVER_NAME: ${APP_SERVER_NAME:-app.example.com}
+      API_SERVER_NAME: ${API_SERVER_NAME:-api.example.com}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./apps/web/dist:/srv:ro
+      - ./deploy/Caddyfile.edge:/etc/caddy/Caddyfile:ro
+      - edge_caddy_data:/data
+      - edge_caddy_config:/config
+    ports:
+      - target: 80
+        published: ${HTTP_PORT:-80}
+        protocol: tcp
+      - target: 443
+        published: ${HTTPS_PORT:-443}
+        protocol: tcp
+      - target: 443
+        published: ${HTTP3_PORT:-443}
+        protocol: udp
+    depends_on:
+      - php
+
+  php:
+    image: ${IMAGES_PREFIX:-}tada-api:prod
+    build:
+      context: ./apps/api
+      target: frankenphp_prod
+    restart: unless-stopped
+    environment:
+      APP_ENV: prod
+      APP_SECRET: ${APP_SECRET:?APP_SECRET is required}
+      # HTTP interne derrière edge (pas de TLS dans FrankenPHP)
+      SERVER_NAME: ":80"
+      DEFAULT_URI: https://${API_SERVER_NAME:-api.example.com}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@database:5432/${POSTGRES_DB:-tada}?serverVersion=${POSTGRES_VERSION:-16}&charset=utf8
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-^https://${APP_SERVER_NAME:-app.example.com}$}
+      REGISTRATION_AUTO_APPROVE: ${REGISTRATION_AUTO_APPROVE:-0}
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-${API_SERVER_NAME:-api.example.com}}
+      SYMFONY_TRUSTED_PROXIES: ${SYMFONY_TRUSTED_PROXIES:-private_ranges}
+      SYMFONY_TRUSTED_HEADERS: ${SYMFONY_TRUSTED_HEADERS:-x-forwarded-for,x-forwarded-host,x-forwarded-proto,x-forwarded-port}
+    volumes:
+      - jwt_keys:/app/config/jwt
+    expose:
+      - "80"
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database:
+    image: postgres:${POSTGRES_VERSION:-16}-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tada}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-tada}", "-U", "${POSTGRES_USER:-app}"]
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - database_data:/var/lib/postgresql/data:rw
+
+volumes:
+  edge_caddy_data:
+  edge_caddy_config:
+  database_data:
+  jwt_keys:

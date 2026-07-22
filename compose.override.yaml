@@ -1,0 +1,21 @@
+# Development overrides
+services:
+  php:
+    build:
+      context: ./apps/api
+      target: frankenphp_dev
+    volumes:
+      - ./apps/api:/app
+      - ./apps/api/frankenphp/Caddyfile:/etc/frankenphp/Caddyfile:ro
+      - ./apps/api/frankenphp/conf.d/20-app.dev.ini:/usr/local/etc/php/app.conf.d/20-app.dev.ini:ro
+    environment:
+      FRANKENPHP_WORKER_CONFIG: watch
+      XDEBUG_MODE: "${XDEBUG_MODE:-off}"
+      APP_ENV: "${APP_ENV:-dev}"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    tty: true
+
+  database:
+    ports:
+      - "${POSTGRES_PUBLISHED_PORT:-5433}:5432"
