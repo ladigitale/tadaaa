@@ -1,28 +1,28 @@
 # Tadaaa
 
-**Todos offline-first**, sync cloud optionnel, et serveur **MCP** pour les agents IA.
+**Offline-first todos**, optional cloud sync, and an **MCP** server for AI agents.
 
-Projet [La Digitale](https://ladigitale.dev) — monorepo front (Lit / Concorde) + API (Symfony 8 / API Platform).
+A [La Digitale](https://ladigitale.dev) project — Lit / Concorde front + Symfony 8 / API Platform API.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
-## Fonctionnalités
+## Features
 
-- **Local d’abord** — tâches & tags en IndexedDB, utilisable sans serveur
-- **Sync cloud** — jeux de données, merge incrémental, file d’attente offline
-- **Compte sur invitation** — inscription en demande, validation / refus / révocation par un admin
-- **MCP HTTP** — outils todos/tags pour Cursor & co (`/mcp`, JWT ou PAT `tada_…`)
-- **P2P** — partage entre appareils (PeerJS)
+- **Local first** — tasks & tags in IndexedDB, usable without a server
+- **Cloud sync** — datasets, incremental merge, offline outbox
+- **Invite-style accounts** — registration as a request; admin approve / reject / revoke
+- **MCP HTTP** — todo/tag tools for Cursor & friends (`/mcp`, JWT or `tada_…` PAT)
+- **P2P** — share between devices (PeerJS)
 
 ## Stack
 
-| Couche | Techno |
-|--------|--------|
+| Layer | Tech |
+|-------|------|
 | Front | Lit, Concorde, Vite, IndexedDB |
 | API | Symfony 8, API Platform, Lexik JWT, FrankenPHP |
-| Données | PostgreSQL |
+| Data | PostgreSQL |
 | Prod | Docker Compose (+ Caddy edge) |
 
 ```
@@ -32,72 +32,72 @@ compose.yaml  Dev API + Postgres
 compose.prod.yaml
 ```
 
-## Démarrage rapide (front seul)
+## Quick start (front only)
 
 ```bash
 yarn install
 yarn dev
 ```
 
-Ouvre l’URL Vite affichée (souvent `http://localhost:3000`).  
-Les données restent locales (`/mock-api` + IndexedDB) tant que tu ne configures pas d’API cloud.
+Open the URL Vite prints (often `http://localhost:3000`).  
+Data stays local (`/mock-api` + IndexedDB) until you configure a cloud API.
 
-## API en local (Docker)
+## Local API (Docker)
 
 ```bash
-cp apps/api/.env.local.dist apps/api/.env.local
-# Ajuste DATABASE_URL / CORS si besoin
+# Create apps/api/.env.local (gitignored), e.g.:
+#   REGISTRATION_AUTO_APPROVE=1
+#   DATABASE_URL=postgresql://app:!ChangeMe!@database:5432/tada?serverVersion=16&charset=utf8
 
 yarn api:up
 yarn api:migrate
 
-# Clés JWT (une fois)
+# JWT keys (once)
 ./.ops/scripts/install-jwt-keys.sh
 
-# Premier admin (compte immédiatement actif)
+# First admin (immediately active)
 docker compose exec php bin/console app:user:create \
-  you@example.com 'VotreMotDePasse' --admin --active
+  you@example.com 'YourPassword' --admin --active
 ```
 
-- API : `https://localhost:8443/api`
-- Health : `https://localhost:8443/api/health`
-- MCP : `https://localhost:8443/mcp`
+- API: `https://localhost:8443/api`
+- Health: `https://localhost:8443/api/health`
+- MCP: `https://localhost:8443/mcp`
 
-Inscriptions suivantes : statut `pending` jusqu’à approbation (Config → Compte cloud, compte admin).  
-En local, `REGISTRATION_AUTO_APPROVE=1` dans `.env.local` accélère les tests.
+Further sign-ups stay `pending` until an admin approves them (Config → Cloud account).  
+Locally, `REGISTRATION_AUTO_APPROVE=1` in `.env.local` speeds up testing.
 
 ## Production
 
-Guide complet : [`.ops/deploy.md`](.ops/deploy.md)
+Full guide: [`.ops/deploy.md`](.ops/deploy.md)
 
 ```bash
-cp .env.prod.example .env
-# Renseigner secrets + domaines app.* / api.*
-
+# Create a root .env (gitignored) — see .ops/deploy.md
 VITE_API_BASE_URL=https://api.example.com yarn build
 docker compose -f compose.prod.yaml up -d --build
 ```
 
-## Scripts utiles
+## Useful scripts
 
-| Commande | Rôle |
-|----------|------|
+| Command | Purpose |
+|---------|---------|
 | `yarn dev` | Front Vite |
-| `yarn build` | Build SPA → `apps/web/dist` |
-| `yarn api:up` / `api:down` | Compose API + DB |
-| `yarn api:migrate` | Migrations Doctrine |
-| `yarn api:logs` | Logs PHP / Postgres |
+| `yarn build` | SPA build → `apps/web/dist` |
+| `yarn api:up` / `api:down` | API + DB Compose |
+| `yarn api:migrate` | Doctrine migrations |
+| `yarn api:logs` | PHP / Postgres logs |
 
-## Sécurité (rappel)
+## Security notes
 
-- Ne committez **jamais** `.env.local`, clés JWT (`.pem`), ni certificats
-- Prod : `REGISTRATION_AUTO_APPROVE=0`, secrets hors Git
-- Docs OpenAPI désactivées en `APP_ENV=prod`
+- **Only** `apps/api/.env` (placeholders) is versioned — no other `.env*` files
+- Never commit `.env.local`, JWT keys (`.pem`), or certificates
+- Production: `REGISTRATION_AUTO_APPROVE=0`, secrets outside Git
+- OpenAPI docs disabled when `APP_ENV=prod`
 
-## Licence
+## License
 
-MIT — voir [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
 ---
 
-Fait avec ☕ pour [La Digitale](https://ladigitale.dev).
+Built with ☕ for [La Digitale](https://ladigitale.dev).

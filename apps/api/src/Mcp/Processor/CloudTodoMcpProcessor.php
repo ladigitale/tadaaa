@@ -14,6 +14,7 @@ use App\Mcp\Tool\DeleteTagTool;
 use App\Mcp\Tool\ListDatasetsTool;
 use App\Mcp\Tool\ListTagsTool;
 use App\Mcp\Tool\ListTodosTool;
+use App\Mcp\Tool\UpdateTagTool;
 use App\Mcp\Tool\UpdateTodoTool;
 use App\Service\CloudTodoService;
 use Mcp\Schema\Content\TextContent;
@@ -62,6 +63,7 @@ final class CloudTodoMcpProcessor implements ProcessorInterface
                 $data->parentId,
             ),
             $data instanceof CreateTagTool => $this->todos->createTag($user, $data->name, $data->color),
+            $data instanceof UpdateTagTool => $this->updateTag($user, $data),
             $data instanceof DeleteTagTool => $this->todos->deleteTag($user, $data->id),
             $data instanceof UpdateTodoTool => $this->updateTodo($user, $data),
             $data instanceof BulkUpdateTodosTool => $this->bulkUpdate($user, $data),
@@ -76,6 +78,20 @@ final class CloudTodoMcpProcessor implements ProcessorInterface
             false,
             $payload,
         );
+    }
+
+    /** @return array<string, mixed> */
+    private function updateTag(User $user, UpdateTagTool $data): array
+    {
+        $patch = [];
+        if ($data->name !== null) {
+            $patch['name'] = $data->name;
+        }
+        if ($data->color !== null) {
+            $patch['color'] = $data->color;
+        }
+
+        return $this->todos->updateTag($user, $data->id, $patch);
     }
 
     /** @return array<string, mixed> */

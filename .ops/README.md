@@ -1,7 +1,7 @@
-# Tadaaa — ops local / prod
+# Tadaaa — local / production ops
 
-- **Prod / VPS** : [deploy.md](deploy.md)
-- **Dev Docker Compose** : `yarn api:up` depuis la racine (voir README)
-- **Scripts** : `scripts/` (JWT, builds front, helpers)
+- **Production / VPS**: [deploy.md](deploy.md)
+- **Dev Docker Compose**: `yarn api:up` from the repo root (see README)
+- **Scripts**: `scripts/` (JWT, front builds, helpers)
 
-Les domaines `*.julien.test` éventuels dans d’anciennes notes concernent uniquement un environnement devops personnel — ils ne sont pas requis pour utiliser le projet.
+Personal devops hostnames (if any) are optional and not required to use the project.

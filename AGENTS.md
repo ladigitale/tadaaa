@@ -2,54 +2,54 @@
 
 ## Layout
 
-| Chemin | Rôle |
-|--------|------|
-| `apps/web/` | SPA Concorde (front) — chemins `src/app/` relatifs à ce package |
+| Path | Role |
+|------|------|
+| `apps/web/` | Concorde SPA (front) — `src/app/` paths relative to this package |
 | `apps/api/` | Symfony 8 + API Platform |
-| `ai/starter/` | Overlay agent (racine) |
-| `.cursor/skills/` | Skills Concorde / starter |
+| `ai/starter/` | Agent overlay (repo root) |
+| `.cursor/skills/` | Concorde / starter skills |
 
-Scripts racine : `yarn dev`, `yarn ai:sync`, `yarn api:up`.
+Root scripts: `yarn dev`, `yarn ai:sync`, `yarn api:up`.
 
 ---
 
 # Agents — Concorde + starter
 
-Guide pour les agents IA sur le template **create-concorde-ts-starter**.
+Guide for AI agents on the **create-concorde-ts-starter** template.
 
 ## Skills / rules
 
-| Fichier | Rôle |
-|---------|------|
-| `.cursor/skills/concorde/SKILL.md` | Patterns framework Concorde |
-| `.cursor/skills/concorde-imports/SKILL.md` | Imports courts (menu, list, utils…) |
-| `.cursor/skills/concorde-menu/SKILL.md` | Navigation sonic-menu |
+| File | Role |
+|------|------|
+| `.cursor/skills/concorde/SKILL.md` | Concorde framework patterns |
+| `.cursor/skills/concorde-imports/SKILL.md` | Short imports (menu, list, utils…) |
+| `.cursor/skills/concorde-menu/SKILL.md` | sonic-menu navigation |
 | `.cursor/skills/starter-kit/SKILL.md` | Learning kit `src/starter/` |
 | `.cursor/skills/concorde-ui/SKILL.md` | UI components by use case |
-| `.cursor/rules/*.mdc` | Règles Cursor |
-| `.aiassistant/rules/concorde.md` | Règles JetBrains AI Assistant |
+| `.cursor/rules/*.mdc` | Cursor rules |
+| `.aiassistant/rules/concorde.md` | JetBrains AI Assistant rules |
 
-Regénérer après modification : `yarn ai:sync`  
-Sources : `apps/web/node_modules/@supersoniks/concorde/ai/` + overlay `ai/starter/`.
+Regenerate after changes: `yarn ai:sync`  
+Sources: `apps/web/node_modules/@supersoniks/concorde/ai/` + overlay `ai/starter/`.
 
-## Conventions impératives
+## Hard requirements
 
-- Toujours **DataProvider**, accès via **`get` / `set`**
-- Pas de **`sonic-fetch`**, pas de **`PublisherManager`**
-- Pas de `@onAssign` — **`@handle`** + `DataProviderKey`
-- Formulaires : **`formDataProvider`** + `name` sur `sonic-input`
-- Listes : templates **Lit** (`.items`, `.separator`, `.noItems`, `.skeleton`)
-- **Imports** : chemins courts (`@supersoniks/concorde/menu`, `/list`, `/utils/endpoint`) — skill `concorde-imports`
+- Always **DataProvider**, access via **`get` / `set`**
+- No **`sonic-fetch`**, no **`PublisherManager`**
+- No `@onAssign` — **`@handle`** + `DataProviderKey`
+- Forms: **`formDataProvider`** + `name` on `sonic-input`
+- Lists: **Lit** templates (`.items`, `.separator`, `.noItems`, `.skeleton`)
+- **Imports**: short paths (`@supersoniks/concorde/menu`, `/list`, `/utils/endpoint`) — skill `concorde-imports`
 
-## Architecture starter
+## Starter architecture
 
-- **`apps/web/src/starter/`** — kit pédagogique supprimable
-- **`apps/web/src/app/`** — modèle minimal post-suppression
-- **`apps/web/src/app/routes/router.ts`** — généré (pas de tirets dans les dossiers routes)
+- **`apps/web/src/starter/`** — removable learning kit
+- **`apps/web/src/app/`** — minimal app after kit removal
+- **`apps/web/src/app/routes/router.ts`** — generated (no hyphens in route folder names)
 
-## Documentation Concorde
+## Concorde documentation
 
-Fichiers `.md` dans le package installé : `apps/web/node_modules/@supersoniks/concorde/src/` (composants UI, décorateurs, getting-started).
+`.md` files in the installed package: `apps/web/node_modules/@supersoniks/concorde/src/` (UI components, decorators, getting-started).
 
 ---
 
@@ -57,31 +57,31 @@ Fichiers `.md` dans le package installé : `apps/web/node_modules/@supersoniks/c
 
 # Agents — Concorde
 
-Guide pour les agents IA sur un projet **Concorde** (Lit + DataProvider).
+Guide for AI agents on a **Concorde** project (Lit + DataProvider).
 
-## Skills / rules (après installation)
+## Skills / rules (after install)
 
-| Fichier | Rôle |
-|---------|------|
-| `.cursor/skills/concorde/SKILL.md` | Patterns framework |
-| `.cursor/skills/concorde-menu/SKILL.md` | Navigation sonic-menu |
-| `.cursor/rules/concorde.mdc` | Règles Cursor (patterns) |
-| `.aiassistant/rules/concorde.md` | Règles JetBrains AI Assistant |
+| File | Role |
+|------|------|
+| `.cursor/skills/concorde/SKILL.md` | Framework patterns |
+| `.cursor/skills/concorde-menu/SKILL.md` | sonic-menu navigation |
+| `.cursor/rules/concorde.mdc` | Cursor rules (patterns) |
+| `.aiassistant/rules/concorde.md` | JetBrains AI Assistant rules |
 
-Installation : `node node_modules/@supersoniks/concorde/scripts/ai-init.mjs`  
-Source : `@supersoniks/concorde/ai/`
+Install: `node node_modules/@supersoniks/concorde/scripts/ai-init.mjs`  
+Source: `@supersoniks/concorde/ai/`
 
-## Conventions impératives
+## Hard requirements
 
-- Toujours **DataProvider**, accès via **`get` / `set`**
-- Pas de **`sonic-fetch`**, pas de **`PublisherManager`**
-- Pas de `@onAssign` — **`@handle`** + `DataProviderKey`
-- Formulaires : **`formDataProvider`** + `name` sur `sonic-input`
-- Listes : templates **Lit** (`.items`, `.separator`, `.noItems`, `.skeleton`) — pas de promotion des `<template>` HTML
+- Always **DataProvider**, access via **`get` / `set`**
+- No **`sonic-fetch`**, no **`PublisherManager`**
+- No `@onAssign` — **`@handle`** + `DataProviderKey`
+- Forms: **`formDataProvider`** + `name` on `sonic-input`
+- Lists: **Lit** templates (`.items`, `.separator`, `.noItems`, `.skeleton`) — do not promote HTML `<template>`s
 
 ## Documentation
 
-Fichiers `.md` dans le package : `node_modules/@supersoniks/concorde/src/` (composants, décorateurs, getting-started).
+`.md` files in the package: `node_modules/@supersoniks/concorde/src/` (components, decorators, getting-started).
 
 ---
 

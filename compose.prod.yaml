@@ -1,10 +1,10 @@
 # Production — edge Caddy (TLS) + API FrankenPHP + PostgreSQL + SPA
-# Usage :
-#   cp .env.prod.example .env
+# Usage:
+#   Create a root .env (gitignored) — template in .ops/deploy.md
 #   VITE_API_BASE_URL=https://api.example.com yarn build
 #   docker compose -f compose.prod.yaml up -d --build
 #
-# DNS : APP_SERVER_NAME + API_SERVER_NAME → IP du VPS
+# DNS: APP_SERVER_NAME + API_SERVER_NAME → VPS IP
 
 services:
   edge:

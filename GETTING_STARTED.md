@@ -1,36 +1,37 @@
-# Bienvenue dans Tadaaa
+# Welcome to Tadaaa
 
-Monorepo : front Concorde (`apps/web`) + API Symfony (`apps/api`).
+Monorepo: Concorde front (`apps/web`) + Symfony API (`apps/api`).
 
 ```bash
 yarn install
 yarn dev
-cp apps/api/.env.local.dist apps/api/.env.local
+# optional API:
+#   create apps/api/.env.local (gitignored) — see .ops/deploy.md
 yarn api:up
 yarn api:migrate
 ```
 
-- Front : URL affichée par Vite (souvent `http://localhost:3000`)
-- API Compose : `https://localhost:8443/api`
+- Front: URL shown by Vite (often `http://localhost:3000`)
+- Compose API: `https://localhost:8443/api`
 
-## Structure
+## Layout
 
 ```
 apps/web/src/
 ├── main.ts
-├── app/                 # application Tadaaa
+├── app/                 # Tadaaa application
 └── …
 
 apps/api/                # Symfony + API Platform
 compose.yaml             # FrankenPHP + PostgreSQL
 ```
 
-Le front reste **offline-first** (IndexedDB / mock-api). L’API cloud couvre auth, sync et MCP.
+The front stays **offline-first** (IndexedDB / mock-api). The cloud API covers auth, sync, and MCP.
 
-## Agents IA
+## AI agents
 
 ```bash
 yarn ai:sync
 ```
 
-Voir `AGENTS.md`.
+See `AGENTS.md`.

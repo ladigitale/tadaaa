@@ -1,4 +1,4 @@
-# Agents — Tadaaa (notes locales optionnelles)
+# Agents — Tadaaa (optional local notes)
 
-Fichier **optionnel** pour surcharges d’environnement personnel.  
-Ne documente pas de secrets. Pour le setup public, voir le [README](README.md) et [`.ops/deploy.md`](.ops/deploy.md).
+Optional overrides for a personal environment.  
+Do not document secrets. For the public setup, see the [README](README.md) and [`.ops/deploy.md`](.ops/deploy.md).

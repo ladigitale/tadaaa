@@ -244,6 +244,50 @@ final class CloudTodoService
         return $tag->toSyncArray();
     }
 
+    /**
+     * @param array{name?: string, color?: string} $patch
+     *
+     * @return array<string, mixed>
+     */
+    public function updateTag(User $user, string $id, array $patch): array
+    {
+        $dataset = $this->requireActiveDataset($user);
+        $tag = $this->tags->findOneForDataset($dataset, $id);
+        if ($tag === null || $tag->isDeleted()) {
+            throw new NotFoundHttpException('Tag introuvable.');
+        }
+
+        if (!array_key_exists('name', $patch) && !array_key_exists('color', $patch)) {
+            throw new BadRequestHttpException('Aucun champ à modifier (name, color).');
+        }
+
+        $now = (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM);
+        $versions = $tag->getFieldVersions();
+
+        if (array_key_exists('name', $patch)) {
+            $name = is_string($patch['name']) ? trim($patch['name']) : '';
+            if ($name === '') {
+                throw new BadRequestHttpException('Le nom du tag est requis.');
+            }
+            $tag->setName($name);
+            $versions['name'] = $now;
+        }
+
+        if (array_key_exists('color', $patch)) {
+            $color = is_string($patch['color']) && $patch['color'] !== ''
+                ? $patch['color']
+                : 'default';
+            $tag->setColor($color);
+            $versions['color'] = $now;
+        }
+
+        $tag->setFieldVersions($versions);
+        $dataset->touch();
+        $this->entityManager->flush();
+
+        return $tag->toSyncArray();
+    }
+
     public function deleteTag(User $user, string $id): array
     {
         $dataset = $this->requireActiveDataset($user);

@@ -3,7 +3,10 @@
 /.env.local
 /.env.local.php
 /.env.*.local
-/config/secrets/prod/prod.decrypt.private.php
+/.env.dev
+/.env.prod
+/.env.test
+/config/secrets/prod/prodqua.decrypt.private.php
 /public/bundles/
 /var/
 /vendor/
