@@ -69,13 +69,23 @@ Locally, `REGISTRATION_AUTO_APPROVE=1` in `.env.local` speeds up testing.
 
 ## Production
 
-Full guide: [`.ops/deploy.md`](.ops/deploy.md)
+**Guided install (recommended on a VPS):**
 
 ```bash
-# Create a root .env (gitignored) — see .ops/deploy.md
-VITE_API_BASE_URL=https://api.example.com yarn build
-docker compose -f compose.prod.yaml up -d --build
+git clone https://github.com/ladigitale/tadaaa.git
+cd tadaaa
+bash scripts/install-prod.sh
 ```
+
+The script asks only for:
+
+1. Base domain (uses `app.` / `api.` subdomains)
+2. Email (Let’s Encrypt)
+3. Admin email + password
+
+It generates secrets, builds the front, starts Compose, runs migrations + JWT keys, and creates the admin user.
+
+Manual steps / details: [`.ops/deploy.md`](.ops/deploy.md)
 
 ## Useful scripts
 

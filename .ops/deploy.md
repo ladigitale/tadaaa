@@ -3,10 +3,27 @@
 Provider-agnostic (Hetzner + Coolify, Infomaniak VPS, Compose over SSH…).  
 Stack: FrankenPHP (API) + PostgreSQL + static SPA (`apps/web/dist`).
 
-**Only env file versioned in the repo:** [`apps/api/.env`](../apps/api/.env) (generic template).  
-Every other `.env*` file is gitignored — create them locally / on the server.
+## Guided install (recommended)
 
-## Requirements
+On a fresh VPS (Ubuntu 24.04+, ports 80/443 open, DNS ready):
+
+```bash
+git clone https://github.com/ladigitale/tadaaa.git
+cd tadaaa
+bash scripts/install-prod.sh
+```
+
+You only enter: **base domain**, **email**, **admin email/password**.  
+Everything else (secrets, CORS, MCP hosts, build, migrate, JWT, admin) is handled for you.
+
+**Only env file versioned in the repo:** [`apps/api/.env`](../apps/api/.env) (generic template).  
+The installer writes a root `.env` that stays gitignored.
+
+---
+
+## Manual setup
+
+### Requirements
 
 - Domain + two DNS `A`/`AAAA` records:
   - `app.<domain>` → front
