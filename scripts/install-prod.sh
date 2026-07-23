@@ -156,11 +156,12 @@ EOF
 build_front() {
   local api_host="$1"
   info "Building front (VITE_API_BASE_URL=https://${api_host})…"
-  # Install from apps/web (has yarn.lock). Root workspace install hoists
-  # deps and breaks `node_modules/@supersoniks/concorde/...` in package scripts.
+  # Mount ONLY apps/web so Yarn does not see the monorepo workspaces root
+  # (otherwise deps hoist to /node_modules and break package.json paths + patch-package).
+  rm -rf "$ROOT/node_modules" "$ROOT/yarn.lock"
   docker run --rm \
-    -v "$ROOT:/app" \
-    -w /app/apps/web \
+    -v "$ROOT/apps/web:/app" \
+    -w /app \
     -e VITE_API_BASE_URL="https://${api_host}" \
     node:22-bookworm \
     bash -lc 'corepack enable && (yarn install --frozen-lockfile || yarn install) && yarn build'

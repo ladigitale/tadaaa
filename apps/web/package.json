@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vite --host --port 3000",
-    "build": "node node_modules/@supersoniks/concorde/scripts/generate-routes.js src/app/routes && node scripts/build-demo-api-sw.mjs && tsc && vite build",
+    "build": "node scripts/run-generate-routes.cjs src/app/routes && node scripts/build-demo-api-sw.mjs && tsc && vite build",
     "build:demo-api-sw": "node scripts/build-demo-api-sw.mjs",
     "preview": "vite preview --host --port 3000",
     "postinstall": "patch-package"
