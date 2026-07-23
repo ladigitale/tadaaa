@@ -156,12 +156,14 @@ EOF
 build_front() {
   local api_host="$1"
   info "Building front (VITE_API_BASE_URL=https://${api_host})…"
+  # Install from apps/web (has yarn.lock). Root workspace install hoists
+  # deps and breaks `node_modules/@supersoniks/concorde/...` in package scripts.
   docker run --rm \
     -v "$ROOT:/app" \
-    -w /app \
+    -w /app/apps/web \
     -e VITE_API_BASE_URL="https://${api_host}" \
     node:22-bookworm \
-    bash -lc 'corepack enable && yarn install --frozen-lockfile || yarn install && yarn build'
+    bash -lc 'corepack enable && (yarn install --frozen-lockfile || yarn install) && yarn build'
   [[ -f "$ROOT/apps/web/dist/index.html" ]] || die "Front build failed (apps/web/dist/index.html missing)."
   ok "Front build ready."
 }
@@ -270,10 +272,23 @@ main() {
   if [[ -f "$ENV_FILE" ]]; then
     warn "${ENV_FILE} already exists."
     read -r -p "Overwrite it? [y/N] " ow || true
-    [[ "$ow" =~ ^[Yy]$ ]] || die "Aborted (kept existing .env)."
+    if [[ "$ow" =~ ^[Yy]$ ]]; then
+      write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass"
+    else
+      ok "Keeping existing .env"
+      # Prefer hosts already written in .env for rebuild/retry
+      # shellcheck disable=SC1090
+      set -a
+      # shellcheck source=/dev/null
+      source "$ENV_FILE"
+      set +a
+      app_host="${APP_SERVER_NAME:-$app_host}"
+      api_host="${API_SERVER_NAME:-$api_host}"
+    fi
+  else
+    write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass"
   fi
 
-  write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass"
   install_docker_if_needed
   need_cmd docker
 
