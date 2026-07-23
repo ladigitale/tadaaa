@@ -2,7 +2,7 @@ import {openDB, type DBSchema, type IDBPDatabase} from "idb";
 import type {DbSnapshot, Tag, Todo} from "./types";
 import {normalizeSnapshot} from "./store-logic";
 import {SEED_DATA} from "./seed";
-import {newBaseId} from "./data-package";
+import {newBaseId, formatBaseId} from "./data-package";
 import {
   createTodoStore,
   type CreateDatasetInput,
@@ -259,7 +259,7 @@ async function createDataset(input: CreateDatasetInput): Promise<DatasetInfo> {
   const id = newDatasetId();
   const record: DatasetRecord = {
     id,
-    baseId: newBaseId(),
+    baseId: input.baseId?.trim() ? formatBaseId(input.baseId) : newBaseId(),
     name,
     updatedAt: nowIso(),
     todos: snapshot.todos,

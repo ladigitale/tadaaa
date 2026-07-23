@@ -10,16 +10,15 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
 
 #[ApiResource(operations: [])]
 #[McpTool(
-    name: 'list_todos',
-    description: 'Liste les tâches du jeu cloud actif MCP (filtre status/q).',
+    name: 'activate_dataset',
+    description: 'Active un jeu cloud pour les outils MCP (id uuid ou baseId). N’affecte pas l’édition web.',
     processor: CloudTodoMcpProcessor::class,
 )]
-final class ListTodosTool
+final class ActivateDatasetTool
 {
     public function __construct(
-        public string $status = 'all',
-        public ?string $q = null,
-        public int $limit = 50,
+        /** Uuid du jeu cloud, ou baseId (`base-…` ou uuid nu). */
+        public string $id = '',
     ) {
     }
 }

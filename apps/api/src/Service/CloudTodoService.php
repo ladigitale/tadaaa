@@ -11,9 +11,11 @@ use App\Entity\User;
 use App\Repository\DatasetRepository;
 use App\Repository\TagRepository;
 use App\Repository\TodoRepository;
+use App\Util\BaseIdParser;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Opérations métier cloud sur le jeu actif (ou un baseId explicite).
@@ -323,6 +325,20 @@ final class CloudTodoService
     }
 
     /**
+     * Active le jeu cloud ciblé par les outils MCP (indépendant de l’édition web).
+     *
+     * @return array{id: string, baseId: string, name: string, active: bool}
+     */
+    public function activateDataset(User $user, string $idOrBaseId): array
+    {
+        $dataset = $this->resolveDatasetRef($user, $idOrBaseId);
+        $user->setActiveDataset($dataset);
+        $this->entityManager->flush();
+
+        return $this->datasetToMcpArray($dataset, true);
+    }
+
+    /**
      * @return list<array{id: string, baseId: string, name: string, active: bool}>
      */
     public function listDatasets(User $user): array
@@ -340,15 +356,68 @@ final class CloudTodoService
             if (!$dataset instanceof Dataset) {
                 continue;
             }
-            $result[] = [
-                'id' => $dataset->getId()->toRfc4122(),
-                'baseId' => 'base-'.$dataset->getBaseId()->toRfc4122(),
-                'name' => $dataset->getName(),
-                'active' => $activeId === $dataset->getId()->toRfc4122(),
-            ];
+            $result[] = $this->datasetToMcpArray(
+                $dataset,
+                $activeId === $dataset->getId()->toRfc4122(),
+            );
         }
 
         return $result;
+    }
+
+    /**
+     * @return array{id: string, baseId: string, name: string, active: bool}
+     */
+    private function datasetToMcpArray(Dataset $dataset, bool $active): array
+    {
+        return [
+            'id' => $dataset->getId()->toRfc4122(),
+            'baseId' => BaseIdParser::format($dataset->getBaseId()),
+            'name' => $dataset->getName(),
+            'active' => $active,
+        ];
+    }
+
+    private function resolveDatasetRef(User $user, string $idOrBaseId): Dataset
+    {
+        $raw = trim($idOrBaseId);
+        if ($raw === '') {
+            throw new BadRequestHttpException('Paramètre id requis (uuid du jeu ou baseId).');
+        }
+
+        if (str_starts_with($raw, 'base-')) {
+            try {
+                $baseId = BaseIdParser::parse($raw);
+            } catch (\InvalidArgumentException) {
+                throw new BadRequestHttpException('baseId invalide.');
+            }
+            $dataset = $this->datasets->findOneByBaseIdForUser($user, $baseId);
+            if ($dataset === null) {
+                throw new NotFoundHttpException('Jeu de données introuvable.');
+            }
+
+            return $dataset;
+        }
+
+        try {
+            $uuid = Uuid::fromString($raw);
+        } catch (\InvalidArgumentException) {
+            throw new BadRequestHttpException('id invalide.');
+        }
+
+        $byId = $this->datasets->find($uuid);
+        if ($byId instanceof Dataset
+            && $byId->getOwner()->getId()->toRfc4122() === $user->getId()->toRfc4122()
+        ) {
+            return $byId;
+        }
+
+        $byBase = $this->datasets->findOneByBaseIdForUser($user, $uuid);
+        if ($byBase === null) {
+            throw new NotFoundHttpException('Jeu de données introuvable.');
+        }
+
+        return $byBase;
     }
 
     private function requireTodo(User $user, string $id): Todo

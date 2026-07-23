@@ -6,6 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="/src/css/tailwind.css" />
     <link rel="stylesheet" href="/src/css/app.css" />
+    <link rel="stylesheet" href="/src/css/themes.css" />
+    <script>
+      try {
+        var t = localStorage.getItem("tada-theme");
+        if (t && t !== "default") document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    </script>
     <title>TADA — Tâches Concorde</title>
   </head>
 

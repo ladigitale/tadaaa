@@ -24,11 +24,11 @@ function goHome(event: Event) {
 
 export default (children: DirectiveResult) => html`
   <div
-    class="flex flex-col overflow-hidden bg-neutral-50"
+    class="flex flex-col overflow-hidden bg-neutral-0"
     style="height: 100vh"
   >
     <nav
-      class="shrink-0 border-b-[.18rem] border-current bg-neutral-50"
+      class="shrink-0 border-b-[.18rem] border-current bg-neutral-0"
       aria-label="Navigation principale"
     >
       <div

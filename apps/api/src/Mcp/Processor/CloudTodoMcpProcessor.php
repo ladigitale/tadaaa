@@ -7,6 +7,7 @@ namespace App\Mcp\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\User;
+use App\Mcp\Tool\ActivateDatasetTool;
 use App\Mcp\Tool\BulkUpdateTodosTool;
 use App\Mcp\Tool\CreateTagTool;
 use App\Mcp\Tool\CreateTodoTool;
@@ -45,6 +46,7 @@ final class CloudTodoMcpProcessor implements ProcessorInterface
 
         $payload = match (true) {
             $data instanceof ListDatasetsTool => ['datasets' => $this->todos->listDatasets($user)],
+            $data instanceof ActivateDatasetTool => $this->todos->activateDataset($user, $data->id),
             $data instanceof ListTagsTool => ['tags' => $this->todos->listTags($user)],
             $data instanceof ListTodosTool => [
                 'todos' => $this->todos->listTodos(

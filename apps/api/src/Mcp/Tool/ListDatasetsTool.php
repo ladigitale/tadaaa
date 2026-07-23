@@ -11,7 +11,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
 #[ApiResource(operations: [])]
 #[McpTool(
     name: 'list_datasets',
-    description: 'Liste les jeux de données cloud du compte (indique le jeu actif).',
+    description: 'Liste les jeux de données cloud du compte (indique le jeu actif MCP).',
     processor: CloudTodoMcpProcessor::class,
 )]
 final class ListDatasetsTool

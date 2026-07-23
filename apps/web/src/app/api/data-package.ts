@@ -23,6 +23,14 @@ export function newBaseId(): string {
   return `base-${crypto.randomUUID()}`;
 }
 
+/** Normalise un baseId cloud/local vers la forme `base-<uuid>`. */
+export function formatBaseId(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed === "") return trimmed;
+  if (trimmed.startsWith("base-")) return trimmed;
+  return `base-${trimmed}`;
+}
+
 export function createDataPackage(input: {
   id: string;
   name: string;

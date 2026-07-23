@@ -4,6 +4,7 @@ import "@supersoniks/concorde/core/components/functional/router/router";
 
 import layout from "./layout";
 import configAccountPage from "./config/account/page";
+import configAppearancePage from "./config/appearance/page";
 import configDataPage from "./config/data/page";
 import configDatasetsPage from "./config/datasets/page";
 import configMaintenancePage from "./config/maintenance/page";
@@ -25,6 +26,10 @@ const configAccountDefaultLayoutRoutes = {
     "/config/account$": configAccountPage
 }        
 
+const configAppearanceDefaultLayoutRoutes = {
+    "/config/appearance$": configAppearancePage
+}        
+
 const configDataDefaultLayoutRoutes = {
     "/config/data$": configDataPage
 }        
@@ -43,6 +48,7 @@ const configP2pDefaultLayoutRoutes = {
 
 const configDefaultLayoutRoutes = {
     "/config/account\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configAccountDefaultLayoutRoutes}></sonic-router>`,
+    "/config/appearance\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configAppearanceDefaultLayoutRoutes}></sonic-router>`,
     "/config/data\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configDataDefaultLayoutRoutes}></sonic-router>`,
     "/config/datasets\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configDatasetsDefaultLayoutRoutes}></sonic-router>`,
     "/config/maintenance\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configMaintenanceDefaultLayoutRoutes}></sonic-router>`,

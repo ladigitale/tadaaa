@@ -30,6 +30,18 @@ export class DatasetRow extends LitElement {
   @property({type: Boolean})
   canDelete = true;
 
+  /** Badge principal (ex. Actif / En édition). */
+  @property()
+  activeLabel = "Actif";
+
+  /** Libellé du bouton d’activation. */
+  @property()
+  activateLabel = "Activer";
+
+  /** Badge secondaire (ex. actif MCP), indépendant de l’édition. */
+  @property({type: Boolean})
+  mcpActive = false;
+
   private formatDate(value: string): string {
     try {
       return new Date(value).toLocaleString("fr-FR", {
@@ -86,8 +98,11 @@ export class DatasetRow extends LitElement {
               >
               ${this.datasetInfo.active
                 ? html`<sonic-badge size="2xs" type="success"
-                    >Actif</sonic-badge
+                    >${this.activeLabel}</sonic-badge
                   >`
+                : nothing}
+              ${this.mcpActive
+                ? html`<sonic-badge size="2xs" type="info">MCP</sonic-badge>`
                 : nothing}
             </div>
             <p class="mt-0.5 truncate font-mono text-xs text-neutral-500">
@@ -113,7 +128,7 @@ export class DatasetRow extends LitElement {
                       name="check"
                       size="sm"
                     ></sonic-icon>
-                    Activer
+                    ${this.activateLabel}
                   </sonic-button>
                 `
               : nothing}
@@ -148,7 +163,8 @@ export class DatasetRow extends LitElement {
                         ?disabled=${this.disabled}
                         @click=${this.onActivate}
                       >
-                        ${this.renderMenuItemIcon("check")} Activer
+                        ${this.renderMenuItemIcon("check")}
+                        ${this.activateLabel}
                       </sonic-menu-item>
                     `
                   : nothing}

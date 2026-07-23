@@ -16,7 +16,6 @@ import {
   type AccountSettings,
 } from "../account-settings";
 import {
-  activateCloudDataset,
   approveAdminUser,
   checkCloudApiHealth,
   createAccessToken,
@@ -36,9 +35,12 @@ import {
   type AdminUserInfo,
   type CloudDatasetInfo,
 } from "../cloud-api/client";
+import {formatBaseId} from "../api/data-package";
+import {getIdbTodoStore} from "../api/store-idb";
 import {
   getActiveDatasetSyncState,
   getActivePendingCount,
+  openCloudDatasetForEditing,
   runDatasetSync,
 } from "../sync/engine";
 import type {SyncState} from "../sync/outbox-types";
@@ -81,6 +83,10 @@ export class ConfigAccountPage extends LitElement {
 
   @state()
   private cloudDatasets: CloudDatasetInfo[] = [];
+
+  /** baseId du jeu local actif (édition web), normalisé. */
+  @state()
+  private editingBaseId: string | null = null;
 
   @state()
   private accessTokens: AccessTokenInfo[] = [];
@@ -140,6 +146,7 @@ export class ConfigAccountPage extends LitElement {
     this.mcpUrl = getMcpUrl(this.account);
     if (!isAccountConnected(this.account)) {
       this.cloudDatasets = [];
+      this.editingBaseId = null;
       this.accessTokens = [];
       this.adminUsers = [];
       this.syncState = null;
@@ -149,6 +156,11 @@ export class ConfigAccountPage extends LitElement {
     try {
       this.account = await refreshAccountSession(this.account);
       this.cloudDatasets = await fetchCloudDatasets(this.account);
+      const locals = await getIdbTodoStore().listDatasets();
+      const activeLocal = locals.find((dataset) => dataset.active);
+      this.editingBaseId = activeLocal
+        ? formatBaseId(activeLocal.baseId)
+        : null;
       this.accessTokens = await fetchAccessTokens(this.account);
       this.syncState = await getActiveDatasetSyncState();
       this.pendingSyncCount = await getActivePendingCount();
@@ -161,6 +173,7 @@ export class ConfigAccountPage extends LitElement {
     } catch (error) {
       this.account = loadAccountSettings();
       this.cloudDatasets = [];
+      this.editingBaseId = null;
       this.accessTokens = [];
       this.adminUsers = [];
       this.syncState = null;
@@ -313,13 +326,22 @@ export class ConfigAccountPage extends LitElement {
     event: CustomEvent<{dataset: CloudDatasetInfo}>,
   ) => {
     const dataset = event.detail.dataset;
-    if (this.busy || dataset.active) return;
+    const isEditing =
+      this.editingBaseId !== null &&
+      formatBaseId(dataset.baseId) === this.editingBaseId;
+    if (this.busy || isEditing) return;
     this.busy = true;
+    this.statusMessage = `Ouverture de « ${dataset.name} »…`;
     try {
-      await activateCloudDataset(dataset.id, this.account);
+      const result = await openCloudDatasetForEditing(dataset);
+      if (result.error) {
+        this.statusMessage = result.error;
+      } else {
+        this.statusMessage = `Édition : « ${dataset.name} » — ${result.pulledTodos} tâche(s), ${result.pulledTags} tag(s).`;
+      }
       await this.reloadCloudState();
     } catch (error) {
-      await showError(error, "Impossible d’activer le jeu cloud");
+      await showError(error, "Impossible d’ouvrir ce jeu pour l’édition");
       console.error(error);
     } finally {
       this.busy = false;
@@ -734,6 +756,11 @@ export class ConfigAccountPage extends LitElement {
     return html`
       <section class="space-y-3 border-t border-current/15 pt-4">
         <h2 class="text-lg font-semibold">Jeux cloud</h2>
+        <p class="text-sm text-neutral-500">
+          <strong>Éditer</strong> bascule l’app sur ce jeu (affichage + sync).
+          Le badge <strong>MCP</strong> indique le jeu actif pour les agents —
+          changeable uniquement via l’outil MCP <code>activate_dataset</code>.
+        </p>
         <sonic-form-layout>
           <sonic-input
             formDataProvider=${appConfigKey.path}
@@ -757,19 +784,26 @@ export class ConfigAccountPage extends LitElement {
           ? html`<p class="text-sm text-neutral-500">Aucun jeu cloud.</p>`
           : html`
               <ul class="m-0 list-none p-0">
-                ${this.cloudDatasets.map(
-                  (dataset, index) => html`
+                ${this.cloudDatasets.map((dataset, index) => {
+                  const editing =
+                    this.editingBaseId !== null &&
+                    formatBaseId(dataset.baseId) === this.editingBaseId;
+                  const rowInfo = {...dataset, active: editing};
+                  return html`
                     <li>
                       ${index > 0 ? this.listSeparator() : nothing}
                       <dataset-row
-                        .datasetInfo=${dataset}
+                        .datasetInfo=${rowInfo}
+                        activeLabel="En édition"
+                        activateLabel="Éditer"
+                        ?mcpActive=${dataset.active}
                         ?disabled=${this.busy}
                         @dataset-activate=${this.onActivateCloudDataset}
                         @dataset-delete=${this.onDeleteCloudDataset}
                       ></dataset-row>
                     </li>
-                  `,
-                )}
+                  `;
+                })}
               </ul>
             `}
       </section>

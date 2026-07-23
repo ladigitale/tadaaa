@@ -20,6 +20,7 @@ type SectionChoice = {
 
 const SECTIONS: SectionChoice[] = [
   {id: "account", label: "Compte cloud", icon: "user"},
+  {id: "appearance", label: "Appearance", icon: "palette"},
   {id: "issues", label: "Liens d’issues", icon: "link"},
   {id: "data", label: "Export / import", icon: "page"},
   {id: "p2p", label: "Partage P2P", icon: "share-android"},

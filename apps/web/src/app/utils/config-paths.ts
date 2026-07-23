@@ -3,6 +3,7 @@ export const CONFIG_ROOT = "/config";
 
 export type ConfigSection =
   | "account"
+  | "appearance"
   | "issues"
   | "data"
   | "p2p"

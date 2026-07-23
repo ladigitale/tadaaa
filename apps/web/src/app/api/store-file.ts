@@ -31,6 +31,13 @@ function newBaseId(): string {
   return `base-${randomUUID()}`;
 }
 
+function formatBaseId(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed === "") return trimmed;
+  if (trimmed.startsWith("base-")) return trimmed;
+  return `base-${trimmed}`;
+}
+
 function ensureDataset(item: Partial<FileDataset> & {
   id: string;
   name: string;
@@ -202,7 +209,7 @@ function createFileRepository(filePath: string): TodoRepository {
       const id = `ds-${Date.now().toString(36)}`;
       const record: FileDataset = {
         id,
-        baseId: newBaseId(),
+        baseId: input.baseId?.trim() ? formatBaseId(input.baseId) : newBaseId(),
         name,
         updatedAt: new Date().toISOString(),
         todos: snapshot.todos,

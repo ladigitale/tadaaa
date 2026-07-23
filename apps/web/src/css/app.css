@@ -1,13 +1,15 @@
 @import url("https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap");
 
 /*
-Génération d'un thème de couleur
+Default theme (data-theme omitted).
+Other themes: themes.css — generate palettes at
 https://delanfranchi.github.io/concordecolors/
-Beta 
 */
 :root {
-  /* base / content */
+  color-scheme: light;
 
+  /* base / content */
   --sc-base: #fafaf9;
   --sc-base-content: #1c1917;
 
@@ -23,7 +25,7 @@ Beta
   --sc-base-800: #2e2b29;
   --sc-base-900: #1c1917;
 
-  /*Semantic colors*/
+  /* Semantic colors */
   --sc-primary: #10298e;
   --sc-primary-content: #ffffff;
   --sc-info: #27b2ff;
@@ -35,15 +37,12 @@ Beta
   --sc-danger: #f40e44;
   --sc-danger-content: #ffffff;
 
-  /*base style*/
-  --sc-rounded: 0.5rem; /* 0 for none */
-  --sc-btn-rounded: 9999px; /* button as pills */
-  --sc-border-width: max(
-    2px,
-    0.125rem
-  ); /* border width in forms / dividers etc. */
+  /* Base style */
+  --sc-rounded: 0.5rem;
+  --sc-btn-rounded: 9999px;
+  --sc-border-width: max(2px, 0.125rem);
 
-  /* FONTS */
+  /* Fonts */
   --sc-font-family-base: "Hanken Grotesk", sans-serif;
   --sc-headings-font-family: var(--sc-font-family-base);
 }

@@ -50,6 +50,8 @@ export type CreateDatasetInput = {
   name: string;
   /** empty = vide ; seed = données démo ; current = clone du jeu actif */
   source?: "empty" | "seed" | "current";
+  /** Si fourni, réutilise ce baseId (lien cloud) au lieu d’en générer un. */
+  baseId?: string;
 };
 
 export interface TodoRepository {

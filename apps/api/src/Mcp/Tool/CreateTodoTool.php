@@ -11,7 +11,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
 #[ApiResource(operations: [])]
 #[McpTool(
     name: 'create_todo',
-    description: 'Crée une tâche dans le jeu cloud actif.',
+    description: 'Crée une tâche dans le jeu cloud actif MCP.',
     processor: CloudTodoMcpProcessor::class,
 )]
 final class CreateTodoTool

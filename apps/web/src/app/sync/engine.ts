@@ -1,4 +1,5 @@
 import {isAccountConnected, loadAccountSettings} from "../account-settings";
+import {formatBaseId} from "../api/data-package";
 import {getIdbTodoStore} from "../api/store-idb";
 import {tagsListKey, todosFilterKey, type TodosFilter} from "../dp";
 import {read, set} from "../../utils/dataprovider";
@@ -226,6 +227,50 @@ export async function getActivePendingCount(): Promise<number> {
   const local = await readActiveLocalDataset();
   if (!local) return 0;
   return countPendingMutations(local.baseId);
+}
+
+/**
+ * Bascule l’édition locale sur un jeu cloud (par baseId) puis pull complet.
+ * N’active pas le jeu MCP côté serveur.
+ */
+export async function openCloudDatasetForEditing(cloud: {
+  baseId: string;
+  name: string;
+}): Promise<SyncRunResult> {
+  const store = getIdbTodoStore();
+  const targetBaseId = formatBaseId(cloud.baseId);
+  const locals = await store.listDatasets();
+  let local =
+    locals.find((dataset) => formatBaseId(dataset.baseId) === targetBaseId) ??
+    null;
+
+  if (!local) {
+    local = await store.createDataset({
+      name: cloud.name.trim() || "Jeu cloud",
+      source: "empty",
+      baseId: targetBaseId,
+    });
+  }
+
+  if (!local.active) {
+    await store.activateDataset(local.id);
+  }
+
+  const result = await runDatasetSync({
+    baseId: targetBaseId,
+    fullPull: true,
+  });
+
+  // Toujours rafraîchir l’UI après un switch (même si le pull n’a rien changé).
+  const filter = read(todosFilterKey.path) as TodosFilter;
+  set(todosFilterKey.path, {...filter, _rev: (filter._rev ?? 0) + 1});
+  try {
+    set(tagsListKey.path, await store.listTags());
+  } catch {
+    set(tagsListKey.path, []);
+  }
+
+  return result;
 }
 
 /**

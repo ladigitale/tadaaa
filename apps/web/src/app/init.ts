@@ -17,12 +17,14 @@ import {
 } from "./dp";
 import {loadAppSettings} from "./settings";
 import {loadAccountSettings, isAccountConnected} from "./account-settings";
+import {initTheme} from "./theme";
 import {registerSyncHandler} from "./sync/registry";
 import {enqueueMutationForDataset} from "./sync/notify";
 import {scheduleAutoSync} from "./sync/engine";
 import {getIdbTodoStore} from "./api/store-idb";
 
 export function initApp(): void {
+  initTheme();
   // Avant tout fetch : sous Apache, /mock-api sans SW = index.html (JSON parse fail).
   installMockApiFetchFallback();
   initApiConfiguration();

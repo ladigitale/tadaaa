@@ -177,6 +177,9 @@ export async function fetchCloudDatasets(
   const activeId = settings.user?.activeDatasetId ?? null;
   return asMemberCollection<CloudDatasetInfo>(result).map((dataset) => ({
     ...dataset,
+    baseId: dataset.baseId?.startsWith("base-")
+      ? dataset.baseId
+      : `base-${dataset.baseId}`,
     active: activeId !== null && dataset.id === activeId,
   }));
 }
