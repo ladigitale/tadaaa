@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-use Symfony\Component\RateLimiter\RateLimiterFactory;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -32,8 +32,8 @@ final class AuthController extends AbstractController
         private readonly JWTTokenManagerInterface $jwtManager,
         private readonly RequestStack $requestStack,
         #[Autowire(service: 'limiter.register')]
-        private readonly RateLimiterFactory $registerLimiter,
-        #[Autowire('%env(bool:default:false:REGISTRATION_AUTO_APPROVE)%')]
+        private readonly RateLimiterFactoryInterface $registerLimiter,
+        #[Autowire('%env(bool:REGISTRATION_AUTO_APPROVE)%')]
         private readonly bool $registrationAutoApprove,
     ) {
     }
