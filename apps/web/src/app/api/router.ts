@@ -10,6 +10,7 @@ import type {
   UpdateTagPatch,
   UpdateTodoPatch,
 } from "./types";
+import {getAppLocale, normalizeAppLocale, resolveWordings} from "../i18n";
 
 export const MOCK_API_PATH_PREFIX = "/mock-api";
 
@@ -99,6 +100,17 @@ export function createMockApiHandler(store: TodoStore) {
         return json({ok: true, service: "tada-mock-api"});
       }
 
+      // Concorde wording: GET /wordings?labels[]=key1&labels[]=key2
+      if (method === "GET" && subPath === "/wordings") {
+        const labels = [
+          ...url.searchParams.getAll("labels[]"),
+          ...url.searchParams.getAll("labels"),
+        ].filter(Boolean);
+        const fromHeader = request.headers.get("Accept-Language");
+        const locale = normalizeAppLocale(fromHeader || getAppLocale());
+        return json(resolveWordings(labels, locale));
+      }
+
       if (method === "GET" && subPath === "/export") {
         const data = await store.exportSnapshot();
         return json({data});
@@ -130,6 +142,12 @@ export function createMockApiHandler(store: TodoStore) {
       }
 
       const datasetMatch = subPath.match(/^\/datasets\/([^/]+)$/);
+      if (datasetMatch && method === "PATCH") {
+        const body = await readJsonBody<{name?: string}>(request);
+        const name = typeof body.name === "string" ? body.name : "";
+        const data = await store.renameDataset(datasetMatch[1], name);
+        return json({data});
+      }
       if (datasetMatch && method === "DELETE") {
         await store.deleteDataset(datasetMatch[1]);
         return json({ok: true});

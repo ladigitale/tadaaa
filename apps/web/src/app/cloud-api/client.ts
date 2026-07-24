@@ -6,6 +6,14 @@ import {
   type AccountSettings,
   type CloudUser,
 } from "../account-settings";
+import {applyCloudLinkDetectors, type LinkDetector} from "../settings";
+import {tx} from "../i18n";
+import {
+  resetMercureSubscription,
+  teardownMercureSubscription,
+} from "../sync/mercure";
+
+export type CloudDatasetRole = "owner" | "writer" | "reader";
 
 export type CloudDatasetInfo = {
   id: string;
@@ -13,6 +21,7 @@ export type CloudDatasetInfo = {
   name: string;
   updatedAt: string;
   active: boolean;
+  role?: CloudDatasetRole;
 };
 
 type MeResponse = {
@@ -64,7 +73,7 @@ async function cloudFetch<T>(
         body.error ??
         body.detail ??
         (response.status === 401
-          ? "Session cloud expirée ou invalide — reconnectez-vous."
+          ? tx("account.session_expired")
           : `API cloud ${response.status}`),
     );
   }
@@ -106,9 +115,7 @@ export async function registerAccount(
     return {
       settings,
       pending: true,
-      message:
-        result.message ??
-        "Demande enregistrée — un administrateur doit valider votre compte.",
+      message: result.message ?? tx("account.register_pending"),
     };
   }
 
@@ -118,7 +125,9 @@ export async function registerAccount(
     user: result.user,
   };
   saveAccountSettings(next);
-  return {settings: next, pending: false, message: "Compte créé."};
+  resetMercureSubscription();
+  syncLinkDetectorsFromUser(result.user);
+  return {settings: next, pending: false, message: tx("account.register_ok")};
 }
 
 export async function loginAccount(
@@ -153,10 +162,13 @@ export async function loginAccount(
     user: me.user,
   };
   saveAccountSettings(next);
+  resetMercureSubscription();
+  syncLinkDetectorsFromUser(me.user);
   return next;
 }
 
 export function logoutAccount(): AccountSettings {
+  teardownMercureSubscription();
   return clearAccountSession();
 }
 
@@ -167,7 +179,42 @@ export async function refreshAccountSession(
   const me = await cloudFetch<MeResponse>("/auth/me", {}, settings);
   const next = {...settings, user: me.user};
   saveAccountSettings(next);
+  syncLinkDetectorsFromUser(me.user);
   return next;
+}
+
+function syncLinkDetectorsFromUser(user: CloudUser): void {
+  if (Array.isArray(user.linkDetectors)) {
+    applyCloudLinkDetectors(user.linkDetectors);
+  }
+}
+
+export async function fetchLinkDetectors(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<LinkDetector[]> {
+  const result = await cloudFetch<{linkDetectors: LinkDetector[]}>(
+    "/link-detectors",
+    {},
+    settings,
+  );
+  return result.linkDetectors ?? [];
+}
+
+export async function replaceLinkDetectors(
+  linkDetectors: LinkDetector[],
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<LinkDetector[]> {
+  const result = await cloudFetch<{linkDetectors: LinkDetector[]}>(
+    "/link-detectors",
+    {
+      method: "PUT",
+      body: JSON.stringify({linkDetectors}),
+    },
+    settings,
+  );
+  const saved = result.linkDetectors ?? [];
+  applyCloudLinkDetectors(saved);
+  return saved;
 }
 
 export async function fetchCloudDatasets(
@@ -228,6 +275,30 @@ export async function deleteCloudDataset(
     {method: "DELETE"},
     settings,
   );
+}
+
+export async function renameCloudDataset(
+  id: string,
+  name: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<CloudDatasetInfo> {
+  const dataset = await cloudFetch<Omit<CloudDatasetInfo, "active">>(
+    `/datasets/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({name}),
+      headers: {"Content-Type": "application/merge-patch+json"},
+    },
+    settings,
+  );
+  const activeId = settings.user?.activeDatasetId ?? null;
+  return {
+    ...dataset,
+    baseId: dataset.baseId?.startsWith("base-")
+      ? dataset.baseId
+      : `base-${dataset.baseId}`,
+    active: activeId !== null && dataset.id === activeId,
+  };
 }
 
 export async function checkCloudApiHealth(
@@ -340,4 +411,143 @@ export async function disableAdminUser(
     settings,
   );
   return result.user;
+}
+
+export type DatasetMemberInfo = {
+  id: string;
+  userId: string;
+  email: string;
+  role: CloudDatasetRole;
+  createdAt: string;
+};
+
+export type DatasetInviteCreated = {
+  token: string;
+  urlPath: string;
+  role: "writer" | "reader";
+  expiresAt: string;
+};
+
+export type DatasetInviteByEmailResult = DatasetInviteCreated & {
+  notified: boolean;
+  email: string;
+};
+
+export type DatasetInvitePreview = {
+  datasetName: string;
+  role: "writer" | "reader";
+  expiresAt: string;
+  usable: boolean;
+};
+
+export async function createDatasetInvite(
+  datasetId: string,
+  role: "writer" | "reader",
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<DatasetInviteCreated> {
+  return cloudFetch<DatasetInviteCreated>(
+    `/datasets/${encodeURIComponent(datasetId)}/invites`,
+    {
+      method: "POST",
+      body: JSON.stringify({role}),
+    },
+    settings,
+  );
+}
+
+export async function inviteDatasetByEmail(
+  datasetId: string,
+  email: string,
+  role: "writer" | "reader",
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<DatasetInviteByEmailResult> {
+  return cloudFetch<DatasetInviteByEmailResult>(
+    `/datasets/${encodeURIComponent(datasetId)}/invites/email`,
+    {
+      method: "POST",
+      body: JSON.stringify({email, role}),
+    },
+    settings,
+  );
+}
+
+export async function fetchDatasetMembers(
+  datasetId: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<DatasetMemberInfo[]> {
+  const result = await cloudFetch<unknown>(
+    `/datasets/${encodeURIComponent(datasetId)}/members`,
+    {},
+    settings,
+  );
+  return asMemberCollection<DatasetMemberInfo>(result);
+}
+
+export async function removeDatasetMember(
+  datasetId: string,
+  userId: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<void> {
+  await cloudFetch<void>(
+    `/datasets/${encodeURIComponent(datasetId)}/members/${encodeURIComponent(userId)}`,
+    {method: "DELETE"},
+    settings,
+  );
+}
+
+export async function previewDatasetInvite(
+  token: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<DatasetInvitePreview> {
+  return cloudFetch<DatasetInvitePreview>(
+    `/invites/${encodeURIComponent(token)}`,
+    {},
+    settings,
+  );
+}
+
+export async function acceptDatasetInvite(
+  token: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<{
+  dataset: {
+    id: string;
+    baseId: string;
+    name: string;
+    role: CloudDatasetRole;
+  };
+}> {
+  return cloudFetch(
+    `/invites/${encodeURIComponent(token)}/accept`,
+    {method: "POST"},
+    settings,
+  );
+}
+
+export type MercureCredentials = {
+  hubUrl: string;
+  /** Primary topic (legacy / user). */
+  topic: string;
+  /** All authorized topics (user + optional dataset). */
+  topics?: string[];
+  token: string;
+  expiresIn: number;
+};
+
+export async function fetchMercureCredentials(
+  baseId: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<MercureCredentials> {
+  return cloudFetch<MercureCredentials>(
+    `/mercure?baseId=${encodeURIComponent(baseId)}`,
+    {},
+    settings,
+  );
+}
+
+/** User topic only (share / invite events when no active dataset). */
+export async function fetchMercureSession(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<MercureCredentials> {
+  return cloudFetch<MercureCredentials>(`/mercure`, {}, settings);
 }

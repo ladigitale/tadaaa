@@ -26,6 +26,10 @@ import {
   saveSyncState,
   type SyncState,
 } from "./outbox";
+import {detectRemoteTodoNotifyChanges} from "../notifications/todo-diff";
+import {notifyTodoChanges} from "../notifications/web-notifications";
+import {checkDueDates} from "../notifications/due-dates";
+import {ensureMercureSubscription} from "./mercure";
 
 export type SyncRunResult = {
   pushed: number;
@@ -52,6 +56,7 @@ async function readActiveLocalDataset(): Promise<DatasetInfo | null> {
 async function applyPullToLocal(
   baseId: string,
   since: string | null,
+  options: {notify?: boolean; ignoreTodoIds?: ReadonlySet<string>} = {},
 ): Promise<{todos: number; tags: number; serverTime: string}> {
   const settings = loadAccountSettings();
   const pull = await pullDatasetSync(baseId, since, settings);
@@ -64,6 +69,16 @@ async function applyPullToLocal(
     todos: local.todos,
     tags: local.tags,
   });
+
+  // Incremental pull only — full sync would flood notifications.
+  if (options.notify && since) {
+    const changes = detectRemoteTodoNotifyChanges(
+      snapshot.todos,
+      pull.todos,
+      options.ignoreTodoIds,
+    );
+    notifyTodoChanges(changes);
+  }
 
   let next = snapshot;
   for (const tag of pull.tags) {
@@ -107,50 +122,71 @@ async function runDatasetSyncUnlocked(
   const settings = loadAccountSettings();
 
   try {
+    const isReader = state.cloudRole === "reader";
+    // Membre invité (writer/reader) : le cloud est la source de vérité.
+    // Ne jamais exporter un IndexedDB vide/local homonyme vers le jeu partagé.
+    const isInvitee =
+      state.cloudRole === "writer" || state.cloudRole === "reader";
+
     if (!state.bootstrapped) {
-      const meta = await getIdbTodoStore().exportSnapshot();
-      try {
-        await bootstrapDatasetSync(
-          datasetBaseId,
-          {
-            name: meta.name,
-            todos: meta.todos,
-            tags: meta.tags,
-          },
-          settings,
-        );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Bootstrap impossible";
-        if (!message.includes("introuvable")) {
-          await createCloudDatasetWithBaseId(meta.name, datasetBaseId, settings).catch(() => {});
+      if (isInvitee) {
+        state = {
+          ...state,
+          bootstrapped: true,
+          lastError: null,
+        };
+      } else {
+        const meta = await getIdbTodoStore().exportSnapshot();
+        try {
           await bootstrapDatasetSync(
             datasetBaseId,
-            {name: meta.name, todos: meta.todos, tags: meta.tags},
+            {
+              name: meta.name,
+              todos: meta.todos,
+              tags: meta.tags,
+            },
             settings,
           );
-        } else {
-          throw error;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Bootstrap impossible";
+          if (!message.includes("introuvable")) {
+            await createCloudDatasetWithBaseId(meta.name, datasetBaseId, settings).catch(() => {});
+            await bootstrapDatasetSync(
+              datasetBaseId,
+              {name: meta.name, todos: meta.todos, tags: meta.tags},
+              settings,
+            );
+          } else {
+            throw error;
+          }
         }
+        state = {
+          ...state,
+          bootstrapped: true,
+          lastError: null,
+        };
       }
-      state = {
-        ...state,
-        bootstrapped: true,
-        lastError: null,
-      };
     }
 
     await resetFailedMutations(datasetBaseId);
-    const pending = await listPendingMutations(datasetBaseId);
+    const pending = isReader ? [] : await listPendingMutations(datasetBaseId);
     let pushed = 0;
+    const pushedTodoIds = new Set<string>();
 
     if (pending.length > 0) {
       const ids = pending.map((mutation) => mutation.id);
       await markMutationsInflight(ids);
       const result = await pushDatasetSync(datasetBaseId, pending, settings);
       const accepted = new Set(result.accepted);
-      const acceptedIds = pending
-        .filter((mutation) => accepted.has(`${mutation.entity}:${mutation.entityId}`))
-        .map((mutation) => mutation.id);
+      const acceptedMutations = pending.filter((mutation) =>
+        accepted.has(`${mutation.entity}:${mutation.entityId}`),
+      );
+      const acceptedIds = acceptedMutations.map((mutation) => mutation.id);
+      for (const mutation of acceptedMutations) {
+        if (mutation.entity === "todo") {
+          pushedTodoIds.add(mutation.entityId);
+        }
+      }
       await removeMutations(acceptedIds);
 
       const rejectedIds = pending
@@ -162,8 +198,11 @@ async function runDatasetSyncUnlocked(
       pushed = acceptedIds.length;
     }
 
-    const since = options.fullPull ? null : state.lastPulledAt;
-    const pull = await applyPullToLocal(datasetBaseId, since);
+    const pullSince = options.fullPull || (isReader && !state.lastPulledAt) ? null : state.lastPulledAt;
+    const pull = await applyPullToLocal(datasetBaseId, pullSince, {
+      notify: !options.fullPull,
+      ignoreTodoIds: pushedTodoIds,
+    });
     state = {
       ...state,
       lastPulledAt: pull.serverTime,
@@ -181,6 +220,7 @@ async function runDatasetSyncUnlocked(
       if (pull.tags > 0) {
         set(tagsListKey.path, await getIdbTodoStore().listTags());
       }
+      void checkDueDates();
     }
 
     return {
@@ -236,6 +276,8 @@ export async function getActivePendingCount(): Promise<number> {
 export async function openCloudDatasetForEditing(cloud: {
   baseId: string;
   name: string;
+  id?: string;
+  role?: SyncState["cloudRole"];
 }): Promise<SyncRunResult> {
   const store = getIdbTodoStore();
   const targetBaseId = formatBaseId(cloud.baseId);
@@ -245,8 +287,20 @@ export async function openCloudDatasetForEditing(cloud: {
     null;
 
   if (!local) {
+    const baseName = cloud.name.trim() || "Jeu cloud";
+    const nameTaken = locals.some(
+      (dataset) =>
+        dataset.name.trim().toLowerCase() === baseName.toLowerCase() &&
+        formatBaseId(dataset.baseId) !== targetBaseId,
+    );
+    const roleSuffix =
+      cloud.role === "writer"
+        ? "écriture"
+        : cloud.role === "reader"
+          ? "lecture"
+          : "partagé";
     local = await store.createDataset({
-      name: cloud.name.trim() || "Jeu cloud",
+      name: nameTaken ? `${baseName} (${roleSuffix})` : baseName,
       source: "empty",
       baseId: targetBaseId,
     });
@@ -255,6 +309,17 @@ export async function openCloudDatasetForEditing(cloud: {
   if (!local.active) {
     await store.activateDataset(local.id);
   }
+
+  const previous = await getSyncState(targetBaseId);
+  const isInvitee = cloud.role === "writer" || cloud.role === "reader";
+  const nextState: SyncState = {
+    ...previous,
+    cloudDatasetId: cloud.id ?? previous.cloudDatasetId,
+    cloudRole: cloud.role ?? previous.cloudRole ?? "owner",
+    // Invité : forcer un premier passage sans bootstrap (pull cloud only).
+    bootstrapped: isInvitee ? false : previous.bootstrapped,
+  };
+  await saveSyncState(nextState);
 
   const result = await runDatasetSync({
     baseId: targetBaseId,
@@ -269,6 +334,8 @@ export async function openCloudDatasetForEditing(cloud: {
   } catch {
     set(tagsListKey.path, []);
   }
+
+  void ensureMercureSubscription();
 
   return result;
 }

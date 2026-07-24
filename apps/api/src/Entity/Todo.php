@@ -9,16 +9,16 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: TodoRepository::class)]
 #[ORM\Table(name: 'todos')]
-#[ORM\UniqueConstraint(name: 'uniq_todo_dataset_id', columns: ['dataset_id', 'id'])]
 class Todo
 {
     #[ORM\Id]
-    #[ORM\Column(length: 64)]
-    private string $id;
-
     #[ORM\ManyToOne(targetEntity: Dataset::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Dataset $dataset;
+
+    #[ORM\Id]
+    #[ORM\Column(length: 64)]
+    private string $id;
 
     #[ORM\Column(length: 500)]
     private string $text = '';
@@ -41,6 +41,12 @@ class Todo
 
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $parentId = null;
+
+    #[ORM\Column(type: 'date_immutable', nullable: true)]
+    private ?\DateTimeImmutable $startAt = null;
+
+    #[ORM\Column(type: 'date_immutable', nullable: true)]
+    private ?\DateTimeImmutable $endAt = null;
 
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
@@ -156,6 +162,30 @@ class Todo
         return $this;
     }
 
+    public function getStartAt(): ?\DateTimeImmutable
+    {
+        return $this->startAt;
+    }
+
+    public function setStartAt(?\DateTimeImmutable $startAt): static
+    {
+        $this->startAt = $startAt;
+
+        return $this;
+    }
+
+    public function getEndAt(): ?\DateTimeImmutable
+    {
+        return $this->endAt;
+    }
+
+    public function setEndAt(?\DateTimeImmutable $endAt): static
+    {
+        $this->endAt = $endAt;
+
+        return $this;
+    }
+
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
@@ -211,6 +241,8 @@ class Todo
             'priority' => $this->priority,
             'tagIds' => $this->tagIds,
             'parentId' => $this->parentId,
+            'startAt' => $this->startAt?->format('Y-m-d'),
+            'endAt' => $this->endAt?->format('Y-m-d'),
             'createdAt' => $this->createdAt->format(\DateTimeInterface::ATOM),
             'fieldVersions' => $this->fieldVersions,
             'deletedAt' => $this->deletedAt?->format(\DateTimeInterface::ATOM),

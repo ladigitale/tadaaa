@@ -9,16 +9,16 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: TagRepository::class)]
 #[ORM\Table(name: 'tags')]
-#[ORM\UniqueConstraint(name: 'uniq_tag_dataset_id', columns: ['dataset_id', 'id'])]
 class Tag
 {
     #[ORM\Id]
-    #[ORM\Column(length: 64)]
-    private string $id;
-
     #[ORM\ManyToOne(targetEntity: Dataset::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Dataset $dataset;
+
+    #[ORM\Id]
+    #[ORM\Column(length: 64)]
+    private string $id;
 
     #[ORM\Column(length: 120)]
     private string $name = '';

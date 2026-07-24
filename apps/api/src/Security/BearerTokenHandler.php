@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Security;
 
 use App\Service\AccessTokenService;
+use App\Service\OAuthServerService;
 use Lexik\Bundle\JWTAuthenticationBundle\Exception\JWTDecodeFailureException;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Component\Security\Core\Exception\BadCredentialsException;
@@ -12,13 +13,14 @@ use Symfony\Component\Security\Http\AccessToken\AccessTokenHandlerInterface;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 
 /**
- * Accepte un JWT Lexik ou un PAT `tada_…` en Bearer.
+ * Accepte un JWT Lexik, un PAT `tada_…`, ou un access token OAuth `tdoa_…`.
  */
 final class BearerTokenHandler implements AccessTokenHandlerInterface
 {
     public function __construct(
         private readonly JWTTokenManagerInterface $jwtManager,
         private readonly AccessTokenService $accessTokens,
+        private readonly OAuthServerService $oauth,
     ) {
     }
 
@@ -28,6 +30,15 @@ final class BearerTokenHandler implements AccessTokenHandlerInterface
             $user = $this->accessTokens->authenticate($accessToken);
             if ($user === null) {
                 throw new BadCredentialsException('Token d’accès invalide ou révoqué.');
+            }
+
+            return new UserBadge($user->getUserIdentifier());
+        }
+
+        if (str_starts_with($accessToken, OAuthServerService::ACCESS_PREFIX)) {
+            $user = $this->oauth->authenticateAccessToken($accessToken);
+            if ($user === null) {
+                throw new BadCredentialsException('Token OAuth invalide ou expiré.');
             }
 
             return new UserBadge($user->getUserIdentifier());

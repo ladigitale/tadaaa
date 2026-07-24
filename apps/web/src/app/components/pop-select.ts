@@ -6,6 +6,7 @@ import "@supersoniks/concorde/icon";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
+import {tx} from "../i18n";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
 
@@ -132,7 +133,7 @@ export class PopSelect extends LitElement {
   private get selectedLabel(): string {
     if (Array.isArray(this.displayValue)) {
       const selected = this.selectedMultiValues;
-      if (selected.length === 0) return "Toutes";
+      if (selected.length === 0) return tx("common.all");
       const checksAllOption = this.options.find((option) => option.checksAll);
       const regularValues = this.regularOptionValues;
       const allSelected =
@@ -142,7 +143,7 @@ export class PopSelect extends LitElement {
         allSelected ||
         (checksAllOption && selected.includes(checksAllOption.value))
       ) {
-        return checksAllOption?.label ?? "Toutes";
+        return checksAllOption?.label ?? tx("common.all");
       }
       if (selected.length === 1) {
         return (
@@ -155,7 +156,7 @@ export class PopSelect extends LitElement {
 
     return (
       this.options.find((option) => option.value === this.displayValue)
-        ?.label ?? "Sélectionner"
+        ?.label ?? tx("common.select")
     );
   }
 

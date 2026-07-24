@@ -4,6 +4,7 @@ import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import type {Tag} from "../api/types";
 import {dp} from "../../utils/dataprovider";
+import {tf} from "../i18n";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import tailwind from "../../css/tailwind";
 
@@ -117,8 +118,8 @@ export class TagPicker extends LitElement {
               value=${tag.id}
               ?disabled=${this.disabled}
               data-aria-label=${selected
-                ? `Retirer ${tag.name}`
-                : `Ajouter ${tag.name}`}
+                ? tf("tags.remove_aria", {name: tag.name})
+                : tf("tags.add_aria", {name: tag.name})}
             >
               <sonic-icon
                 slot="prefix"

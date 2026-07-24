@@ -13,13 +13,12 @@ use App\Repository\TagRepository;
 use App\Repository\TodoRepository;
 use App\Util\BaseIdParser;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final class SyncService
 {
-    private const TODO_FIELDS = ['text', 'description', 'done', 'archived', 'priority', 'tagIds', 'parentId'];
+    private const TODO_FIELDS = ['text', 'description', 'done', 'archived', 'priority', 'tagIds', 'parentId', 'startAt', 'endAt'];
     private const TAG_FIELDS = ['name', 'color'];
 
     public function __construct(
@@ -27,6 +26,8 @@ final class SyncService
         private readonly DatasetRepository $datasets,
         private readonly TodoRepository $todos,
         private readonly TagRepository $tags,
+        private readonly DatasetAccessService $access,
+        private readonly DatasetRealtimePublisher $realtime,
     ) {
     }
 
@@ -40,7 +41,7 @@ final class SyncService
      */
     public function pull(User $user, string $baseIdRaw, ?string $sinceRaw): array
     {
-        $dataset = $this->requireDataset($user, $baseIdRaw);
+        $dataset = $this->requireDataset($user, $baseIdRaw, write: false);
         $since = $this->parseSince($sinceRaw);
 
         $todoRows = $this->todos->findChangedSince($dataset, $since);
@@ -67,7 +68,7 @@ final class SyncService
      */
     public function push(User $user, string $baseIdRaw, array $payload): array
     {
-        $dataset = $this->requireDataset($user, $baseIdRaw);
+        $dataset = $this->requireDataset($user, $baseIdRaw, write: true);
         $mutations = $payload['mutations'] ?? [];
         if (!is_array($mutations)) {
             throw new BadRequestHttpException('mutations doit être un tableau.');
@@ -95,6 +96,7 @@ final class SyncService
         if ($accepted !== []) {
             $dataset->touch();
             $this->entityManager->flush();
+            $this->realtime->publishDatasetChanged($dataset);
         }
 
         return [
@@ -121,9 +123,11 @@ final class SyncService
     public function bootstrap(User $user, string $baseIdRaw, array $payload): array
     {
         $baseId = BaseIdParser::parse($baseIdRaw);
-        $dataset = $this->datasets->findOneByBaseIdForUser($user, $baseId);
+        $dataset = $this->datasets->findOneByBaseId($baseId);
 
-        if ($dataset === null) {
+        if ($dataset !== null) {
+            $this->access->assertCanWrite($user, $dataset);
+        } else {
             $name = is_string($payload['name'] ?? null) && trim($payload['name']) !== ''
                 ? trim($payload['name'])
                 : 'Mon jeu';
@@ -355,8 +359,32 @@ final class SyncService
             'priority' => $todo->setPriority(is_string($value) ? $value : 'medium'),
             'tagIds' => $todo->setTagIds(is_array($value) ? array_values(array_map('strval', $value)) : []),
             'parentId' => $todo->setParentId(is_string($value) && $value !== '' ? $value : null),
+            'startAt' => $todo->setStartAt($this->parseDateOnly($value)),
+            'endAt' => $todo->setEndAt($this->parseDateOnly($value)),
             default => null,
         };
+    }
+
+    private function parseDateOnly(mixed $value): ?\DateTimeImmutable
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (!is_string($value)) {
+            return null;
+        }
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return null;
+        }
+        // Accept YYYY-MM-DD or ISO datetime prefix
+        $datePart = substr($trimmed, 0, 10);
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $datePart);
+        if ($date === false) {
+            return null;
+        }
+
+        return $date;
     }
 
     private function applyTagField(Tag $tag, string $field, mixed $value): void
@@ -390,7 +418,7 @@ final class SyncService
         return $result;
     }
 
-    private function requireDataset(User $user, string $baseIdRaw): Dataset
+    private function requireDataset(User $user, string $baseIdRaw, bool $write): Dataset
     {
         try {
             $baseId = BaseIdParser::parse($baseIdRaw);
@@ -398,13 +426,15 @@ final class SyncService
             throw new BadRequestHttpException('baseId invalide.');
         }
 
-        $dataset = $this->datasets->findOneByBaseIdForUser($user, $baseId);
+        $dataset = $this->datasets->findOneByBaseId($baseId);
         if ($dataset === null) {
             throw new NotFoundHttpException('Jeu de données introuvable pour ce compte.');
         }
 
-        if ($dataset->getOwner()->getId()->toRfc4122() !== $user->getId()->toRfc4122()) {
-            throw new AccessDeniedHttpException('Accès refusé.');
+        if ($write) {
+            $this->access->assertCanWrite($user, $dataset);
+        } else {
+            $this->access->assertCanRead($user, $dataset);
         }
 
         return $dataset;

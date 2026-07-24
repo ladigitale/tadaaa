@@ -1,6 +1,7 @@
 import {getMockApiServiceUrl} from "./config";
 import {bumpTodosRev} from "../init";
 import {ensureCloudSynced} from "../sync/engine";
+import {assertCanEditActiveDataset} from "../sync/cloud-access";
 import type {CreateDatasetInput, DatasetInfo} from "./store";
 import type {TadaDataPackage} from "./data-package";
 import type {
@@ -34,6 +35,11 @@ async function apiGet<T>(path: string): Promise<T> {
   return apiFetch<T>(path);
 }
 
+async function apiWrite<T>(path: string, init?: RequestInit): Promise<T> {
+  await assertCanEditActiveDataset();
+  return apiFetch<T>(path, init);
+}
+
 export async function fetchTags(): Promise<Tag[]> {
   const result = await apiGet<{data: Tag[]}>("/tags");
   return result.data;
@@ -45,7 +51,7 @@ export async function fetchTag(id: string): Promise<Tag> {
 }
 
 export async function createTag(input: CreateTagInput): Promise<Tag> {
-  const result = await apiFetch<{data: Tag}>("/tags", {
+  const result = await apiWrite<{data: Tag}>("/tags", {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -54,7 +60,7 @@ export async function createTag(input: CreateTagInput): Promise<Tag> {
 }
 
 export async function patchTag(id: string, patch: UpdateTagPatch): Promise<Tag> {
-  const result = await apiFetch<{data: Tag}>(`/tags/${id}`, {
+  const result = await apiWrite<{data: Tag}>(`/tags/${id}`, {
     method: "PATCH",
     body: JSON.stringify(patch),
   });
@@ -63,7 +69,7 @@ export async function patchTag(id: string, patch: UpdateTagPatch): Promise<Tag> 
 }
 
 export async function deleteTag(id: string): Promise<void> {
-  await apiFetch<{ok: boolean}>(`/tags/${id}`, {
+  await apiWrite<{ok: boolean}>(`/tags/${id}`, {
     method: "DELETE",
   });
   bumpTodosRev();
@@ -99,7 +105,7 @@ export async function fetchTodo(id: string): Promise<Todo> {
 }
 
 export async function createTodo(input: CreateTodoInput): Promise<Todo> {
-  const result = await apiFetch<{data: Todo}>("/todos", {
+  const result = await apiWrite<{data: Todo}>("/todos", {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -112,7 +118,7 @@ export async function patchTodo(
   patch: UpdateTodoPatch,
   options?: {refreshList?: boolean},
 ): Promise<Todo> {
-  const result = await apiFetch<{data: Todo}>(`/todos/${id}`, {
+  const result = await apiWrite<{data: Todo}>(`/todos/${id}`, {
     method: "PATCH",
     body: JSON.stringify(patch),
   });
@@ -126,7 +132,7 @@ export async function moveTodo(
   todoId: string,
   parentId: string | null,
 ): Promise<Todo> {
-  const result = await apiFetch<{data: Todo}>(`/todos/${todoId}/move`, {
+  const result = await apiWrite<{data: Todo}>(`/todos/${todoId}/move`, {
     method: "POST",
     body: JSON.stringify({parentId}),
   });
@@ -138,7 +144,7 @@ export async function bulkUpdateTodos(
   filter: ListTodosParams,
   patch: UpdateTodoPatch,
 ): Promise<{updatedCount: number}> {
-  const result = await apiFetch<{data: {updatedCount: number}}>(
+  const result = await apiWrite<{data: {updatedCount: number}}>(
     "/todos/bulk",
     {
       method: "POST",
@@ -150,7 +156,7 @@ export async function bulkUpdateTodos(
 }
 
 export async function purgeArchivedTodos(): Promise<{purgedCount: number}> {
-  const result = await apiFetch<{data: {purgedCount: number}}>(
+  const result = await apiWrite<{data: {purgedCount: number}}>(
     "/todos/purge-archived",
     {method: "POST"},
   );
@@ -166,6 +172,7 @@ export async function exportTodosSnapshot(): Promise<TadaDataPackage> {
 export async function importTodosSnapshot(
   raw: unknown,
 ): Promise<TadaDataPackage> {
+  await assertCanEditActiveDataset();
   const result = await apiFetch<{data: TadaDataPackage}>("/import", {
     method: "PUT",
     body: JSON.stringify(raw),
@@ -195,6 +202,20 @@ export async function activateDataset(id: string): Promise<DatasetInfo> {
     {method: "POST"},
   );
   bumpTodosRev();
+  return result.data;
+}
+
+export async function renameDataset(
+  id: string,
+  name: string,
+): Promise<DatasetInfo> {
+  const result = await apiFetch<{data: DatasetInfo}>(
+    `/datasets/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({name}),
+    },
+  );
   return result.data;
 }
 

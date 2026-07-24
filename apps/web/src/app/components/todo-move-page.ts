@@ -7,12 +7,15 @@ import "@supersoniks/concorde/form-actions";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {fetchTodo, fetchTodos, moveTodo} from "../api/client";
 import type {Todo} from "../api/types";
 import {set} from "../../utils/dataprovider";
 import {todoMoveKey} from "../dp";
+import {tx} from "../i18n";
 import {navigateTo} from "../utils/navigate";
 import {TACHE_ROOT, tacheItemPath} from "../utils/tache-paths";
+import {focusPrimaryInput} from "../utils/focus-primary-input";
 import tailwind from "../../css/tailwind";
 import {showError} from "../utils/modal-dialog";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
@@ -155,6 +158,10 @@ export class TodoMovePage extends LitElement {
     } finally {
       this.loading = false;
     }
+
+    if (!this.notFound) {
+      void focusPrimaryInput(this);
+    }
   }
 
   private selectTarget(target: string) {
@@ -173,7 +180,7 @@ export class TodoMovePage extends LitElement {
       set(todoMoveKey.path, {q: ""});
       navigateTo(this.backHref, true);
     } catch (error) {
-      await showError(error, "Impossible de déplacer la tâche");
+      await showError(error);
       console.error(error);
     } finally {
       this.busy = false;
@@ -230,7 +237,7 @@ export class TodoMovePage extends LitElement {
       return html`
         <page-shell>
           ${this.renderScopeHeader()}
-          <p class="mt-3 text-sm text-neutral-500">Chargement…</p>
+          <p class="mt-3 text-sm text-neutral-500">${t("common.loading")}</p>
         </page-shell>
       `;
     }
@@ -239,9 +246,9 @@ export class TodoMovePage extends LitElement {
       return html`
         <page-shell>
           ${this.renderScopeHeader()}
-          <p class="mt-3 text-sm text-neutral-500">Tâche introuvable.</p>
+          <p class="mt-3 text-sm text-neutral-500">${t("tasks.not_found")}</p>
           <sonic-button href=${TACHE_ROOT} pushstate variant="outline">
-            Retour aux tâches
+            ${t("tasks.back")}
           </sonic-button>
         </page-shell>
       `;
@@ -255,16 +262,14 @@ export class TodoMovePage extends LitElement {
         ${this.renderScopeHeader()}
 
         <div class="mt-3 space-y-3">
-          <p class="text-sm text-neutral-600">
-            Choisir la destination (recherche dans toute l’arborescence).
-          </p>
+          <p class="text-sm text-neutral-600">${t("tasks.move.help")}</p>
 
           <div formDataProvider=${todoMoveKey.path}>
             <sonic-input
               name="q"
               type="search"
               size="sm"
-              placeholder="Nom ou RM-12345"
+              placeholder=${tx("tasks.search_ph")}
               class="min-w-0"
             >
               <sonic-icon
@@ -277,14 +282,14 @@ export class TodoMovePage extends LitElement {
             </sonic-input>
           </div>
 
-          <div class="move-targets" aria-label="Destinations">
+          <div class="move-targets" aria-label=${tx("tasks.move.destinations_aria")}>
             <sonic-menu
               direction="column"
               align="left"
               size="sm"
               class="w-full"
             >
-              ${this.renderMenuItem(ROOT_VALUE, "Racine", "home")}
+              ${this.renderMenuItem(ROOT_VALUE, tx("tasks.move.root"), "home")}
               ${filtered.map((todo) =>
                 this.renderMenuItem(todo.id, todo.text, "check-circle"),
               )}
@@ -292,7 +297,7 @@ export class TodoMovePage extends LitElement {
             ${filtered.length === 0
               ? html`
                   <p class="py-4 text-sm italic text-neutral-500">
-                    Aucune autre tâche pour cette recherche.
+                    ${t("tasks.move.empty")}
                   </p>
                 `
               : nothing}
@@ -305,7 +310,7 @@ export class TodoMovePage extends LitElement {
               variant="outline"
               ?disabled=${this.busy}
             >
-              Annuler
+              ${t("common.cancel")}
             </sonic-button>
             <sonic-button
               type="primary"
@@ -318,7 +323,7 @@ export class TodoMovePage extends LitElement {
                 name="data-transfer-both"
                 size="sm"
               ></sonic-icon>
-              Déplacer dans…
+              ${t("tasks.move.submit")}
             </sonic-button>
           </sonic-form-actions>
         </div>

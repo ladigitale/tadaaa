@@ -9,6 +9,7 @@ use ApiPlatform\Doctrine\Orm\Extension\QueryItemExtensionInterface;
 use ApiPlatform\Doctrine\Orm\Util\QueryNameGeneratorInterface;
 use ApiPlatform\Metadata\Operation;
 use App\Entity\Dataset;
+use App\Entity\DatasetMember;
 use App\Entity\User;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -26,7 +27,7 @@ final class CurrentUserDatasetExtension implements QueryCollectionExtensionInter
         ?Operation $operation = null,
         array $context = [],
     ): void {
-        $this->addOwnerFilter($queryBuilder, $resourceClass);
+        $this->addAccessFilter($queryBuilder, $resourceClass);
     }
 
     public function applyToItem(
@@ -37,10 +38,10 @@ final class CurrentUserDatasetExtension implements QueryCollectionExtensionInter
         ?Operation $operation = null,
         array $context = [],
     ): void {
-        $this->addOwnerFilter($queryBuilder, $resourceClass);
+        $this->addAccessFilter($queryBuilder, $resourceClass);
     }
 
-    private function addOwnerFilter(QueryBuilder $queryBuilder, string $resourceClass): void
+    private function addAccessFilter(QueryBuilder $queryBuilder, string $resourceClass): void
     {
         if ($resourceClass !== Dataset::class) {
             return;
@@ -52,8 +53,15 @@ final class CurrentUserDatasetExtension implements QueryCollectionExtensionInter
         }
 
         $rootAlias = $queryBuilder->getRootAliases()[0];
+        $memberAlias = 'access_member';
         $queryBuilder
-            ->andWhere(sprintf('%s.owner = :current_user', $rootAlias))
+            ->leftJoin(
+                DatasetMember::class,
+                $memberAlias,
+                'WITH',
+                sprintf('%s.dataset = %s AND %s.user = :current_user', $memberAlias, $rootAlias, $memberAlias),
+            )
+            ->andWhere(sprintf('%s.owner = :current_user OR %s.id IS NOT NULL', $rootAlias, $memberAlias))
             ->setParameter('current_user', $user);
     }
 }

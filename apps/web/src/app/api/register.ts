@@ -2,9 +2,15 @@ import {installMockApiFetchFallback} from "./mock-api-fetch-fallback";
 
 const SW_URL = "/demo-api-sw.js";
 
-/** Hosts où un SW HTTPS peut fonctionner (localhost, ou origine traitée secure côté Chrome). */
+/** Hosts où un SW HTTPS peut fonctionner (localhost, ou contexte sécurisé). */
 function canRegisterServiceWorker(): boolean {
-  return location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "[::1]";
+  if (!window.isSecureContext) return false;
+  return (
+    location.protocol === "https:" ||
+    location.hostname === "localhost" ||
+    location.hostname === "127.0.0.1" ||
+    location.hostname === "[::1]"
+  );
 }
 
 /**

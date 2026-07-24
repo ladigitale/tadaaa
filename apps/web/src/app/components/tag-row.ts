@@ -3,11 +3,14 @@ import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/pop";
 import "@supersoniks/concorde/menu";
 import "@supersoniks/concorde/menu-item";
+import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement} from "lit";
 import {customElement, property} from "lit/decorators.js";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import type {Tag} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
 import {todosFilterKey, type TodosFilter} from "../dp";
+import {tf, tx} from "../i18n";
 import {navigateTo} from "../utils/navigate";
 import {TACHE_ROOT} from "../utils/tache-paths";
 import {tagsItemEditPath} from "../utils/tag-paths";
@@ -72,7 +75,7 @@ export class TagRow extends LitElement {
   }
 
   private get tasksLabel(): string {
-    return this.count <= 1 ? `${this.count} tâche` : `${this.count} tâches`;
+    return tf("tags.task_count", {n: this.count});
   }
 
   render() {
@@ -102,21 +105,22 @@ export class TagRow extends LitElement {
             </sonic-button>
 
             <sonic-pop class="inline-block" placement="bottom">
-              <sonic-button
-                shape="circle"
-                size="sm"
-                variant="ghost"
-                ?disabled=${this.disabled}
-                data-aria-label="Actions"
-                title="Actions"
-              >
-                <sonic-icon
-                  library=${ICON_LIBRARY}
-                  prefix=${ICON_PREFIX}
-                  name="more-vert"
-                  size="lg"
-                ></sonic-icon>
-              </sonic-button>
+              <sonic-tooltip label=${tx("common.actions")} placement="bottom">
+                <sonic-button
+                  shape="circle"
+                  size="sm"
+                  variant="ghost"
+                  ?disabled=${this.disabled}
+                  data-aria-label=${tx("common.actions")}
+                >
+                  <sonic-icon
+                    library=${ICON_LIBRARY}
+                    prefix=${ICON_PREFIX}
+                    name="more-vert"
+                    size="lg"
+                  ></sonic-icon>
+                </sonic-button>
+              </sonic-tooltip>
 
               <sonic-menu
                 slot="content"
@@ -136,14 +140,14 @@ export class TagRow extends LitElement {
                   pushstate
                   ?disabled=${this.disabled}
                 >
-                  ${this.renderMenuItemIcon("edit-pencil")} Modifier
+                  ${this.renderMenuItemIcon("edit-pencil")} ${t("tags.edit")}
                 </sonic-menu-item>
                 <sonic-menu-item
                   type="danger"
                   ?disabled=${this.disabled}
                   @click=${this.onDelete}
                 >
-                  ${this.renderMenuItemIcon("trash")} Supprimer
+                  ${this.renderMenuItemIcon("trash")} ${t("tags.delete")}
                 </sonic-menu-item>
               </sonic-menu>
             </sonic-pop>

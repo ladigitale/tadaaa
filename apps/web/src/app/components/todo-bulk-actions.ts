@@ -5,9 +5,11 @@ import "@supersoniks/concorde/menu";
 import "@supersoniks/concorde/menu-item";
 import {css, html, LitElement} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {bulkUpdateTodos, fetchTodos} from "../api/client";
 import type {UpdateTodoPatch} from "../api/types";
 import type {TodosFilter} from "../dp";
+import {tf, tx} from "../i18n";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import {
   confirmDialog,
@@ -29,41 +31,43 @@ type BulkAction = {
   confirmLabel: string;
 };
 
-const BULK_ACTIONS: BulkAction[] = [
-  {
-    id: "done",
-    label: "Marquer comme faites",
-    icon: "check",
-    patch: {done: true},
-    confirmTitle: "Marquer comme faites",
-    confirmLabel: "Marquer faites",
-  },
-  {
-    id: "undone",
-    label: "Marquer comme à faire",
-    icon: "circle",
-    patch: {done: false},
-    confirmTitle: "Marquer comme à faire",
-    confirmLabel: "Marquer à faire",
-  },
-  {
-    id: "archive",
-    label: "Supprimer",
-    icon: "trash",
-    patch: {archived: true},
-    danger: true,
-    confirmTitle: "Supprimer les tâches",
-    confirmLabel: "Supprimer",
-  },
-  {
-    id: "restore",
-    label: "Restaurer",
-    icon: "undo",
-    patch: {archived: false},
-    confirmTitle: "Restaurer les tâches",
-    confirmLabel: "Restaurer",
-  },
-];
+function bulkActions(): BulkAction[] {
+  return [
+    {
+      id: "done",
+      label: tx("tasks.bulk.mark_done"),
+      icon: "check",
+      patch: {done: true},
+      confirmTitle: tx("tasks.bulk.confirm_done_title"),
+      confirmLabel: tx("tasks.bulk.mark_done"),
+    },
+    {
+      id: "undone",
+      label: tx("tasks.bulk.mark_undone"),
+      icon: "circle",
+      patch: {done: false},
+      confirmTitle: tx("tasks.bulk.confirm_undone_title"),
+      confirmLabel: tx("tasks.bulk.mark_undone"),
+    },
+    {
+      id: "archive",
+      label: tx("tasks.bulk.delete"),
+      icon: "trash",
+      patch: {archived: true},
+      danger: true,
+      confirmTitle: tx("tasks.bulk.confirm_delete_title"),
+      confirmLabel: tx("tasks.bulk.delete"),
+    },
+    {
+      id: "restore",
+      label: tx("tasks.bulk.restore"),
+      icon: "undo",
+      patch: {archived: false},
+      confirmTitle: tx("tasks.bulk.confirm_restore_title"),
+      confirmLabel: tx("tasks.bulk.restore"),
+    },
+  ];
+}
 
 /**
  * Actions en masse sur toutes les tâches correspondant aux filtres courants.
@@ -110,21 +114,13 @@ export class TodoBulkActions extends LitElement {
     try {
       const total = await this.countMatching();
       if (total === 0) {
-        await showAlert(
-          action.confirmTitle,
-          "Aucune tâche ne correspond aux filtres actuels.",
-        );
+        await showAlert(action.confirmTitle, tx("tasks.empty_filtered"));
         return;
       }
 
-      const noun = total === 1 ? "tâche" : "tâches";
-      const archiveHint =
-        action.id === "archive"
-          ? " Elles resteront visibles dans le filtre « Supprimés »."
-          : "";
       const ok = await confirmDialog({
         title: action.confirmTitle,
-        message: `Appliquer à ${total} ${noun} (sélection filtrée) ?${archiveHint}`,
+        message: tf("tasks.bulk.confirm_apply", {n: total}),
         confirmLabel: action.confirmLabel,
         danger: action.danger,
       });
@@ -137,13 +133,11 @@ export class TodoBulkActions extends LitElement {
       await showAlert(
         action.confirmTitle,
         result.updatedCount === 0
-          ? "Aucune tâche mise à jour."
-          : result.updatedCount === 1
-            ? "1 tâche mise à jour."
-            : `${result.updatedCount} tâches mises à jour.`,
+          ? tx("tasks.bulk.result_none")
+          : tf("tasks.bulk.result_ok", {n: result.updatedCount}),
       );
     } catch (error) {
-      await showError(error, "Impossible d’appliquer l’action");
+      await showError(error);
       console.error(error);
     } finally {
       this.busy = false;
@@ -165,7 +159,7 @@ export class TodoBulkActions extends LitElement {
             name="list"
             size="sm"
           ></sonic-icon>
-          Actions
+          ${t("common.actions")}
           <sonic-icon
             slot="suffix"
             library=${ICON_LIBRARY}
@@ -181,7 +175,7 @@ export class TodoBulkActions extends LitElement {
           size="sm"
           minWidth="14rem"
         >
-          ${BULK_ACTIONS.map(
+          ${bulkActions().map(
             (action) => html`
               <sonic-menu-item
                 type=${action.danger ? "danger" : "default"}

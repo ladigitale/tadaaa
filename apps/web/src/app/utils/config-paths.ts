@@ -11,6 +11,5 @@ export type ConfigSection =
   | "datasets";
 
 export function configSectionPath(section: ConfigSection): string {
-  if (section === "issues") return CONFIG_ROOT;
   return `${CONFIG_ROOT}/${section}`;
 }

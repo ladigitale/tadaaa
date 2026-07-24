@@ -50,6 +50,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\JoinColumn(onDelete: 'SET NULL')]
     private ?Dataset $activeDataset = null;
 
+    /**
+     * Account-level link detectors: tokens in todo text/description become links.
+     *
+     * @var list<array{id: string, name: string, pattern: string, urlTemplate: string}>
+     */
+    #[ORM\Column(type: 'json')]
+    private array $linkDetectors = [];
+
     public function __construct(string $email = '', UserStatus $status = UserStatus::Pending)
     {
         $this->id = Uuid::v7();
@@ -57,6 +65,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->status = $status;
         $this->createdAt = new \DateTimeImmutable();
         $this->datasets = new ArrayCollection();
+        $this->linkDetectors = [];
     }
 
     public function getId(): Uuid
@@ -156,6 +165,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setActiveDataset(?Dataset $activeDataset): static
     {
         $this->activeDataset = $activeDataset;
+
+        return $this;
+    }
+
+    /**
+     * @return list<array{id: string, name: string, pattern: string, urlTemplate: string}>
+     */
+    public function getLinkDetectors(): array
+    {
+        return $this->linkDetectors;
+    }
+
+    /**
+     * @param list<array{id: string, name: string, pattern: string, urlTemplate: string}> $linkDetectors
+     */
+    public function setLinkDetectors(array $linkDetectors): static
+    {
+        $this->linkDetectors = array_values($linkDetectors);
 
         return $this;
     }

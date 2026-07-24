@@ -3,13 +3,16 @@ import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/pop";
 import "@supersoniks/concorde/menu";
 import "@supersoniks/concorde/menu-item";
+import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {deleteTag, fetchTag, fetchTodos} from "../api/client";
 import {countTodosByTag} from "../api/store-logic";
 import type {Tag} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
 import {todosFilterKey, type TodosFilter} from "../dp";
+import {tf, tx} from "../i18n";
 import {
   TAGS_ROOT,
   tagsItemEditPath,
@@ -62,6 +65,13 @@ export class TagScopeHeader extends LitElement {
         letter-spacing: 0.01em;
       }
 
+      .heading-tooltip {
+        display: block;
+        min-width: 0;
+        max-width: 100%;
+        text-align: left;
+      }
+
     `,
   ];
 
@@ -102,14 +112,12 @@ export class TagScopeHeader extends LitElement {
   }
 
   private get heading(): string {
-    if (!this.isScoped) return "Étiquettes";
+    if (!this.isScoped) return tx("tags.heading");
     return this.scopeTag?.name?.trim() || "…";
   }
 
   private get tasksLabel(): string {
-    return this.taskCount <= 1
-      ? `${this.taskCount} tâche`
-      : `${this.taskCount} tâches`;
+    return tf("tags.task_count", {n: this.taskCount});
   }
 
   private get actionChoices(): ActionChoice[] {
@@ -119,7 +127,7 @@ export class TagScopeHeader extends LitElement {
       return [
         {
           id: "create",
-          label: "Nouvelle étiquette",
+          label: tx("tags.new"),
           icon: "plus",
           href: tagsNewPath(),
         },
@@ -129,13 +137,13 @@ export class TagScopeHeader extends LitElement {
     return [
       {
         id: "create",
-        label: "Nouvelle étiquette",
+        label: tx("tags.new"),
         icon: "plus",
         href: tagsNewPath(),
       },
       {
         id: "edit",
-        label: "Modifier",
+        label: tx("tags.edit"),
         icon: "edit-pencil",
         href: tagsItemEditPath(id),
       },
@@ -202,9 +210,12 @@ export class TagScopeHeader extends LitElement {
     if (!tag || this.busy) return;
 
     const ok = await confirmDialog({
-      title: "Supprimer l’étiquette",
-      message: `Supprimer « ${tag.name} » ? Elle est utilisée par ${this.taskCount} tâche(s).`,
-      confirmLabel: "Supprimer",
+      title: tx("tags.delete_title"),
+      message: tf("tags.delete_confirm", {
+        name: tag.name,
+        n: this.taskCount,
+      }),
+      confirmLabel: tx("tags.delete"),
       danger: true,
     });
     if (!ok) return;
@@ -214,7 +225,7 @@ export class TagScopeHeader extends LitElement {
       await deleteTag(tag.id);
       navigateTo(TAGS_ROOT, true);
     } catch (error) {
-      await showError(error, "Impossible de supprimer l’étiquette");
+      await showError(error);
       console.error(error);
     } finally {
       this.busy = false;
@@ -247,7 +258,7 @@ export class TagScopeHeader extends LitElement {
           variant="ghost"
           class="scope-action-trigger text-neutral-500"
           ?disabled=${this.busy}
-          data-aria-label="Changer d’action"
+          data-aria-label=${tx("common.change_action_aria")}
         >
           <sonic-icon
             slot="prefix"
@@ -304,7 +315,7 @@ export class TagScopeHeader extends LitElement {
                   ?disabled=${this.busy}
                   @click=${this.onDelete}
                 >
-                  ${this.renderMenuItemIcon("trash")} Supprimer
+                  ${this.renderMenuItemIcon("trash")} ${t("tags.delete")}
                 </sonic-menu-item>
               `
             : nothing}
@@ -323,24 +334,25 @@ export class TagScopeHeader extends LitElement {
     return html`
       <nav
         class="flex min-w-0 items-center gap-0.5 text-sm"
-        aria-label="Fil d’Ariane"
+        aria-label=${tx("common.breadcrumb_aria")}
       >
-        <sonic-button
-          goBack
-          shape="circle"
-          variant="ghost"
-          size="sm"
-          class="shrink-0"
-          data-aria-label="Retour"
-          title="Retour"
-        >
-          <sonic-icon
-            library=${ICON_LIBRARY}
-            prefix=${ICON_PREFIX}
-            name="nav-arrow-left"
+        <sonic-tooltip label=${tx("common.back")} placement="bottom">
+          <sonic-button
+            goBack
+            shape="circle"
+            variant="ghost"
             size="sm"
-          ></sonic-icon>
-        </sonic-button>
+            class="shrink-0"
+            data-aria-label=${tx("common.back")}
+          >
+            <sonic-icon
+              library=${ICON_LIBRARY}
+              prefix=${ICON_PREFIX}
+              name="nav-arrow-left"
+              size="sm"
+            ></sonic-icon>
+          </sonic-button>
+        </sonic-tooltip>
         <sonic-button
           href=${TAGS_ROOT}
           pushstate
@@ -348,7 +360,7 @@ export class TagScopeHeader extends LitElement {
           variant="link"
           size="sm"
         >
-          Étiquettes
+          ${t("tags.heading")}
         </sonic-button>
       </nav>
     `;
@@ -361,9 +373,13 @@ export class TagScopeHeader extends LitElement {
           ${this.renderCrumb()}
         </div>
         <div class="min-w-0 space-y-1.5">
-          <h1 class="scope-heading truncate" title=${this.heading}>
-            ${this.heading}
-          </h1>
+          <sonic-tooltip
+            class="heading-tooltip"
+            label=${this.heading}
+            placement="bottom"
+          >
+            <h1 class="scope-heading truncate">${this.heading}</h1>
+          </sonic-tooltip>
           ${this.renderActionMenu()}
         </div>
       </div>

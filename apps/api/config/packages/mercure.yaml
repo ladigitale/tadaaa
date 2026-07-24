@@ -1,0 +1,12 @@
+# HTTP hub (works on php-fpm/Apache and FrankenPHP).
+# Publish: MERCURE_URL (internal). Subscribe: MERCURE_PUBLIC_URL (browser).
+# JWT secret must match Caddy publisher/subscriber keys.
+mercure:
+    hubs:
+        default:
+            url: '%env(MERCURE_URL)%'
+            public_url: '%env(MERCURE_PUBLIC_URL)%'
+            jwt:
+                secret: '%env(MERCURE_JWT_SECRET)%'
+                publish: ['*']
+                subscribe: ['*']

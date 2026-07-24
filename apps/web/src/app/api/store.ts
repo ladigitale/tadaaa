@@ -36,6 +36,8 @@ import {
   parseDataPackage,
   type TadaDataPackage,
 } from "./data-package";
+import {getDemoDatasetName} from "./seed";
+import {getAppLocale} from "../i18n/locale";
 
 export type DatasetInfo = {
   id: string;
@@ -60,6 +62,7 @@ export interface TodoRepository {
   listDatasets(): Promise<DatasetInfo[]>;
   createDataset(input: CreateDatasetInput): Promise<DatasetInfo>;
   activateDataset(id: string): Promise<DatasetInfo>;
+  renameDataset(id: string, name: string): Promise<DatasetInfo>;
   deleteDataset(id: string): Promise<void>;
   /** Métadonnées du jeu actif pour l’export versionné. */
   getActiveDatasetMeta(): Promise<{id: string; baseId: string; name: string}>;
@@ -93,6 +96,7 @@ export interface TodoStore {
   listDatasets(): Promise<DatasetInfo[]>;
   createDataset(input: CreateDatasetInput): Promise<DatasetInfo>;
   activateDataset(id: string): Promise<DatasetInfo>;
+  renameDataset(id: string, name: string): Promise<DatasetInfo>;
   deleteDataset(id: string): Promise<void>;
 }
 
@@ -128,7 +132,7 @@ export function createTodoStore(
       const datasets = await repo.listDatasets();
       if (datasets.length > 0) return;
       const created = await repo.createDataset({
-        name: "Défaut",
+        name: getDemoDatasetName(getAppLocale()),
         source: "seed",
       });
       await repo.activateDataset(created.id);
@@ -398,6 +402,10 @@ export function createTodoStore(
 
     activateDataset(id) {
       return repo.activateDataset(id);
+    },
+
+    renameDataset(id, name) {
+      return repo.renameDataset(id, name);
     },
 
     deleteDataset(id) {

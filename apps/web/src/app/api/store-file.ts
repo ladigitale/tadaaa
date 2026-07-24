@@ -64,7 +64,7 @@ async function ensureFile(filePath: string): Promise<void> {
         {
           id: "default",
           baseId: newBaseId(),
-          name: "Défaut",
+          name: "Demo",
           updatedAt: now,
           todos: seed.todos,
           tags: seed.tags,
@@ -95,7 +95,7 @@ function createFileRepository(filePath: string): TodoRepository {
         {
           id: "default",
           baseId: newBaseId(),
-          name: "Défaut",
+          name: "Demo",
           updatedAt: new Date().toISOString(),
           todos: legacy.todos,
           tags: legacy.tags,
@@ -134,7 +134,7 @@ function createFileRepository(filePath: string): TodoRepository {
         db.datasets.push({
           id: db.activeDatasetId || "default",
           baseId: newBaseId(),
-          name: "Défaut",
+          name: "Demo",
           updatedAt: new Date().toISOString(),
           todos: next.todos,
           tags: next.tags,
@@ -159,7 +159,7 @@ function createFileRepository(filePath: string): TodoRepository {
       return {
         id: active?.id ?? "default",
         baseId: active?.baseId ?? newBaseId(),
-        name: active?.name ?? "Défaut",
+        name: active?.name ?? "Demo",
       };
     },
 
@@ -238,6 +238,24 @@ function createFileRepository(filePath: string): TodoRepository {
         name: record.name,
         updatedAt: record.updatedAt,
         active: true,
+      };
+    },
+
+    async renameDataset(id: string, name: string) {
+      const db = await readDb();
+      const record = db.datasets.find((item) => item.id === id);
+      if (!record) throw new Error("Jeu de données introuvable");
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error("Le nom du jeu est requis");
+      record.name = trimmed;
+      record.updatedAt = new Date().toISOString();
+      await writeDb(db);
+      return {
+        id: record.id,
+        baseId: record.baseId,
+        name: record.name,
+        updatedAt: record.updatedAt,
+        active: record.id === db.activeDatasetId,
       };
     },
 

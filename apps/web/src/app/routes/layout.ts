@@ -2,10 +2,15 @@ import "@supersoniks/concorde/menu";
 import "@supersoniks/concorde/menu-item";
 import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/button";
+import "@supersoniks/concorde/tooltip";
 import {html} from "lit";
 import type {DirectiveResult} from "lit/directive.js";
+import {t} from "@supersoniks/concorde/directives/Wording";
+import {tx} from "../i18n";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import "../components/todo-search-modal";
+import "../components/demo-tour-modal";
+import "../components/demo-header-badge";
 import type {TodoSearchModal} from "../components/todo-search-modal";
 
 function openTodoSearch() {
@@ -29,64 +34,92 @@ export default (children: DirectiveResult) => html`
   >
     <nav
       class="shrink-0 border-b-[.18rem] border-current bg-neutral-0"
-      aria-label="Navigation principale"
+      aria-label=${tx("nav.main_aria")}
     >
       <div
         class="mx-auto flex w-full max-w-6xl items-center gap-6 px-3 py-3 sm:gap-8 sm:px-4"
       >
-        <a
-          href="/tache"
-          class="flex shrink-0 items-center gap-1 text-neutral-900 no-underline"
-          @click=${goHome}
-        >
-          <sonic-icon
-            library=${ICON_LIBRARY}
-            prefix=${ICON_PREFIX}
-            name="check-circle"
-            size="2xl"
-            aria-hidden="true"
-          ></sonic-icon>
-          <span
-            class="font-semibold italic leading-none tracking-tight"
-            style="font-size: 1.75rem"
-            >Tadaaa</span
+        <div class="flex shrink-0 items-center gap-1.5">
+          <a
+            href="/tache"
+            class="flex items-center gap-1 text-neutral-900 no-underline"
+            @click=${goHome}
           >
-        </a>
+            <sonic-icon
+              library=${ICON_LIBRARY}
+              prefix=${ICON_PREFIX}
+              name="check-circle"
+              size="2xl"
+              aria-hidden="true"
+            ></sonic-icon>
+            <span
+              class="font-semibold italic leading-none tracking-tight"
+              style="font-size: 1.75rem"
+              >Tadaaa</span
+            >
+          </a>
+          <demo-header-badge></demo-header-badge>
+        </div>
 
         <sonic-menu direction="row" align="left" size="sm">
           <sonic-menu-item href="/tache" pushstate autoActive="partial">
-            Tâches
+            <sonic-icon
+              slot="prefix"
+              library=${ICON_LIBRARY}
+              prefix=${ICON_PREFIX}
+              name="list"
+              size="sm"
+            ></sonic-icon>
+            ${t("nav.tasks")}
           </sonic-menu-item>
           <sonic-menu-item href="/tags" pushstate autoActive="strict">
-            Étiquettes
+            <sonic-icon
+              slot="prefix"
+              library=${ICON_LIBRARY}
+              prefix=${ICON_PREFIX}
+              name="label"
+              size="sm"
+            ></sonic-icon>
+            ${t("nav.tags")}
           </sonic-menu-item>
           <sonic-menu-item href="/config" pushstate autoActive="partial">
-            Config
+            <sonic-icon
+              slot="prefix"
+              library=${ICON_LIBRARY}
+              prefix=${ICON_PREFIX}
+              name="settings"
+              size="sm"
+            ></sonic-icon>
+            ${t("nav.config")}
           </sonic-menu-item>
         </sonic-menu>
 
-        <sonic-button
+        <sonic-tooltip
           class="ml-auto"
-          variant="ghost"
-          size="sm"
-          data-aria-label="Rechercher une tâche"
-          title="Rechercher (Ctrl+K)"
-          @click=${openTodoSearch}
+          label=${tx("nav.search_aria")}
+          placement="bottom"
         >
-          <sonic-icon
-            library=${ICON_LIBRARY}
-            prefix=${ICON_PREFIX}
-            name="search"
+          <sonic-button
+            variant="ghost"
             size="sm"
-          ></sonic-icon>
-          <span class="ml-1 hidden text-neutral-500 sm:inline"
-            >Recherche…</span
+            data-aria-label=${tx("nav.search_aria")}
+            @click=${openTodoSearch}
           >
-          <kbd
-            class="ml-2 hidden rounded border border-neutral-200 bg-neutral-100 px-1.5 py-0.5 font-sans text-[0.65rem] text-neutral-500 sm:inline"
-            >Ctrl+K</kbd
-          >
-        </sonic-button>
+            <sonic-icon
+              library=${ICON_LIBRARY}
+              prefix=${ICON_PREFIX}
+              name="search"
+              size="sm"
+            ></sonic-icon>
+            <span class="ml-1 hidden text-neutral-500 sm:inline"
+              >${t("nav.search")}</span
+            >
+            <kbd
+              class="ml-2 hidden rounded border border-neutral-200 bg-neutral-100 px-1.5 py-0.5 font-sans text-[0.65rem] text-neutral-500 sm:inline"
+              >Ctrl+K</kbd
+            >
+          </sonic-button>
+        </sonic-tooltip>
       </div>
     </nav>
     <main
@@ -96,5 +129,6 @@ export default (children: DirectiveResult) => html`
       ${children}
     </main>
     <todo-search-modal></todo-search-modal>
+    <demo-tour-modal></demo-tour-modal>
   </div>
 `;

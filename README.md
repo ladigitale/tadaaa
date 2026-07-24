@@ -11,10 +11,15 @@ Lit / Concorde front + Symfony 8 / API Platform API.
 ## Features
 
 - **Local first** — tasks & tags in IndexedDB, usable without a server
-- **Cloud sync** — datasets, incremental merge, offline outbox
+- **Cloud sync** — datasets, incremental merge, offline outbox; optional **Mercure** push for near-realtime updates
+- **Dataset sharing** — single-use invite links (7 days), reader / writer roles, member management
 - **Invite-style accounts** — registration as a request; admin approve / reject / revoke
-- **MCP HTTP** — todo/tag tools for Cursor & friends (`/mcp`, JWT or `tada_…` PAT)
-- **P2P** — share between devices (PeerJS)
+- **MCP HTTP** — todo/tag/link-detector tools for Cursor & Claude (`/mcp`; PAT `tada_…` or OAuth for Claude.ai)
+- **Link detectors** — turn ticket tokens (e.g. `RM-12345`) into links; sync with the cloud account
+- **Calendar & due dates** — list/calendar views; optional web notifications for invites and due dates
+- **PWA** — installable SPA (manifest + icons)
+- **P2P** — share a dataset between devices (PeerJS)
+- **i18n** — English / French UI wording
 
 ## Stack
 
@@ -63,6 +68,8 @@ docker compose exec php bin/console app:user:create \
 - API: `https://localhost:8443/api`
 - Health: `https://localhost:8443/api/health`
 - MCP: `https://localhost:8443/mcp`
+- OAuth discovery: `https://localhost:8443/.well-known/oauth-authorization-server`  
+  (Claude.ai custom connector → URL `/mcp` → Connect; Cursor still uses PAT)
 
 Further sign-ups stay `pending` until an admin approves them (Config → Cloud account).  
 Locally, `REGISTRATION_AUTO_APPROVE=1` in `.env.local` speeds up testing.
@@ -101,7 +108,7 @@ Manual steps / details: [`.ops/deploy.md`](.ops/deploy.md)
 
 - **Only** `apps/api/.env` (placeholders) is versioned — no other `.env*` files
 - Never commit `.env.local`, JWT keys (`.pem`), or certificates
-- Production: `REGISTRATION_AUTO_APPROVE=0`, secrets outside Git
+- Production: `REGISTRATION_AUTO_APPROVE=0`, strong `APP_SECRET` / DB / `MERCURE_JWT_SECRET`, secrets outside Git
 - OpenAPI docs disabled when `APP_ENV=prod`
 
 ## License

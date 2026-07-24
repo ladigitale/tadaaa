@@ -1,6 +1,6 @@
 import {html} from "lit";
-import "../../components/config-issues-page";
+import "../../components/config-home-page";
 
 export default function ConfigRoutePage() {
-  return html`<config-issues-page></config-issues-page>`;
+  return html`<config-home-page></config-home-page>`;
 }

@@ -8,21 +8,24 @@ import "@supersoniks/concorde/menu-item";
 import {html, LitElement, nothing} from "lit";
 import {customElement, query, state} from "lit/decorators.js";
 import {handle, subscribe} from "@supersoniks/concorde/decorators";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {fetchTags, fetchTodos} from "../api/client";
 import {filterTodos} from "../api/store-logic";
 import type {SortDirection, Tag, Todo, TodoSortBy} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
 import {todoSearchKey, type TodoSearchForm} from "../dp";
+import {tx} from "../i18n";
 import {navigateTo} from "../utils/navigate";
 import {tacheItemPath} from "../utils/tache-paths";
+import {focusPrimaryInput} from "../utils/focus-primary-input";
 import tailwind from "../../css/tailwind";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import {rmLinksTemplate} from "./rm-link-text";
 import "./pop-select";
 import type {PopSelectOption} from "./pop-select";
 import {
-  TODO_SORT_OPTIONS,
-  TODO_STATUS_OPTIONS,
+  todoSortOptions,
+  todoStatusOptions,
   parseTodoSortKey,
 } from "./todo-filter-options";
 
@@ -119,7 +122,12 @@ export class TodoSearchModal extends LitElement {
 
   private get tagFilterOptions(): PopSelectOption[] {
     return [
-      {value: "all", label: "Toutes", icon: "label", checksAll: true},
+      {
+        value: "all",
+        label: tx("tasks.filter.tags_all"),
+        icon: "label",
+        checksAll: true,
+      },
       ...this.tags.map((tag) => ({
         value: tag.id,
         label: tag.name,
@@ -199,16 +207,7 @@ export class TodoSearchModal extends LitElement {
 
     await this.updateComplete;
     await this.modal?.show();
-    this.focusSearchInput();
-  }
-
-  private focusSearchInput() {
-    queueMicrotask(() => {
-      const input = this.renderRoot.querySelector("sonic-input");
-      if (input && "focus" in input && typeof input.focus === "function") {
-        input.focus();
-      }
-    });
+    void focusPrimaryInput(this);
   }
 
   private goToTodo(todo: Todo) {
@@ -244,7 +243,7 @@ export class TodoSearchModal extends LitElement {
 
     return html`
       <sonic-modal id="todoSearchModal" maxWidth="36rem" width="100%">
-        <sonic-modal-title>Rechercher une tâche</sonic-modal-title>
+        <sonic-modal-title>${t("tasks.search_title")}</sonic-modal-title>
         <sonic-modal-content>
           <div class="space-y-3" formDataProvider=${todoSearchKey.path}>
             <div class="space-y-2">
@@ -252,7 +251,7 @@ export class TodoSearchModal extends LitElement {
                 name="q"
                 type="search"
                 size="sm"
-                placeholder="Nom ou RM-12345"
+                placeholder=${tx("tasks.search_ph")}
                 class="min-w-0 w-full"
               >
                 <sonic-icon
@@ -266,18 +265,18 @@ export class TodoSearchModal extends LitElement {
 
               <div class="flex flex-wrap items-center gap-1.5">
                 <pop-select
-                  label="Statut"
+                  label=${tx("tasks.filter.status")}
                   name="status"
                   mode="radio"
                   .value=${this.status}
-                  .options=${TODO_STATUS_OPTIONS}
+                  .options=${todoStatusOptions()}
                   minWidth="11rem"
                 ></pop-select>
 
                 ${this.tags.length > 0
                   ? html`
                       <pop-select
-                        label="Étiquette"
+                        label=${tx("tasks.filter.tag")}
                         name="tags"
                         mode="multi"
                         .value=${selectedTags}
@@ -288,21 +287,24 @@ export class TodoSearchModal extends LitElement {
                   : nothing}
 
                 <pop-select
-                  label="Tri"
+                  label=${tx("tasks.filter.sort")}
                   name="sort"
                   mode="radio"
                   .value=${this.sortValue}
-                  .options=${TODO_SORT_OPTIONS}
+                  .options=${todoSortOptions()}
                   minWidth="14rem"
                 ></pop-select>
               </div>
             </div>
 
-            <div class="max-h-72 overflow-y-auto" aria-label="Résultats">
+            <div
+              class="max-h-72 overflow-y-auto"
+              aria-label=${tx("tasks.search_results_aria")}
+            >
               ${this.loading
                 ? html`
                     <p class="py-4 text-center text-sm text-neutral-500">
-                      Chargement…
+                      ${t("common.loading")}
                     </p>
                   `
                 : html`
@@ -322,8 +324,8 @@ export class TodoSearchModal extends LitElement {
                             ${needle ||
                             selectedTags.length > 0 ||
                             this.status !== "all"
-                              ? "Aucune tâche pour ces filtres."
-                              : "Aucune tâche."}
+                              ? t("tasks.empty_filtered")
+                              : t("tasks.empty")}
                           </p>
                         `
                       : nothing}

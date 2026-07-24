@@ -1,14 +1,27 @@
 # Tadaaa monorepo — API (FrankenPHP) + PostgreSQL
+# Local devops (Apache/php84): also provides the Mercure hub; join network `supersoniks`
+# so php84 can publish via http://tada-mercure/.well-known/mercure
 services:
   php:
     image: ${IMAGES_PREFIX:-}tada-api
     restart: unless-stopped
     environment:
-      SERVER_NAME: ${SERVER_NAME:-localhost}, php:80
+      # tada-mercure: HTTP alias for php84 (devops) publish without TLS redirect
+      SERVER_NAME: ${SERVER_NAME:-localhost}, php:80, tada-mercure:80
       DEFAULT_URI: https://${SERVER_NAME:-localhost}:${HTTPS_PORT:-8443}
       DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-!ChangeMe!}@database:5432/${POSTGRES_DB:-tada}?serverVersion=${POSTGRES_VERSION:-16}&charset=utf8
       APP_SECRET: ${APP_SECRET:-ChangeMeToARandomSecretKey32chars}
       CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$}
+      MERCURE_ENABLED: ${MERCURE_ENABLED:-1}
+      MERCURE_URL: ${MERCURE_URL:-http://127.0.0.1/.well-known/mercure}
+      MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://localhost:8443/.well-known/mercure}
+      MERCURE_JWT_SECRET: "${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}"
+      MERCURE_PUBLISHER_JWT_KEY: "${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}"
+      MERCURE_SUBSCRIBER_JWT_KEY: "${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}"
+      MERCURE_PUBLISHER_JWT_ALG: ${MERCURE_PUBLISHER_JWT_ALG:-HS256}
+      MERCURE_SUBSCRIBER_JWT_ALG: ${MERCURE_SUBSCRIBER_JWT_ALG:-HS256}
+      MERCURE_EXTRA_DIRECTIVES: |
+        cors_origins ${MERCURE_CORS_ORIGINS:-*}
     volumes:
       - caddy_data:/data
       - caddy_config:/config
@@ -22,6 +35,11 @@ services:
       - target: 443
         published: ${HTTP3_PORT:-8443}
         protocol: udp
+    networks:
+      default:
+      supersoniks:
+        aliases:
+          - tada-mercure
     depends_on:
       database:
         condition: service_healthy
@@ -39,6 +57,10 @@ services:
       start_period: 30s
     volumes:
       - database_data:/var/lib/postgresql/data:rw
+
+networks:
+  supersoniks:
+    external: true
 
 volumes:
   caddy_data:

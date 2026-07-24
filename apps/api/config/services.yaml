@@ -9,6 +9,7 @@
 parameters:
     # Default when the env var is unset (Symfony env() fallback).
     env(REGISTRATION_AUTO_APPROVE): '0'
+    env(MERCURE_ENABLED): '1'
 
 services:
     # default configuration for services in *this* file
@@ -20,6 +21,10 @@ services:
     # this creates a service per class whose id is the fully-qualified class name
     App\:
         resource: '../src/'
+
+    App\Service\MercureFeature:
+        arguments:
+            $enabled: '%env(bool:MERCURE_ENABLED)%'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

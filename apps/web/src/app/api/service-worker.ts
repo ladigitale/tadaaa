@@ -31,6 +31,36 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl =
+    typeof event.notification.data?.url === "string"
+      ? event.notification.data.url
+      : "/";
+  event.waitUntil(
+    (async () => {
+      const clientsList = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const client of clientsList) {
+        if ("focus" in client) {
+          await client.focus();
+          if ("navigate" in client && targetUrl !== "/") {
+            try {
+              await (client as WindowClient).navigate(targetUrl);
+            } catch {
+              // ignore navigate failures
+            }
+          }
+          return;
+        }
+      }
+      await self.clients.openWindow(targetUrl);
+    })(),
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const {request} = event;
   const url = new URL(request.url);

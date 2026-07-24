@@ -1,0 +1,36 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}OAuth error — Tadaaa{% endblock %}
+
+{% block stylesheets %}
+<style>
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: #0f1419;
+    color: #e7ecf1;
+  }
+  .card {
+    max-width: 26rem;
+    border: 1px solid #2a3542;
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+  h1 { font-size: 1.1rem; }
+  code { color: #f07178; }
+  p { color: #8b9aab; line-height: 1.45; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="card">
+  <h1>Authorization failed</h1>
+  <p><code>{{ error }}</code></p>
+  <p>{{ description }}</p>
+</div>
+{% endblock %}

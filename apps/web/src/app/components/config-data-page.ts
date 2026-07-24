@@ -2,6 +2,7 @@ import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
 import {html, LitElement} from "lit";
 import {customElement, state} from "lit/decorators.js";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {
   exportTodosSnapshot,
   importTodosSnapshot,
@@ -11,6 +12,7 @@ import {
   parseDataPackage,
   TADA_DATA_VERSION,
 } from "../api/data-package";
+import {tx} from "../i18n";
 import {refreshConfigAppData} from "../utils/config-refresh";
 import {confirmDialog, showError} from "../utils/modal-dialog";
 import tailwind from "../../css/tailwind";
@@ -40,7 +42,7 @@ export class ConfigDataPage extends LitElement {
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      await showError(error, "Impossible d’exporter les données");
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -65,8 +67,8 @@ export class ConfigDataPage extends LitElement {
       parsed = JSON.parse(await file.text());
     } catch {
       await showError(
-        new Error("Le fichier n’est pas un JSON valide."),
-        "Import impossible",
+        new Error(tx("dialogs.unknown_error")),
+        tx("dialogs.error"),
       );
       return;
     }
@@ -75,20 +77,20 @@ export class ConfigDataPage extends LitElement {
     try {
       pkg = parseDataPackage(parsed);
     } catch (error) {
-      await showError(error, "Fichier non compatible");
+      await showError(error, tx("dialogs.error"));
       return;
     }
 
     const ok = await confirmDialog({
-      title: "Importer des données",
+      title: tx("data.import_title"),
       message: [
         `« ${pkg.name} »`,
         `id ${pkg.id}`,
         `format tada v${pkg.version} (app v${TADA_DATA_VERSION})`,
         "",
-        "Remplacer le jeu actif ? Action irréversible.",
+        tx("data.import_confirm"),
       ].join("\n"),
-      confirmLabel: "Importer",
+      confirmLabel: tx("data.import"),
       danger: true,
     });
     if (!ok) return;
@@ -98,7 +100,7 @@ export class ConfigDataPage extends LitElement {
       await importTodosSnapshot(parsed);
       await refreshConfigAppData();
     } catch (error) {
-      await showError(error, "Impossible d’importer les données");
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -114,12 +116,8 @@ export class ConfigDataPage extends LitElement {
           <config-scope-header section="data"></config-scope-header>
         </div>
 
-        <div class="mt-6 space-y-3">
-          <p class="text-sm text-neutral-600">
-            Fichier JSON versionné
-            <code class="text-xs">tada v${TADA_DATA_VERSION}</code>
-            : id unique de base, nom, tâches et étiquettes.
-          </p>
+        <div class="mt-8 space-y-3">
+          <p class="text-sm text-neutral-600">${t("data.intro")}</p>
           <div class="flex flex-wrap gap-2">
             <sonic-button
               type="primary"
@@ -133,7 +131,7 @@ export class ConfigDataPage extends LitElement {
                 name="page"
                 size="sm"
               ></sonic-icon>
-              Exporter
+              ${t("data.export")}
             </sonic-button>
             <sonic-button
               variant="outline"
@@ -147,7 +145,7 @@ export class ConfigDataPage extends LitElement {
                 name="page-edit"
                 size="sm"
               ></sonic-icon>
-              Importer…
+              ${t("data.import")}
             </sonic-button>
             <input
               id="import-file"

@@ -28,24 +28,26 @@ final class CloudTodoService
         private readonly DatasetRepository $datasets,
         private readonly TodoRepository $todos,
         private readonly TagRepository $tags,
+        private readonly DatasetAccessService $access,
+        private readonly DatasetRealtimePublisher $realtime,
     ) {
     }
 
-    public function requireActiveDataset(User $user): Dataset
+    public function requireActiveDataset(User $user, bool $write = false): Dataset
     {
         $dataset = $user->getActiveDataset();
         if ($dataset === null) {
-            $all = $this->datasets->createQueryBuilder('d')
-                ->andWhere('d.owner = :owner')
-                ->setParameter('owner', $user)
-                ->setMaxResults(1)
-                ->getQuery()
-                ->getOneOrNullResult();
-            if (!$all instanceof Dataset) {
+            $all = $this->datasets->findAccessibleForUser($user);
+            $dataset = $all[0] ?? null;
+            if (!$dataset instanceof Dataset) {
                 throw new BadRequestHttpException('Aucun jeu de données cloud. Créez-en un ou synchronisez.');
             }
+        }
 
-            return $all;
+        if ($write) {
+            $this->access->assertCanWrite($user, $dataset);
+        } else {
+            $this->access->assertCanRead($user, $dataset);
         }
 
         return $dataset;
@@ -103,8 +105,10 @@ final class CloudTodoService
         string $priority = 'medium',
         ?array $tagIds = null,
         ?string $parentId = null,
+        ?string $startAt = null,
+        ?string $endAt = null,
     ): array {
-        $dataset = $this->requireActiveDataset($user);
+        $dataset = $this->requireActiveDataset($user, write: true);
         $text = trim($text);
         if ($text === '') {
             throw new BadRequestHttpException('Le texte de la tâche est requis.');
@@ -118,6 +122,8 @@ final class CloudTodoService
         $todo->setPriority($priority);
         $todo->setTagIds($tagIds ?? []);
         $todo->setParentId($parentId);
+        $todo->setStartAt($this->parseDateOnly($startAt));
+        $todo->setEndAt($this->parseDateOnly($endAt));
         $todo->setFieldVersions([
             'text' => $now,
             'description' => $now,
@@ -126,11 +132,14 @@ final class CloudTodoService
             'priority' => $now,
             'tagIds' => $now,
             'parentId' => $now,
+            'startAt' => $now,
+            'endAt' => $now,
         ]);
 
         $this->entityManager->persist($todo);
         $dataset->touch();
         $this->entityManager->flush();
+        $this->realtime->publishDatasetChanged($dataset);
 
         return $todo->toSyncArray();
     }
@@ -142,7 +151,7 @@ final class CloudTodoService
      */
     public function updateTodo(User $user, string $id, array $patch): array
     {
-        $todo = $this->requireTodo($user, $id);
+        $todo = $this->requireTodo($user, $id, write: true);
         $now = (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM);
         $versions = $todo->getFieldVersions();
 
@@ -175,10 +184,19 @@ final class CloudTodoService
             $todo->setParentId(is_string($parentId) && $parentId !== '' ? $parentId : null);
             $versions['parentId'] = $now;
         }
+        if (array_key_exists('startAt', $patch)) {
+            $todo->setStartAt($this->parseDateOnly(is_string($patch['startAt']) ? $patch['startAt'] : null));
+            $versions['startAt'] = $now;
+        }
+        if (array_key_exists('endAt', $patch)) {
+            $todo->setEndAt($this->parseDateOnly(is_string($patch['endAt']) ? $patch['endAt'] : null));
+            $versions['endAt'] = $now;
+        }
 
         $todo->setFieldVersions($versions);
         $todo->getDataset()->touch();
         $this->entityManager->flush();
+        $this->realtime->publishDatasetChanged($todo->getDataset());
 
         return $todo->toSyncArray();
     }
@@ -226,7 +244,7 @@ final class CloudTodoService
      */
     public function createTag(User $user, string $name, string $color = 'default'): array
     {
-        $dataset = $this->requireActiveDataset($user);
+        $dataset = $this->requireActiveDataset($user, write: true);
         $name = trim($name);
         if ($name === '') {
             throw new BadRequestHttpException('Le nom du tag est requis.');
@@ -242,6 +260,7 @@ final class CloudTodoService
         $this->entityManager->persist($tag);
         $dataset->touch();
         $this->entityManager->flush();
+        $this->realtime->publishDatasetChanged($dataset);
 
         return $tag->toSyncArray();
     }
@@ -253,7 +272,7 @@ final class CloudTodoService
      */
     public function updateTag(User $user, string $id, array $patch): array
     {
-        $dataset = $this->requireActiveDataset($user);
+        $dataset = $this->requireActiveDataset($user, write: true);
         $tag = $this->tags->findOneForDataset($dataset, $id);
         if ($tag === null || $tag->isDeleted()) {
             throw new NotFoundHttpException('Tag introuvable.');
@@ -286,13 +305,14 @@ final class CloudTodoService
         $tag->setFieldVersions($versions);
         $dataset->touch();
         $this->entityManager->flush();
+        $this->realtime->publishDatasetChanged($dataset);
 
         return $tag->toSyncArray();
     }
 
     public function deleteTag(User $user, string $id): array
     {
-        $dataset = $this->requireActiveDataset($user);
+        $dataset = $this->requireActiveDataset($user, write: true);
         $tag = $this->tags->findOneForDataset($dataset, $id);
         if ($tag === null || $tag->isDeleted()) {
             throw new NotFoundHttpException('Tag introuvable.');
@@ -320,6 +340,7 @@ final class CloudTodoService
 
         $dataset->touch();
         $this->entityManager->flush();
+        $this->realtime->publishDatasetChanged($dataset);
 
         return ['ok' => true, 'id' => $id];
     }
@@ -335,30 +356,21 @@ final class CloudTodoService
         $user->setActiveDataset($dataset);
         $this->entityManager->flush();
 
-        return $this->datasetToMcpArray($dataset, true);
+        return $this->datasetToMcpArray($dataset, true, $user);
     }
 
     /**
-     * @return list<array{id: string, baseId: string, name: string, active: bool}>
+     * @return list<array{id: string, baseId: string, name: string, active: bool, role: string}>
      */
     public function listDatasets(User $user): array
     {
         $activeId = $user->getActiveDataset()?->getId()->toRfc4122();
-        $rows = $this->datasets->createQueryBuilder('d')
-            ->andWhere('d.owner = :owner')
-            ->setParameter('owner', $user)
-            ->orderBy('d.name', 'ASC')
-            ->getQuery()
-            ->getResult();
-
         $result = [];
-        foreach ($rows as $dataset) {
-            if (!$dataset instanceof Dataset) {
-                continue;
-            }
+        foreach ($this->datasets->findAccessibleForUser($user) as $dataset) {
             $result[] = $this->datasetToMcpArray(
                 $dataset,
                 $activeId === $dataset->getId()->toRfc4122(),
+                $user,
             );
         }
 
@@ -366,15 +378,18 @@ final class CloudTodoService
     }
 
     /**
-     * @return array{id: string, baseId: string, name: string, active: bool}
+     * @return array{id: string, baseId: string, name: string, active: bool, role: string}
      */
-    private function datasetToMcpArray(Dataset $dataset, bool $active): array
+    private function datasetToMcpArray(Dataset $dataset, bool $active, ?User $user = null): array
     {
+        $role = $user !== null ? $this->access->getRole($user, $dataset) : null;
+
         return [
             'id' => $dataset->getId()->toRfc4122(),
             'baseId' => BaseIdParser::format($dataset->getBaseId()),
             'name' => $dataset->getName(),
             'active' => $active,
+            'role' => $role?->value ?? 'owner',
         ];
     }
 
@@ -391,10 +406,11 @@ final class CloudTodoService
             } catch (\InvalidArgumentException) {
                 throw new BadRequestHttpException('baseId invalide.');
             }
-            $dataset = $this->datasets->findOneByBaseIdForUser($user, $baseId);
+            $dataset = $this->datasets->findOneByBaseId($baseId);
             if ($dataset === null) {
                 throw new NotFoundHttpException('Jeu de données introuvable.');
             }
+            $this->access->assertCanRead($user, $dataset);
 
             return $dataset;
         }
@@ -406,23 +422,24 @@ final class CloudTodoService
         }
 
         $byId = $this->datasets->find($uuid);
-        if ($byId instanceof Dataset
-            && $byId->getOwner()->getId()->toRfc4122() === $user->getId()->toRfc4122()
-        ) {
+        if ($byId instanceof Dataset) {
+            $this->access->assertCanRead($user, $byId);
+
             return $byId;
         }
 
-        $byBase = $this->datasets->findOneByBaseIdForUser($user, $uuid);
+        $byBase = $this->datasets->findOneByBaseId($uuid);
         if ($byBase === null) {
             throw new NotFoundHttpException('Jeu de données introuvable.');
         }
+        $this->access->assertCanRead($user, $byBase);
 
         return $byBase;
     }
 
-    private function requireTodo(User $user, string $id): Todo
+    private function requireTodo(User $user, string $id, bool $write = false): Todo
     {
-        $dataset = $this->requireActiveDataset($user);
+        $dataset = $this->requireActiveDataset($user, write: $write);
         $todo = $this->todos->findOneForDataset($dataset, $id);
         if ($todo === null || $todo->isDeleted()) {
             throw new NotFoundHttpException('Tâche introuvable.');
@@ -440,5 +457,20 @@ final class CloudTodoService
             'all' => !$todo->isArchived(),
             default => true,
         };
+    }
+
+    private function parseDateOnly(?string $value): ?\DateTimeImmutable
+    {
+        if ($value === null) {
+            return null;
+        }
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return null;
+        }
+        $datePart = substr($trimmed, 0, 10);
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $datePart);
+
+        return $date === false ? null : $date;
     }
 }

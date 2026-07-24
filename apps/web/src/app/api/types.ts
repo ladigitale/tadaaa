@@ -26,6 +26,10 @@ export interface Todo {
   tagIds: string[];
   /** null = tâche racine */
   parentId: string | null;
+  /** Date de début optionnelle (YYYY-MM-DD) */
+  startAt?: string | null;
+  /** Date de fin / échéance optionnelle (YYYY-MM-DD) */
+  endAt?: string | null;
   createdAt: string;
   fieldVersions?: FieldVersions;
   /** Calculé, non persisté */
@@ -46,7 +50,7 @@ export type TagColor =
 
 export type TodoStatusFilter = "active" | "done" | "archived" | "all";
 
-export type TodoSortBy = "createdAt" | "priority" | "text";
+export type TodoSortBy = "createdAt" | "priority" | "text" | "startAt";
 
 export type SortDirection = "asc" | "desc";
 
@@ -82,6 +86,8 @@ export interface CreateTodoInput {
   priority?: TodoPriority | null;
   tagIds?: string[] | null;
   parentId?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
 }
 
 export interface UpdateTodoPatch {
@@ -91,6 +97,8 @@ export interface UpdateTodoPatch {
   archived?: boolean;
   priority?: TodoPriority;
   tagIds?: string[] | null;
+  startAt?: string | null;
+  endAt?: string | null;
 }
 
 export interface CreateTagInput {

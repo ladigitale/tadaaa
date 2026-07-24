@@ -3,10 +3,13 @@ import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/pop";
 import "@supersoniks/concorde/menu";
 import "@supersoniks/concorde/menu-item";
+import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {fetchTodo, patchTodo} from "../api/client";
 import type {Todo, TodoAncestor} from "../api/types";
+import {tf, tx} from "../i18n";
 import {
   TACHE_ROOT,
   tacheItemEditPath,
@@ -20,7 +23,7 @@ import {confirmDialog, showError} from "../utils/modal-dialog";
 import {navigateTo} from "../utils/navigate";
 import tailwind from "../../css/tailwind";
 import "./task-breadcrumb";
-import {rmLinksTemplate} from "./rm-link-text";
+import {rmLinksTemplate, richTextTemplate} from "./rm-link-text";
 
 /** Action affichée sous le titre (contexte de la page). */
 export type TaskScopeAction = "" | "children" | "create" | "edit" | "move";
@@ -69,6 +72,44 @@ export class TaskScopeHeader extends LitElement {
         line-height: 1.45;
         color: var(--sc-base-600);
       }
+
+      .heading-tooltip {
+        display: block;
+        min-width: 0;
+        max-width: 100%;
+        text-align: left;
+      }
+
+      .scope-description p {
+        margin: 0;
+      }
+
+      .scope-description p + p,
+      .scope-description ul + p,
+      .scope-description ol + p,
+      .scope-description p + ul,
+      .scope-description p + ol {
+        margin-top: 0.4em;
+      }
+
+      .scope-description ul,
+      .scope-description ol {
+        margin: 0.3em 0 0;
+        padding-left: 1.2rem;
+      }
+
+      .scope-description code {
+        font-size: 0.9em;
+        padding: 0.05em 0.3em;
+        border-radius: 0.25rem;
+        background: color-mix(in srgb, currentColor 12%, transparent);
+      }
+
+      .scope-description a {
+        color: rgb(37 99 235);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
     `,
   ];
 
@@ -114,7 +155,7 @@ export class TaskScopeHeader extends LitElement {
   }
 
   private get heading(): string {
-    if (!this.isScoped) return "Tâches principales";
+    if (!this.isScoped) return tx("tasks.root_heading");
     return this.scopeTodo?.text?.trim() || "…";
   }
 
@@ -133,7 +174,7 @@ export class TaskScopeHeader extends LitElement {
       return [
         {
           id: "create",
-          label: "Nouvelle tâche",
+          label: tx("tasks.new"),
           icon: "plus",
           href: tacheNewPath(),
         },
@@ -149,19 +190,19 @@ export class TaskScopeHeader extends LitElement {
       },
       {
         id: "create",
-        label: "Nouvelle sous-tâche",
+        label: tx("tasks.new_sub"),
         icon: "plus",
         href: tacheItemNewPath(id),
       },
       {
         id: "edit",
-        label: "Modifier",
+        label: tx("tasks.edit"),
         icon: "edit-pencil",
         href: tacheItemEditPath(id),
       },
       {
         id: "move",
-        label: "Déplacer dans…",
+        label: tx("tasks.move"),
         icon: "data-transfer-both",
         href: tacheItemMovePath(id),
       },
@@ -169,8 +210,7 @@ export class TaskScopeHeader extends LitElement {
   }
 
   private get childrenLabel(): string {
-    const count = this.scopeTodo?.childCount ?? 0;
-    return count <= 1 ? `${count} sous-tâche` : `${count} sous-tâches`;
+    return tf("tasks.subtasks", {n: this.scopeTodo?.childCount ?? 0});
   }
 
   private get currentAction(): ActionChoice | null {
@@ -216,10 +256,9 @@ export class TaskScopeHeader extends LitElement {
     const deleting = !todo.archived;
     if (deleting) {
       const ok = await confirmDialog({
-        title: "Supprimer la tâche",
-        message:
-          "Supprimer cette tâche ? Elle restera visible dans le filtre « Supprimés ».",
-        confirmLabel: "Supprimer",
+        title: tx("tasks.delete_title"),
+        message: tx("tasks.delete_confirm"),
+        confirmLabel: tx("tasks.delete"),
         danger: true,
       });
       if (!ok) return;
@@ -231,7 +270,7 @@ export class TaskScopeHeader extends LitElement {
       const parentId = todo.parentId?.trim();
       navigateTo(parentId ? tacheItemPath(parentId) : TACHE_ROOT, true);
     } catch (error) {
-      await showError(error, "Impossible de modifier la tâche");
+      await showError(error);
       console.error(error);
     } finally {
       this.busy = false;
@@ -264,7 +303,7 @@ export class TaskScopeHeader extends LitElement {
           variant="ghost"
           class="scope-action-trigger text-neutral-500"
           ?disabled=${this.busy}
-          data-aria-label="Changer d’action"
+          data-aria-label=${tx("common.change_action_aria")}
         >
           <sonic-icon
             slot="prefix"
@@ -309,7 +348,7 @@ export class TaskScopeHeader extends LitElement {
                   ?disabled=${this.busy}
                   @click=${this.onDeleteToggle}
                 >
-                  ${this.renderMenuItemIcon("undo")} Restaurer
+                  ${this.renderMenuItemIcon("undo")} ${t("tasks.restore")}
                 </sonic-menu-item>
               `
             : html`
@@ -318,7 +357,7 @@ export class TaskScopeHeader extends LitElement {
                   ?disabled=${this.busy}
                   @click=${this.onDeleteToggle}
                 >
-                  ${this.renderMenuItemIcon("trash")} Supprimer
+                  ${this.renderMenuItemIcon("trash")} ${t("tasks.delete")}
                 </sonic-menu-item>
               `}
         </sonic-menu>
@@ -352,13 +391,21 @@ export class TaskScopeHeader extends LitElement {
             : nothing}
         </div>
         <div class="min-w-0 space-y-1.5">
-          <h1 class="scope-heading truncate" title=${this.heading}>
-            ${rmLinksTemplate(this.heading)}
-          </h1>
+          <sonic-tooltip
+            class="heading-tooltip"
+            label=${this.heading}
+            placement="bottom"
+          >
+            <h1 class="scope-heading truncate">
+              ${rmLinksTemplate(this.heading)}
+            </h1>
+          </sonic-tooltip>
           ${this.renderActionMenu()}
           ${description
             ? html`
-                <p class="scope-description">${rmLinksTemplate(description)}</p>
+                <div class="scope-description rich-text">
+                  ${richTextTemplate(description)}
+                </div>
               `
             : nothing}
         </div>

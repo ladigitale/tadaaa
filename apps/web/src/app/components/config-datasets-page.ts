@@ -3,17 +3,20 @@ import "@supersoniks/concorde/button";
 import {html, LitElement, nothing} from "lit";
 import {customElement, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {
   activateDataset,
   createDataset,
   deleteDataset,
   fetchDatasets,
+  renameDataset,
 } from "../api/client";
 import type {DatasetInfo} from "../api/store";
 import {read, set} from "../../utils/dataprovider";
 import {appConfigKey, type AppConfigForm} from "../dp";
+import {tf, tx} from "../i18n";
 import {refreshConfigAppData} from "../utils/config-refresh";
-import {confirmDialog, showError} from "../utils/modal-dialog";
+import {confirmDialog, promptTextDialog, showError} from "../utils/modal-dialog";
 import tailwind from "../../css/tailwind";
 import "./config-scope-header";
 import "./dataset-row";
@@ -49,14 +52,14 @@ export class ConfigDatasetsPage extends LitElement {
   private onCreateDataset = async (source: "empty" | "seed" | "current") => {
     if (this.busy) return;
     const form = read(appConfigKey.path) as AppConfigForm;
-    const name = form.newDatasetName?.trim() || "Nouveau jeu";
+    const name = form.newDatasetName?.trim() || tx("datasets.new");
     this.busy = true;
     try {
       await createDataset({name, source});
       set(appConfigKey.path, {...form, newDatasetName: ""});
       await this.reloadDatasets();
     } catch (error) {
-      await showError(error, "Impossible de créer le jeu");
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -72,7 +75,7 @@ export class ConfigDatasetsPage extends LitElement {
       await refreshConfigAppData();
       await this.reloadDatasets();
     } catch (error) {
-      await showError(error, "Impossible d’activer le jeu");
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -83,9 +86,9 @@ export class ConfigDatasetsPage extends LitElement {
     const dataset = event.detail.dataset;
     if (this.busy) return;
     const ok = await confirmDialog({
-      title: "Supprimer le jeu",
-      message: `Supprimer « ${dataset.name} » ?`,
-      confirmLabel: "Supprimer",
+      title: tx("datasets.delete_title"),
+      message: tf("datasets.delete_confirm", {name: dataset.name}),
+      confirmLabel: tx("cloud.delete"),
       danger: true,
     });
     if (!ok) return;
@@ -96,7 +99,31 @@ export class ConfigDatasetsPage extends LitElement {
       await refreshConfigAppData();
       await this.reloadDatasets();
     } catch (error) {
-      await showError(error, "Impossible de supprimer le jeu");
+      await showError(error, tx("dialogs.error"));
+      console.error(error);
+    } finally {
+      this.busy = false;
+    }
+  };
+
+  private onRenameDataset = async (
+    event: CustomEvent<{dataset: DatasetInfo}>,
+  ) => {
+    const dataset = event.detail.dataset;
+    if (this.busy) return;
+    const nextName = await promptTextDialog({
+      title: tx("datasets.rename_title"),
+      label: tx("datasets.rename_label"),
+      initialValue: dataset.name,
+      confirmLabel: tx("datasets.rename_save"),
+    });
+    if (!nextName || nextName === dataset.name) return;
+    this.busy = true;
+    try {
+      await renameDataset(dataset.id, nextName);
+      await this.reloadDatasets();
+    } catch (error) {
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -119,15 +146,13 @@ export class ConfigDatasetsPage extends LitElement {
           <config-scope-header section="datasets"></config-scope-header>
         </div>
 
-        <div class="mt-6 space-y-3" formDataProvider=${appConfigKey.path}>
-          <p class="text-sm text-neutral-600">
-            Bascule entre plusieurs jeux isolés (ex. perso / démo).
-          </p>
+        <div class="mt-8 space-y-6" formDataProvider=${appConfigKey.path}>
+          <p class="text-sm text-neutral-600">${t("datasets.intro")}</p>
 
           ${this.datasets.length === 0
             ? html`
                 <p class="py-8 text-sm italic text-neutral-500">
-                  Aucun jeu de données.
+                  ${t("datasets.empty")}
                 </p>
               `
             : html`
@@ -140,8 +165,10 @@ export class ConfigDatasetsPage extends LitElement {
                           .datasetInfo=${dataset}
                           ?disabled=${this.busy}
                           ?canDelete=${this.datasets.length > 1}
+                          ?canRename=${true}
                           @dataset-activate=${this.onActivateDataset}
                           @dataset-delete=${this.onDeleteDataset}
+                          @dataset-rename=${this.onRenameDataset}
                         ></dataset-row>
                       </li>
                     `,
@@ -152,9 +179,9 @@ export class ConfigDatasetsPage extends LitElement {
           <div class="flex flex-wrap items-end gap-2 pt-1">
             <sonic-input
               name="newDatasetName"
-              label="Nouveau jeu"
+              label=${tx("datasets.new")}
               size="sm"
-              placeholder="Ex. Démo, Perso…"
+              placeholder=${tx("datasets.new_ph")}
               class="min-w-[12rem] flex-1"
             ></sonic-input>
             <sonic-button
@@ -163,7 +190,7 @@ export class ConfigDatasetsPage extends LitElement {
               ?disabled=${this.busy}
               @click=${() => this.onCreateDataset("empty")}
             >
-              Vide
+              ${t("datasets.create_empty")}
             </sonic-button>
             <sonic-button
               size="sm"
@@ -171,7 +198,7 @@ export class ConfigDatasetsPage extends LitElement {
               ?disabled=${this.busy}
               @click=${() => this.onCreateDataset("seed")}
             >
-              Démo
+              ${t("datasets.create_seed")}
             </sonic-button>
             <sonic-button
               size="sm"
@@ -179,7 +206,7 @@ export class ConfigDatasetsPage extends LitElement {
               ?disabled=${this.busy}
               @click=${() => this.onCreateDataset("current")}
             >
-              Cloner l’actif
+              ${t("datasets.create_clone")}
             </sonic-button>
           </div>
         </div>

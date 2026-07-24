@@ -6,13 +6,16 @@ import "@supersoniks/concorde/form-actions";
 import {html, LitElement} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {fetchTag, patchTag} from "../api/client";
 import {TAG_COLORS} from "../api/store-logic";
 import type {Tag, TagColor} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
 import {tagEditKey, type TagEditForm} from "../dp";
+import {tx} from "../i18n";
 import {navigateTo} from "../utils/navigate";
 import {isEnterSubmitEvent} from "../utils/form-enter-submit";
+import {focusPrimaryInput} from "../utils/focus-primary-input";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
 import {showError} from "../utils/modal-dialog";
@@ -50,7 +53,7 @@ export class TagEditPage extends LitElement {
     const name = this.name?.trim();
     return {
       id: "preview",
-      name: name || "Aperçu",
+      name: name || tx("tags.form.preview"),
       color: this.color ?? "default",
     };
   }
@@ -78,6 +81,10 @@ export class TagEditPage extends LitElement {
     } finally {
       this.loading = false;
     }
+
+    if (!this.notFound) {
+      void focusPrimaryInput(this);
+    }
   }
 
   private onFormKeyDown = (event: KeyboardEvent) => {
@@ -99,7 +106,7 @@ export class TagEditPage extends LitElement {
       });
       navigateTo(TAGS_ROOT, true);
     } catch (error) {
-      await showError(error, "Impossible de modifier l’étiquette");
+      await showError(error);
       console.error(error);
     } finally {
       this.busy = false;
@@ -124,7 +131,7 @@ export class TagEditPage extends LitElement {
       return html`
         <page-shell>
           ${this.renderScopeHeader()}
-          <p class="mt-3 text-sm text-neutral-500">Chargement…</p>
+          <p class="mt-3 text-sm text-neutral-500">${t("common.loading")}</p>
         </page-shell>
       `;
     }
@@ -133,9 +140,9 @@ export class TagEditPage extends LitElement {
       return html`
         <page-shell>
           ${this.renderScopeHeader()}
-          <p class="mt-3 text-sm text-neutral-500">Étiquette introuvable.</p>
+          <p class="mt-3 text-sm text-neutral-500">${t("tags.not_found")}</p>
           <sonic-button href=${TAGS_ROOT} pushstate variant="outline">
-            Retour
+            ${t("common.back")}
           </sonic-button>
         </page-shell>
       `;
@@ -153,12 +160,12 @@ export class TagEditPage extends LitElement {
           <sonic-form-layout>
             <sonic-input
               name="name"
-              label="Nom"
-              placeholder="Ex. Urgent, Backlog…"
+              label=${tx("tags.form.name")}
+              placeholder=${tx("tags.form.name_ph")}
             ></sonic-input>
 
             <div class="form-field">
-              <label class="form-label">Couleur</label>
+              <label class="form-label">${t("tags.form.color")}</label>
               <div class="form-field-control flex flex-wrap gap-1.5 sm:gap-2">
                 ${TAG_COLORS.map(
                   (color) => html`
@@ -192,7 +199,7 @@ export class TagEditPage extends LitElement {
             </div>
 
             <div class="form-field">
-              <label class="form-label">Aperçu</label>
+              <label class="form-label">${t("tags.form.preview")}</label>
               <div class="form-field-control">
                 <tag-badge .tag=${this.previewTag} size="sm"></tag-badge>
               </div>
@@ -205,14 +212,14 @@ export class TagEditPage extends LitElement {
                 variant="outline"
                 ?disabled=${this.busy}
               >
-                Annuler
+                ${t("common.cancel")}
               </sonic-button>
               <sonic-button
                 type="primary"
                 ?disabled=${this.busy}
                 @click=${this.onSubmit}
               >
-                Enregistrer
+                ${t("common.save")}
               </sonic-button>
             </sonic-form-actions>
           </sonic-form-layout>

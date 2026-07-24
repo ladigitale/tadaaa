@@ -125,7 +125,7 @@ install_docker_if_needed() {
 }
 
 write_env() {
-  local app_host="$1" api_host="$2" email="$3" app_secret="$4" pg_pass="$5"
+  local app_host="$1" api_host="$2" email="$3" app_secret="$4" pg_pass="$5" mercure_secret="$6"
   local cors
   cors="^https://$(escape_regex_host "$app_host")\$"
 
@@ -144,6 +144,9 @@ POSTGRES_VERSION=16
 CORS_ALLOW_ORIGIN=${cors}
 REGISTRATION_AUTO_APPROVE=0
 MCP_ALLOWED_HOSTS=${api_host}
+
+MERCURE_JWT_SECRET=${mercure_secret}
+MERCURE_PUBLIC_URL=https://${api_host}/.well-known/mercure
 
 HTTP_PORT=80
 HTTPS_PORT=443
@@ -238,7 +241,7 @@ main() {
   need_cmd curl
 
   local domain app_host api_host email admin_email admin_pass
-  local app_secret pg_pass
+  local app_secret pg_pass mercure_secret
 
   prompt domain "Base domain (DNS must already point here)" ""
   # strip protocol / trailing slash if user pasted a URL
@@ -269,12 +272,13 @@ main() {
 
   app_secret="$(rand_hex)"
   pg_pass="$(rand_hex)"
+  mercure_secret="$(rand_hex)"
 
   if [[ -f "$ENV_FILE" ]]; then
     warn "${ENV_FILE} already exists."
     read -r -p "Overwrite it? [y/N] " ow || true
     if [[ "$ow" =~ ^[Yy]$ ]]; then
-      write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass"
+      write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass" "$mercure_secret"
     else
       ok "Keeping existing .env"
       # Prefer hosts already written in .env for rebuild/retry
@@ -287,7 +291,7 @@ main() {
       api_host="${API_SERVER_NAME:-$api_host}"
     fi
   else
-    write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass"
+    write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass" "$mercure_secret"
   fi
 
   install_docker_if_needed

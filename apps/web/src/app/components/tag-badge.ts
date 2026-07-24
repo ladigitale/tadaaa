@@ -5,6 +5,7 @@ import {css, html, LitElement, nothing} from "lit";
 import {customElement, property} from "lit/decorators.js";
 import type {Tag} from "../api/types";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
+import {tf} from "../i18n";
 import tailwind from "../../css/tailwind";
 
 @customElement("tag-badge")
@@ -86,7 +87,7 @@ export class TagBadge extends LitElement {
                 size="2xs"
                 variant="ghost"
                 ?disabled=${this.disabled}
-                data-aria-label="Retirer ${this.tag.name}"
+                data-aria-label=${tf("tags.remove_aria", {name: this.tag.name})}
                 @click=${this.onRemove}
               >
                 <sonic-icon

@@ -40,6 +40,8 @@ export function stampTodoPatch(
   if (patch.archived !== undefined) mark("archived");
   if (patch.priority !== undefined) mark("priority");
   if (patch.tagIds !== undefined) mark("tagIds");
+  if (patch.startAt !== undefined) mark("startAt");
+  if (patch.endAt !== undefined) mark("endAt");
 
   const next = applyTodoPatch(todo, patch);
   return {
@@ -125,6 +127,8 @@ export function applyRemoteTodo(
     priority: remote.priority,
     tagIds: remote.tagIds,
     parentId: remote.parentId,
+    startAt: remote.startAt ?? null,
+    endAt: remote.endAt ?? null,
   };
 
   if (index < 0) {
@@ -141,6 +145,8 @@ export function applyRemoteTodo(
           priority: remote.priority,
           tagIds: remote.tagIds,
           parentId: remote.parentId,
+          startAt: remote.startAt ?? null,
+          endAt: remote.endAt ?? null,
           createdAt: remote.createdAt,
           fieldVersions: remote.fieldVersions ?? {},
         },
@@ -169,6 +175,14 @@ export function applyRemoteTodo(
     if (field === "tagIds") merged.tagIds = Array.isArray(value) ? value.map(String) : [];
     if (field === "parentId") {
       merged.parentId = typeof value === "string" && value !== "" ? value : null;
+    }
+    if (field === "startAt") {
+      const trimmed = typeof value === "string" ? value.trim() : "";
+      merged.startAt = trimmed || null;
+    }
+    if (field === "endAt") {
+      const trimmed = typeof value === "string" ? value.trim() : "";
+      merged.endAt = trimmed || null;
     }
   });
   merged.fieldVersions = versions;

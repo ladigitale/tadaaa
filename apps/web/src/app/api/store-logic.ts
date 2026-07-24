@@ -60,6 +60,11 @@ function matchesStatus(todo: Todo, status: TodoStatusFilter): boolean {
   }
 }
 
+function startAtSortKey(todo: Todo): string | null {
+  const value = todo.startAt?.trim() || todo.endAt?.trim() || "";
+  return value || null;
+}
+
 function compareTodos(
   a: Todo,
   b: Todo,
@@ -77,6 +82,21 @@ function compareTodos(
     result = a.text.localeCompare(b.text, "fr", {sensitivity: "base"});
     if (result === 0) {
       result = a.createdAt.localeCompare(b.createdAt);
+    }
+  } else if (sortBy === "startAt") {
+    const aKey = startAtSortKey(a);
+    const bKey = startAtSortKey(b);
+    if (aKey === null && bKey === null) {
+      result = a.createdAt.localeCompare(b.createdAt);
+    } else if (aKey === null) {
+      return sortDir === "asc" ? 1 : -1;
+    } else if (bKey === null) {
+      return sortDir === "asc" ? -1 : 1;
+    } else {
+      result = aKey.localeCompare(bKey);
+      if (result === 0) {
+        result = a.createdAt.localeCompare(b.createdAt);
+      }
     }
   } else {
     result = a.createdAt.localeCompare(b.createdAt);
@@ -241,6 +261,16 @@ export function applyTodoPatch(todo: Todo, patch: UpdateTodoPatch): Todo {
     next.description = trimmed || undefined;
   }
 
+  if (patch.startAt !== undefined) {
+    const trimmed = patch.startAt?.trim() ?? "";
+    next.startAt = trimmed || null;
+  }
+
+  if (patch.endAt !== undefined) {
+    const trimmed = patch.endAt?.trim() ?? "";
+    next.endAt = trimmed || null;
+  }
+
   if (patch.done === false) {
     next.done = false;
   }
@@ -266,6 +296,8 @@ export function createTodoRecord(
   }
 
   const description = input.description?.trim() || undefined;
+  const startAt = input.startAt?.trim() || undefined;
+  const endAt = input.endAt?.trim() || undefined;
 
   const priority = input.priority ?? "medium";
   if (!PRIORITY_WEIGHT[priority]) {
@@ -296,6 +328,8 @@ export function createTodoRecord(
       ...new Set((input.tagIds ?? []).map((value) => value.trim()).filter(Boolean)),
     ],
     parentId,
+    ...(startAt ? {startAt} : {}),
+    ...(endAt ? {endAt} : {}),
     createdAt: new Date().toISOString(),
   };
 }
@@ -483,6 +517,15 @@ export function normalizeSnapshot(snapshot: DbSnapshot): DbSnapshot {
         ? null
         : legacyTodo.parentId ?? null;
 
+    const rawStart =
+      typeof (legacyTodo as Todo).startAt === "string"
+        ? (legacyTodo as Todo).startAt!.trim()
+        : "";
+    const rawEnd =
+      typeof (legacyTodo as Todo).endAt === "string"
+        ? (legacyTodo as Todo).endAt!.trim()
+        : "";
+
     const base: Todo = stripComputed({
       id: legacyTodo.id,
       text: legacyTodo.text,
@@ -495,6 +538,8 @@ export function normalizeSnapshot(snapshot: DbSnapshot): DbSnapshot {
       priority,
       tagIds,
       parentId,
+      ...(rawStart ? {startAt: rawStart} : {}),
+      ...(rawEnd ? {endAt: rawEnd} : {}),
       createdAt: legacyTodo.createdAt,
     });
     flattened.push(base);

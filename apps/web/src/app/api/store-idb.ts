@@ -1,7 +1,8 @@
 import {openDB, type DBSchema, type IDBPDatabase} from "idb";
 import type {DbSnapshot, Tag, Todo} from "./types";
 import {normalizeSnapshot} from "./store-logic";
-import {SEED_DATA} from "./seed";
+import {getDemoDatasetName, getSeedData} from "./seed";
+import {getAppLocale} from "../i18n/locale";
 import {newBaseId, formatBaseId} from "./data-package";
 import {
   createTodoStore,
@@ -134,12 +135,12 @@ async function migrateLegacyIfNeeded(db: IDBPDatabase<TadaDb>): Promise<void> {
   const snapshot =
     todos.length > 0 || tags.length > 0
       ? normalizeSnapshot({todos, tags})
-      : normalizeSnapshot(SEED_DATA);
+      : normalizeSnapshot(getSeedData(getAppLocale()));
 
   const record: DatasetRecord = {
     id: DEFAULT_DATASET_ID,
     baseId: newBaseId(),
-    name: "Défaut",
+    name: getDemoDatasetName(getAppLocale()),
     updatedAt: nowIso(),
     todos: snapshot.todos,
     tags: snapshot.tags,
@@ -183,7 +184,7 @@ async function writeSnapshot(snapshot: DbSnapshot): Promise<void> {
   const record: DatasetRecord = withBaseId({
     id: activeId,
     baseId: existing?.baseId ?? newBaseId(),
-    name: existing?.name ?? "Défaut",
+    name: existing?.name ?? getDemoDatasetName(getAppLocale()),
     updatedAt: nowIso(),
     todos: next.todos,
     tags: next.tags,
@@ -200,7 +201,7 @@ async function getActiveDatasetMeta(): Promise<{
   const activeId = await getActiveDatasetId(db);
   const record = await db.get("datasets", activeId);
   if (!record) {
-    return {id: activeId, baseId: newBaseId(), name: "Défaut"};
+    return {id: activeId, baseId: newBaseId(), name: getDemoDatasetName(getAppLocale())};
   }
   const next = withBaseId(record);
   if (next.baseId !== record.baseId) {
@@ -251,7 +252,7 @@ async function createDataset(input: CreateDatasetInput): Promise<DatasetInfo> {
 
   let snapshot: DbSnapshot = {todos: [], tags: []};
   if (source === "seed") {
-    snapshot = normalizeSnapshot(SEED_DATA);
+    snapshot = normalizeSnapshot(getSeedData(getAppLocale()));
   } else if (source === "current") {
     snapshot = await readSnapshot();
   }
@@ -290,6 +291,28 @@ async function activateDataset(id: string): Promise<DatasetInfo> {
   };
 }
 
+async function renameDataset(id: string, name: string): Promise<DatasetInfo> {
+  const db = await getDb();
+  const record = await db.get("datasets", id);
+  if (!record) throw new Error("Jeu de données introuvable");
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Le nom du jeu est requis");
+  const next = withBaseId({
+    ...record,
+    name: trimmed,
+    updatedAt: nowIso(),
+  });
+  await db.put("datasets", next);
+  const activeId = await getActiveDatasetId(db);
+  return {
+    id: next.id,
+    baseId: next.baseId,
+    name: next.name,
+    updatedAt: next.updatedAt,
+    active: next.id === activeId,
+  };
+}
+
 async function deleteDataset(id: string): Promise<void> {
   const db = await getDb();
   const records = await db.getAll("datasets");
@@ -320,6 +343,7 @@ export function getIdbTodoStore(): TodoStore {
         listDatasets,
         createDataset,
         activateDataset,
+        renameDataset,
         deleteDataset,
         getActiveDatasetMeta,
         updateActiveDatasetMeta,

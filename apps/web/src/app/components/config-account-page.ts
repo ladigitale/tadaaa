@@ -7,6 +7,7 @@ import "@supersoniks/concorde/form-actions";
 import {html, LitElement, nothing} from "lit";
 import {customElement, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {
   isAccountConnected,
   isCloudAdmin,
@@ -15,25 +16,32 @@ import {
   saveAccountSettings,
   type AccountSettings,
 } from "../account-settings";
+import {tf, tx} from "../i18n";
 import {
   approveAdminUser,
   checkCloudApiHealth,
   createAccessToken,
   createCloudDataset,
+  createDatasetInvite,
   deleteCloudDataset,
   disableAdminUser,
   fetchAccessTokens,
   fetchAdminUsers,
   fetchCloudDatasets,
+  fetchDatasetMembers,
+  inviteDatasetByEmail,
   loginAccount,
   logoutAccount,
   refreshAccountSession,
   registerAccount,
   rejectAdminUser,
+  removeDatasetMember,
+  renameCloudDataset,
   revokeAccessToken,
   type AccessTokenInfo,
   type AdminUserInfo,
   type CloudDatasetInfo,
+  type DatasetMemberInfo,
 } from "../cloud-api/client";
 import {formatBaseId} from "../api/data-package";
 import {getIdbTodoStore} from "../api/store-idb";
@@ -46,13 +54,14 @@ import {
 import type {SyncState} from "../sync/outbox-types";
 import {read, set} from "../../utils/dataprovider";
 import {appConfigKey, type AppConfigForm} from "../dp";
-import {confirmDialog, showError} from "../utils/modal-dialog";
+import {confirmDialog, promptTextDialog, showError} from "../utils/modal-dialog";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
 import "./access-token-row";
 import "./config-scope-header";
 import "./dataset-row";
 import "./page-shell";
+import "./user-avatar";
 
 @customElement("config-account-page")
 export class ConfigAccountPage extends LitElement {
@@ -118,6 +127,18 @@ export class ConfigAccountPage extends LitElement {
   @state()
   private pendingSyncCount = 0;
 
+  @state()
+  private sharingDataset: CloudDatasetInfo | null = null;
+
+  @state()
+  private shareMembers: DatasetMemberInfo[] = [];
+
+  @state()
+  private shareInviteRole: "writer" | "reader" = "reader";
+
+  @state()
+  private lastInviteUrl: string | null = null;
+
   connectedCallback() {
     super.connectedCallback();
     void this.bootstrap();
@@ -127,8 +148,6 @@ export class ConfigAccountPage extends LitElement {
     const account = loadAccountSettings();
     const form = read(appConfigKey.path) as AppConfigForm | undefined;
     set(appConfigKey.path, {
-      issueUrlTemplate: form?.issueUrlTemplate ?? "",
-      issuePattern: form?.issuePattern ?? "",
       newDatasetName: form?.newDatasetName ?? "",
       p2pReceiveCode: form?.p2pReceiveCode ?? "",
       accountEmail: account.user?.email ?? form?.accountEmail ?? "",
@@ -136,6 +155,7 @@ export class ConfigAccountPage extends LitElement {
       accountApiBaseUrl: account.apiBaseUrl,
       newCloudDatasetName: form?.newCloudDatasetName ?? "",
       newAccessTokenName: form?.newAccessTokenName ?? "",
+      shareInviteEmail: form?.shareInviteEmail ?? "",
     });
     this.account = account;
     await this.reloadCloudState();
@@ -181,7 +201,7 @@ export class ConfigAccountPage extends LitElement {
       this.statusMessage =
         error instanceof Error
           ? error.message
-          : "Impossible de charger le compte cloud.";
+          : tx("dialogs.unknown_error");
       console.error(error);
     }
   }
@@ -203,8 +223,8 @@ export class ConfigAccountPage extends LitElement {
     const password = form.accountPassword;
     if (!email || !password) {
       await showError(
-        new Error("Email et mot de passe requis."),
-        "Connexion impossible",
+        new Error(tx("dialogs.unknown_error")),
+        tx("dialogs.error"),
       );
       return;
     }
@@ -219,10 +239,10 @@ export class ConfigAccountPage extends LitElement {
         form.accountApiBaseUrl,
       );
       set(appConfigKey.path, {...form, accountPassword: ""});
-      this.statusMessage = "Connecté.";
+      this.statusMessage = tx("account.connected_as");
       await this.reloadCloudState();
     } catch (error) {
-      await showError(error, "Connexion impossible");
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -236,8 +256,8 @@ export class ConfigAccountPage extends LitElement {
     const password = form.accountPassword;
     if (!email || password.length < 8) {
       await showError(
-        new Error("Email requis et mot de passe d’au moins 8 caractères."),
-        "Inscription impossible",
+        new Error(tx("dialogs.unknown_error")),
+        tx("dialogs.error"),
       );
       return;
     }
@@ -262,7 +282,7 @@ export class ConfigAccountPage extends LitElement {
         await this.reloadCloudState();
       }
     } catch (error) {
-      await showError(error, "Inscription impossible");
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -273,7 +293,7 @@ export class ConfigAccountPage extends LitElement {
     if (this.busy) return;
     this.account = logoutAccount();
     this.cloudDatasets = [];
-    this.statusMessage = "Déconnecté.";
+    this.statusMessage = tx("account.logout");
     const form = read(appConfigKey.path) as AppConfigForm;
     set(appConfigKey.path, {
       ...form,
@@ -286,7 +306,7 @@ export class ConfigAccountPage extends LitElement {
   private onSyncNow = async () => {
     if (this.busy || !isAccountConnected(this.account)) return;
     this.busy = true;
-    this.statusMessage = "Synchronisation en cours…";
+    this.statusMessage = tx("account.sync.title");
     try {
       // Pull complet : récupère aussi les tâches inchangées (ex. parents
       // effacés localement par un ancien bug de sync incrémental).
@@ -294,11 +314,11 @@ export class ConfigAccountPage extends LitElement {
       if (result.error) {
         this.statusMessage = result.error;
       } else {
-        this.statusMessage = `Sync OK — ${result.pushed} envoyé(s), ${result.pulledTodos} tâche(s) et ${result.pulledTags} tag(s) reçus.`;
+        this.statusMessage = tx("account.sync.now");
       }
       await this.reloadCloudState();
     } catch (error) {
-      await showError(error, "Synchronisation impossible");
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -308,14 +328,14 @@ export class ConfigAccountPage extends LitElement {
   private onCreateCloudDataset = async () => {
     if (this.busy || !isAccountConnected(this.account)) return;
     const form = read(appConfigKey.path) as AppConfigForm;
-    const name = form.newCloudDatasetName.trim() || "Nouveau jeu cloud";
+    const name = form.newCloudDatasetName.trim() || tx("cloud.new_dataset");
     this.busy = true;
     try {
       await createCloudDataset(name, this.account);
       set(appConfigKey.path, {...form, newCloudDatasetName: ""});
       await this.reloadCloudState();
     } catch (error) {
-      await showError(error, "Impossible de créer le jeu cloud");
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -331,17 +351,17 @@ export class ConfigAccountPage extends LitElement {
       formatBaseId(dataset.baseId) === this.editingBaseId;
     if (this.busy || isEditing) return;
     this.busy = true;
-    this.statusMessage = `Ouverture de « ${dataset.name} »…`;
+    this.statusMessage = tx("cloud.edit");
     try {
       const result = await openCloudDatasetForEditing(dataset);
       if (result.error) {
         this.statusMessage = result.error;
       } else {
-        this.statusMessage = `Édition : « ${dataset.name} » — ${result.pulledTodos} tâche(s), ${result.pulledTags} tag(s).`;
+        this.statusMessage = tx("cloud.editing");
       }
       await this.reloadCloudState();
     } catch (error) {
-      await showError(error, "Impossible d’ouvrir ce jeu pour l’édition");
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -354,9 +374,9 @@ export class ConfigAccountPage extends LitElement {
     const dataset = event.detail.dataset;
     if (this.busy) return;
     const ok = await confirmDialog({
-      title: "Supprimer le jeu cloud",
-      message: `Supprimer « ${dataset.name} » sur le serveur ?`,
-      confirmLabel: "Supprimer",
+      title: tx("cloud.delete_title"),
+      message: tf("cloud.delete_confirm", {name: dataset.name}),
+      confirmLabel: tx("cloud.delete"),
       danger: true,
     });
     if (!ok) return;
@@ -364,9 +384,182 @@ export class ConfigAccountPage extends LitElement {
     this.busy = true;
     try {
       await deleteCloudDataset(dataset.id, this.account);
+      if (this.sharingDataset?.id === dataset.id) {
+        this.sharingDataset = null;
+        this.shareMembers = [];
+        this.lastInviteUrl = null;
+      }
       await this.reloadCloudState();
     } catch (error) {
-      await showError(error, "Impossible de supprimer le jeu cloud");
+      await showError(error, tx("dialogs.error"));
+      console.error(error);
+    } finally {
+      this.busy = false;
+    }
+  };
+
+  private onRenameCloudDataset = async (
+    event: CustomEvent<{dataset: CloudDatasetInfo}>,
+  ) => {
+    const dataset = event.detail.dataset;
+    if (this.busy || (dataset.role ?? "owner") !== "owner") return;
+    const nextName = await promptTextDialog({
+      title: tx("datasets.rename_title"),
+      label: tx("datasets.rename_label"),
+      initialValue: dataset.name,
+      confirmLabel: tx("datasets.rename_save"),
+    });
+    if (!nextName || nextName === dataset.name) return;
+    this.busy = true;
+    try {
+      await renameCloudDataset(dataset.id, nextName, this.account);
+      // Aligner le miroir local (même baseId) pour rester lisible.
+      const store = getIdbTodoStore();
+      const locals = await store.listDatasets();
+      const local = locals.find(
+        (row) => formatBaseId(row.baseId) === formatBaseId(dataset.baseId),
+      );
+      if (local && local.name !== nextName) {
+        await store.renameDataset(local.id, nextName);
+      }
+      if (this.sharingDataset?.id === dataset.id) {
+        this.sharingDataset = {...this.sharingDataset, name: nextName};
+      }
+      await this.reloadCloudState();
+    } catch (error) {
+      await showError(error, tx("dialogs.error"));
+      console.error(error);
+    } finally {
+      this.busy = false;
+    }
+  };
+
+  private cloudRoleLabel(role: CloudDatasetInfo["role"]): string {
+    switch (role) {
+      case "writer":
+        return tx("cloud.role_badge_writer");
+      case "reader":
+        return tx("cloud.role_badge_reader");
+      default:
+        return "";
+    }
+  }
+
+  private onShareCloudDataset = async (
+    event: CustomEvent<{dataset: CloudDatasetInfo}>,
+  ) => {
+    const dataset = event.detail?.dataset;
+    if (!dataset?.id) {
+      await showError(new Error(tx("dialogs.unknown_error")), tx("cloud.share"));
+      return;
+    }
+    this.sharingDataset = dataset;
+    this.lastInviteUrl = null;
+    this.shareInviteRole = "reader";
+    this.shareMembers = [];
+    this.busy = true;
+    try {
+      this.shareMembers = await fetchDatasetMembers(dataset.id, this.account);
+    } catch (error) {
+      this.shareMembers = [];
+      await showError(error, tx("dialogs.error"));
+      console.error(error);
+    } finally {
+      this.busy = false;
+      await this.updateComplete;
+      this.renderRoot
+        .querySelector<HTMLElement>("[data-share-panel]")
+        ?.scrollIntoView({behavior: "smooth", block: "nearest"});
+    }
+  };
+
+  private onCloseSharePanel = () => {
+    this.sharingDataset = null;
+    this.shareMembers = [];
+    this.lastInviteUrl = null;
+    const form = read(appConfigKey.path) as AppConfigForm;
+    set(appConfigKey.path, {...form, shareInviteEmail: ""});
+  };
+
+  private onCreateInvite = async () => {
+    if (!this.sharingDataset || this.busy) return;
+    this.busy = true;
+    this.statusMessage = "";
+    try {
+      const invite = await createDatasetInvite(
+        this.sharingDataset.id,
+        this.shareInviteRole,
+        this.account,
+      );
+      const url = `${window.location.origin}${invite.urlPath}`;
+      this.lastInviteUrl = url;
+      try {
+        await navigator.clipboard.writeText(url);
+        this.statusMessage = tx("cloud.link_copied");
+      } catch {
+        this.statusMessage = tx("cloud.link_ready");
+      }
+    } catch (error) {
+      await showError(error, tx("dialogs.error"));
+      console.error(error);
+    } finally {
+      this.busy = false;
+    }
+  };
+
+  private onInviteByEmail = async () => {
+    if (!this.sharingDataset || this.busy) return;
+    const form = read(appConfigKey.path) as AppConfigForm;
+    const email = form.shareInviteEmail.trim();
+    if (!email) {
+      await showError(new Error(tx("cloud.invite_email_required")), tx("cloud.invite_email"));
+      return;
+    }
+    this.busy = true;
+    this.statusMessage = "";
+    try {
+      const invite = await inviteDatasetByEmail(
+        this.sharingDataset.id,
+        email,
+        this.shareInviteRole,
+        this.account,
+      );
+      const url = `${window.location.origin}${invite.urlPath}`;
+      this.lastInviteUrl = url;
+      set(appConfigKey.path, {...form, shareInviteEmail: ""});
+      this.statusMessage = invite.notified
+        ? tf("cloud.invite_email_sent", {email: invite.email})
+        : tf("cloud.invite_email_link_only", {email: invite.email});
+    } catch (error) {
+      await showError(error, tx("dialogs.error"));
+      console.error(error);
+    } finally {
+      this.busy = false;
+    }
+  };
+
+  private onRemoveShareMember = async (member: DatasetMemberInfo) => {
+    if (!this.sharingDataset || member.role === "owner" || this.busy) return;
+    const ok = await confirmDialog({
+      title: tx("cloud.remove_member_title"),
+      message: tf("cloud.remove_member_confirm", {email: member.email}),
+      confirmLabel: tx("cloud.remove"),
+      danger: true,
+    });
+    if (!ok) return;
+    this.busy = true;
+    try {
+      await removeDatasetMember(
+        this.sharingDataset.id,
+        member.userId,
+        this.account,
+      );
+      this.shareMembers = await fetchDatasetMembers(
+        this.sharingDataset.id,
+        this.account,
+      );
+    } catch (error) {
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -376,7 +569,7 @@ export class ConfigAccountPage extends LitElement {
   private onCreateAccessToken = async () => {
     if (this.busy || !isAccountConnected(this.account)) return;
     const form = read(appConfigKey.path) as AppConfigForm;
-    const name = form.newAccessTokenName.trim() || "MCP Cursor";
+    const name = form.newAccessTokenName.trim() || tx("account.mcp.token_ph");
     this.busy = true;
     this.lastPlainToken = null;
     try {
@@ -385,10 +578,9 @@ export class ConfigAccountPage extends LitElement {
       this.mcpUrl = created.mcpUrl;
       set(appConfigKey.path, {...form, newAccessTokenName: ""});
       await this.reloadCloudState();
-      this.statusMessage =
-        "Token créé — utilisez « Copier la config JSON » puis collez dans Cursor.";
+      this.statusMessage = tx("account.mcp.created_toast");
     } catch (error) {
-      await showError(error, "Impossible de créer le token MCP");
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -401,9 +593,12 @@ export class ConfigAccountPage extends LitElement {
     const token = event.detail.token;
     if (this.busy) return;
     const ok = await confirmDialog({
-      title: "Révoquer le token",
-      message: `Révoquer « ${token.name} » (${token.tokenPrefix}…) ?`,
-      confirmLabel: "Révoquer",
+      title: tx("account.mcp.revoke_title"),
+      message: tf("account.mcp.revoke_confirm", {
+        name: token.name,
+        prefix: token.tokenPrefix,
+      }),
+      confirmLabel: tx("account.mcp.revoke"),
       danger: true,
     });
     if (!ok) return;
@@ -415,7 +610,7 @@ export class ConfigAccountPage extends LitElement {
       }
       await this.reloadCloudState();
     } catch (error) {
-      await showError(error, "Impossible de révoquer le token");
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -432,9 +627,9 @@ export class ConfigAccountPage extends LitElement {
   private async copyText(value: string) {
     try {
       await navigator.clipboard.writeText(value);
-      this.statusMessage = "Copié dans le presse-papiers.";
+      this.statusMessage = tx("account.mcp.copy_json");
     } catch {
-      this.statusMessage = "Copie impossible — sélectionnez le texte manuellement.";
+      this.statusMessage = tx("dialogs.unknown_error");
     }
   }
 
@@ -461,10 +656,10 @@ export class ConfigAccountPage extends LitElement {
     this.busy = true;
     try {
       await approveAdminUser(user.id, this.account);
-      this.statusMessage = `Compte ${user.email} approuvé.`;
+      this.statusMessage = tx("account.admin.approve");
       await this.reloadCloudState();
     } catch (error) {
-      await showError(error, "Approbation impossible");
+      await showError(error, tx("dialogs.error"));
     } finally {
       this.busy = false;
     }
@@ -475,10 +670,10 @@ export class ConfigAccountPage extends LitElement {
     this.busy = true;
     try {
       await rejectAdminUser(user.id, this.account);
-      this.statusMessage = `Compte ${user.email} refusé.`;
+      this.statusMessage = tx("account.admin.reject");
       await this.reloadCloudState();
     } catch (error) {
-      await showError(error, "Refus impossible");
+      await showError(error, tx("dialogs.error"));
     } finally {
       this.busy = false;
     }
@@ -487,19 +682,19 @@ export class ConfigAccountPage extends LitElement {
   private onDisableUser = async (user: AdminUserInfo) => {
     if (this.busy) return;
     const ok = await confirmDialog({
-      title: "Désactiver le compte",
-      message: `Désactiver « ${user.email} » ? L’accès API et MCP sera coupé.`,
-      confirmLabel: "Désactiver",
+      title: tx("account.admin.disable_title"),
+      message: tf("account.admin.disable_confirm", {email: user.email}),
+      confirmLabel: tx("account.admin.disable"),
       danger: true,
     });
     if (!ok) return;
     this.busy = true;
     try {
       await disableAdminUser(user.id, this.account);
-      this.statusMessage = `Compte ${user.email} désactivé.`;
+      this.statusMessage = tx("account.admin.disable");
       await this.reloadCloudState();
     } catch (error) {
-      await showError(error, "Désactivation impossible");
+      await showError(error, tx("dialogs.error"));
     } finally {
       this.busy = false;
     }
@@ -508,15 +703,13 @@ export class ConfigAccountPage extends LitElement {
   private onCopyMcpConfig = async () => {
     if (!this.lastPlainToken) {
       await showError(
-        new Error(
-          "Créez d’abord un token : le secret n’est affiché qu’une fois, puis inclus dans le JSON.",
-        ),
-        "Config MCP",
+        new Error(tx("account.mcp.after_create")),
+        tx("account.mcp.title"),
       );
       return;
     }
     await this.copyText(this.buildMcpServerJson(this.lastPlainToken));
-    this.statusMessage = "Config MCP JSON copiée — collez-la dans Cursor (MCP).";
+    this.statusMessage = tx("account.mcp.copy_json");
   };
 
   private formatDate(value: string): string {
@@ -534,16 +727,25 @@ export class ConfigAccountPage extends LitElement {
     const connected = isAccountConnected(this.account);
     const healthLabel =
       this.apiHealthy === null
-        ? "Vérification…"
+        ? tx("account.api_checking")
         : this.apiHealthy
-          ? "API joignable"
-          : "API injoignable";
+          ? tx("account.api_ok")
+          : tx("account.api_ko");
 
     return html`
       <sonic-alert status=${connected ? "success" : "info"}>
         ${connected
-          ? html`Connecté en tant que <strong>${this.account.user?.email}</strong>.`
-          : html`Mode local uniquement — connectez-vous pour gérer vos jeux cloud.`}
+          ? html`<span class="inline-flex items-center gap-2">
+              <user-avatar
+                email=${this.account.user?.email ?? ""}
+                .size=${28}
+              ></user-avatar>
+              <span
+                >${t("account.connected_as")}
+                <strong>${this.account.user?.email}</strong>.</span
+              >
+            </span>`
+          : html`${t("account.local_only")}`}
         <div class="mt-1 text-sm opacity-80">${healthLabel}</div>
       </sonic-alert>
       ${this.statusMessage
@@ -562,7 +764,7 @@ export class ConfigAccountPage extends LitElement {
             ?disabled=${this.busy}
             @click=${this.onLogout}
           >
-            Se déconnecter
+            ${t("account.logout")}
           </sonic-button>
         </sonic-form-actions>
       `;
@@ -573,20 +775,20 @@ export class ConfigAccountPage extends LitElement {
         <sonic-input
           formDataProvider=${appConfigKey.path}
           name="accountApiBaseUrl"
-          label="URL de l’API"
-          placeholder="https://api.example.com"
+          label=${tx("account.api_url")}
+          placeholder=${tx("account.api_url_ph")}
         ></sonic-input>
         <sonic-input
           formDataProvider=${appConfigKey.path}
           name="accountEmail"
-          label="Email"
+          label=${tx("account.email")}
           type="email"
           autocomplete="username"
         ></sonic-input>
         <sonic-input
           formDataProvider=${appConfigKey.path}
           name="accountPassword"
-          label="Mot de passe"
+          label=${tx("account.password")}
           type="password"
           autocomplete="current-password"
         ></sonic-input>
@@ -597,20 +799,18 @@ export class ConfigAccountPage extends LitElement {
           ?disabled=${this.busy}
           @click=${this.onLogin}
         >
-          Se connecter
+          ${t("account.login")}
         </sonic-button>
         <sonic-button
           variant="outline"
           ?disabled=${this.busy}
           @click=${this.onRegister}
         >
-          Créer un compte
+          ${t("account.register")}
         </sonic-button>
       </sonic-form-actions>
       <p class="text-sm text-neutral-500">
-        Créer un compte envoie une demande à valider par un administrateur.
-        Connectez-vous ensuite pour synchroniser le jeu local actif (IndexedDB)
-        avec le cloud.
+        ${t("account.register_hint")}
       </p>
       ${this.pendingRegistrationMessage
         ? html`<sonic-alert status="info"
@@ -626,11 +826,11 @@ export class ConfigAccountPage extends LitElement {
     const others = this.adminUsers.filter((u) => u.status !== "pending");
 
     return html`
-      <section class="flex flex-col gap-3">
-        <h2 class="text-lg font-semibold">Administration des comptes</h2>
+      <section class="flex flex-col gap-3 border-t border-current/15 pt-8">
+        <h2 class="text-lg font-semibold">${t("account.admin.title")}</h2>
         ${pending.length === 0
           ? html`<p class="text-sm text-neutral-500">
-              Aucune demande en attente.
+              ${t("account.admin.no_pending")}
             </p>`
           : html`
               <ul class="flex flex-col gap-2">
@@ -639,10 +839,18 @@ export class ConfigAccountPage extends LitElement {
                     <li
                       class="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 py-2"
                     >
-                      <div>
-                        <div class="font-medium">${user.email}</div>
-                        <div class="text-sm text-neutral-500">
-                          Demandé le ${this.formatDate(user.createdAt)}
+                      <div class="flex min-w-0 items-center gap-2">
+                        <user-avatar
+                          email=${user.email}
+                          .size=${32}
+                        ></user-avatar>
+                        <div class="min-w-0">
+                          <div class="truncate font-medium">${user.email}</div>
+                          <div class="text-sm text-neutral-500">
+                            ${tf("account.admin.requested", {
+                              date: this.formatDate(user.createdAt),
+                            })}
+                          </div>
                         </div>
                       </div>
                       <div class="flex gap-2">
@@ -651,14 +859,14 @@ export class ConfigAccountPage extends LitElement {
                           size="sm"
                           ?disabled=${this.busy}
                           @click=${() => this.onApproveUser(user)}
-                          >Approuver</sonic-button
+                          >${t("account.admin.approve")}</sonic-button
                         >
                         <sonic-button
                           variant="outline"
                           size="sm"
                           ?disabled=${this.busy}
                           @click=${() => this.onRejectUser(user)}
-                          >Refuser</sonic-button
+                          >${t("account.admin.reject")}</sonic-button
                         >
                       </div>
                     </li>
@@ -668,17 +876,25 @@ export class ConfigAccountPage extends LitElement {
             `}
         ${others.length
           ? html`
-              <h3 class="text-sm font-medium text-neutral-600">Autres comptes</h3>
+              <h3 class="text-sm font-medium text-neutral-600">
+                ${t("account.admin.other")}
+              </h3>
               <ul class="flex flex-col gap-2">
                 ${others.map(
                   (user) => html`
                     <li
                       class="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 py-2"
                     >
-                      <div>
-                        <div class="font-medium">${user.email}</div>
-                        <div class="text-sm text-neutral-500">
-                          ${user.status} — ${this.formatDate(user.createdAt)}
+                      <div class="flex min-w-0 items-center gap-2">
+                        <user-avatar
+                          email=${user.email}
+                          .size=${32}
+                        ></user-avatar>
+                        <div class="min-w-0">
+                          <div class="truncate font-medium">${user.email}</div>
+                          <div class="text-sm text-neutral-500">
+                            ${user.status} — ${this.formatDate(user.createdAt)}
+                          </div>
                         </div>
                       </div>
                       ${user.status === "active"
@@ -688,7 +904,7 @@ export class ConfigAccountPage extends LitElement {
                             size="sm"
                             ?disabled=${this.busy}
                             @click=${() => this.onDisableUser(user)}
-                            >Désactiver</sonic-button
+                            >${t("account.admin.disable")}</sonic-button
                           >`
                         : user.status === "rejected" || user.status === "disabled"
                           ? html`<sonic-button
@@ -697,7 +913,7 @@ export class ConfigAccountPage extends LitElement {
                               size="sm"
                               ?disabled=${this.busy}
                               @click=${() => this.onApproveUser(user)}
-                              >Réactiver</sonic-button
+                              >${t("account.admin.reactivate")}</sonic-button
                             >`
                           : nothing}
                     </li>
@@ -715,16 +931,18 @@ export class ConfigAccountPage extends LitElement {
 
     const lastSync = this.syncState?.lastSyncAt
       ? this.formatDate(this.syncState.lastSyncAt)
-      : "Jamais";
+      : tx("account.sync.never");
 
     return html`
-      <section class="space-y-3 border-t border-current/15 pt-4">
-        <h2 class="text-lg font-semibold">Synchronisation</h2>
+      <section class="space-y-3 border-t border-current/15 pt-8">
+        <h2 class="text-lg font-semibold">${t("account.sync.title")}</h2>
         <div class="flex flex-wrap items-center gap-2 text-sm">
           <sonic-badge type=${this.pendingSyncCount > 0 ? "warning" : "neutral"} size="sm">
-            ${this.pendingSyncCount} en attente
+            ${tf("account.sync.pending", {n: this.pendingSyncCount})}
           </sonic-badge>
-          <span class="text-neutral-500">Dernière sync : ${lastSync}</span>
+          <span class="text-neutral-500"
+            >${t("account.sync.last")} ${lastSync}</span
+          >
         </div>
         ${this.syncState?.lastError
           ? html`<sonic-alert type="warning" size="sm"
@@ -738,14 +956,10 @@ export class ConfigAccountPage extends LitElement {
             ?disabled=${this.busy}
             @click=${this.onSyncNow}
           >
-            Synchroniser maintenant
+            ${t("account.sync.now")}
           </sonic-button>
         </sonic-form-actions>
-        <p class="text-sm text-neutral-500">
-          Le jeu local actif est lié au cloud par son <code>baseId</code>. Au
-          premier sync, un snapshot complet est envoyé ; ensuite seules les
-          modifications incrémentales sont échangées (merge champ par champ).
-        </p>
+        <p class="text-sm text-neutral-500">${t("account.sync.help")}</p>
       </section>
     `;
   }
@@ -754,19 +968,23 @@ export class ConfigAccountPage extends LitElement {
     if (!isAccountConnected(this.account)) return nothing;
 
     return html`
-      <section class="space-y-3 border-t border-current/15 pt-4">
-        <h2 class="text-lg font-semibold">Jeux cloud</h2>
-        <p class="text-sm text-neutral-500">
-          <strong>Éditer</strong> bascule l’app sur ce jeu (affichage + sync).
-          Le badge <strong>MCP</strong> indique le jeu actif pour les agents —
-          changeable uniquement via l’outil MCP <code>activate_dataset</code>.
-        </p>
+      <section class="space-y-3 border-t border-current/15 pt-8">
+        <h2 class="text-lg font-semibold">${t("cloud.datasets_title")}</h2>
+        <p class="text-sm text-neutral-500">${t("cloud.datasets_help")}</p>
+        ${this.syncState?.cloudRole === "reader"
+          ? html`
+              <sonic-alert type="info" size="sm">
+                ${t("cloud.readonly_alert")}
+              </sonic-alert>
+            `
+          : nothing}
+        ${this.renderSharePanel()}
         <sonic-form-layout>
           <sonic-input
             formDataProvider=${appConfigKey.path}
             name="newCloudDatasetName"
-            label="Nouveau jeu cloud"
-            placeholder="Nom du jeu"
+            label=${tx("cloud.new_dataset")}
+            placeholder=${tx("cloud.new_dataset_ph")}
           ></sonic-input>
         </sonic-form-layout>
         <sonic-form-actions>
@@ -776,12 +994,12 @@ export class ConfigAccountPage extends LitElement {
             ?disabled=${this.busy}
             @click=${this.onCreateCloudDataset}
           >
-            Créer sur le serveur
+            ${t("cloud.create")}
           </sonic-button>
         </sonic-form-actions>
 
         ${this.cloudDatasets.length === 0
-          ? html`<p class="text-sm text-neutral-500">Aucun jeu cloud.</p>`
+          ? html`<p class="text-sm text-neutral-500">${t("cloud.none")}</p>`
           : html`
               <ul class="m-0 list-none p-0">
                 ${this.cloudDatasets.map((dataset, index) => {
@@ -789,17 +1007,24 @@ export class ConfigAccountPage extends LitElement {
                     this.editingBaseId !== null &&
                     formatBaseId(dataset.baseId) === this.editingBaseId;
                   const rowInfo = {...dataset, active: editing};
+                  const isOwner = (dataset.role ?? "owner") === "owner";
                   return html`
                     <li>
                       ${index > 0 ? this.listSeparator() : nothing}
                       <dataset-row
                         .datasetInfo=${rowInfo}
-                        activeLabel="En édition"
-                        activateLabel="Éditer"
+                        activeLabel=${tx("cloud.editing")}
+                        activateLabel=${tx("cloud.edit")}
+                        roleLabel=${this.cloudRoleLabel(dataset.role)}
                         ?mcpActive=${dataset.active}
+                        ?canShare=${isOwner}
+                        ?canRename=${isOwner}
+                        ?canDelete=${isOwner}
                         ?disabled=${this.busy}
                         @dataset-activate=${this.onActivateCloudDataset}
                         @dataset-delete=${this.onDeleteCloudDataset}
+                        @dataset-rename=${this.onRenameCloudDataset}
+                        @dataset-share=${this.onShareCloudDataset}
                       ></dataset-row>
                     </li>
                   `;
@@ -810,24 +1035,140 @@ export class ConfigAccountPage extends LitElement {
     `;
   }
 
+  private renderSharePanel() {
+    if (!this.sharingDataset) return nothing;
+
+    return html`
+      <div
+        data-share-panel
+        class="space-y-3 rounded-md border-2 border-current/25 bg-neutral-500/10 p-4"
+      >
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <h3 class="text-base font-semibold">
+              ${tx("cloud.share_title")} « ${this.sharingDataset.name} »
+            </h3>
+            <p class="text-sm text-neutral-500">${tx("cloud.share_help")}</p>
+          </div>
+          <sonic-button
+            size="sm"
+            variant="ghost"
+            ?disabled=${this.busy}
+            @click=${this.onCloseSharePanel}
+            >${tx("cloud.close")}</sonic-button
+          >
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <sonic-button
+            size="sm"
+            type=${this.shareInviteRole === "reader" ? "primary" : "default"}
+            ?disabled=${this.busy}
+            @click=${() => {
+              this.shareInviteRole = "reader";
+            }}
+            >${tx("cloud.role_reader")}</sonic-button
+          >
+          <sonic-button
+            size="sm"
+            type=${this.shareInviteRole === "writer" ? "primary" : "default"}
+            ?disabled=${this.busy}
+            @click=${() => {
+              this.shareInviteRole = "writer";
+            }}
+            >${tx("cloud.role_writer")}</sonic-button
+          >
+          <sonic-button
+            size="sm"
+            type="primary"
+            ?disabled=${this.busy}
+            @click=${this.onCreateInvite}
+            >${tx("cloud.create_link")}</sonic-button
+          >
+        </div>
+        <sonic-form-layout>
+          <sonic-input
+            formDataProvider=${appConfigKey.path}
+            name="shareInviteEmail"
+            type="email"
+            label=${tx("cloud.invite_email")}
+            placeholder=${tx("cloud.invite_email_ph")}
+          ></sonic-input>
+        </sonic-form-layout>
+        <sonic-form-actions>
+          <sonic-button
+            size="sm"
+            type="primary"
+            ?disabled=${this.busy}
+            @click=${this.onInviteByEmail}
+            >${tx("cloud.invite_email_send")}</sonic-button
+          >
+        </sonic-form-actions>
+        <p class="text-sm text-neutral-500">${tx("cloud.invite_email_help")}</p>
+        ${this.lastInviteUrl
+          ? html`
+              <p class="break-all font-mono text-xs text-neutral-700">
+                ${this.lastInviteUrl}
+              </p>
+            `
+          : nothing}
+        <div class="space-y-2">
+          <h4 class="text-sm font-medium">${tx("cloud.members")}</h4>
+          ${this.shareMembers.length === 0
+            ? html`<p class="text-sm text-neutral-500">${tx("cloud.no_members")}</p>`
+            : html`
+                <ul class="m-0 list-none space-y-2 p-0">
+                  ${this.shareMembers.map(
+                    (member) => html`
+                      <li
+                        class="flex items-center justify-between gap-2 text-sm"
+                      >
+                        <span class="flex min-w-0 items-center gap-2">
+                          <user-avatar
+                            email=${member.email}
+                            .size=${28}
+                          ></user-avatar>
+                          <span class="min-w-0 truncate"
+                            >${member.email}
+                            <span class="text-neutral-500"
+                              >(${member.role})</span
+                            ></span
+                          >
+                        </span>
+                        ${member.role !== "owner"
+                          ? html`
+                              <sonic-button
+                                size="xs"
+                                variant="ghost"
+                                type="danger"
+                                ?disabled=${this.busy}
+                                @click=${() => this.onRemoveShareMember(member)}
+                                >${tx("cloud.remove")}</sonic-button
+                              >
+                            `
+                          : nothing}
+                      </li>
+                    `,
+                  )}
+                </ul>
+              `}
+        </div>
+      </div>
+    `;
+  }
+
   private renderMcpSection() {
     if (!isAccountConnected(this.account)) return nothing;
 
     return html`
-      <section class="space-y-3 border-t border-current/15 pt-4">
-        <h2 class="text-lg font-semibold">MCP (agents)</h2>
+      <section class="space-y-3 border-t border-current/15 pt-8">
+        <h2 class="text-lg font-semibold">${t("account.mcp.title")}</h2>
         <p class="text-sm text-neutral-500">
-          Endpoint HTTP :
-          <code class="text-xs">${this.mcpUrl}</code>.
-          Cursor refuse le certificat auto-signé en mode
-          <code class="text-xs">url</code> — la config générée passe par un proxy
-          stdio local (+ CA dans
-          <code class="text-xs">.ops/certs/</code>).
+          ${tf("account.mcp.help", {url: this.mcpUrl})}
         </p>
         ${this.lastPlainToken
           ? html`
               <sonic-alert type="warning" size="sm">
-                Secret (une seule fois) :
+                ${t("account.mcp.secret_once")}
                 <code class="break-all text-xs">${this.lastPlainToken}</code>
               </sonic-alert>
               <pre
@@ -836,16 +1177,15 @@ export class ConfigAccountPage extends LitElement {
             `
           : html`
               <p class="text-sm text-neutral-500">
-                Après création d’un token, la config JSON (proxy stdio + token)
-                s’affiche ici pour la coller dans Cursor → MCP.
+                ${t("account.mcp.after_create")}
               </p>
             `}
         <sonic-form-layout>
           <sonic-input
             formDataProvider=${appConfigKey.path}
             name="newAccessTokenName"
-            label="Nom du token"
-            placeholder="MCP Cursor"
+            label=${tx("account.mcp.token_name")}
+            placeholder=${tx("account.mcp.token_ph")}
           ></sonic-input>
         </sonic-form-layout>
         <sonic-form-actions>
@@ -855,7 +1195,7 @@ export class ConfigAccountPage extends LitElement {
             ?disabled=${this.busy}
             @click=${this.onCreateAccessToken}
           >
-            Créer un token MCP
+            ${t("account.mcp.create")}
           </sonic-button>
           <sonic-button
             size="sm"
@@ -863,11 +1203,11 @@ export class ConfigAccountPage extends LitElement {
             ?disabled=${!this.lastPlainToken}
             @click=${this.onCopyMcpConfig}
           >
-            Copier la config JSON
+            ${t("account.mcp.copy_json")}
           </sonic-button>
         </sonic-form-actions>
         ${this.accessTokens.length === 0
-          ? html`<p class="text-sm text-neutral-500">Aucun token actif.</p>`
+          ? html`<p class="text-sm text-neutral-500">${t("account.mcp.none")}</p>`
           : html`
               <ul class="m-0 list-none p-0">
                 ${this.accessTokens.map(
@@ -884,10 +1224,6 @@ export class ConfigAccountPage extends LitElement {
                 )}
               </ul>
             `}
-        <p class="text-sm text-neutral-500">
-          Cursor → Settings → MCP → coller le JSON (ou fusionner dans
-          <code>mcp.json</code>).
-        </p>
       </section>
     `;
   }
@@ -901,7 +1237,7 @@ export class ConfigAccountPage extends LitElement {
           <config-scope-header section="account"></config-scope-header>
         </div>
 
-        <div class="space-y-4 pt-4">
+        <div class="space-y-8 pt-8">
           ${this.renderConnectionStatus()}
           ${this.renderAuthForm()}
           ${this.renderAdminUsers()}

@@ -51,6 +51,14 @@ services:
       MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-${API_SERVER_NAME:-api.example.com}}
       SYMFONY_TRUSTED_PROXIES: ${SYMFONY_TRUSTED_PROXIES:-private_ranges}
       SYMFONY_TRUSTED_HEADERS: ${SYMFONY_TRUSTED_HEADERS:-x-forwarded-for,x-forwarded-host,x-forwarded-proto,x-forwarded-port}
+      MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL:-https://api.example.com/.well-known/mercure}
+      MERCURE_JWT_SECRET: ${MERCURE_JWT_SECRET:?MERCURE_JWT_SECRET is required}
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET}
+      MERCURE_PUBLISHER_JWT_ALG: ${MERCURE_PUBLISHER_JWT_ALG:-HS256}
+      MERCURE_SUBSCRIBER_JWT_ALG: ${MERCURE_SUBSCRIBER_JWT_ALG:-HS256}
+      MERCURE_EXTRA_DIRECTIVES: |
+        cors_origins https://${APP_SERVER_NAME:-app.example.com}
     volumes:
       - jwt_keys:/app/config/jwt
     expose:

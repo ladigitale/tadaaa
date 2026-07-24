@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\Dataset;
 use App\Entity\User;
+use App\Service\DatasetAccessService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -20,6 +21,7 @@ final class DatasetActivateProcessor implements ProcessorInterface
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        private readonly DatasetAccessService $access,
         private readonly Security $security,
     ) {
     }
@@ -31,9 +33,7 @@ final class DatasetActivateProcessor implements ProcessorInterface
         }
 
         $user = $this->currentUser();
-        if ($data->getOwner()->getId()->toRfc4122() !== $user->getId()->toRfc4122()) {
-            throw new AccessDeniedHttpException('Accès refusé à ce jeu de données.');
-        }
+        $this->access->assertCanRead($user, $data);
 
         $user->setActiveDataset($data);
         $this->entityManager->flush();

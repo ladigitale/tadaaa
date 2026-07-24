@@ -7,9 +7,11 @@ import configAccountPage from "./config/account/page";
 import configAppearancePage from "./config/appearance/page";
 import configDataPage from "./config/data/page";
 import configDatasetsPage from "./config/datasets/page";
+import configIssuesPage from "./config/issues/page";
 import configMaintenancePage from "./config/maintenance/page";
 import configP2pPage from "./config/p2p/page";
 import configPage from "./config/page";
+import invitePage from "./invite/page";
 import tacheItem_idEditPage from "./tache/item/[id]/edit/page";
 import tacheItem_idMovePage from "./tache/item/[id]/move/page";
 import tacheItem_idNewPage from "./tache/item/[id]/new/page";
@@ -38,6 +40,10 @@ const configDatasetsDefaultLayoutRoutes = {
     "/config/datasets$": configDatasetsPage
 }        
 
+const configIssuesDefaultLayoutRoutes = {
+    "/config/issues$": configIssuesPage
+}        
+
 const configMaintenanceDefaultLayoutRoutes = {
     "/config/maintenance$": configMaintenancePage
 }        
@@ -51,9 +57,14 @@ const configDefaultLayoutRoutes = {
     "/config/appearance\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configAppearanceDefaultLayoutRoutes}></sonic-router>`,
     "/config/data\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configDataDefaultLayoutRoutes}></sonic-router>`,
     "/config/datasets\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configDatasetsDefaultLayoutRoutes}></sonic-router>`,
+    "/config/issues\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configIssuesDefaultLayoutRoutes}></sonic-router>`,
     "/config/maintenance\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configMaintenanceDefaultLayoutRoutes}></sonic-router>`,
     "/config/p2p\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configP2pDefaultLayoutRoutes}></sonic-router>`,
     "/config$": configPage
+}        
+
+const inviteDefaultLayoutRoutes = {
+    "/invite$": invitePage
 }        
 
 const tacheItem_idEditDefaultLayoutRoutes = {
@@ -113,6 +124,7 @@ const tagsDefaultLayoutRoutes = {
 
 const layoutRoutes = {
     "/config\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configDefaultLayoutRoutes}></sonic-router>`,
+    "/invite\\b": () => html`<sonic-router .basePath=${basePath} .routes=${inviteDefaultLayoutRoutes}></sonic-router>`,
     "/tache\\b": () => html`<sonic-router .basePath=${basePath} .routes=${tacheDefaultLayoutRoutes}></sonic-router>`,
     "/tags\\b": () => html`<sonic-router .basePath=${basePath} .routes=${tagsDefaultLayoutRoutes}></sonic-router>`,
     "/$": page,

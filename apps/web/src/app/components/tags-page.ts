@@ -4,11 +4,13 @@ import "@supersoniks/concorde/icon";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, query, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {deleteTag, fetchTags, fetchTodos} from "../api/client";
 import {countTodosByTag} from "../api/store-logic";
 import type {Tag, Todo} from "../api/types";
 import {set} from "../../utils/dataprovider";
 import {tagsFilterKey, tagsListKey} from "../dp";
+import {tf, tx} from "../i18n";
 import tailwind from "../../css/tailwind";
 import {confirmDialog, showError} from "../utils/modal-dialog";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
@@ -183,9 +185,9 @@ export class TagsPage extends LitElement {
     const tag = event.detail.tag;
     const count = countTodosByTag(this.todos, tag.id);
     const ok = await confirmDialog({
-      title: "Supprimer l’étiquette",
-      message: `Supprimer « ${tag.name} » ? Elle est utilisée par ${count} tâche(s).`,
-      confirmLabel: "Supprimer",
+      title: tx("tags.delete_title"),
+      message: tf("tags.delete_confirm", {name: tag.name, n: count}),
+      confirmLabel: tx("tags.delete"),
       danger: true,
     });
     if (!ok || this.busy) return;
@@ -195,7 +197,7 @@ export class TagsPage extends LitElement {
       await deleteTag(tag.id);
       await this.reload();
     } catch (error) {
-      await showError(error, "Impossible de supprimer l’étiquette");
+      await showError(error);
       console.error(error);
     } finally {
       this.busy = false;
@@ -224,7 +226,7 @@ export class TagsPage extends LitElement {
               name="q"
               type="search"
               size="sm"
-              placeholder="Filtrer les étiquettes"
+              placeholder=${tx("tags.filter_ph")}
               class="min-w-0"
             >
               <sonic-icon
@@ -242,7 +244,7 @@ export class TagsPage extends LitElement {
           ${filtered.length === 0
             ? html`
                 <p class="py-12 text-sm italic text-neutral-500">
-                  Aucune étiquette pour ces filtres.
+                  ${t("tags.empty_filtered")}
                 </p>
               `
             : html`
@@ -277,7 +279,7 @@ export class TagsPage extends LitElement {
               name="plus"
               size="sm"
             ></sonic-icon>
-            Nouvelle étiquette
+            ${t("tags.new")}
           </sonic-button>
         </div>
       </div>

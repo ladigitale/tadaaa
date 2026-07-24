@@ -4,6 +4,7 @@ import "@supersoniks/concorde/tooltip";
 import {html, LitElement, nothing} from "lit";
 import {customElement, property} from "lit/decorators.js";
 import type {TodoAncestor} from "../api/types";
+import {tx} from "../i18n";
 import {TACHE_ROOT, tacheItemPath} from "../utils/tache-paths";
 import tailwind from "../../css/tailwind";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
@@ -49,7 +50,7 @@ export class TaskBreadcrumb extends LitElement {
   private get segments(): BreadcrumbSegment[] {
     const items: BreadcrumbSegment[] = [];
     if (this.showRoot) {
-      items.push({label: "Tâches principales", href: TACHE_ROOT});
+      items.push({label: tx("tasks.root_heading"), href: TACHE_ROOT});
     }
     for (const ancestor of this.ancestors) {
       const full = ancestor.text.trim();
@@ -108,24 +109,25 @@ export class TaskBreadcrumb extends LitElement {
     return html`
       <nav
         class="flex min-w-0 flex-wrap items-center gap-0.5 text-sm"
-        aria-label="Fil d’Ariane"
+        aria-label=${tx("common.breadcrumb_aria")}
       >
-        <sonic-button
-          goBack
-          shape="circle"
-          variant="ghost"
-          size="sm"
-          class="shrink-0"
-          data-aria-label="Retour"
-          title="Retour"
-        >
-          <sonic-icon
-            library=${ICON_LIBRARY}
-            prefix=${ICON_PREFIX}
-            name="nav-arrow-left"
+        <sonic-tooltip label=${tx("common.back")} placement="bottom">
+          <sonic-button
+            goBack
+            shape="circle"
+            variant="ghost"
             size="sm"
-          ></sonic-icon>
-        </sonic-button>
+            class="shrink-0"
+            data-aria-label=${tx("common.back")}
+          >
+            <sonic-icon
+              library=${ICON_LIBRARY}
+              prefix=${ICON_PREFIX}
+              name="nav-arrow-left"
+              size="sm"
+            ></sonic-icon>
+          </sonic-button>
+        </sonic-tooltip>
         ${segments.map(
           (segment, index) => html`
             ${index > 0

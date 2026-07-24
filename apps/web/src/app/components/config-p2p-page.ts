@@ -4,12 +4,14 @@ import "@supersoniks/concorde/icon";
 import {html, LitElement, nothing} from "lit";
 import {customElement, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {
   exportTodosSnapshot,
   importTodosSnapshot,
 } from "../api/client";
 import {read} from "../../utils/dataprovider";
 import {appConfigKey, type AppConfigForm} from "../dp";
+import {tx} from "../i18n";
 import {refreshConfigAppData} from "../utils/config-refresh";
 import {confirmDialog, showAlert, showError} from "../utils/modal-dialog";
 import {
@@ -77,16 +79,13 @@ export class ConfigP2pPage extends LitElement {
       const session = new TadaP2pSession();
       this.bindP2pSession(session);
       session.onPackageSent = () => {
-        void showAlert(
-          "Partage envoyé",
-          "Le jeu actif a été transmis en P2P.",
-        );
+        void showAlert(tx("p2p.status.done"), tx("p2p.share"));
       };
       const code = await session.startHost(() => exportTodosSnapshot());
       this.p2pHostCode = code;
     } catch (error) {
       this.onP2pStop();
-      await showError(error, "Impossible de démarrer le partage");
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -99,8 +98,8 @@ export class ConfigP2pPage extends LitElement {
     const code = form.p2pReceiveCode?.trim() ?? "";
     if (!code) {
       await showError(
-        new Error("Saisissez le code de partage."),
-        "Code manquant",
+        new Error(tx("dialogs.unknown_error")),
+        tx("dialogs.error"),
       );
       return;
     }
@@ -112,15 +111,15 @@ export class ConfigP2pPage extends LitElement {
       session.onPackageReceived = (pkg) => {
         void (async () => {
           const ok = await confirmDialog({
-            title: "Recevoir via P2P",
+            title: tx("p2p.receive_title"),
             message: [
               `« ${pkg.name} »`,
               `id ${pkg.id}`,
               `format tada v${pkg.version}`,
               "",
-              "Remplacer le jeu actif par ces données ?",
+              tx("p2p.receive_confirm"),
             ].join("\n"),
-            confirmLabel: "Importer",
+            confirmLabel: tx("data.import"),
             danger: true,
           });
           if (!ok) {
@@ -130,9 +129,9 @@ export class ConfigP2pPage extends LitElement {
           try {
             await importTodosSnapshot(pkg);
             await refreshConfigAppData();
-            await showAlert("Réception OK", `Jeu « ${pkg.name} » importé.`);
+            await showAlert(tx("p2p.status.done"), tx("p2p.receive_ok"));
           } catch (error) {
-            await showError(error, "Import P2P impossible");
+            await showError(error, tx("dialogs.error"));
             console.error(error);
           } finally {
             this.onP2pStop();
@@ -142,7 +141,7 @@ export class ConfigP2pPage extends LitElement {
       await session.startGuest(code);
     } catch (error) {
       this.onP2pStop();
-      await showError(error, "Connexion P2P impossible");
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -152,17 +151,17 @@ export class ConfigP2pPage extends LitElement {
   private get p2pStatusLabel(): string {
     switch (this.p2pStatus) {
       case "connecting":
-        return "Connexion au broker…";
+        return tx("p2p.status.connecting");
       case "waiting":
-        return this.p2pHostCode
-          ? `En attente d’un pair (code ${this.p2pHostCode})…`
-          : "En attente…";
+        return tx("p2p.status.waiting");
       case "transferring":
-        return "Transfert en cours…";
+        return tx("p2p.status.transfer");
       case "done":
-        return "Terminé.";
+        return tx("p2p.status.done");
       case "error":
-        return this.p2pDetail || "Erreur.";
+        return this.p2pDetail || tx("p2p.status.error");
+      case "idle":
+        return tx("p2p.status.idle");
       default:
         return "";
     }
@@ -177,88 +176,93 @@ export class ConfigP2pPage extends LitElement {
           <config-scope-header section="p2p"></config-scope-header>
         </div>
 
-        <div class="mt-6 space-y-3">
+        <div class="mt-8 space-y-10">
           <p class="text-sm text-neutral-600">
-            WebRTC direct. Rendez-vous gratuit sans compte :
+            ${t("p2p.intro")}
             <code class="text-xs">${P2P_BROKER_LABEL}</code>
-            (signaling uniquement).
           </p>
 
-          ${this.p2pHostCode
-            ? html`
-                <div
-                  class="rounded border border-neutral-200 bg-neutral-100 px-3 py-2"
-                >
-                  <p class="text-xs text-neutral-500">Code à transmettre</p>
-                  <p
-                    class="font-mono text-2xl font-semibold tracking-[0.2em] text-neutral-900"
-                  >
-                    ${this.p2pHostCode}
-                  </p>
-                </div>
-              `
-            : nothing}
-
-          ${this.p2pStatusLabel
-            ? html`
-                <p
-                  class="text-sm ${this.p2pStatus === "error"
-                    ? "text-red-700"
-                    : "text-neutral-600"}"
-                >
-                  ${this.p2pStatusLabel}
-                </p>
-              `
-            : nothing}
-
-          <div class="flex flex-wrap gap-2">
-            <sonic-button
-              type="primary"
-              size="sm"
-              ?disabled=${this.busy || this.p2pStatus === "waiting"}
-              @click=${this.onP2pShare}
-            >
-              <sonic-icon
-                library=${ICON_LIBRARY}
-                prefix=${ICON_PREFIX}
-                name="share-android"
-                size="sm"
-              ></sonic-icon>
-              Partager le jeu actif
-            </sonic-button>
-            ${this.p2pStatus !== "idle"
+          <section class="space-y-3">
+            <h2 class="text-base font-semibold">${t("p2p.share")}</h2>
+            ${this.p2pHostCode
               ? html`
-                  <sonic-button
-                    variant="outline"
-                    size="sm"
-                    @click=${this.onP2pStop}
+                  <div
+                    class="rounded border border-neutral-200 bg-neutral-100 px-3 py-2"
                   >
-                    Arrêter
-                  </sonic-button>
+                    <p class="text-xs text-neutral-500">${t("p2p.code_label")}</p>
+                    <p
+                      class="font-mono text-2xl font-semibold tracking-[0.2em] text-neutral-900"
+                    >
+                      ${this.p2pHostCode}
+                    </p>
+                  </div>
                 `
               : nothing}
-          </div>
 
-          <div
-            class="flex flex-wrap items-end gap-2"
-            formDataProvider=${appConfigKey.path}
-          >
-            <sonic-input
-              name="p2pReceiveCode"
-              label="Recevoir (code)"
-              size="sm"
-              placeholder="Ex. K7M2PQ"
-              class="min-w-[10rem] flex-1 uppercase"
-            ></sonic-input>
-            <sonic-button
-              size="sm"
-              variant="outline"
-              ?disabled=${this.busy}
-              @click=${this.onP2pReceive}
+            ${this.p2pStatus !== "idle"
+              ? html`
+                  <p
+                    class="text-sm ${this.p2pStatus === "error"
+                      ? "text-red-700"
+                      : "text-neutral-600"}"
+                  >
+                    ${this.p2pStatusLabel}
+                  </p>
+                `
+              : nothing}
+
+            <div class="flex flex-wrap gap-2">
+              <sonic-button
+                type="primary"
+                size="sm"
+                ?disabled=${this.busy || this.p2pStatus === "waiting"}
+                @click=${this.onP2pShare}
+              >
+                <sonic-icon
+                  library=${ICON_LIBRARY}
+                  prefix=${ICON_PREFIX}
+                  name="share-android"
+                  size="sm"
+                ></sonic-icon>
+                ${t("p2p.share")}
+              </sonic-button>
+              ${this.p2pStatus !== "idle"
+                ? html`
+                    <sonic-button
+                      variant="outline"
+                      size="sm"
+                      @click=${this.onP2pStop}
+                    >
+                      ${t("p2p.stop")}
+                    </sonic-button>
+                  `
+                : nothing}
+            </div>
+          </section>
+
+          <section class="space-y-3">
+            <h2 class="text-base font-semibold">${t("p2p.receive_label")}</h2>
+            <div
+              class="flex flex-wrap items-end gap-2"
+              formDataProvider=${appConfigKey.path}
             >
-              Se connecter
-            </sonic-button>
-          </div>
+              <sonic-input
+                name="p2pReceiveCode"
+                label=${tx("p2p.receive_label")}
+                size="sm"
+                placeholder=${tx("p2p.receive_ph")}
+                class="min-w-[10rem] flex-1 uppercase"
+              ></sonic-input>
+              <sonic-button
+                size="sm"
+                variant="outline"
+                ?disabled=${this.busy}
+                @click=${this.onP2pReceive}
+              >
+                ${t("p2p.connect")}
+              </sonic-button>
+            </div>
+          </section>
         </div>
       </page-shell>
     `;

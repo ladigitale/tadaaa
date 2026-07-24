@@ -1,7 +1,9 @@
 import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
+import "@supersoniks/concorde/tooltip";
 import {html, LitElement, nothing} from "lit";
 import {customElement, property} from "lit/decorators.js";
+import {tx} from "../i18n";
 import tailwind from "../../css/tailwind";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 
@@ -36,25 +38,26 @@ export class TaskSiblingNav extends LitElement {
       <div
         class="flex shrink-0 items-center gap-0.5"
         role="navigation"
-        aria-label="Tâches sœurs"
+        aria-label=${tx("tasks.siblings_aria")}
       >
-        <sonic-button
-          shape="circle"
-          variant="ghost"
-          size="sm"
-          ?disabled=${!hasPrevious}
-          href=${hasPrevious ? this.previousHref : nothing}
-          ?pushstate=${hasPrevious}
-          data-aria-label="Tâche précédente"
-          title="Tâche précédente"
-        >
-          <sonic-icon
-            library=${ICON_LIBRARY}
-            prefix=${ICON_PREFIX}
-            name="nav-arrow-left"
+        <sonic-tooltip label=${tx("tasks.prev")} placement="bottom">
+          <sonic-button
+            shape="circle"
+            variant="ghost"
             size="sm"
-          ></sonic-icon>
-        </sonic-button>
+            ?disabled=${!hasPrevious}
+            href=${hasPrevious ? this.previousHref : nothing}
+            ?pushstate=${hasPrevious}
+            data-aria-label=${tx("tasks.prev")}
+          >
+            <sonic-icon
+              library=${ICON_LIBRARY}
+              prefix=${ICON_PREFIX}
+              name="nav-arrow-left"
+              size="sm"
+            ></sonic-icon>
+          </sonic-button>
+        </sonic-tooltip>
 
         <span
           class="min-w-[2.75rem] px-0.5 text-center text-xs tabular-nums text-neutral-500"
@@ -62,23 +65,24 @@ export class TaskSiblingNav extends LitElement {
           >${this.index}&nbsp;/&nbsp;${this.total}</span
         >
 
-        <sonic-button
-          shape="circle"
-          variant="ghost"
-          size="sm"
-          ?disabled=${!hasNext}
-          href=${hasNext ? this.nextHref : nothing}
-          ?pushstate=${hasNext}
-          data-aria-label="Tâche suivante"
-          title="Tâche suivante"
-        >
-          <sonic-icon
-            library=${ICON_LIBRARY}
-            prefix=${ICON_PREFIX}
-            name="nav-arrow-right"
+        <sonic-tooltip label=${tx("tasks.next")} placement="bottom">
+          <sonic-button
+            shape="circle"
+            variant="ghost"
             size="sm"
-          ></sonic-icon>
-        </sonic-button>
+            ?disabled=${!hasNext}
+            href=${hasNext ? this.nextHref : nothing}
+            ?pushstate=${hasNext}
+            data-aria-label=${tx("tasks.next")}
+          >
+            <sonic-icon
+              library=${ICON_LIBRARY}
+              prefix=${ICON_PREFIX}
+              name="nav-arrow-right"
+              size="sm"
+            ></sonic-icon>
+          </sonic-button>
+        </sonic-tooltip>
       </div>
     `;
   }

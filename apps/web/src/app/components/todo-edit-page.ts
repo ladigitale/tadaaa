@@ -6,13 +6,17 @@ import "@supersoniks/concorde/form-actions";
 import {html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {fetchTags, fetchTodo, patchTodo} from "../api/client";
 import type {Tag, TodoPriority} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
 import {todoEditKey, type TodoEditForm} from "../dp";
+import {tx} from "../i18n";
 import {navigateTo} from "../utils/navigate";
 import {TACHE_ROOT, tacheItemPath} from "../utils/tache-paths";
 import {isEnterSubmitEvent} from "../utils/form-enter-submit";
+import {focusPrimaryInput} from "../utils/focus-primary-input";
+import {parseDateOnly} from "../utils/dates";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
 import {showError} from "../utils/modal-dialog";
@@ -22,11 +26,13 @@ import "./task-scope-header";
 import "./tag-picker";
 import type {PopSelectOption} from "./pop-select";
 
-const PRIORITY_OPTIONS: PopSelectOption[] = [
-  {value: "low", label: "Basse", icon: "arrow-down"},
-  {value: "medium", label: "Moyenne", icon: "minus"},
-  {value: "high", label: "Haute", icon: "arrow-up"},
-];
+function priorityOptions(): PopSelectOption[] {
+  return [
+    {value: "low", label: tx("tasks.priority.low"), icon: "arrow-down"},
+    {value: "medium", label: tx("tasks.priority.medium"), icon: "minus"},
+    {value: "high", label: tx("tasks.priority.high"), icon: "arrow-up"},
+  ];
+}
 
 @customElement("todo-edit-page")
 export class TodoEditPage extends LitElement {
@@ -55,6 +61,8 @@ export class TodoEditPage extends LitElement {
     description: "",
     priority: "medium",
     tagIds: [],
+    startAt: "",
+    endAt: "",
   };
 
   @subscribe(todoEditKey.priority)
@@ -98,11 +106,17 @@ export class TodoEditPage extends LitElement {
         description: todo.description ?? "",
         priority: todo.priority ?? "medium",
         tagIds,
+        startAt: todo.startAt?.trim() || "",
+        endAt: todo.endAt?.trim() || "",
       });
     } catch {
       this.notFound = true;
     } finally {
       this.loading = false;
+    }
+
+    if (!this.notFound) {
+      void focusPrimaryInput(this);
     }
   }
 
@@ -133,10 +147,12 @@ export class TodoEditPage extends LitElement {
         description: form.description?.trim() || null,
         priority: (form.priority ?? "medium") as TodoPriority,
         tagIds,
+        startAt: parseDateOnly(form.startAt),
+        endAt: parseDateOnly(form.endAt),
       });
       navigateTo(this.backHref, true);
     } catch (error) {
-      await showError(error, "Impossible de modifier la tâche");
+      await showError(error);
       console.error(error);
     } finally {
       this.busy = false;
@@ -161,7 +177,7 @@ export class TodoEditPage extends LitElement {
       return html`
         <page-shell>
           ${this.renderScopeHeader()}
-          <p class="mt-3 text-sm text-neutral-500">Chargement…</p>
+          <p class="mt-3 text-sm text-neutral-500">${t("common.loading")}</p>
         </page-shell>
       `;
     }
@@ -170,9 +186,9 @@ export class TodoEditPage extends LitElement {
       return html`
         <page-shell>
           ${this.renderScopeHeader()}
-          <p class="mt-3 text-sm text-neutral-500">Tâche introuvable.</p>
+          <p class="mt-3 text-sm text-neutral-500">${t("tasks.not_found")}</p>
           <sonic-button href=${TACHE_ROOT} pushstate variant="outline">
-            Retour aux tâches
+            ${t("tasks.back")}
           </sonic-button>
         </page-shell>
       `;
@@ -190,25 +206,37 @@ export class TodoEditPage extends LitElement {
           <sonic-form-layout>
             <sonic-input
               name="text"
-              label="Nom"
-              placeholder="Ex. Suivre RM-42"
+              label=${tx("tasks.form.name")}
+              placeholder=${tx("tasks.form.name_ph")}
             ></sonic-input>
 
             <sonic-textarea
               name="description"
-              label="Description"
-              placeholder="Détails optionnels…"
+              label=${tx("tasks.form.description")}
+              placeholder=${tx("tasks.form.description_ph")}
               rows="3"
             ></sonic-textarea>
 
+            <sonic-input
+              type="date"
+              name="startAt"
+              label=${tx("tasks.form.start_at")}
+            ></sonic-input>
+
+            <sonic-input
+              type="date"
+              name="endAt"
+              label=${tx("tasks.form.end_at")}
+            ></sonic-input>
+
             <pop-select
-              label="Priorité"
+              label=${tx("tasks.form.priority")}
               showLabel
               name="priority"
               mode="radio"
               size="md"
               .value=${this.editPriority}
-              .options=${PRIORITY_OPTIONS}
+              .options=${priorityOptions()}
               ?disabled=${this.busy}
               minWidth="12rem"
             ></pop-select>
@@ -216,7 +244,7 @@ export class TodoEditPage extends LitElement {
             ${this.tags.length > 0
               ? html`
                   <div class="form-field">
-                    <label class="form-label">Étiquettes</label>
+                    <label class="form-label">${t("tasks.form.tags")}</label>
                     <div class="form-field-control">
                       <tag-picker
                         formPath=${todoEditKey.path}
@@ -239,14 +267,14 @@ export class TodoEditPage extends LitElement {
                 variant="outline"
                 ?disabled=${this.busy}
               >
-                Annuler
+                ${t("common.cancel")}
               </sonic-button>
               <sonic-button
                 type="primary"
                 ?disabled=${this.busy}
                 @click=${this.onSubmit}
               >
-                Enregistrer
+                ${t("common.save")}
               </sonic-button>
             </sonic-form-actions>
           </sonic-form-layout>

@@ -15,16 +15,24 @@ import {
   todosFilterKey,
   type TodosFilter,
 } from "./dp";
-import {loadAppSettings} from "./settings";
 import {loadAccountSettings, isAccountConnected} from "./account-settings";
 import {initTheme} from "./theme";
+import {initAppLocale} from "./i18n";
 import {registerSyncHandler} from "./sync/registry";
 import {enqueueMutationForDataset} from "./sync/notify";
 import {scheduleAutoSync} from "./sync/engine";
+import {
+  ensureMercureSubscription,
+  resetMercureSubscription,
+} from "./sync/mercure";
 import {getIdbTodoStore} from "./api/store-idb";
+import {initPwaInstallListeners} from "./pwa-install";
+import {startDueDateWatcher} from "./notifications/due-dates";
 
 export function initApp(): void {
+  initAppLocale();
   initTheme();
+  initPwaInstallListeners();
   // Avant tout fetch : sous Apache, /mock-api sans SW = index.html (JSON parse fail).
   installMockApiFetchFallback();
   initApiConfiguration();
@@ -44,12 +52,16 @@ export function initApp(): void {
     description: "",
     priority: "medium",
     tagIds: [],
+    startAt: "",
+    endAt: "",
   });
   set(todoEditKey.path, {
     text: "",
     description: "",
     priority: "medium",
     tagIds: [],
+    startAt: "",
+    endAt: "",
   });
   set(tagCreateKey.path, {name: "", color: "default"});
   set(tagEditKey.path, {name: "", color: "default"});
@@ -63,11 +75,8 @@ export function initApp(): void {
     sortBy: "createdAt",
     sortDir: "desc",
   });
-  const settings = loadAppSettings();
   const account = loadAccountSettings();
   set(appConfigKey.path, {
-    issueUrlTemplate: settings.issueUrlTemplate,
-    issuePattern: settings.issuePattern,
     newDatasetName: "",
     p2pReceiveCode: "",
     accountEmail: account.user?.email ?? "",
@@ -75,6 +84,7 @@ export function initApp(): void {
     accountApiBaseUrl: account.apiBaseUrl,
     newCloudDatasetName: "",
     newAccessTokenName: "",
+    shareInviteEmail: "",
   });
   set(tagsListKey.path, []);
   void registerServiceWorker();
@@ -92,17 +102,27 @@ export function initApp(): void {
   });
 
   window.addEventListener("online", () => {
-    if (isAccountConnected()) scheduleAutoSync();
+    if (isAccountConnected()) {
+      scheduleAutoSync();
+      void ensureMercureSubscription();
+    }
   });
 
   // Retour sur l’onglet / app → pull cloud si stale (MCP / autre device).
   const onForeground = () => {
     if (document.visibilityState === "visible" && isAccountConnected()) {
       scheduleAutoSync();
+      void ensureMercureSubscription();
     }
   };
   document.addEventListener("visibilitychange", onForeground);
   window.addEventListener("focus", onForeground);
+
+  if (isAccountConnected()) {
+    resetMercureSubscription();
+  }
+
+  startDueDateWatcher();
 }
 
 export function bumpTodosRev(): void {

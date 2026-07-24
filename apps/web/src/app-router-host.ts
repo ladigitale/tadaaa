@@ -13,6 +13,10 @@ export class AppRouterHost extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    // Wording `t()` in layout uses this host; attributes must be on an ancestor
+    // of the host (sonic-scope is a child, so it cannot provide them).
+    this.setAttribute("serviceURL", getMockApiServiceUrl());
+    this.setAttribute("wordingProvider", "wordings");
     initApp();
 
     const path = document.location.pathname;
@@ -25,6 +29,7 @@ export class AppRouterHost extends LitElement {
     return html`
       <sonic-scope
         serviceURL=${getMockApiServiceUrl()}
+        wordingProvider="wordings"
         customIconLibraryPath="https://cdn.jsdelivr.net/npm/iconoir@7.10.1/icons/$prefix/$name.svg"
         customIconDefaultPrefix="regular"
       >

@@ -2,10 +2,12 @@ import "@supersoniks/concorde/input";
 import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/queue";
+import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, query, state} from "lit/decorators.js";
 import type {DirectiveResult} from "lit/directive.js";
 import {handle, subscribe} from "@supersoniks/concorde/decorators";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {fetchTags} from "../api/client";
 import {getMockApiServiceUrl} from "../api/config";
 import type {
@@ -13,15 +15,17 @@ import type {
   Todo,
 } from "../api/types";
 import {dp, read, set} from "../../utils/dataprovider";
-import {TodosFilter, tagsListKey, todosFilterKey} from "../dp";
+import {TodosFilter, tagsListKey, todosDoneKey, todosFilterKey} from "../dp";
+import {tx} from "../i18n";
 import "./todo-row";
 import "./pop-select";
 import "./task-scope-header";
 import "./todo-bulk-actions";
+import "./tasks-calendar";
 import type {PopSelectOption} from "./pop-select";
 import {
-  TODO_SORT_OPTIONS,
-  TODO_STATUS_OPTIONS,
+  todoSortOptions,
+  todoStatusOptions,
   parseTodoSortKey,
 } from "./todo-filter-options";
 import tailwind from "../../css/tailwind";
@@ -30,6 +34,38 @@ import {
   tacheItemNewPath,
   tacheNewPath,
 } from "../utils/tache-paths";
+
+type TasksViewMode = "list" | "calendar";
+
+const VIEW_STORAGE_KEY = "tada-tasks-view-mode";
+
+/** Préférence SPA : survit aux changements de route même si le storage échoue. */
+let rememberedViewMode: TasksViewMode | null = null;
+
+function loadViewMode(): TasksViewMode {
+  if (rememberedViewMode === "list" || rememberedViewMode === "calendar") {
+    return rememberedViewMode;
+  }
+  try {
+    const raw = localStorage.getItem(VIEW_STORAGE_KEY);
+    if (raw === "calendar" || raw === "list") {
+      rememberedViewMode = raw;
+      return raw;
+    }
+  } catch {
+    /* ignore */
+  }
+  return "list";
+}
+
+function saveViewMode(mode: TasksViewMode) {
+  rememberedViewMode = mode;
+  try {
+    localStorage.setItem(VIEW_STORAGE_KEY, mode);
+  } catch {
+    /* ignore */
+  }
+}
 
 @customElement("todo-app")
 export class TodoApp extends LitElement {
@@ -105,6 +141,9 @@ export class TodoApp extends LitElement {
   @state()
   private tags: Tag[] = [];
 
+  @state()
+  private viewMode: TasksViewMode = loadViewMode();
+
   @subscribe(todosFilterKey)
   @state()
   filter: TodosFilter = {
@@ -121,6 +160,11 @@ export class TodoApp extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    // Tableau partagé FormCheckable : évite qu’un initPublisher écrase avec `[]`.
+    if (!Array.isArray(read(`${todosDoneKey.path}.ids`))) {
+      set(todosDoneKey.path, {ids: []});
+    }
+    this.viewMode = loadViewMode();
     void this.reloadTags();
     this.syncFilterParent();
     window.addEventListener("resize", this.scheduleQueueMaxHeight);
@@ -268,7 +312,7 @@ export class TodoApp extends LitElement {
 
   private noTodos = (): DirectiveResult => html`
     <p class="py-12 text-sm italic text-neutral-500">
-      Aucune tâche pour ces filtres.
+      ${t("tasks.empty_filtered")}
     </p>
   `;
 
@@ -281,7 +325,12 @@ export class TodoApp extends LitElement {
 
   private get tagFilterOptions(): PopSelectOption[] {
     return [
-      {value: "all", label: "Toutes", icon: "label", checksAll: true},
+      {
+        value: "all",
+        label: tx("tasks.filter.tags_all"),
+        icon: "label",
+        checksAll: true,
+      },
       ...this.tags.map((tag) => ({
         value: tag.id,
         label: tag.name,
@@ -302,12 +351,57 @@ export class TodoApp extends LitElement {
     return scopeId ? tacheItemNewPath(scopeId) : tacheNewPath();
   }
 
+  private setViewMode(mode: TasksViewMode) {
+    this.viewMode = mode;
+    saveViewMode(mode);
+    this.scheduleQueueMaxHeight();
+  }
+
+  private toggleViewMode() {
+    this.setViewMode(this.viewMode === "calendar" ? "list" : "calendar");
+  }
+
+  private renderViewSwitch() {
+    const isCalendar = this.viewMode === "calendar";
+    const tip = isCalendar
+      ? tx("tasks.view.list")
+      : tx("tasks.view.calendar");
+    return html`
+      <sonic-tooltip label=${tip} placement="bottom">
+        <sonic-button
+          shape="circle"
+          size="sm"
+          variant="ghost"
+          ?active=${isCalendar}
+          data-aria-label=${tip}
+          @click=${this.toggleViewMode}
+        >
+          <sonic-icon
+            library=${ICON_LIBRARY}
+            prefix=${ICON_PREFIX}
+            name="calendar"
+            size="sm"
+            swap="on"
+          ></sonic-icon>
+          <sonic-icon
+            library=${ICON_LIBRARY}
+            prefix=${ICON_PREFIX}
+            name="list"
+            size="sm"
+            swap="off"
+          ></sonic-icon>
+        </sonic-button>
+      </sonic-tooltip>
+    `;
+  }
+
   render() {
     const base = getMockApiServiceUrl();
     const filterProvider = todosFilterKey.path;
     const selectedTags = Array.isArray(this.filter.tags)
       ? this.filter.tags
       : [];
+    const isCalendar = this.viewMode === "calendar";
 
     return html`
       <div
@@ -331,7 +425,7 @@ export class TodoApp extends LitElement {
                 name="q"
                 type="search"
                 size="sm"
-                placeholder="Nom ou RM-12345"
+                placeholder=${tx("tasks.search_ph")}
                 class="min-w-0"
               >
                 <sonic-icon
@@ -345,18 +439,18 @@ export class TodoApp extends LitElement {
 
               <div class="flex flex-wrap items-center gap-1.5 sm:justify-end">
                 <pop-select
-                  label="Statut"
+                  label=${tx("tasks.filter.status")}
                   name="status"
                   mode="radio"
                   .value=${this.filter.status}
-                  .options=${TODO_STATUS_OPTIONS}
+                  .options=${todoStatusOptions()}
                   minWidth="11rem"
                 ></pop-select>
 
                 ${this.tags.length > 0
                   ? html`
                       <pop-select
-                        label="Étiquette"
+                        label=${tx("tasks.filter.tag")}
                         name="tags"
                         mode="multi"
                         .value=${selectedTags}
@@ -366,35 +460,50 @@ export class TodoApp extends LitElement {
                     `
                   : nothing}
 
-                <pop-select
-                  label="Tri"
-                  name="sort"
-                  mode="radio"
-                  .value=${this.sortValue}
-                  .options=${TODO_SORT_OPTIONS}
-                  minWidth="14rem"
-                ></pop-select>
+                ${!isCalendar
+                  ? html`
+                      <pop-select
+                        label=${tx("tasks.filter.sort")}
+                        name="sort"
+                        mode="radio"
+                        .value=${this.sortValue}
+                        .options=${todoSortOptions()}
+                        minWidth="14rem"
+                      ></pop-select>
+                      <todo-bulk-actions
+                        .filter=${this.filter}
+                      ></todo-bulk-actions>
+                    `
+                  : nothing}
 
-                <todo-bulk-actions .filter=${this.filter}></todo-bulk-actions>
+                ${this.renderViewSwitch()}
               </div>
             </div>
           </section>
         </div>
 
-        <div class="todo-app-queue">
-          <sonic-queue
-            lazyload
-            dataProviderExpression="todos?offset=$offset&limit=$limit"
-            serviceurl=${base}
-            key="data"
-            limit="20"
-            idKey="id"
-            class="pb-2"
-            .items=${this.renderTodo}
-            .separator=${this.todoSeparator}
-            .noItems=${this.noTodos}
-          ></sonic-queue>
-        </div>
+        ${isCalendar
+          ? html`
+              <div class="todo-app-queue">
+                <tasks-calendar .filter=${this.filter}></tasks-calendar>
+              </div>
+            `
+          : html`
+              <div class="todo-app-queue">
+                <sonic-queue
+                  lazyload
+                  dataProviderExpression="todos?offset=$offset&limit=$limit"
+                  serviceurl=${base}
+                  key="data"
+                  limit="20"
+                  idKey="id"
+                  class="pb-2"
+                  .items=${this.renderTodo}
+                  .separator=${this.todoSeparator}
+                  .noItems=${this.noTodos}
+                ></sonic-queue>
+              </div>
+            `}
 
         <div class="todo-app-add shrink-0 pt-1">
           <sonic-button
@@ -409,7 +518,7 @@ export class TodoApp extends LitElement {
               name="plus"
               size="sm"
             ></sonic-icon>
-            ${this.parentId?.trim() ? "Nouvelle sous-tâche" : "Nouvelle tâche"}
+            ${this.parentId?.trim() ? t("tasks.new_sub") : t("tasks.new")}
           </sonic-button>
         </div>
       </div>

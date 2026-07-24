@@ -7,6 +7,12 @@ export type CloudUser = {
   activeDatasetId: string | null;
   status?: "pending" | "active" | "rejected" | "disabled";
   roles?: string[];
+  linkDetectors?: Array<{
+    id: string;
+    name: string;
+    pattern: string;
+    urlTemplate: string;
+  }>;
 };
 
 export type AccountSettings = {
@@ -44,6 +50,17 @@ export const DEFAULT_API_BASE_URL = resolveDefaultApiBaseUrl();
 
 const STORAGE_KEY = "tada-account";
 
+/** Fired after local account session is saved (login / logout / refresh). */
+export const ACCOUNT_CHANGED_EVENT = "tada:account-changed";
+
+function notifyAccountChanged(): void {
+  try {
+    window.dispatchEvent(new Event(ACCOUNT_CHANGED_EVENT));
+  } catch {
+    /* ignore — e.g. non-window context */
+  }
+}
+
 export function defaultAccountSettings(): AccountSettings {
   return {
     apiBaseUrl: DEFAULT_API_BASE_URL,
@@ -76,6 +93,7 @@ export function saveAccountSettings(settings: AccountSettings): void {
       user: settings.user,
     }),
   );
+  notifyAccountChanged();
 }
 
 export function clearAccountSession(): AccountSettings {

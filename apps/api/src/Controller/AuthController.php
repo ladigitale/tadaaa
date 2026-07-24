@@ -99,7 +99,8 @@ final class AuthController extends AbstractController
      *   createdAt: string,
      *   activeDatasetId: ?string,
      *   status: string,
-     *   roles: list<string>
+     *   roles: list<string>,
+     *   linkDetectors: list<array{id: string, name: string, pattern: string, urlTemplate: string}>
      * }
      */
     private function serializeUser(User $user): array
@@ -111,6 +112,7 @@ final class AuthController extends AbstractController
             'activeDatasetId' => $user->getActiveDataset()?->getId()->toRfc4122(),
             'status' => $user->getStatus()->value,
             'roles' => $user->getRoles(),
+            'linkDetectors' => $user->getLinkDetectors(),
         ];
     }
 }

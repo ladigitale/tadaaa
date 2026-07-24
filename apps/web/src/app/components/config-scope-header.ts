@@ -3,33 +3,23 @@ import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/pop";
 import "@supersoniks/concorde/menu";
 import "@supersoniks/concorde/menu-item";
+import "@supersoniks/concorde/divider";
+import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement} from "lit";
 import {customElement, property} from "lit/decorators.js";
+import {t} from "@supersoniks/concorde/directives/Wording";
+import {CONFIG_ROOT, type ConfigSection} from "../utils/config-paths";
 import {
-  configSectionPath,
-  type ConfigSection,
-} from "../utils/config-paths";
+  CONFIG_SECTION_GROUPS,
+  CONFIG_SECTIONS,
+} from "../utils/config-sections";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
+import {tx} from "../i18n";
 import tailwind from "../../css/tailwind";
-
-type SectionChoice = {
-  id: ConfigSection;
-  label: string;
-  icon: string;
-};
-
-const SECTIONS: SectionChoice[] = [
-  {id: "account", label: "Compte cloud", icon: "user"},
-  {id: "appearance", label: "Appearance", icon: "palette"},
-  {id: "issues", label: "Liens d’issues", icon: "link"},
-  {id: "data", label: "Export / import", icon: "page"},
-  {id: "p2p", label: "Partage P2P", icon: "share-android"},
-  {id: "datasets", label: "Jeux de données", icon: "database"},
-  {id: "maintenance", label: "Maintenance", icon: "trash"},
-];
 
 /**
  * En-tête config : titre + menu d’actions (sonic-pop), comme task/tag scope.
+ * Le retour mène à la landing `/config`.
  */
 @customElement("config-scope-header")
 export class ConfigScopeHeader extends LitElement {
@@ -62,10 +52,10 @@ export class ConfigScopeHeader extends LitElement {
   ];
 
   @property()
-  section: ConfigSection = "issues";
+  section: ConfigSection = "appearance";
 
-  private get current(): SectionChoice {
-    return SECTIONS.find((item) => item.id === this.section) ?? SECTIONS[0];
+  private get current() {
+    return CONFIG_SECTIONS.find((item) => item.id === this.section) ?? CONFIG_SECTIONS[0];
   }
 
   private renderMenuItemIcon(name: string) {
@@ -88,34 +78,39 @@ export class ConfigScopeHeader extends LitElement {
         <div class="mb-1 flex h-7 items-center gap-2 overflow-hidden">
           <nav
             class="flex min-w-0 items-center gap-0.5 text-sm"
-            aria-label="Fil d’Ariane"
+            aria-label=${tx("config.back")}
           >
-            <sonic-button
-              goBack
-              shape="circle"
-              variant="ghost"
-              size="sm"
-              class="shrink-0"
-              data-aria-label="Retour"
-              title="Retour"
+            <sonic-tooltip
+              label=${tx("config.back_home")}
+              placement="bottom"
             >
-              <sonic-icon
-                library=${ICON_LIBRARY}
-                prefix=${ICON_PREFIX}
-                name="nav-arrow-left"
+              <sonic-button
+                href=${CONFIG_ROOT}
+                pushstate
+                shape="circle"
+                variant="ghost"
                 size="sm"
-              ></sonic-icon>
-            </sonic-button>
+                class="shrink-0"
+                data-aria-label=${tx("config.back_home")}
+              >
+                <sonic-icon
+                  library=${ICON_LIBRARY}
+                  prefix=${ICON_PREFIX}
+                  name="nav-arrow-left"
+                  size="sm"
+                ></sonic-icon>
+              </sonic-button>
+            </sonic-tooltip>
           </nav>
         </div>
         <div class="min-w-0 space-y-1.5">
-          <h1 class="scope-heading">Configuration</h1>
+          <h1 class="scope-heading">${t("config.title")}</h1>
           <sonic-pop class="inline-block" placement="bottom-start">
             <sonic-button
               size="xs"
               variant="ghost"
               class="scope-action-trigger text-neutral-500"
-              data-aria-label="Section configuration"
+              data-aria-label=${tx("config.section_menu_aria")}
             >
               <sonic-icon
                 slot="prefix"
@@ -124,7 +119,7 @@ export class ConfigScopeHeader extends LitElement {
                 name=${current.icon}
                 size="sm"
               ></sonic-icon>
-              ${current.label}
+              ${t(current.labelKey)}
               <sonic-icon
                 slot="suffix"
                 library=${ICON_LIBRARY}
@@ -139,18 +134,27 @@ export class ConfigScopeHeader extends LitElement {
               direction="column"
               align="left"
               size="sm"
-              minWidth="14rem"
+              minWidth="15rem"
             >
-              ${SECTIONS.map(
-                (choice) => html`
-                  <sonic-menu-item
-                    href=${configSectionPath(choice.id)}
-                    pushstate
-                    ?active=${choice.id === current.id}
-                  >
-                    ${this.renderMenuItemIcon(choice.icon)}
-                    ${choice.label}
-                  </sonic-menu-item>
+              ${CONFIG_SECTION_GROUPS.map(
+                (group) => html`
+                  <sonic-divider
+                    label=${tx(group.labelKey)}
+                    align="left"
+                    size="sm"
+                  ></sonic-divider>
+                  ${group.items.map(
+                    (choice) => html`
+                      <sonic-menu-item
+                        href=${choice.href}
+                        pushstate
+                        ?active=${choice.id === current.id}
+                      >
+                        ${this.renderMenuItemIcon(choice.icon)}
+                        ${t(choice.labelKey)}
+                      </sonic-menu-item>
+                    `,
+                  )}
                 `,
               )}
             </sonic-menu>

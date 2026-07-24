@@ -1,6 +1,7 @@
 /** UI themes via Concorde CSS variables (`--sc-*`). */
 
 export type AppThemeId =
+  | "coraline"
   | "default"
   | "dark"
   | "dracula"
@@ -21,6 +22,13 @@ export type AppThemeMeta = {
 };
 
 export const APP_THEMES: AppThemeMeta[] = [
+  {
+    id: "coraline",
+    label: "Coraline",
+    description: "Deep blue ground, coral type",
+    swatches: ["#0f1c3a", "#e85a4a", "#f0c4b8"],
+    dark: true,
+  },
   {
     id: "default",
     label: "Default",

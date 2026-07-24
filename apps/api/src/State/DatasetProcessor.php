@@ -12,6 +12,7 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Entity\Dataset;
 use App\Entity\User;
 use App\Repository\DatasetRepository;
+use App\Service\DatasetAccessService;
 use App\Util\BaseIdParser;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -27,6 +28,7 @@ final class DatasetProcessor implements ProcessorInterface
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly DatasetRepository $datasets,
+        private readonly DatasetAccessService $access,
         private readonly Security $security,
     ) {
     }
@@ -77,11 +79,9 @@ final class DatasetProcessor implements ProcessorInterface
             return $data;
         }
 
-        if ($data->getOwner()->getId()->toRfc4122() !== $user->getId()->toRfc4122()) {
-            throw new AccessDeniedHttpException('Accès refusé à ce jeu de données.');
-        }
-
         if ($operation instanceof Delete) {
+            $this->access->assertIsOwner($user, $data);
+
             if ($this->datasets->countForUser($user) <= 1) {
                 throw new BadRequestHttpException('Impossible de supprimer le dernier jeu.');
             }
@@ -106,6 +106,17 @@ final class DatasetProcessor implements ProcessorInterface
         }
 
         if ($operation instanceof Patch) {
+            $this->access->assertIsOwner($user, $data);
+
+            $existing = $this->datasets->findOneByNameForUser($user, $data->getName());
+            if ($existing !== null && !$existing->getId()->equals($data->getId())) {
+                throw new BadRequestHttpException('Vous avez déjà un jeu avec ce nom.');
+            }
+
+            if (trim($data->getName()) === '') {
+                throw new BadRequestHttpException('Le nom du jeu est requis.');
+            }
+
             $data->touch();
             $this->entityManager->flush();
 

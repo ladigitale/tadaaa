@@ -2,7 +2,7 @@
 mcp:
     app: tadaaa
     version: '0.3.0'
-    description: 'Tadaaa — todos & tags cloud pour agents MCP'
+    description: 'Tadaaa — todos & tags cloud pour agents MCP. Descriptions : Markdown basique + détecteurs de liens du compte (outils list/create/update/delete_link_detectors, describe_text_formatting).'
     client_transports:
         http: true
         stdio: false

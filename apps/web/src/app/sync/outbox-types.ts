@@ -18,6 +18,8 @@ export type SyncMutation = {
 export type SyncState = {
   baseId: string;
   cloudDatasetId?: string;
+  /** Rôle cloud du compte sur ce jeu (owner|writer|reader). */
+  cloudRole?: "owner" | "writer" | "reader";
   lastPulledAt: string | null;
   lastPushedAt: string | null;
   lastSyncAt: string | null;

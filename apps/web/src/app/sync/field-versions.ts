@@ -55,6 +55,8 @@ export const TODO_SYNC_FIELDS = [
   "priority",
   "tagIds",
   "parentId",
+  "startAt",
+  "endAt",
 ] as const;
 
 export const TAG_SYNC_FIELDS = ["name", "color"] as const;

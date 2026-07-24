@@ -1,9 +1,19 @@
 <!doctype html>
-<html lang="en-US">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#10298e" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Tadaaa — free demo of shared todo lists, local-first with optional cloud sync." />
+    <meta name="application-name" content="Tadaaa" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Tadaaa" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <link rel="stylesheet" href="/src/css/tailwind.css" />
     <link rel="stylesheet" href="/src/css/app.css" />
     <link rel="stylesheet" href="/src/css/themes.css" />
@@ -11,9 +21,15 @@
       try {
         var t = localStorage.getItem("tada-theme");
         if (t && t !== "default") document.documentElement.setAttribute("data-theme", t);
+        var lang = localStorage.getItem("SonicSelectedLanguage");
+        if (lang === "fr" || lang === "en") document.documentElement.lang = lang;
+        else {
+          localStorage.setItem("SonicSelectedLanguage", "en");
+          document.documentElement.lang = "en";
+        }
       } catch (e) {}
     </script>
-    <title>TADA — Tâches Concorde</title>
+    <title>Tadaaa — Demo</title>
   </head>
 
   <body class="m-0 h-full overflow-hidden p-0">

@@ -2,7 +2,9 @@ import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
 import {html, LitElement} from "lit";
 import {customElement, state} from "lit/decorators.js";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {purgeArchivedTodos} from "../api/client";
+import {tf, tx} from "../i18n";
 import {refreshConfigAppData} from "../utils/config-refresh";
 import {confirmDialog, showAlert, showError} from "../utils/modal-dialog";
 import tailwind from "../../css/tailwind";
@@ -21,10 +23,9 @@ export class ConfigMaintenancePage extends LitElement {
     if (this.busy) return;
 
     const ok = await confirmDialog({
-      title: "Purger les tâches supprimées",
-      message:
-        "Supprimer définitivement toutes les tâches du filtre « Supprimés » ? Action irréversible.",
-      confirmLabel: "Purger",
+      title: tx("maintenance.purge_title"),
+      message: tx("maintenance.purge_confirm"),
+      confirmLabel: tx("maintenance.purge"),
       danger: true,
     });
     if (!ok) return;
@@ -34,13 +35,15 @@ export class ConfigMaintenancePage extends LitElement {
       const {purgedCount} = await purgeArchivedTodos();
       await refreshConfigAppData();
       await showAlert(
-        purgedCount === 0 ? "Rien à purger" : "Purge terminée",
         purgedCount === 0
-          ? "Aucune tâche archivée à purger."
-          : `${purgedCount} tâche(s) purgée(s).`,
+          ? tx("maintenance.purge_none")
+          : tx("maintenance.purge_title"),
+        purgedCount === 0
+          ? tx("maintenance.purge_none")
+          : tf("maintenance.purge_done", {n: purgedCount}),
       );
     } catch (error) {
-      await showError(error, "Impossible de purger");
+      await showError(error, tx("dialogs.error"));
       console.error(error);
     } finally {
       this.busy = false;
@@ -56,10 +59,8 @@ export class ConfigMaintenancePage extends LitElement {
           <config-scope-header section="maintenance"></config-scope-header>
         </div>
 
-        <div class="mt-6 space-y-3">
-          <p class="text-sm text-neutral-600">
-            Purge définitive des tâches du filtre « Supprimés » (jeu actif).
-          </p>
+        <div class="mt-8 space-y-3">
+          <p class="text-sm text-neutral-600">${t("maintenance.intro")}</p>
           <sonic-button
             type="danger"
             size="sm"
@@ -72,7 +73,7 @@ export class ConfigMaintenancePage extends LitElement {
               name="trash"
               size="sm"
             ></sonic-icon>
-            Purger les tâches supprimées
+            ${t("maintenance.purge")}
           </sonic-button>
         </div>
       </page-shell>

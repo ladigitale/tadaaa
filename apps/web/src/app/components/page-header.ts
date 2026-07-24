@@ -1,7 +1,9 @@
 import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
+import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, property} from "lit/decorators.js";
+import {tx} from "../i18n";
 import tailwind from "../../css/tailwind";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 
@@ -25,7 +27,7 @@ export class PageHeader extends LitElement {
   heading = "";
 
   @property()
-  addLabel = "Ajouter";
+  addLabel = "";
 
   /** Si défini, le bouton + navigue vers cette URL (pushstate). */
   @property()
@@ -37,6 +39,10 @@ export class PageHeader extends LitElement {
   /** Affiche un chevron retour (goBack) à la place du bouton +. */
   @property({type: Boolean})
   withBack = false;
+
+  private get resolvedAddLabel(): string {
+    return this.addLabel || tx("common.add");
+  }
 
   private onAdd() {
     this.dispatchEvent(
@@ -60,21 +66,25 @@ export class PageHeader extends LitElement {
               <div class="flex min-w-0 items-center gap-2">
                 ${this.withBack
                   ? html`
-                      <sonic-button
-                        goBack
-                        shape="circle"
-                        variant="ghost"
-                        size="sm"
-                        data-aria-label="Retour"
-                        title="Retour"
+                      <sonic-tooltip
+                        label=${tx("common.back")}
+                        placement="bottom"
                       >
-                        <sonic-icon
-                          library=${ICON_LIBRARY}
-                          prefix=${ICON_PREFIX}
-                          name="nav-arrow-left"
+                        <sonic-button
+                          goBack
+                          shape="circle"
+                          variant="ghost"
                           size="sm"
-                        ></sonic-icon>
-                      </sonic-button>
+                          data-aria-label=${tx("common.back")}
+                        >
+                          <sonic-icon
+                            library=${ICON_LIBRARY}
+                            prefix=${ICON_PREFIX}
+                            name="nav-arrow-left"
+                            size="sm"
+                          ></sonic-icon>
+                        </sonic-button>
+                      </sonic-tooltip>
                     `
                   : nothing}
                 ${this.heading
@@ -105,7 +115,7 @@ export class PageHeader extends LitElement {
                       name="plus"
                       size="sm"
                     ></sonic-icon>
-                    ${this.addLabel}
+                    ${this.resolvedAddLabel}
                   </sonic-button>
                 `
               : html`
@@ -120,7 +130,7 @@ export class PageHeader extends LitElement {
                       name="plus"
                       size="sm"
                     ></sonic-icon>
-                    ${this.addLabel}
+                    ${this.resolvedAddLabel}
                   </sonic-button>
                 `
             : nothing}

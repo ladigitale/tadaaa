@@ -6,13 +6,16 @@ import "@supersoniks/concorde/form-actions";
 import {html, LitElement} from "lit";
 import {customElement, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import {createTag} from "../api/client";
 import {TAG_COLORS} from "../api/store-logic";
 import type {Tag, TagColor} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
 import {tagCreateKey, type TagCreateForm} from "../dp";
+import {tx} from "../i18n";
 import {navigateTo} from "../utils/navigate";
 import {isEnterSubmitEvent} from "../utils/form-enter-submit";
+import {focusPrimaryInput} from "../utils/focus-primary-input";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
 import {showError} from "../utils/modal-dialog";
@@ -46,7 +49,7 @@ export class TagCreatePage extends LitElement {
     const name = this.name?.trim();
     return {
       id: "preview",
-      name: name || "Aperçu",
+      name: name || tx("tags.form.preview"),
       color: this.color ?? "default",
     };
   }
@@ -54,6 +57,10 @@ export class TagCreatePage extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     set(tagCreateKey.path, emptyTagForm());
+  }
+
+  protected firstUpdated() {
+    void focusPrimaryInput(this);
   }
 
   private onFormKeyDown = (event: KeyboardEvent) => {
@@ -76,7 +83,7 @@ export class TagCreatePage extends LitElement {
       set(tagCreateKey.path, emptyTagForm());
       navigateTo(TAGS_ROOT, true);
     } catch (error) {
-      await showError(error, "Impossible de créer l’étiquette");
+      await showError(error);
       console.error(error);
     } finally {
       this.busy = false;
@@ -100,12 +107,12 @@ export class TagCreatePage extends LitElement {
           <sonic-form-layout>
             <sonic-input
               name="name"
-              label="Nom"
-              placeholder="Ex. Urgent, Backlog…"
+              label=${tx("tags.form.name")}
+              placeholder=${tx("tags.form.name_ph")}
             ></sonic-input>
 
             <div class="form-field">
-              <label class="form-label">Couleur</label>
+              <label class="form-label">${t("tags.form.color")}</label>
               <div class="form-field-control flex flex-wrap gap-1.5 sm:gap-2">
                 ${TAG_COLORS.map(
                   (color) => html`
@@ -139,7 +146,7 @@ export class TagCreatePage extends LitElement {
             </div>
 
             <div class="form-field">
-              <label class="form-label">Aperçu</label>
+              <label class="form-label">${t("tags.form.preview")}</label>
               <div class="form-field-control">
                 <tag-badge .tag=${this.previewTag} size="sm"></tag-badge>
               </div>
@@ -152,7 +159,7 @@ export class TagCreatePage extends LitElement {
                 variant="outline"
                 ?disabled=${this.busy}
               >
-                Annuler
+                ${t("common.cancel")}
               </sonic-button>
               <sonic-button
                 type="primary"
@@ -165,7 +172,7 @@ export class TagCreatePage extends LitElement {
                   name="plus"
                   size="sm"
                 ></sonic-icon>
-                Ajouter
+                ${t("common.add")}
               </sonic-button>
             </sonic-form-actions>
           </sonic-form-layout>

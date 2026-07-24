@@ -57,6 +57,11 @@ CORS_ALLOW_ORIGIN=^https://app\.example\.com$
 REGISTRATION_AUTO_APPROVE=0
 MCP_ALLOWED_HOSTS=api.example.com
 
+# Mercure (realtime sync) — same secret for Caddy publisher/subscriber JWT
+MERCURE_JWT_SECRET=change-me-mercure-jwt-secret
+# Optional override (defaults to https://api…/.well-known/mercure)
+# MERCURE_PUBLIC_URL=https://api.example.com/.well-known/mercure
+
 HTTP_PORT=80
 HTTPS_PORT=443
 HTTP3_PORT=443
@@ -99,6 +104,8 @@ Sign-ups create **`pending`** accounts until an admin approves them (Config → 
 3. Pending login → 403; after approve → login OK
 4. Disable → API / MCP cut off
 5. Front + sync; MCP Bearer / PAT on `/mcp`
+6. Mercure: open the same dataset on two browsers — edit on A → B pulls without refresh
+7. Claude.ai custom connector → `https://api.example.com/mcp` → Connect (OAuth); allowlist Anthropic egress `160.79.104.0/21` if you firewall inbound
 
 ## Coolify (optional)
 
@@ -117,6 +124,10 @@ REGISTRATION_AUTO_APPROVE=1
 DATABASE_URL="postgresql://app:!ChangeMe!@database:5432/tada?serverVersion=16&charset=utf8"
 CORS_ALLOW_ORIGIN='^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$'
 MCP_ALLOWED_HOSTS=localhost,127.0.0.1
+MERCURE_PUBLIC_URL=https://localhost:8443/.well-known/mercure
+MERCURE_JWT_SECRET="!ChangeThisMercureHubJWTSecretKey!"
 ```
 
 Then `yarn api:up` && `yarn api:migrate`.
+
+Realtime sync uses the FrankenPHP Mercure hub (`/.well-known/mercure`). Without FrankenPHP (plain PHP-FPM), publishes are logged and ignored; the SPA still falls back to focus/online pull.

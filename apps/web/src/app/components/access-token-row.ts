@@ -3,9 +3,12 @@ import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/pop";
 import "@supersoniks/concorde/menu";
 import "@supersoniks/concorde/menu-item";
+import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement} from "lit";
 import {customElement, property} from "lit/decorators.js";
+import {t} from "@supersoniks/concorde/directives/Wording";
 import type {AccessTokenInfo} from "../cloud-api/client";
+import {tx} from "../i18n";
 import tailwind from "../../css/tailwind";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 
@@ -40,10 +43,12 @@ export class AccessTokenRow extends LitElement {
   private get metaLine(): string {
     const parts = [
       `${this.token.tokenPrefix}…`,
-      `créé ${this.formatDate(this.token.createdAt)}`,
+      `${tx("account.mcp.created")} ${this.formatDate(this.token.createdAt)}`,
     ];
     if (this.token.lastUsedAt) {
-      parts.push(`utilisé ${this.formatDate(this.token.lastUsedAt)}`);
+      parts.push(
+        `${tx("account.mcp.used")} ${this.formatDate(this.token.lastUsedAt)}`,
+      );
     }
     return parts.join(" · ");
   }
@@ -85,21 +90,22 @@ export class AccessTokenRow extends LitElement {
 
           <div class="flex shrink-0 items-center gap-0.5">
             <sonic-pop class="inline-block" placement="bottom">
-              <sonic-button
-                shape="circle"
-                size="sm"
-                variant="ghost"
-                ?disabled=${this.disabled}
-                data-aria-label="Actions"
-                title="Actions"
-              >
-                <sonic-icon
-                  library=${ICON_LIBRARY}
-                  prefix=${ICON_PREFIX}
-                  name="more-vert"
-                  size="lg"
-                ></sonic-icon>
-              </sonic-button>
+              <sonic-tooltip label=${tx("common.actions")} placement="bottom">
+                <sonic-button
+                  shape="circle"
+                  size="sm"
+                  variant="ghost"
+                  ?disabled=${this.disabled}
+                  data-aria-label=${tx("common.actions")}
+                >
+                  <sonic-icon
+                    library=${ICON_LIBRARY}
+                    prefix=${ICON_PREFIX}
+                    name="more-vert"
+                    size="lg"
+                  ></sonic-icon>
+                </sonic-button>
+              </sonic-tooltip>
 
               <sonic-menu
                 slot="content"
@@ -113,7 +119,7 @@ export class AccessTokenRow extends LitElement {
                   ?disabled=${this.disabled}
                   @click=${this.onRevoke}
                 >
-                  ${this.renderMenuItemIcon("trash")} Révoquer
+                  ${this.renderMenuItemIcon("trash")} ${t("account.mcp.revoke")}
                 </sonic-menu-item>
               </sonic-menu>
             </sonic-pop>

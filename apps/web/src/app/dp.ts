@@ -22,6 +22,8 @@ export type TodoCreateForm = {
   description: string;
   priority: TodoPriority;
   tagIds: string[];
+  startAt: string;
+  endAt: string;
 };
 
 export type TodoEditForm = {
@@ -29,10 +31,21 @@ export type TodoEditForm = {
   description: string;
   priority: TodoPriority;
   tagIds: string[];
+  startAt: string;
+  endAt: string;
 };
 
 export type TodoTagsEdit = {
   tagIds: string[];
+};
+
+/**
+ * Formulaire partagé des checks « done » (multi FormCheckable) :
+ * même `formDataProvider` + `name="ids"`, `value` = id de la todo.
+ * `ids` = tableau des todos cochées (terminées).
+ */
+export type TodosDoneForm = {
+  ids: string[];
 };
 
 export type TagCreateForm = {
@@ -63,8 +76,6 @@ export type TodoSearchForm = {
 };
 
 export type AppConfigForm = {
-  issueUrlTemplate: string;
-  issuePattern: string;
   newDatasetName: string;
   p2pReceiveCode: string;
   accountEmail: string;
@@ -72,6 +83,7 @@ export type AppConfigForm = {
   accountApiBaseUrl: string;
   newCloudDatasetName: string;
   newAccessTokenName: string;
+  shareInviteEmail: string;
 };
 
 export const todosFilterKey = new DataProviderKey<TodosFilter>("todosFilter");
@@ -88,3 +100,4 @@ export const todoTagsEditKey = new DataProviderKey<
   TodoTagsEdit,
   {todoId: string}
 >("todoTagsEdit.${todoId}");
+export const todosDoneKey = new DataProviderKey<TodosDoneForm>("todosDone");
