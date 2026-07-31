@@ -58,6 +58,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'json')]
     private array $linkDetectors = [];
 
+    /**
+     * Opt-in/out map for push event types (missing keys → catalogue defaults).
+     *
+     * @var array<string, bool>
+     */
+    #[ORM\Column(type: 'json')]
+    private array $notificationPrefs = [];
+
     public function __construct(string $email = '', UserStatus $status = UserStatus::Pending)
     {
         $this->id = Uuid::v7();
@@ -66,6 +74,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->createdAt = new \DateTimeImmutable();
         $this->datasets = new ArrayCollection();
         $this->linkDetectors = [];
+        $this->notificationPrefs = [];
     }
 
     public function getId(): Uuid
@@ -183,6 +192,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setLinkDetectors(array $linkDetectors): static
     {
         $this->linkDetectors = array_values($linkDetectors);
+
+        return $this;
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    public function getNotificationPrefs(): array
+    {
+        return $this->notificationPrefs;
+    }
+
+    /**
+     * @param array<string, bool> $notificationPrefs
+     */
+    public function setNotificationPrefs(array $notificationPrefs): static
+    {
+        $this->notificationPrefs = $notificationPrefs;
 
         return $this;
     }

@@ -10,6 +10,9 @@ parameters:
     # Default when the env var is unset (Symfony env() fallback).
     env(REGISTRATION_AUTO_APPROVE): '0'
     env(MERCURE_ENABLED): '1'
+    env(VAPID_PUBLIC_KEY): ''
+    env(VAPID_PRIVATE_KEY): ''
+    env(VAPID_SUBJECT): 'mailto:noreply@tadaaa.app'
 
 services:
     # default configuration for services in *this* file
@@ -25,6 +28,12 @@ services:
     App\Service\MercureFeature:
         arguments:
             $enabled: '%env(bool:MERCURE_ENABLED)%'
+
+    App\Service\PushFeature:
+        arguments:
+            $publicKey: '%env(string:VAPID_PUBLIC_KEY)%'
+            $privateKey: '%env(string:VAPID_PRIVATE_KEY)%'
+            $subject: '%env(string:VAPID_SUBJECT)%'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

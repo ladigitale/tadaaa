@@ -21,6 +21,7 @@ final class DatasetRealtimePublisher
         private readonly HubInterface $hub,
         private readonly LoggerInterface $logger,
         private readonly MercureFeature $mercure,
+        private readonly PushNotificationDispatcher $push,
     ) {
     }
 
@@ -67,6 +68,7 @@ final class DatasetRealtimePublisher
 
         $this->publish(self::topicForDataset($dataset), $payload);
         $this->publish(self::topicForUser($dataset->getOwner()), $payload);
+        $this->push->notifyMemberJoined($dataset, $member, $role);
     }
 
     /**
@@ -91,6 +93,7 @@ final class DatasetRealtimePublisher
             'inviterEmail' => $inviter->getEmail(),
             'inviterId' => $inviter->getId()->toRfc4122(),
         ]);
+        $this->push->notifyDatasetInvite($invitee, $dataset, $inviter, $invite);
     }
 
     /**

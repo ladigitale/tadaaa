@@ -62,6 +62,14 @@ MERCURE_JWT_SECRET=change-me-mercure-jwt-secret
 # Optional override (defaults to https://api…/.well-known/mercure)
 # MERCURE_PUBLIC_URL=https://api.example.com/.well-known/mercure
 
+# Web Push (VAPID) — required for server push to devices when the app is closed
+# Generate inside the API container:
+#   docker compose -f compose.prod.yaml exec php php -r \
+#     'require "vendor/autoload.php"; print_r(Minishlink\WebPush\VAPID::createVapidKeys());'
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:you@example.com
+
 HTTP_PORT=80
 HTTPS_PORT=443
 HTTP3_PORT=443
@@ -105,7 +113,8 @@ Sign-ups create **`pending`** accounts until an admin approves them (Config → 
 4. Disable → API / MCP cut off
 5. Front + sync; MCP Bearer / PAT on `/mcp`
 6. Mercure: open the same dataset on two browsers — edit on A → B pulls without refresh
-7. Claude.ai custom connector → `https://api.example.com/mcp` → Connect (OAuth); allowlist Anthropic egress `160.79.104.0/21` if you firewall inbound
+7. Web Push: enable notifications in Config → Appearance (account connected); invite / check a task with the other browser closed
+8. Claude.ai custom connector → `https://api.example.com/mcp` → Connect (OAuth); allowlist Anthropic egress `160.79.104.0/21` if you firewall inbound
 
 ## Coolify (optional)
 

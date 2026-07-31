@@ -90,13 +90,25 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
 
     "notif.title": "Web notifications",
     "notif.help":
-      "Desktop alerts when you are invited to a list, when someone joins yours, or when remote tasks are completed, reopened, or deleted. Multiple changes are grouped into one message.",
+      "Desktop and device alerts for invites, members joining, and remote task changes — including when the app is closed (server push). Multiple changes are grouped into one message.",
     "notif.enable": "Enable notifications",
     "notif.disable": "Disable notifications",
     "notif.enabled_ok": "Notifications enabled.",
     "notif.permission_denied":
       "Browser permission denied — allow notifications for this site in your browser settings.",
     "notif.unsupported": "Notifications are not supported in this browser.",
+    "notif.push_needs_account":
+      "Sign in to a cloud account to receive notifications on other devices when the app is closed.",
+    "notif.prefs_title": "Event types",
+    "notif.prefs_help": "Choose which events send a push to your devices.",
+    "notif.prefs_loading": "Loading preferences…",
+    "notif.prefs_error": "Could not update notification preferences.",
+    "notif.pref.dataset_invite": "Invitations to shared lists",
+    "notif.pref.member_joined": "Someone joins one of your lists",
+    "notif.pref.todo_checked": "Tasks completed remotely",
+    "notif.pref.todo_unchecked": "Tasks reopened remotely",
+    "notif.pref.todo_deleted": "Tasks deleted remotely",
+    "notif.pref.todo_created": "New tasks created remotely",
     "notif.untitled_task": "Untitled task",
     "notif.batch_sep": " · ",
     "notif.todo_checked_one": "Completed: {text}",
@@ -520,13 +532,25 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
 
     "notif.title": "Notifications web",
     "notif.help":
-      "Alertes bureau quand on vous invite à une liste, quand quelqu’un rejoint la vôtre, ou quand des tâches distantes sont cochées, décochées ou supprimées. Plusieurs modifications sont regroupées en un seul message.",
+      "Alertes sur cet appareil et les autres (push serveur, même app fermée) pour les invitations, les nouveaux membres et les tâches distantes. Plusieurs modifications sont regroupées en un seul message.",
     "notif.enable": "Activer les notifications",
     "notif.disable": "Désactiver les notifications",
     "notif.enabled_ok": "Notifications activées.",
     "notif.permission_denied":
       "Permission refusée par le navigateur — autorisez les notifications pour ce site dans les réglages du navigateur.",
     "notif.unsupported": "Les notifications ne sont pas prises en charge par ce navigateur.",
+    "notif.push_needs_account":
+      "Connectez un compte cloud pour recevoir les notifications sur d’autres appareils lorsque l’app est fermée.",
+    "notif.prefs_title": "Types d’événements",
+    "notif.prefs_help": "Choisissez quels événements envoient un push sur vos appareils.",
+    "notif.prefs_loading": "Chargement des préférences…",
+    "notif.prefs_error": "Impossible de mettre à jour les préférences de notification.",
+    "notif.pref.dataset_invite": "Invitations à des listes partagées",
+    "notif.pref.member_joined": "Quelqu’un rejoint une de vos listes",
+    "notif.pref.todo_checked": "Tâches terminées à distance",
+    "notif.pref.todo_unchecked": "Tâches réouvertes à distance",
+    "notif.pref.todo_deleted": "Tâches supprimées à distance",
+    "notif.pref.todo_created": "Nouvelles tâches créées à distance",
     "notif.untitled_task": "Tâche sans titre",
     "notif.batch_sep": " · ",
     "notif.todo_checked_one": "Terminée : {text}",

@@ -8,6 +8,7 @@ use App\Entity\Dataset;
 use App\Entity\Tag;
 use App\Entity\Todo;
 use App\Entity\User;
+use App\Notification\NotificationEventType;
 use App\Repository\DatasetRepository;
 use App\Repository\TagRepository;
 use App\Repository\TodoRepository;
@@ -21,6 +22,9 @@ final class SyncService
     private const TODO_FIELDS = ['text', 'description', 'done', 'archived', 'priority', 'tagIds', 'parentId', 'startAt', 'endAt'];
     private const TAG_FIELDS = ['name', 'color'];
 
+    /** @var list<array{type: string, id: string, text: string}> */
+    private array $todoNotifyBuffer = [];
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly DatasetRepository $datasets,
@@ -28,6 +32,7 @@ final class SyncService
         private readonly TagRepository $tags,
         private readonly DatasetAccessService $access,
         private readonly DatasetRealtimePublisher $realtime,
+        private readonly PushNotificationDispatcher $push,
     ) {
     }
 
@@ -76,6 +81,7 @@ final class SyncService
 
         $accepted = [];
         $rejected = [];
+        $this->todoNotifyBuffer = [];
 
         foreach ($mutations as $mutation) {
             if (!is_array($mutation)) {
@@ -97,6 +103,10 @@ final class SyncService
             $dataset->touch();
             $this->entityManager->flush();
             $this->realtime->publishDatasetChanged($dataset);
+            if ($this->todoNotifyBuffer !== []) {
+                $this->push->notifyTodoEvents($dataset, $user, $this->todoNotifyBuffer);
+                $this->todoNotifyBuffer = [];
+            }
         }
 
         return [
@@ -219,6 +229,9 @@ final class SyncService
         $fieldVersions = $this->readFieldVersions($row);
         $todo = $this->todos->findOneForDataset($dataset, $id);
 
+        $existed = $todo !== null && !$todo->isDeleted();
+        $prevDone = $existed ? $todo->isDone() : null;
+
         if ($todo === null) {
             $todo = new Todo($id, $dataset);
             $this->entityManager->persist($todo);
@@ -261,6 +274,24 @@ final class SyncService
         );
 
         $todo->setFieldVersions($result['versions']);
+
+        if (!$replace) {
+            if (!$existed && !$todo->isDeleted()) {
+                $this->todoNotifyBuffer[] = [
+                    'type' => NotificationEventType::TODO_CREATED,
+                    'id' => $id,
+                    'text' => $todo->getText(),
+                ];
+            } elseif ($existed && $prevDone !== null && $todo->isDone() !== $prevDone) {
+                $this->todoNotifyBuffer[] = [
+                    'type' => $todo->isDone()
+                        ? NotificationEventType::TODO_CHECKED
+                        : NotificationEventType::TODO_UNCHECKED,
+                    'id' => $id,
+                    'text' => $todo->getText(),
+                ];
+            }
+        }
 
         return 'todo:'.$id;
     }
@@ -320,6 +351,8 @@ final class SyncService
 
         if ($entity === 'todo') {
             $todo = $this->todos->findOneForDataset($dataset, $id);
+            $text = $todo?->getText() ?? '';
+            $wasActive = $todo !== null && !$todo->isDeleted();
             if ($todo === null) {
                 $todo = new Todo($id, $dataset);
                 $this->entityManager->persist($todo);
@@ -328,6 +361,13 @@ final class SyncService
             $versions = $todo->getFieldVersions();
             $versions['deletedAt'] = $deletedAt->format(\DateTimeInterface::ATOM);
             $todo->setFieldVersions($versions);
+            if ($wasActive) {
+                $this->todoNotifyBuffer[] = [
+                    'type' => NotificationEventType::TODO_DELETED,
+                    'id' => $id,
+                    'text' => $text !== '' ? $text : $todo->getText(),
+                ];
+            }
 
             return 'todo:'.$id;
         }

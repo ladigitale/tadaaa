@@ -8,6 +8,7 @@ use App\Entity\Dataset;
 use App\Entity\Tag;
 use App\Entity\Todo;
 use App\Entity\User;
+use App\Notification\NotificationEventType;
 use App\Repository\DatasetRepository;
 use App\Repository\TagRepository;
 use App\Repository\TodoRepository;
@@ -30,6 +31,7 @@ final class CloudTodoService
         private readonly TagRepository $tags,
         private readonly DatasetAccessService $access,
         private readonly DatasetRealtimePublisher $realtime,
+        private readonly PushNotificationDispatcher $push,
     ) {
     }
 
@@ -140,6 +142,13 @@ final class CloudTodoService
         $dataset->touch();
         $this->entityManager->flush();
         $this->realtime->publishDatasetChanged($dataset);
+        $this->push->notifyTodoEvents($dataset, $user, [
+            [
+                'type' => NotificationEventType::TODO_CREATED,
+                'id' => $id,
+                'text' => $text,
+            ],
+        ]);
 
         return $todo->toSyncArray();
     }
@@ -154,6 +163,7 @@ final class CloudTodoService
         $todo = $this->requireTodo($user, $id, write: true);
         $now = (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM);
         $versions = $todo->getFieldVersions();
+        $prevDone = $todo->isDone();
 
         if (array_key_exists('text', $patch) && is_string($patch['text'])) {
             $todo->setText($patch['text']);
@@ -197,6 +207,20 @@ final class CloudTodoService
         $todo->getDataset()->touch();
         $this->entityManager->flush();
         $this->realtime->publishDatasetChanged($todo->getDataset());
+
+        $events = [];
+        if (array_key_exists('done', $patch) && $todo->isDone() !== $prevDone) {
+            $events[] = [
+                'type' => $todo->isDone()
+                    ? NotificationEventType::TODO_CHECKED
+                    : NotificationEventType::TODO_UNCHECKED,
+                'id' => $todo->getId(),
+                'text' => $todo->getText(),
+            ];
+        }
+        if ($events !== []) {
+            $this->push->notifyTodoEvents($todo->getDataset(), $user, $events);
+        }
 
         return $todo->toSyncArray();
     }

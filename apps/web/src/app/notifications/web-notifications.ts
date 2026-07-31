@@ -4,6 +4,11 @@ import {
   loadAppSettings,
   saveAppSettings,
 } from "../settings";
+import {
+  isServerPushActive,
+  subscribeServerPush,
+  unsubscribeServerPush,
+} from "./push-subscribe";
 
 export type TodoNotifyChange = {
   kind: "checked" | "unchecked" | "deleted";
@@ -40,11 +45,13 @@ export async function enableWebNotifications(): Promise<boolean> {
     return false;
   }
   saveAppSettings({...loadAppSettings(), webNotifications: true});
+  await subscribeServerPush();
   return true;
 }
 
-export function disableWebNotifications(): void {
+export async function disableWebNotifications(): Promise<void> {
   saveAppSettings({...loadAppSettings(), webNotifications: false});
+  await unsubscribeServerPush();
 }
 
 function canShow(): boolean {
@@ -53,8 +60,15 @@ function canShow(): boolean {
   return Notification.permission === "granted";
 }
 
+/** Prefer SW push when registered — avoid duplicate local Notification. */
+function canShowLocalBrowserNotification(): boolean {
+  if (!canShow()) return false;
+  if (isServerPushActive()) return false;
+  return true;
+}
+
 function show(body: string, tag?: string): void {
-  if (!canShow()) return;
+  if (!canShowLocalBrowserNotification()) return;
   try {
     const notification = new Notification(TITLE, {
       body,
@@ -124,9 +138,10 @@ function flushTodoBatch(): void {
 /**
  * Queue remote todo check / uncheck / delete notifications.
  * Multiple changes within BATCH_WINDOW_MS become one message.
+ * Skipped when server push is active (anti-duplicate).
  */
 export function notifyTodoChanges(changes: TodoNotifyChange[]): void {
-  if (changes.length === 0 || !canShow()) return;
+  if (changes.length === 0 || !canShowLocalBrowserNotification()) return;
   pendingTodoChanges.push(...changes);
   if (batchTimer !== null) clearTimeout(batchTimer);
   batchTimer = setTimeout(flushTodoBatch, BATCH_WINDOW_MS);
@@ -137,7 +152,7 @@ export function notifyMemberJoined(info: {
   memberEmail: string;
   role?: string;
 }): void {
-  if (!canShow()) return;
+  if (!canShowLocalBrowserNotification()) return;
   const roleKey =
     info.role === "writer"
       ? "invite.role_writer"
@@ -164,7 +179,7 @@ export function notifyDatasetInvite(info: {
   role?: string;
   urlPath: string;
 }): void {
-  if (!canShow()) return;
+  if (!canShowLocalBrowserNotification()) return;
   const roleKey =
     info.role === "writer"
       ? "invite.role_writer"

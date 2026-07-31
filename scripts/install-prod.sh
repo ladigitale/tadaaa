@@ -125,7 +125,7 @@ install_docker_if_needed() {
 }
 
 write_env() {
-  local app_host="$1" api_host="$2" email="$3" app_secret="$4" pg_pass="$5" mercure_secret="$6"
+  local app_host="$1" api_host="$2" email="$3" app_secret="$4" pg_pass="$5" mercure_secret="$6" vapid_public="$7" vapid_private="$8"
   local cors
   cors="^https://$(escape_regex_host "$app_host")\$"
 
@@ -147,6 +147,9 @@ MCP_ALLOWED_HOSTS=${api_host}
 
 MERCURE_JWT_SECRET=${mercure_secret}
 MERCURE_PUBLIC_URL=https://${api_host}/.well-known/mercure
+VAPID_PUBLIC_KEY=${vapid_public}
+VAPID_PRIVATE_KEY=${vapid_private}
+VAPID_SUBJECT=mailto:${email}
 
 HTTP_PORT=80
 HTTPS_PORT=443
@@ -208,6 +211,27 @@ init_api() {
     fi
   '
 
+  info "Ensuring VAPID keys for Web Push…"
+  if ! grep -q '^VAPID_PUBLIC_KEY=.\+' "$ENV_FILE" 2>/dev/null; then
+    local vapid_json vapid_pub vapid_priv
+    vapid_json="$("${COMPOSE[@]}" exec -T php php -r 'require "vendor/autoload.php"; echo json_encode(Minishlink\WebPush\VAPID::createVapidKeys());')"
+    vapid_pub="$(printf '%s' "$vapid_json" | sed -n 's/.*"publicKey":"\([^"]*\)".*/\1/p')"
+    vapid_priv="$(printf '%s' "$vapid_json" | sed -n 's/.*"privateKey":"\([^"]*\)".*/\1/p')"
+    if [[ -n "$vapid_pub" && -n "$vapid_priv" ]]; then
+      if grep -q '^VAPID_PUBLIC_KEY=' "$ENV_FILE"; then
+        sed -i "s|^VAPID_PUBLIC_KEY=.*|VAPID_PUBLIC_KEY=${vapid_pub}|" "$ENV_FILE"
+        sed -i "s|^VAPID_PRIVATE_KEY=.*|VAPID_PRIVATE_KEY=${vapid_priv}|" "$ENV_FILE"
+      else
+        printf '\nVAPID_PUBLIC_KEY=%s\nVAPID_PRIVATE_KEY=%s\nVAPID_SUBJECT=mailto:noreply@tadaaa.app\n' \
+          "$vapid_pub" "$vapid_priv" >>"$ENV_FILE"
+      fi
+      "${COMPOSE[@]}" up -d php >/dev/null
+      ok "VAPID keys written to .env"
+    else
+      warn "Could not generate VAPID keys — server push disabled until set manually."
+    fi
+  fi
+
   info "Creating admin user…"
   if "${COMPOSE[@]}" exec -T php bin/console app:user:create \
     "$admin_email" "$admin_pass" --admin --active; then
@@ -242,6 +266,7 @@ main() {
 
   local domain app_host api_host email admin_email admin_pass
   local app_secret pg_pass mercure_secret
+  local vapid_public="" vapid_private=""
 
   prompt domain "Base domain (DNS must already point here)" ""
   # strip protocol / trailing slash if user pasted a URL
@@ -278,7 +303,7 @@ main() {
     warn "${ENV_FILE} already exists."
     read -r -p "Overwrite it? [y/N] " ow || true
     if [[ "$ow" =~ ^[Yy]$ ]]; then
-      write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass" "$mercure_secret"
+      write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass" "$mercure_secret" "$vapid_public" "$vapid_private"
     else
       ok "Keeping existing .env"
       # Prefer hosts already written in .env for rebuild/retry
@@ -291,7 +316,7 @@ main() {
       api_host="${API_SERVER_NAME:-$api_host}"
     fi
   else
-    write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass" "$mercure_secret"
+    write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass" "$mercure_secret" "$vapid_public" "$vapid_private"
   fi
 
   install_docker_if_needed

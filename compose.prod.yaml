@@ -59,6 +59,9 @@ services:
       MERCURE_SUBSCRIBER_JWT_ALG: ${MERCURE_SUBSCRIBER_JWT_ALG:-HS256}
       MERCURE_EXTRA_DIRECTIVES: |
         cors_origins https://${APP_SERVER_NAME:-app.example.com}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:noreply@tadaaa.app}
     volumes:
       - jwt_keys:/app/config/jwt
     expose:

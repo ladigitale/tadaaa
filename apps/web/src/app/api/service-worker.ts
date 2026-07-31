@@ -31,12 +31,47 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+self.addEventListener("push", (event) => {
+  let title = "Tadaaa";
+  let body = "";
+  let tag = `tada-${Date.now()}`;
+  let url = "/";
+
+  try {
+    const data = event.data?.json() as {
+      title?: string;
+      body?: string;
+      tag?: string;
+      url?: string;
+    } | null;
+    if (data) {
+      if (typeof data.title === "string" && data.title) title = data.title;
+      if (typeof data.body === "string") body = data.body;
+      if (typeof data.tag === "string" && data.tag) tag = data.tag;
+      if (typeof data.url === "string" && data.url) url = data.url;
+    } else {
+      body = event.data?.text() ?? "";
+    }
+  } catch {
+    body = event.data?.text() ?? "";
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      tag,
+      data: {url: sanitizeAppPath(url)},
+    }),
+  );
+});
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl =
+  const targetUrl = sanitizeAppPath(
     typeof event.notification.data?.url === "string"
       ? event.notification.data.url
-      : "/";
+      : "/",
+  );
   event.waitUntil(
     (async () => {
       const clientsList = await self.clients.matchAll({
@@ -60,6 +95,23 @@ self.addEventListener("notificationclick", (event) => {
     })(),
   );
 });
+
+/** Same-origin relative path only — blocks //evil, https://evil, javascript:, etc. */
+function sanitizeAppPath(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) {
+    return "/";
+  }
+  try {
+    const resolved = new URL(trimmed, self.location.origin);
+    if (resolved.origin !== self.location.origin) {
+      return "/";
+    }
+    return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+  } catch {
+    return "/";
+  }
+}
 
 self.addEventListener("fetch", (event) => {
   const {request} = event;

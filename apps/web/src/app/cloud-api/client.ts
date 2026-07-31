@@ -551,3 +551,71 @@ export async function fetchMercureSession(
 ): Promise<MercureCredentials> {
   return cloudFetch<MercureCredentials>(`/mercure`, {}, settings);
 }
+
+export type NotificationPreferenceRow = {
+  type: string;
+  enabled: boolean;
+  default: boolean;
+};
+
+export async function fetchVapidPublicKey(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<{publicKey: string | null; enabled: boolean}> {
+  return cloudFetch<{publicKey: string | null; enabled: boolean}>(
+    `/push/vapid-public-key`,
+    {},
+    settings,
+  );
+}
+
+export async function registerPushSubscription(
+  body: {
+    endpoint: string;
+    keys: {p256dh: string; auth: string};
+    userAgent?: string;
+  },
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<{id: string; endpoint: string}> {
+  return cloudFetch<{id: string; endpoint: string}>(
+    `/push/subscriptions`,
+    {method: "POST", body: JSON.stringify(body)},
+    settings,
+  );
+}
+
+export async function revokePushSubscription(
+  endpoint: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<void> {
+  await cloudFetch<void>(
+    `/push/subscriptions`,
+    {method: "DELETE", body: JSON.stringify({endpoint})},
+    settings,
+  );
+}
+
+export async function fetchNotificationPreferences(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<NotificationPreferenceRow[]> {
+  const result = await cloudFetch<{preferences: NotificationPreferenceRow[]}>(
+    `/notification-preferences`,
+    {},
+    settings,
+  );
+  return result.preferences ?? [];
+}
+
+export async function updateNotificationPreferences(
+  preferences: Record<string, boolean>,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<NotificationPreferenceRow[]> {
+  const result = await cloudFetch<{preferences: NotificationPreferenceRow[]}>(
+    `/notification-preferences`,
+    {
+      method: "PUT",
+      body: JSON.stringify({preferences}),
+    },
+    settings,
+  );
+  return result.preferences ?? [];
+}

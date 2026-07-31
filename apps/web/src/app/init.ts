@@ -28,6 +28,8 @@ import {
 import {getIdbTodoStore} from "./api/store-idb";
 import {initPwaInstallListeners} from "./pwa-install";
 import {startDueDateWatcher} from "./notifications/due-dates";
+import {areWebNotificationsEnabled} from "./settings";
+import {subscribeServerPush} from "./notifications/push-subscribe";
 
 export function initApp(): void {
   initAppLocale();
@@ -87,7 +89,11 @@ export function initApp(): void {
     shareInviteEmail: "",
   });
   set(tagsListKey.path, []);
-  void registerServiceWorker();
+  void registerServiceWorker().then(() => {
+    if (areWebNotificationsEnabled() && isAccountConnected()) {
+      void subscribeServerPush();
+    }
+  });
 
   registerSyncHandler((event) => {
     void getIdbTodoStore()
@@ -105,6 +111,9 @@ export function initApp(): void {
     if (isAccountConnected()) {
       scheduleAutoSync();
       void ensureMercureSubscription();
+      if (areWebNotificationsEnabled()) {
+        void subscribeServerPush();
+      }
     }
   });
 
