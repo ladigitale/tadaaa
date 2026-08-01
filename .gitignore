@@ -96,5 +96,5 @@ typings/
 build/Release/
 .lock-wscript
 
-# WIP local (hors monorepo versionné pour le moment)
-apps/morseattack/
+# Ops local-only (deploy helpers, never commit)
+.ops/local/

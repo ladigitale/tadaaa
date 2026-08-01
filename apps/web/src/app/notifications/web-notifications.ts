@@ -38,15 +38,18 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
   }
 }
 
-export async function enableWebNotifications(): Promise<boolean> {
+export async function enableWebNotifications(): Promise<{
+  ok: boolean;
+  pushRegistered: boolean;
+}> {
   const permission = await requestNotificationPermission();
   if (permission !== "granted") {
     saveAppSettings({...loadAppSettings(), webNotifications: false});
-    return false;
+    return {ok: false, pushRegistered: false};
   }
   saveAppSettings({...loadAppSettings(), webNotifications: true});
-  await subscribeServerPush();
-  return true;
+  const pushRegistered = await subscribeServerPush();
+  return {ok: true, pushRegistered};
 }
 
 export async function disableWebNotifications(): Promise<void> {

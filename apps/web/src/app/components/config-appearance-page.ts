@@ -25,6 +25,13 @@ import {
   notificationPermission,
 } from "../notifications/web-notifications";
 import {
+  probePushStatus,
+  subscribePushStatus,
+  subscribeServerPush,
+  type PushStatus,
+  type PushStatusCode,
+} from "../notifications/push-subscribe";
+import {
   fetchNotificationPreferences,
   updateNotificationPreferences,
   type NotificationPreferenceRow,
@@ -50,6 +57,21 @@ const PREF_LABEL_KEYS: Record<string, string> = {
   todo_created: "notif.pref.todo_created",
 };
 
+const STATUS_LABEL: Record<PushStatusCode, string> = {
+  ready: "notif.status.ready",
+  checking: "notif.status.checking",
+  local_only: "notif.status.local_only",
+  need_account: "notif.status.need_account",
+  need_permission: "notif.status.need_permission",
+  permission_denied: "notif.status.permission_denied",
+  unsupported: "notif.status.unsupported",
+  server_disabled: "notif.status.server_disabled",
+  no_service_worker: "notif.status.no_service_worker",
+  not_subscribed: "notif.status.not_subscribed",
+  register_failed: "notif.status.register_failed",
+  offline: "notif.status.offline",
+};
+
 @customElement("config-appearance-page")
 export class ConfigAppearancePage extends LitElement {
   static styles = [tailwind];
@@ -68,6 +90,12 @@ export class ConfigAppearancePage extends LitElement {
     notificationPermission();
 
   @state()
+  private pushStatus: PushStatus | null = null;
+
+  @state()
+  private pushBusy = false;
+
+  @state()
   private prefs: NotificationPreferenceRow[] = [];
 
   @state()
@@ -77,6 +105,7 @@ export class ConfigAppearancePage extends LitElement {
   private pwa: PwaInstallState = getPwaInstallState();
 
   private unsubPwa: (() => void) | null = null;
+  private unsubPush: (() => void) | null = null;
 
   connectedCallback() {
     super.connectedCallback();
@@ -88,13 +117,37 @@ export class ConfigAppearancePage extends LitElement {
     this.unsubPwa = subscribePwaInstall(() => {
       this.pwa = getPwaInstallState();
     });
+    this.unsubPush = subscribePushStatus((status) => {
+      this.pushStatus = status;
+    });
+    void this.refreshPushStatus();
     void this.loadPrefs();
+    document.addEventListener("visibilitychange", this.onForeground);
+    window.addEventListener("focus", this.onForeground);
+    window.addEventListener("online", this.onForeground);
   }
 
   disconnectedCallback() {
     this.unsubPwa?.();
     this.unsubPwa = null;
+    this.unsubPush?.();
+    this.unsubPush = null;
+    document.removeEventListener("visibilitychange", this.onForeground);
+    window.removeEventListener("focus", this.onForeground);
+    window.removeEventListener("online", this.onForeground);
     super.disconnectedCallback();
+  }
+
+  private onForeground = () => {
+    if (document.visibilityState === "visible") {
+      void this.refreshPushStatus();
+    }
+  };
+
+  private async refreshPushStatus(): Promise<void> {
+    this.webNotifications = areWebNotificationsEnabled();
+    this.notifPermission = notificationPermission();
+    await probePushStatus({settingEnabled: this.webNotifications});
   }
 
   private async loadPrefs(): Promise<void> {
@@ -132,26 +185,48 @@ export class ConfigAppearancePage extends LitElement {
   };
 
   private onToggleNotifications = async () => {
-    if (this.webNotifications) {
-      await disableWebNotifications();
-      this.webNotifications = false;
-      this.prefs = [];
-      return;
-    }
+    this.pushBusy = true;
+    try {
+      if (this.webNotifications) {
+        await disableWebNotifications();
+        this.webNotifications = false;
+        this.prefs = [];
+        await this.refreshPushStatus();
+        return;
+      }
 
-    const ok = await enableWebNotifications();
-    this.notifPermission = notificationPermission();
-    this.webNotifications = ok && areWebNotificationsEnabled();
-    if (!ok) {
-      const denied = this.notifPermission === "denied";
-      await showAlert(
-        tx("notif.title"),
-        denied ? tx("notif.permission_denied") : tx("notif.unsupported"),
-      );
-      return;
+      const result = await enableWebNotifications();
+      this.notifPermission = notificationPermission();
+      this.webNotifications = result.ok && areWebNotificationsEnabled();
+      await this.refreshPushStatus();
+      if (!result.ok) {
+        const denied = this.notifPermission === "denied";
+        await showAlert(
+          tx("notif.title"),
+          denied ? tx("notif.permission_denied") : tx("notif.unsupported"),
+        );
+        return;
+      }
+      await this.loadPrefs();
+      if (!result.pushRegistered) {
+        // Status banner already explains why — keep a short confirm.
+        return;
+      }
+    } finally {
+      this.pushBusy = false;
     }
-    await this.loadPrefs();
-    await showAlert(tx("notif.title"), tx("notif.enabled_ok"));
+  };
+
+  private onRetryPush = async () => {
+    this.pushBusy = true;
+    try {
+      if (!this.webNotifications) return;
+      await subscribeServerPush();
+      await this.refreshPushStatus();
+      await this.loadPrefs();
+    } finally {
+      this.pushBusy = false;
+    }
   };
 
   private onTogglePref = async (type: string, enabled: boolean) => {
@@ -210,6 +285,91 @@ export class ConfigAppearancePage extends LitElement {
           <p class="mt-0.5 text-sm text-neutral-600">${theme.description}</p>
         </div>
       </button>
+    `;
+  }
+
+  private statusTone(code: PushStatusCode): string {
+    if (code === "ready") return "border-green-600/40 bg-green-50 text-green-900";
+    if (code === "checking") return "border-neutral-300 bg-neutral-50 text-neutral-600";
+    if (
+      code === "permission_denied" ||
+      code === "unsupported" ||
+      code === "server_disabled" ||
+      code === "register_failed" ||
+      code === "no_service_worker"
+    ) {
+      return "border-red-600/30 bg-red-50 text-red-900";
+    }
+    return "border-amber-600/30 bg-amber-50 text-amber-950";
+  }
+
+  private renderPushStatus() {
+    const status = this.pushStatus;
+    if (!status) return nothing;
+    const labelKey = STATUS_LABEL[status.code];
+    const canRetry =
+      this.webNotifications &&
+      isAccountConnected() &&
+      (status.code === "not_subscribed" ||
+        status.code === "register_failed" ||
+        status.code === "no_service_worker" ||
+        status.code === "server_disabled");
+
+    return html`
+      <div
+        class="rounded-md border px-3 py-2 text-sm ${this.statusTone(status.code)}"
+        role="status"
+        aria-live="polite"
+      >
+        <p class="font-medium">${tx("notif.status.label")}</p>
+        <p class="mt-0.5">${tx(labelKey)}</p>
+        ${status.detail
+          ? html`<p class="mt-1 text-xs opacity-80">${status.detail}</p>`
+          : nothing}
+        <ul class="mt-2 space-y-0.5 text-xs opacity-90">
+          <li>
+            ${tx("notif.status.line_permission")}:
+            ${status.permission}
+          </li>
+          <li>
+            ${tx("notif.status.line_account")}:
+            ${status.accountConnected
+              ? tx("notif.status.yes")
+              : tx("notif.status.no")}
+          </li>
+          <li>
+            ${tx("notif.status.line_vapid")}:
+            ${status.vapidEnabled
+              ? tx("notif.status.yes")
+              : tx("notif.status.no")}
+          </li>
+          <li>
+            ${tx("notif.status.line_sw")}:
+            ${status.hasServiceWorker
+              ? tx("notif.status.yes")
+              : tx("notif.status.no")}
+          </li>
+          <li>
+            ${tx("notif.status.line_device")}:
+            ${status.hasPushSubscription
+              ? tx("notif.status.yes")
+              : tx("notif.status.no")}
+          </li>
+        </ul>
+        ${canRetry
+          ? html`
+              <div class="mt-2">
+                <sonic-button
+                  size="sm"
+                  type="default"
+                  ?disabled=${this.pushBusy}
+                  @click=${this.onRetryPush}
+                  >${tx("notif.status.retry")}</sonic-button
+                >
+              </div>
+            `
+          : nothing}
+      </div>
     `;
   }
 
@@ -299,19 +459,11 @@ export class ConfigAppearancePage extends LitElement {
             <sonic-button
               size="sm"
               type=${this.webNotifications ? "primary" : "default"}
+              ?disabled=${this.pushBusy}
               @click=${this.onToggleNotifications}
               >${notifLabel}</sonic-button
             >
-            ${this.notifPermission === "denied"
-              ? html`<p class="text-sm text-neutral-500">
-                  ${tx("notif.permission_denied")}
-                </p>`
-              : null}
-            ${!isAccountConnected() && this.webNotifications
-              ? html`<p class="text-sm text-neutral-500">
-                  ${tx("notif.push_needs_account")}
-                </p>`
-              : null}
+            ${this.renderPushStatus()}
             ${this.renderPrefs()}
           </section>
 
