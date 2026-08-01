@@ -75,6 +75,7 @@ self.addEventListener("push", (event) => {
         return;
       }
 
+      // `renotify` is supported by browsers with `tag`, but missing from TS DOM libs.
       await self.registration.showNotification(title, {
         body: visibleBody,
         tag,
@@ -82,7 +83,7 @@ self.addEventListener("push", (event) => {
         icon: "/icons/icon-192.png",
         badge: "/icons/icon-192.png",
         data: {url: sanitizeAppPath(url)},
-      });
+      } as NotificationOptions);
     })(),
   );
 });
