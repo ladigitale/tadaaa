@@ -56,12 +56,34 @@ self.addEventListener("push", (event) => {
     body = event.data?.text() ?? "";
   }
 
+  // Android Chrome often drops empty-body notifications; keep a visible fallback.
+  const visibleBody = body.trim() ? body : title;
+
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      tag,
-      data: {url: sanitizeAppPath(url)},
-    }),
+    (async () => {
+      // Prefer in-app Mercure/local notification when a window is already visible
+      // (avoids duplicates). Chrome still requires a visible notification when no
+      // focused client exists — otherwise the push can be revoked.
+      const clientsList = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      const hasVisibleClient = clientsList.some(
+        (client) => client.visibilityState === "visible",
+      );
+      if (hasVisibleClient) {
+        return;
+      }
+
+      await self.registration.showNotification(title, {
+        body: visibleBody,
+        tag,
+        renotify: true,
+        icon: "/icons/icon-192.png",
+        badge: "/icons/icon-192.png",
+        data: {url: sanitizeAppPath(url)},
+      });
+    })(),
   );
 });
 

@@ -60,23 +60,38 @@ function canShow(): boolean {
   return Notification.permission === "granted";
 }
 
-/** Prefer SW push when registered — avoid duplicate local Notification. */
+/** Prefer SW push when registered — avoid duplicate local Notification.
+ * Still show local while the page is visible: Mercure is faster, and if FCM
+ * delivery fails (common before aes128gcm fix) the user would otherwise see nothing.
+ */
 function canShowLocalBrowserNotification(): boolean {
   if (!canShow()) return false;
+  if (
+    typeof document !== "undefined" &&
+    document.visibilityState === "visible"
+  ) {
+    return true;
+  }
   if (isServerPushActive()) return false;
   return true;
 }
 
-function show(body: string, tag?: string): void {
+function show(
+  body: string,
+  tag?: string,
+  onClick?: () => void,
+): void {
   if (!canShowLocalBrowserNotification()) return;
   try {
     const notification = new Notification(TITLE, {
       body,
       tag: tag ?? `tada-${Date.now()}`,
+      icon: "/icons/icon-192.png",
     });
     notification.onclick = () => {
       window.focus();
       notification.close();
+      onClick?.();
     };
   } catch {
     // Permission revoked mid-session or insecure context.
@@ -197,21 +212,11 @@ export function notifyDatasetInvite(info: {
         email: info.inviterEmail,
         name: info.datasetName,
       });
-  try {
-    const notification = new Notification(TITLE, {
-      body,
-      tag: `tada-invite-${info.urlPath}`,
-    });
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
-      const path = info.urlPath.startsWith("/")
-        ? info.urlPath
-        : `/${info.urlPath}`;
-      window.history.pushState({}, "", path);
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    };
-  } catch {
-    // Permission revoked mid-session or insecure context.
-  }
+  show(body, `tada-invite-${info.urlPath}`, () => {
+    const path = info.urlPath.startsWith("/")
+      ? info.urlPath
+      : `/${info.urlPath}`;
+    window.history.pushState({}, "", path);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
 }

@@ -122,6 +122,9 @@ export function initApp(): void {
     if (document.visibilityState === "visible" && isAccountConnected()) {
       scheduleAutoSync();
       void ensureMercureSubscription();
+      if (areWebNotificationsEnabled()) {
+        void subscribeServerPush();
+      }
     }
   };
   document.addEventListener("visibilitychange", onForeground);

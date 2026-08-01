@@ -183,13 +183,20 @@ final class PushNotificationDispatcher
         }
 
         try {
-            $webPush = new WebPush([
-                'VAPID' => [
-                    'subject' => $this->push->getSubject(),
-                    'publicKey' => $this->push->getPublicKey(),
-                    'privateKey' => $this->push->getPrivateKey(),
+            // urgency=high helps FCM wake Android from Doze; TTL keeps the message queued.
+            $webPush = new WebPush(
+                [
+                    'VAPID' => [
+                        'subject' => $this->push->getSubject(),
+                        'publicKey' => $this->push->getPublicKey(),
+                        'privateKey' => $this->push->getPrivateKey(),
+                    ],
                 ],
-            ]);
+                [
+                    'TTL' => 86_400,
+                    'urgency' => 'high',
+                ],
+            );
         } catch (\Throwable $exception) {
             $this->logger->warning('Web Push init failed: {message}', [
                 'message' => $exception->getMessage(),
@@ -222,12 +229,16 @@ final class PushNotificationDispatcher
                     continue;
                 }
 
+                // Modern Chrome/Firefox/Android expect RFC 8291 aes128gcm. The
+                // library still defaults to legacy aesgcm, which FCM accepts but
+                // the browser cannot decrypt — silent drop, especially on Android.
                 $subscription = Subscription::create([
                     'endpoint' => $sub->getEndpoint(),
                     'keys' => [
                         'p256dh' => $sub->getP256dh(),
                         'auth' => $sub->getAuth(),
                     ],
+                    'contentEncoding' => 'aes128gcm',
                 ]);
                 $report = $webPush->sendOneNotification($subscription, $json);
                 if (!$report->isSuccess()) {
