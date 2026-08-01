@@ -10,7 +10,11 @@ export type AppThemeId =
   | "synthwave"
   | "matcha"
   | "terminal"
-  | "bubblegum";
+  | "bubblegum"
+  | "cafe"
+  | "lavande"
+  | "crepuscule"
+  | "encre";
 
 export type AppThemeMeta = {
   id: AppThemeId;
@@ -25,8 +29,8 @@ export const APP_THEMES: AppThemeMeta[] = [
   {
     id: "coraline",
     label: "Coraline",
-    description: "Deep blue ground, coral type",
-    swatches: ["#0f1c3a", "#e85a4a", "#f0c4b8"],
+    description: "Brown-black, sky turquoise & nail-polish red",
+    swatches: ["#1a1412", "#ff2a4d", "#5eb8c8"],
     dark: true,
   },
   {
@@ -90,6 +94,34 @@ export const APP_THEMES: AppThemeMeta[] = [
     label: "Bubblegum",
     description: "Chewing-gum pastels",
     swatches: ["#fff0f7", "#ff4da6", "#5ac8ff"],
+    dark: false,
+  },
+  {
+    id: "cafe",
+    label: "Café",
+    description: "Cream, espresso & caramel",
+    swatches: ["#f3ebe1", "#6b3f24", "#c4782a"],
+    dark: false,
+  },
+  {
+    id: "lavande",
+    label: "Lavande",
+    description: "Soft lilac & deep violet",
+    swatches: ["#f4f0f8", "#6b4a9e", "#5a7ab0"],
+    dark: false,
+  },
+  {
+    id: "crepuscule",
+    label: "Crépuscule",
+    description: "Dusk mauve & amber glow",
+    swatches: ["#1c1420", "#e8924a", "#7a9ec8"],
+    dark: true,
+  },
+  {
+    id: "encre",
+    label: "Encre",
+    description: "Paper white & indigo ink",
+    swatches: ["#f7f4ee", "#2a2e6e", "#3a6a8a"],
     dark: false,
   },
 ];

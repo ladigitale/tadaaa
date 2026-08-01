@@ -4,31 +4,31 @@
  * Selectors include sonic-theme so host :host rules can be overridden.
  */
 
-/* Coraline — deep blue ground, coral type & accents */
+/* Coraline — brown-black ground, sky/turquoise scale, nail-polish red */
 html[data-theme="coraline"],
 html[data-theme="coraline"] sonic-theme {
   color-scheme: dark;
-  --sc-base: #0f1c3a;
-  --sc-base-content: #e85a4a;
-  --sc-base-50: #162548;
-  --sc-base-100: #1e315c;
-  --sc-base-200: #2a4274;
-  --sc-base-300: #3d5a92;
-  --sc-base-400: #5a78b0;
-  --sc-base-500: #7e96c4;
-  --sc-base-600: #a8b8d6;
-  --sc-base-700: #c9d2e4;
-  --sc-base-800: #e0e6f0;
-  --sc-base-900: #f0c4b8;
-  --sc-primary: #e85a4a;
-  --sc-primary-content: #0f1c3a;
-  --sc-info: #5a8ec4;
-  --sc-info-content: #0a1428;
+  --sc-base: #1a1412;
+  --sc-base-content: #ff2a4d;
+  --sc-base-50: #241c18;
+  --sc-base-100: #2e2620;
+  --sc-base-200: #3d342c;
+  --sc-base-300: #3a5a5e;
+  --sc-base-400: #4a8a92;
+  --sc-base-500: #5eb8c8;
+  --sc-base-600: #8ad0dc;
+  --sc-base-700: #b5e4ec;
+  --sc-base-800: #d8f0f4;
+  --sc-base-900: #f0c8c0;
+  --sc-primary: #ff2a4d;
+  --sc-primary-content: #1a1412;
+  --sc-info: #40c4d4;
+  --sc-info-content: #061818;
   --sc-success: #4a9e78;
   --sc-success-content: #061810;
   --sc-warning: #e8a84a;
   --sc-warning-content: #1c1408;
-  --sc-danger: #c43040;
+  --sc-danger: #e6002e;
   --sc-danger-content: #fff0f1;
   --sc-rounded: 0.375rem;
   --sc-btn-rounded: 0.5rem;
@@ -272,4 +272,124 @@ html[data-theme="bubblegum"] sonic-theme {
   --sc-danger-content: #ffffff;
   --sc-rounded: 1.25rem;
   --sc-btn-rounded: 9999px;
+}
+
+/* Café — cream paper, espresso & caramel */
+html[data-theme="cafe"],
+html[data-theme="cafe"] sonic-theme {
+  color-scheme: light;
+  --sc-base: #f3ebe1;
+  --sc-base-content: #2a1810;
+  --sc-base-50: #e8ddd0;
+  --sc-base-100: #d9c8b4;
+  --sc-base-200: #c4a88c;
+  --sc-base-300: #a88868;
+  --sc-base-400: #8a6a4a;
+  --sc-base-500: #6e5038;
+  --sc-base-600: #543c2a;
+  --sc-base-700: #3e2c1e;
+  --sc-base-800: #2a1c14;
+  --sc-base-900: #1a100c;
+  --sc-primary: #6b3f24;
+  --sc-primary-content: #faf6f1;
+  --sc-info: #5a7a6e;
+  --sc-info-content: #ffffff;
+  --sc-success: #4a6b3a;
+  --sc-success-content: #ffffff;
+  --sc-warning: #c4782a;
+  --sc-warning-content: #ffffff;
+  --sc-danger: #a03828;
+  --sc-danger-content: #ffffff;
+  --sc-rounded: 0.5rem;
+  --sc-btn-rounded: 0.75rem;
+}
+
+/* Lavande — soft lilac ground, deep violet accents */
+html[data-theme="lavande"],
+html[data-theme="lavande"] sonic-theme {
+  color-scheme: light;
+  --sc-base: #f4f0f8;
+  --sc-base-content: #2a1a3a;
+  --sc-base-50: #e8e0f0;
+  --sc-base-100: #d4c8e4;
+  --sc-base-200: #b8a4d0;
+  --sc-base-300: #9a80b8;
+  --sc-base-400: #7c5c9e;
+  --sc-base-500: #64488a;
+  --sc-base-600: #4e3670;
+  --sc-base-700: #3a2854;
+  --sc-base-800: #2a1c3e;
+  --sc-base-900: #1c1228;
+  --sc-primary: #6b4a9e;
+  --sc-primary-content: #ffffff;
+  --sc-info: #5a7ab0;
+  --sc-info-content: #ffffff;
+  --sc-success: #4a8a6a;
+  --sc-success-content: #ffffff;
+  --sc-warning: #c4883a;
+  --sc-warning-content: #ffffff;
+  --sc-danger: #b04868;
+  --sc-danger-content: #ffffff;
+  --sc-rounded: 0.75rem;
+  --sc-btn-rounded: 9999px;
+}
+
+/* Crépuscule — dusk mauve, warm amber glow */
+html[data-theme="crepuscule"],
+html[data-theme="crepuscule"] sonic-theme {
+  color-scheme: dark;
+  --sc-base: #1c1420;
+  --sc-base-content: #f5e6d8;
+  --sc-base-50: #2a1e30;
+  --sc-base-100: #3a2a44;
+  --sc-base-200: #4e3a5a;
+  --sc-base-300: #6a5078;
+  --sc-base-400: #8a6e98;
+  --sc-base-500: #a890b0;
+  --sc-base-600: #c8b4cc;
+  --sc-base-700: #e0d4e4;
+  --sc-base-800: #f0e8f0;
+  --sc-base-900: #faf4f0;
+  --sc-primary: #e8924a;
+  --sc-primary-content: #1c1008;
+  --sc-info: #7a9ec8;
+  --sc-info-content: #101820;
+  --sc-success: #6aaa7a;
+  --sc-success-content: #0c1810;
+  --sc-warning: #e8b04a;
+  --sc-warning-content: #1c1408;
+  --sc-danger: #d45868;
+  --sc-danger-content: #fff0f2;
+  --sc-rounded: 0.5rem;
+  --sc-btn-rounded: 0.75rem;
+}
+
+/* Encre — paper white, indigo ink */
+html[data-theme="encre"],
+html[data-theme="encre"] sonic-theme {
+  color-scheme: light;
+  --sc-base: #f7f4ee;
+  --sc-base-content: #1a1e2e;
+  --sc-base-50: #ebe6dc;
+  --sc-base-100: #d8d0c4;
+  --sc-base-200: #b8b0a4;
+  --sc-base-300: #8a8490;
+  --sc-base-400: #5c5878;
+  --sc-base-500: #3e3a5e;
+  --sc-base-600: #2c2848;
+  --sc-base-700: #1e1c38;
+  --sc-base-800: #141228;
+  --sc-base-900: #0c0a18;
+  --sc-primary: #2a2e6e;
+  --sc-primary-content: #f7f4ee;
+  --sc-info: #3a6a8a;
+  --sc-info-content: #ffffff;
+  --sc-success: #2e6a48;
+  --sc-success-content: #ffffff;
+  --sc-warning: #a87828;
+  --sc-warning-content: #ffffff;
+  --sc-danger: #8a2838;
+  --sc-danger-content: #ffffff;
+  --sc-rounded: 0.25rem;
+  --sc-btn-rounded: 0.375rem;
 }

@@ -2,6 +2,7 @@ import "@supersoniks/concorde/menu";
 import "@supersoniks/concorde/menu-item";
 import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/button";
+import "@supersoniks/concorde/pop";
 import "@supersoniks/concorde/tooltip";
 import {html} from "lit";
 import type {DirectiveResult} from "lit/directive.js";
@@ -27,6 +28,20 @@ function goHome(event: Event) {
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
+/**
+ * pushstate stopPropagation dans le shadow du bouton : capture + hide différé.
+ */
+const closeMainNavPop = {
+  capture: true,
+  handleEvent(event: Event) {
+    const menu = event.currentTarget as HTMLElement | null;
+    const pop = menu?.closest("sonic-pop") as
+      | (HTMLElement & {hide?: () => void})
+      | null;
+    queueMicrotask(() => pop?.hide?.());
+  },
+};
+
 export default (children: DirectiveResult) => html`
   <div
     class="flex flex-col overflow-hidden bg-neutral-0"
@@ -37,9 +52,70 @@ export default (children: DirectiveResult) => html`
       aria-label=${tx("nav.main_aria")}
     >
       <div
-        class="mx-auto flex w-full max-w-6xl items-center gap-6 px-3 py-3 sm:gap-8 sm:px-4"
+        class="mx-auto flex w-full max-w-6xl items-center gap-2 px-3 py-3 sm:gap-3 sm:px-4"
       >
-        <div class="flex shrink-0 items-center gap-1.5">
+        <sonic-pop class="inline-block shrink-0" placement="bottom-start">
+          <sonic-tooltip
+            label=${tx("nav.menu_aria")}
+            placement="bottom"
+          >
+            <sonic-button
+              shape="circle"
+              size="sm"
+              variant="ghost"
+              data-aria-label=${tx("nav.menu_aria")}
+            >
+              <sonic-icon
+                library=${ICON_LIBRARY}
+                prefix=${ICON_PREFIX}
+                name="menu"
+                size="lg"
+              ></sonic-icon>
+            </sonic-button>
+          </sonic-tooltip>
+
+          <sonic-menu
+            slot="content"
+            direction="column"
+            align="left"
+            size="sm"
+            minWidth="12rem"
+            @click=${closeMainNavPop}
+          >
+            <sonic-menu-item href="/tache" pushstate autoActive="partial">
+              <sonic-icon
+                slot="prefix"
+                library=${ICON_LIBRARY}
+                prefix=${ICON_PREFIX}
+                name="list"
+                size="sm"
+              ></sonic-icon>
+              ${t("nav.tasks")}
+            </sonic-menu-item>
+            <sonic-menu-item href="/tags" pushstate autoActive="strict">
+              <sonic-icon
+                slot="prefix"
+                library=${ICON_LIBRARY}
+                prefix=${ICON_PREFIX}
+                name="label"
+                size="sm"
+              ></sonic-icon>
+              ${t("nav.tags")}
+            </sonic-menu-item>
+            <sonic-menu-item href="/config" pushstate autoActive="partial">
+              <sonic-icon
+                slot="prefix"
+                library=${ICON_LIBRARY}
+                prefix=${ICON_PREFIX}
+                name="settings"
+                size="sm"
+              ></sonic-icon>
+              ${t("nav.config")}
+            </sonic-menu-item>
+          </sonic-menu>
+        </sonic-pop>
+
+        <div class="flex min-w-0 shrink-0 items-center gap-1.5">
           <a
             href="/tache"
             class="flex items-center gap-1 text-neutral-900 no-underline"
@@ -61,39 +137,6 @@ export default (children: DirectiveResult) => html`
           <demo-header-badge></demo-header-badge>
         </div>
 
-        <sonic-menu direction="row" align="left" size="sm">
-          <sonic-menu-item href="/tache" pushstate autoActive="partial">
-            <sonic-icon
-              slot="prefix"
-              library=${ICON_LIBRARY}
-              prefix=${ICON_PREFIX}
-              name="list"
-              size="sm"
-            ></sonic-icon>
-            ${t("nav.tasks")}
-          </sonic-menu-item>
-          <sonic-menu-item href="/tags" pushstate autoActive="strict">
-            <sonic-icon
-              slot="prefix"
-              library=${ICON_LIBRARY}
-              prefix=${ICON_PREFIX}
-              name="label"
-              size="sm"
-            ></sonic-icon>
-            ${t("nav.tags")}
-          </sonic-menu-item>
-          <sonic-menu-item href="/config" pushstate autoActive="partial">
-            <sonic-icon
-              slot="prefix"
-              library=${ICON_LIBRARY}
-              prefix=${ICON_PREFIX}
-              name="settings"
-              size="sm"
-            ></sonic-icon>
-            ${t("nav.config")}
-          </sonic-menu-item>
-        </sonic-menu>
-
         <sonic-tooltip
           class="ml-auto"
           label=${tx("nav.search_aria")}
@@ -101,7 +144,6 @@ export default (children: DirectiveResult) => html`
         >
           <sonic-button
             variant="ghost"
-            size="sm"
             data-aria-label=${tx("nav.search_aria")}
             @click=${openTodoSearch}
           >
@@ -109,7 +151,7 @@ export default (children: DirectiveResult) => html`
               library=${ICON_LIBRARY}
               prefix=${ICON_PREFIX}
               name="search"
-              size="sm"
+              size="lg"
             ></sonic-icon>
             <span class="ml-1 hidden text-neutral-500 sm:inline"
               >${t("nav.search")}</span
@@ -123,8 +165,8 @@ export default (children: DirectiveResult) => html`
       </div>
     </nav>
     <main
-      class="mx-auto flex w-full max-w-6xl flex-col overflow-hidden px-3 py-3 sm:px-4 sm:py-4 md:py-5"
-      style="flex: 1 1 0; min-height: 0"
+      class="custom-scroll mx-auto w-full max-w-6xl flex-1 overflow-x-hidden overflow-y-auto px-3 py-3 sm:px-4 sm:py-4 md:py-5"
+      style="min-height: 0"
     >
       ${children}
     </main>

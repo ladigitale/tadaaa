@@ -3,9 +3,10 @@ import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/pop";
 import "@supersoniks/concorde/menu";
 import "@supersoniks/concorde/menu-item";
+import "@supersoniks/concorde/divider";
+import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
-import {t} from "@supersoniks/concorde/directives/Wording";
 import {bulkUpdateTodos, fetchTodos} from "../api/client";
 import type {UpdateTodoPatch} from "../api/types";
 import type {TodosFilter} from "../dp";
@@ -18,6 +19,8 @@ import {
 } from "../utils/modal-dialog";
 import {todosFilterToListParams} from "../utils/todos-filter-params";
 import tailwind from "../../css/tailwind";
+
+export type TasksViewMode = "list" | "calendar";
 
 type BulkActionId = "done" | "undone" | "archive" | "restore";
 
@@ -70,7 +73,7 @@ function bulkActions(): BulkAction[] {
 }
 
 /**
- * Actions en masse sur toutes les tâches correspondant aux filtres courants.
+ * Menu toolbar : switch liste/calendrier + actions en masse sur les filtres.
  */
 @customElement("todo-bulk-actions")
 export class TodoBulkActions extends LitElement {
@@ -86,6 +89,9 @@ export class TodoBulkActions extends LitElement {
   @property({attribute: false})
   filter!: TodosFilter;
 
+  @property()
+  viewMode: TasksViewMode = "list";
+
   @state()
   private busy = false;
 
@@ -99,6 +105,17 @@ export class TodoBulkActions extends LitElement {
         size="sm"
       ></sonic-icon>
     `;
+  }
+
+  private setViewMode(mode: TasksViewMode) {
+    if (mode === this.viewMode) return;
+    this.dispatchEvent(
+      new CustomEvent("view-change", {
+        detail: {mode},
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 
   private async countMatching(): Promise<number> {
@@ -128,13 +145,13 @@ export class TodoBulkActions extends LitElement {
 
       const result = await bulkUpdateTodos(
         todosFilterToListParams(this.filter),
-        action.patch,
+        action.patch
       );
       await showAlert(
         action.confirmTitle,
         result.updatedCount === 0
           ? tx("tasks.bulk.result_none")
-          : tf("tasks.bulk.result_ok", {n: result.updatedCount}),
+          : tf("tasks.bulk.result_ok", {n: result.updatedCount})
       );
     } catch (error) {
       await showError(error);
@@ -145,29 +162,27 @@ export class TodoBulkActions extends LitElement {
   }
 
   render() {
+    const actionsAria = tx("common.actions");
+
     return html`
       <sonic-pop class="inline-block" placement="bottom-end">
-        <sonic-button
-          size="sm"
-          variant="outline"
-          ?disabled=${this.busy}
-          ?loading=${this.busy}
-        >
-          <sonic-icon
-            library=${ICON_LIBRARY}
-            prefix=${ICON_PREFIX}
-            name="list"
+        <sonic-tooltip label=${actionsAria} placement="bottom">
+          <sonic-button
+            shape="circle"
             size="sm"
-          ></sonic-icon>
-          ${t("common.actions")}
-          <sonic-icon
-            slot="suffix"
-            library=${ICON_LIBRARY}
-            prefix=${ICON_PREFIX}
-            name="nav-arrow-down"
-            size="sm"
-          ></sonic-icon>
-        </sonic-button>
+            variant="ghost"
+            ?disabled=${this.busy}
+            ?loading=${this.busy}
+            data-aria-label=${actionsAria}
+          >
+            <sonic-icon
+              library=${ICON_LIBRARY}
+              prefix=${ICON_PREFIX}
+              name="more-horiz"
+              size="sm"
+            ></sonic-icon>
+          </sonic-button>
+        </sonic-tooltip>
         <sonic-menu
           slot="content"
           direction="column"
@@ -175,6 +190,29 @@ export class TodoBulkActions extends LitElement {
           size="sm"
           minWidth="14rem"
         >
+          <sonic-divider
+            label=${tx("tasks.view.aria")}
+            align="left"
+            size="sm"
+          ></sonic-divider>
+          <sonic-menu-item
+            ?active=${this.viewMode === "list"}
+            @click=${() => this.setViewMode("list")}
+          >
+            ${this.renderMenuIcon("list")} ${tx("tasks.view.list")}
+          </sonic-menu-item>
+          <sonic-menu-item
+            ?active=${this.viewMode === "calendar"}
+            @click=${() => this.setViewMode("calendar")}
+          >
+            ${this.renderMenuIcon("calendar")} ${tx("tasks.view.calendar")}
+          </sonic-menu-item>
+
+          <sonic-divider
+            label=${actionsAria}
+            align="left"
+            size="sm"
+          ></sonic-divider>
           ${bulkActions().map(
             (action) => html`
               <sonic-menu-item
@@ -182,10 +220,9 @@ export class TodoBulkActions extends LitElement {
                 ?disabled=${this.busy}
                 @click=${() => void this.runAction(action)}
               >
-                ${this.renderMenuIcon(action.icon)}
-                ${action.label}
+                ${this.renderMenuIcon(action.icon)} ${action.label}
               </sonic-menu-item>
-            `,
+            `
           )}
         </sonic-menu>
       </sonic-pop>

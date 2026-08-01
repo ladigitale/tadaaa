@@ -11,6 +11,7 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "nav.search": "Search…",
     "nav.search_aria": "Search tasks",
     "nav.main_aria": "Main navigation",
+    "nav.menu_aria": "Open menu",
 
     "demo.badge": "Demo",
     "demo.badge_title": "This is a free playground — reopen the short tour",
@@ -262,6 +263,8 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "tasks.filter.tag": "Tag",
     "tasks.filter.sort": "Sort",
     "tasks.filter.tags_all": "All",
+    "tasks.filter.title": "Filters",
+    "tasks.filter.open_aria": "Filters",
     "tasks.view.list": "List",
     "tasks.view.calendar": "Calendar",
     "tasks.view.aria": "Task view",
@@ -453,6 +456,7 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "nav.search": "Recherche…",
     "nav.search_aria": "Rechercher une tâche",
     "nav.main_aria": "Navigation principale",
+    "nav.menu_aria": "Ouvrir le menu",
 
     "demo.badge": "Démo",
     "demo.badge_title": "Espace de jeu libre — rouvrir le mini-tour",
@@ -705,6 +709,8 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "tasks.filter.tag": "Étiquette",
     "tasks.filter.sort": "Tri",
     "tasks.filter.tags_all": "Toutes",
+    "tasks.filter.title": "Filtres",
+    "tasks.filter.open_aria": "Filtres",
     "tasks.view.list": "Liste",
     "tasks.view.calendar": "Calendrier",
     "tasks.view.aria": "Vue des tâches",

@@ -2,7 +2,7 @@ import "@supersoniks/concorde/input";
 import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
 import {css, html, LitElement, nothing} from "lit";
-import {customElement, query, state} from "lit/decorators.js";
+import {customElement, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
 import {deleteTag, fetchTags, fetchTodos} from "../api/client";
@@ -25,6 +25,8 @@ export class TagsPage extends LitElement {
     css`
       :host {
         display: block;
+        /* Place pour le FAB fixe en bas de page. */
+        padding-bottom: 4.5rem;
       }
 
       .tags-layout {
@@ -39,47 +41,35 @@ export class TagsPage extends LitElement {
         }
       }
 
-      .tags-list {
-        min-height: 0;
-        overflow-x: hidden;
-        overflow-y: auto;
-        scrollbar-width: thin;
-        scrollbar-color: transparent transparent;
+      .tags-add {
+        pointer-events: none;
+        position: fixed;
+        inset-inline: 0;
+        bottom: 0;
+        z-index: 20;
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
       }
 
-      .tags-list:hover {
-        scrollbar-color: var(--sc-base-500) transparent;
+      @media (min-width: 640px) {
+        .tags-add {
+          padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+        }
       }
 
-      .tags-list::-webkit-scrollbar {
-        width: 0.5rem;
-        height: 0.5rem;
-        border: solid 0.15rem transparent;
-        border-radius: var(--sc-rounded);
-        background: transparent;
+      .tags-add-inner {
+        pointer-events: auto;
+        margin-inline: auto;
+        max-width: 72rem;
+        padding-inline: 0.75rem;
       }
 
-      .tags-list::-webkit-scrollbar-thumb {
-        transition: box-shadow 0.2s;
-        border: solid 0.15rem transparent;
-        border-radius: var(--sc-rounded);
-        box-shadow: inset 0 0 0 0 transparent;
-      }
-
-      .tags-list:hover::-webkit-scrollbar-thumb {
-        box-shadow: inset 0 0 2rem 2rem var(--sc-base-800);
+      @media (min-width: 640px) {
+        .tags-add-inner {
+          padding-inline: 1rem;
+        }
       }
     `,
   ];
-
-  @query(".tags-list")
-  private listEl?: HTMLElement;
-
-  @query(".tags-add")
-  private addEl?: HTMLElement;
-
-  private listHeightRaf = 0;
-  private layoutObserver?: ResizeObserver;
 
   @state()
   private tags: Tag[] = [];
@@ -97,72 +87,6 @@ export class TagsPage extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     void this.reload();
-    window.addEventListener("resize", this.scheduleListMaxHeight);
-  }
-
-  disconnectedCallback() {
-    window.removeEventListener("resize", this.scheduleListMaxHeight);
-    this.layoutObserver?.disconnect();
-    this.layoutObserver = undefined;
-    if (this.listHeightRaf) {
-      cancelAnimationFrame(this.listHeightRaf);
-      this.listHeightRaf = 0;
-    }
-    super.disconnectedCallback();
-  }
-
-  protected firstUpdated() {
-    this.layoutObserver = new ResizeObserver(() => this.scheduleListMaxHeight());
-    this.layoutObserver.observe(this);
-    const layout = this.renderRoot.querySelector(".tags-layout");
-    if (layout) this.layoutObserver.observe(layout);
-    if (this.listEl) this.layoutObserver.observe(this.listEl);
-    this.scheduleListMaxHeight();
-  }
-
-  protected updated() {
-    this.scheduleListMaxHeight();
-  }
-
-  private scheduleListMaxHeight = () => {
-    if (this.listHeightRaf) cancelAnimationFrame(this.listHeightRaf);
-    this.listHeightRaf = requestAnimationFrame(() => {
-      this.listHeightRaf = 0;
-      this.updateListMaxHeight();
-    });
-  };
-
-  private updateListMaxHeight() {
-    const list = this.listEl;
-    if (!list) return;
-
-    const top = list.getBoundingClientRect().top;
-    const addHeight = this.addEl?.offsetHeight ?? 0;
-    const layout = list.parentElement;
-    const gap = layout
-      ? parseFloat(getComputedStyle(layout).rowGap || getComputedStyle(layout).gap) ||
-        0
-      : 0;
-
-    const main = this.closest("main");
-    let bottomLimit = window.innerHeight;
-    if (main) {
-      const padBottom = parseFloat(getComputedStyle(main).paddingBottom) || 0;
-      bottomLimit = main.getBoundingClientRect().bottom - padBottom;
-    }
-
-    const slack = 8;
-    const available = Math.floor(bottomLimit - top - addHeight - gap - slack);
-    if (available <= 0) {
-      list.style.maxHeight = "";
-      return;
-    }
-
-    if (list.scrollHeight > available) {
-      list.style.maxHeight = `${available}px`;
-    } else {
-      list.style.maxHeight = "";
-    }
   }
 
   private get filteredTags(): Tag[] {
@@ -266,21 +190,23 @@ export class TagsPage extends LitElement {
               `}
         </div>
 
-        <div class="tags-add shrink-0 pt-1">
-          <sonic-button
-            href=${tagsNewPath()}
-            pushstate
-            type="primary"
-            size="sm"
-          >
-            <sonic-icon
-              library=${ICON_LIBRARY}
-              prefix=${ICON_PREFIX}
-              name="plus"
+        <div class="tags-add">
+          <div class="tags-add-inner">
+            <sonic-button
+              href=${tagsNewPath()}
+              pushstate
+              type="primary"
               size="sm"
-            ></sonic-icon>
-            ${t("tags.new")}
-          </sonic-button>
+            >
+              <sonic-icon
+                library=${ICON_LIBRARY}
+                prefix=${ICON_PREFIX}
+                name="plus"
+                size="sm"
+              ></sonic-icon>
+              ${t("tags.new")}
+            </sonic-button>
+          </div>
         </div>
       </div>
     `;

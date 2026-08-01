@@ -3,6 +3,11 @@ import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/queue";
 import "@supersoniks/concorde/tooltip";
+import "@supersoniks/concorde/modal";
+import "@supersoniks/concorde/modal-title";
+import "@supersoniks/concorde/modal-content";
+import "@supersoniks/concorde/form-layout";
+import "@supersoniks/concorde/form-actions";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, query, state} from "lit/decorators.js";
 import type {DirectiveResult} from "lit/directive.js";
@@ -18,16 +23,16 @@ import {dp, read, set} from "../../utils/dataprovider";
 import {TodosFilter, tagsListKey, todosDoneKey, todosFilterKey} from "../dp";
 import {tx} from "../i18n";
 import "./todo-row";
-import "./pop-select";
+import "./tag-picker";
 import "./task-scope-header";
 import "./todo-bulk-actions";
 import "./tasks-calendar";
-import type {PopSelectOption} from "./pop-select";
 import {
   todoSortOptions,
   todoStatusOptions,
   parseTodoSortKey,
 } from "./todo-filter-options";
+import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import {
@@ -71,9 +76,12 @@ function saveViewMode(mode: TasksViewMode) {
 export class TodoApp extends LitElement {
   static styles = [
     tailwind,
+    formLabelStyles,
     css`
       :host {
         display: block;
+        /* Place pour le FAB fixe en bas de page. */
+        padding-bottom: 4.5rem;
       }
 
       .todo-app-layout {
@@ -88,39 +96,44 @@ export class TodoApp extends LitElement {
         }
       }
 
-      /* max-height calculé en JS depuis le top (viewport restant − bouton).
-         Marge négative + padding : place pour le focus ring checkbox sans décaler l’alignement. */
+      /* Marge négative + padding : place pour le focus ring checkbox. */
       .todo-app-queue {
-        min-height: 0;
         margin-inline: -0.5rem;
         padding-inline: 0.5rem;
-        overflow-x: hidden;
-        overflow-y: auto;
-        scrollbar-width: thin;
-        scrollbar-color: transparent transparent;
       }
 
-      .todo-app-queue:hover {
-        scrollbar-color: var(--sc-base-500) transparent;
+      .todo-app-add {
+        pointer-events: none;
+        position: fixed;
+        inset-inline: 0;
+        bottom: 0;
+        z-index: 20;
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
       }
 
-      .todo-app-queue::-webkit-scrollbar {
-        width: 0.5rem;
-        height: 0.5rem;
-        border: solid 0.15rem transparent;
-        border-radius: var(--sc-rounded);
-        background: transparent;
+      @media (min-width: 640px) {
+        .todo-app-add {
+          padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+        }
       }
 
-      .todo-app-queue::-webkit-scrollbar-thumb {
-        transition: box-shadow 0.2s;
-        border: solid 0.15rem transparent;
-        border-radius: var(--sc-rounded);
-        box-shadow: inset 0 0 0 0 transparent;
+      .todo-app-add-inner {
+        pointer-events: auto;
+        margin-inline: auto;
+        max-width: 72rem;
+        padding-inline: 0.75rem;
       }
 
-      .todo-app-queue:hover::-webkit-scrollbar-thumb {
-        box-shadow: inset 0 0 2rem 2rem var(--sc-base-800);
+      @media (min-width: 640px) {
+        .todo-app-add-inner {
+          padding-inline: 1rem;
+        }
+      }
+
+      .filter-option-btn::part(button),
+      .filter-option-btn {
+        outline: none;
+        box-shadow: none;
       }
     `,
   ];
@@ -129,14 +142,8 @@ export class TodoApp extends LitElement {
   @property({type: String})
   parentId = "";
 
-  @query(".todo-app-queue")
-  private queueEl?: HTMLElement;
-
-  @query(".todo-app-add")
-  private addEl?: HTMLElement;
-
-  private queueHeightRaf = 0;
-  private layoutObserver?: ResizeObserver;
+  @query("#todoFiltersModal")
+  private filtersModal?: HTMLElement & {show: () => void; hide: () => void};
 
   @state()
   private tags: Tag[] = [];
@@ -167,76 +174,11 @@ export class TodoApp extends LitElement {
     this.viewMode = loadViewMode();
     void this.reloadTags();
     this.syncFilterParent();
-    window.addEventListener("resize", this.scheduleQueueMaxHeight);
-  }
-
-  disconnectedCallback() {
-    window.removeEventListener("resize", this.scheduleQueueMaxHeight);
-    this.layoutObserver?.disconnect();
-    this.layoutObserver = undefined;
-    if (this.queueHeightRaf) {
-      cancelAnimationFrame(this.queueHeightRaf);
-      this.queueHeightRaf = 0;
-    }
-    super.disconnectedCallback();
-  }
-
-  protected firstUpdated() {
-    this.layoutObserver = new ResizeObserver(() => this.scheduleQueueMaxHeight());
-    this.layoutObserver.observe(this);
-    const layout = this.renderRoot.querySelector(".todo-app-layout");
-    if (layout) this.layoutObserver.observe(layout);
-    if (this.queueEl) this.layoutObserver.observe(this.queueEl);
-    this.scheduleQueueMaxHeight();
   }
 
   protected updated(changed: Map<string, unknown>) {
     if (changed.has("parentId")) {
       this.syncFilterParent();
-    }
-    this.scheduleQueueMaxHeight();
-  }
-
-  /** Hauteur max = bas du main − top queue − bouton ; seulement si le contenu déborde. */
-  private scheduleQueueMaxHeight = () => {
-    if (this.queueHeightRaf) cancelAnimationFrame(this.queueHeightRaf);
-    this.queueHeightRaf = requestAnimationFrame(() => {
-      this.queueHeightRaf = 0;
-      this.updateQueueMaxHeight();
-    });
-  };
-
-  private updateQueueMaxHeight() {
-    const queue = this.queueEl;
-    if (!queue) return;
-
-    const top = queue.getBoundingClientRect().top;
-    const addHeight = this.addEl?.offsetHeight ?? 0;
-    const layout = queue.parentElement;
-    const gap = layout
-      ? parseFloat(getComputedStyle(layout).rowGap || getComputedStyle(layout).gap) ||
-        0
-      : 0;
-
-    const main = this.closest("main");
-    let bottomLimit = window.innerHeight;
-    if (main) {
-      const padBottom = parseFloat(getComputedStyle(main).paddingBottom) || 0;
-      bottomLimit = main.getBoundingClientRect().bottom - padBottom;
-    }
-
-    // Marge anti-subpixel / arrondis (évite un scroll fantôme avec 1–2 tâches).
-    const slack = 8;
-    const available = Math.floor(bottomLimit - top - addHeight - gap - slack);
-    if (available <= 0) {
-      queue.style.maxHeight = "";
-      return;
-    }
-
-    if (queue.scrollHeight > available) {
-      queue.style.maxHeight = `${available}px`;
-    } else {
-      queue.style.maxHeight = "";
     }
   }
 
@@ -323,22 +265,6 @@ export class TodoApp extends LitElement {
       role="separator"
     ></div>`;
 
-  private get tagFilterOptions(): PopSelectOption[] {
-    return [
-      {
-        value: "all",
-        label: tx("tasks.filter.tags_all"),
-        icon: "label",
-        checksAll: true,
-      },
-      ...this.tags.map((tag) => ({
-        value: tag.id,
-        label: tag.name,
-        icon: "label",
-      })),
-    ];
-  }
-
   private get sortValue(): string {
     return (
       this.filter.sort ||
@@ -346,52 +272,128 @@ export class TodoApp extends LitElement {
     );
   }
 
+  private get hasActiveFilters(): boolean {
+    const tags = Array.isArray(this.filter.tags) ? this.filter.tags : [];
+    const sort = this.sortValue;
+    const statusActive = (this.filter.status ?? "all") !== "all";
+    const tagsActive = tags.length > 0;
+    const sortActive =
+      this.viewMode !== "calendar" && sort !== "createdAt:desc";
+    return statusActive || tagsActive || sortActive;
+  }
+
   private get addHref(): string {
     const scopeId = this.parentId?.trim();
     return scopeId ? tacheItemNewPath(scopeId) : tacheNewPath();
   }
 
+  private openFiltersModal = () => {
+    void this.filtersModal?.show();
+  };
+
+  private closeFiltersModal = () => {
+    this.filtersModal?.hide();
+  };
+
   private setViewMode(mode: TasksViewMode) {
     this.viewMode = mode;
     saveViewMode(mode);
-    this.scheduleQueueMaxHeight();
   }
 
-  private toggleViewMode() {
-    this.setViewMode(this.viewMode === "calendar" ? "list" : "calendar");
-  }
+  private onViewChange = (e: CustomEvent<{mode: TasksViewMode}>) => {
+    const mode = e.detail?.mode;
+    if (mode === "list" || mode === "calendar") {
+      this.setViewMode(mode);
+    }
+  };
 
-  private renderViewSwitch() {
-    const isCalendar = this.viewMode === "calendar";
-    const tip = isCalendar
-      ? tx("tasks.view.list")
-      : tx("tasks.view.calendar");
+  private renderFilterOption(
+    name: string,
+    option: {value: string; label: string; icon?: string},
+  ) {
     return html`
-      <sonic-tooltip label=${tip} placement="bottom">
-        <sonic-button
-          shape="circle"
-          size="sm"
-          variant="ghost"
-          ?active=${isCalendar}
-          data-aria-label=${tip}
-          @click=${this.toggleViewMode}
-        >
-          <sonic-icon
-            library=${ICON_LIBRARY}
-            prefix=${ICON_PREFIX}
-            name="calendar"
-            size="sm"
-            swap="on"
-          ></sonic-icon>
-          <sonic-icon
-            library=${ICON_LIBRARY}
-            prefix=${ICON_PREFIX}
-            name="list"
-            size="sm"
-            swap="off"
-          ></sonic-icon>
-        </sonic-button>
-      </sonic-tooltip>
+      <sonic-button
+        class="filter-option-btn"
+        radio
+        name=${name}
+        value=${option.value}
+        size="sm"
+        variant="outline"
+      >
+        ${option.icon
+          ? html`
+              <sonic-icon
+                slot="prefix"
+                library=${ICON_LIBRARY}
+                prefix=${ICON_PREFIX}
+                name=${option.icon}
+                size="sm"
+              ></sonic-icon>
+            `
+          : nothing}
+        ${option.label}
+      </sonic-button>
+    `;
+  }
+
+  private renderFiltersModal(isCalendar: boolean, selectedTags: string[]) {
+    return html`
+      <sonic-modal id="todoFiltersModal" maxWidth="28rem" width="100%">
+        <sonic-modal-title>${tx("tasks.filter.title")}</sonic-modal-title>
+        <sonic-modal-content>
+          <div formDataProvider=${todosFilterKey.path}>
+            <sonic-form-layout>
+              <div class="form-field">
+                <label class="form-label">${tx("tasks.filter.status")}</label>
+                <div class="form-field-control flex flex-wrap gap-1.5">
+                  ${todoStatusOptions().map((option) =>
+                    this.renderFilterOption("status", option),
+                  )}
+                </div>
+              </div>
+
+              ${this.tags.length > 0
+                ? html`
+                    <div class="form-field">
+                      <label class="form-label"
+                        >${tx("tasks.filter.tag")}</label
+                      >
+                      <div class="form-field-control">
+                        <tag-picker
+                          formPath=${todosFilterKey.path}
+                          name="tags"
+                          .tags=${this.tags}
+                          .value=${selectedTags}
+                        ></tag-picker>
+                      </div>
+                    </div>
+                  `
+                : nothing}
+
+              ${!isCalendar
+                ? html`
+                    <div class="form-field">
+                      <label class="form-label"
+                        >${tx("tasks.filter.sort")}</label
+                      >
+                      <div class="form-field-control flex flex-wrap gap-1.5">
+                        ${todoSortOptions().map((option) =>
+                          this.renderFilterOption("sort", option),
+                        )}
+                      </div>
+                    </div>
+                  `
+                : nothing}
+
+              <sonic-form-actions justify="flex-end">
+                <sonic-button type="primary" @click=${this.closeFiltersModal}>
+                  ${t("common.ok")}
+                </sonic-button>
+              </sonic-form-actions>
+            </sonic-form-layout>
+          </div>
+        </sonic-modal-content>
+      </sonic-modal>
     `;
   }
 
@@ -402,6 +404,7 @@ export class TodoApp extends LitElement {
       ? this.filter.tags
       : [];
     const isCalendar = this.viewMode === "calendar";
+    const filterAria = tx("tasks.filter.open_aria");
 
     return html`
       <div
@@ -418,66 +421,46 @@ export class TodoApp extends LitElement {
           ></task-scope-header>
 
           <section>
-            <div
-              class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
-            >
+            <div class="flex flex-wrap items-end gap-1.5">
               <sonic-input
                 name="q"
                 type="search"
                 size="sm"
                 placeholder=${tx("tasks.search_ph")}
-                class="min-w-0"
+                class="min-w-0 flex-1 basis-[12rem]"
               >
                 <sonic-icon
                   slot="prefix"
                   library=${ICON_LIBRARY}
                   prefix=${ICON_PREFIX}
-                  name="filter"
+                  name="search"
                   size="sm"
                 ></sonic-icon>
               </sonic-input>
 
-              <div class="flex flex-wrap items-center gap-1.5 sm:justify-end">
-                <pop-select
-                  label=${tx("tasks.filter.status")}
-                  name="status"
-                  mode="radio"
-                  .value=${this.filter.status}
-                  .options=${todoStatusOptions()}
-                  minWidth="11rem"
-                ></pop-select>
+              <sonic-tooltip label=${filterAria} placement="bottom">
+                <sonic-button
+                  shape="circle"
+                  size="sm"
+                  variant="ghost"
+                  ?active=${this.hasActiveFilters}
+                  data-aria-label=${filterAria}
+                  @click=${this.openFiltersModal}
+                >
+                  <sonic-icon
+                    library=${ICON_LIBRARY}
+                    prefix=${ICON_PREFIX}
+                    name="filter"
+                    size="sm"
+                  ></sonic-icon>
+                </sonic-button>
+              </sonic-tooltip>
 
-                ${this.tags.length > 0
-                  ? html`
-                      <pop-select
-                        label=${tx("tasks.filter.tag")}
-                        name="tags"
-                        mode="multi"
-                        .value=${selectedTags}
-                        .options=${this.tagFilterOptions}
-                        minWidth="12rem"
-                      ></pop-select>
-                    `
-                  : nothing}
-
-                ${!isCalendar
-                  ? html`
-                      <pop-select
-                        label=${tx("tasks.filter.sort")}
-                        name="sort"
-                        mode="radio"
-                        .value=${this.sortValue}
-                        .options=${todoSortOptions()}
-                        minWidth="14rem"
-                      ></pop-select>
-                      <todo-bulk-actions
-                        .filter=${this.filter}
-                      ></todo-bulk-actions>
-                    `
-                  : nothing}
-
-                ${this.renderViewSwitch()}
-              </div>
+              <todo-bulk-actions
+                .filter=${this.filter}
+                viewMode=${this.viewMode}
+                @view-change=${this.onViewChange}
+              ></todo-bulk-actions>
             </div>
           </section>
         </div>
@@ -505,23 +488,27 @@ export class TodoApp extends LitElement {
               </div>
             `}
 
-        <div class="todo-app-add shrink-0 pt-1">
-          <sonic-button
-            href=${this.addHref}
-            pushstate
-            type="primary"
-            size="sm"
-          >
-            <sonic-icon
-              library=${ICON_LIBRARY}
-              prefix=${ICON_PREFIX}
-              name="plus"
+        <div class="todo-app-add">
+          <div class="todo-app-add-inner">
+            <sonic-button
+              href=${this.addHref}
+              pushstate
+              type="primary"
               size="sm"
-            ></sonic-icon>
-            ${this.parentId?.trim() ? t("tasks.new_sub") : t("tasks.new")}
-          </sonic-button>
+            >
+              <sonic-icon
+                library=${ICON_LIBRARY}
+                prefix=${ICON_PREFIX}
+                name="plus"
+                size="sm"
+              ></sonic-icon>
+              ${this.parentId?.trim() ? t("tasks.new_sub") : t("tasks.new")}
+            </sonic-button>
+          </div>
         </div>
       </div>
+
+      ${this.renderFiltersModal(isCalendar, selectedTags)}
     `;
   }
 }
