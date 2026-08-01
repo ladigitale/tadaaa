@@ -101,7 +101,8 @@ final class PushNotificationDispatcher
             return;
         }
 
-        $recipients = $this->datasetRecipients($dataset, except: $actor);
+        // Include the actor: other devices on the same account must still be notified.
+        $recipients = $this->datasetRecipients($dataset, except: null);
 
         // Group by type for preference filtering + one notification per type batch.
         $byType = [];

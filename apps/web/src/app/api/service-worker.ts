@@ -61,20 +61,8 @@ self.addEventListener("push", (event) => {
 
   event.waitUntil(
     (async () => {
-      // Prefer in-app Mercure/local notification when a window is already visible
-      // (avoids duplicates). Chrome still requires a visible notification when no
-      // focused client exists — otherwise the push can be revoked.
-      const clientsList = await self.clients.matchAll({
-        type: "window",
-        includeUncontrolled: true,
-      });
-      const hasVisibleClient = clientsList.some(
-        (client) => client.visibilityState === "visible",
-      );
-      if (hasVisibleClient) {
-        return;
-      }
-
+      // Always show a system notification. Skipping when a tab is visible left
+      // Android silent when pushActive suppressed in-page Notification too.
       // `renotify` is supported by browsers with `tag`, but missing from TS DOM libs.
       await self.registration.showNotification(title, {
         body: visibleBody,
