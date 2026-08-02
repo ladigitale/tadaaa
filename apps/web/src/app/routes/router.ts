@@ -3,6 +3,7 @@ import { html } from "lit";
 import "@supersoniks/concorde/core/components/functional/router/router";
 
 import layout from "./layout";
+import accountPage from "./account/page";
 import configAccountPage from "./config/account/page";
 import configActivityPage from "./config/activity/page";
 import configAppearancePage from "./config/appearance/page";
@@ -14,7 +15,21 @@ import configP2pPage from "./config/p2p/page";
 import configUsagePage from "./config/usage/page";
 import configWebhooksPage from "./config/webhooks/page";
 import configPage from "./config/page";
+import connectivityActivityPage from "./connectivity/activity/page";
+import connectivityMcpPage from "./connectivity/mcp/page";
+import connectivityUsagePage from "./connectivity/usage/page";
+import connectivityWebhooksPage from "./connectivity/webhooks/page";
+import dataCloudPage from "./data/cloud/page";
+import dataExportPage from "./data/export/page";
+import dataLocalPage from "./data/local/page";
+import dataMaintenancePage from "./data/maintenance/page";
+import dataP2pPage from "./data/p2p/page";
 import invitePage from "./invite/page";
+import settingsAppearancePage from "./settings/appearance/page";
+import settingsInstallPage from "./settings/install/page";
+import settingsLinksPage from "./settings/links/page";
+import settingsNotificationsPage from "./settings/notifications/page";
+import settingsPage from "./settings/page";
 import tacheItem_idEditPage from "./tache/item/[id]/edit/page";
 import tacheItem_idMovePage from "./tache/item/[id]/move/page";
 import tacheItem_idNewPage from "./tache/item/[id]/new/page";
@@ -27,6 +42,10 @@ import tagsPage from "./tags/page";
 import page from "./page";
 import fallback from "./404";
 export const router = (basePath?:string) => {
+const accountDefaultLayoutRoutes = {
+    "/account$": accountPage
+}        
+
 const configAccountDefaultLayoutRoutes = {
     "/config/account$": configAccountPage
 }        
@@ -81,8 +100,83 @@ const configDefaultLayoutRoutes = {
     "/config$": configPage
 }        
 
+const connectivityActivityDefaultLayoutRoutes = {
+    "/connectivity/activity$": connectivityActivityPage
+}        
+
+const connectivityMcpDefaultLayoutRoutes = {
+    "/connectivity/mcp$": connectivityMcpPage
+}        
+
+const connectivityUsageDefaultLayoutRoutes = {
+    "/connectivity/usage$": connectivityUsagePage
+}        
+
+const connectivityWebhooksDefaultLayoutRoutes = {
+    "/connectivity/webhooks$": connectivityWebhooksPage
+}        
+
+const connectivityDefaultLayoutRoutes = {
+    "/connectivity/activity\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityActivityDefaultLayoutRoutes}></sonic-router>`,
+    "/connectivity/mcp\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityMcpDefaultLayoutRoutes}></sonic-router>`,
+    "/connectivity/usage\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityUsageDefaultLayoutRoutes}></sonic-router>`,
+    "/connectivity/webhooks\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityWebhooksDefaultLayoutRoutes}></sonic-router>`
+}        
+
+const dataCloudDefaultLayoutRoutes = {
+    "/data/cloud$": dataCloudPage
+}        
+
+const dataExportDefaultLayoutRoutes = {
+    "/data/export$": dataExportPage
+}        
+
+const dataLocalDefaultLayoutRoutes = {
+    "/data/local$": dataLocalPage
+}        
+
+const dataMaintenanceDefaultLayoutRoutes = {
+    "/data/maintenance$": dataMaintenancePage
+}        
+
+const dataP2pDefaultLayoutRoutes = {
+    "/data/p2p$": dataP2pPage
+}        
+
+const dataDefaultLayoutRoutes = {
+    "/data/cloud\\b": () => html`<sonic-router .basePath=${basePath} .routes=${dataCloudDefaultLayoutRoutes}></sonic-router>`,
+    "/data/export\\b": () => html`<sonic-router .basePath=${basePath} .routes=${dataExportDefaultLayoutRoutes}></sonic-router>`,
+    "/data/local\\b": () => html`<sonic-router .basePath=${basePath} .routes=${dataLocalDefaultLayoutRoutes}></sonic-router>`,
+    "/data/maintenance\\b": () => html`<sonic-router .basePath=${basePath} .routes=${dataMaintenanceDefaultLayoutRoutes}></sonic-router>`,
+    "/data/p2p\\b": () => html`<sonic-router .basePath=${basePath} .routes=${dataP2pDefaultLayoutRoutes}></sonic-router>`
+}        
+
 const inviteDefaultLayoutRoutes = {
     "/invite$": invitePage
+}        
+
+const settingsAppearanceDefaultLayoutRoutes = {
+    "/settings/appearance$": settingsAppearancePage
+}        
+
+const settingsInstallDefaultLayoutRoutes = {
+    "/settings/install$": settingsInstallPage
+}        
+
+const settingsLinksDefaultLayoutRoutes = {
+    "/settings/links$": settingsLinksPage
+}        
+
+const settingsNotificationsDefaultLayoutRoutes = {
+    "/settings/notifications$": settingsNotificationsPage
+}        
+
+const settingsDefaultLayoutRoutes = {
+    "/settings/appearance\\b": () => html`<sonic-router .basePath=${basePath} .routes=${settingsAppearanceDefaultLayoutRoutes}></sonic-router>`,
+    "/settings/install\\b": () => html`<sonic-router .basePath=${basePath} .routes=${settingsInstallDefaultLayoutRoutes}></sonic-router>`,
+    "/settings/links\\b": () => html`<sonic-router .basePath=${basePath} .routes=${settingsLinksDefaultLayoutRoutes}></sonic-router>`,
+    "/settings/notifications\\b": () => html`<sonic-router .basePath=${basePath} .routes=${settingsNotificationsDefaultLayoutRoutes}></sonic-router>`,
+    "/settings$": settingsPage
 }        
 
 const tacheItem_idEditDefaultLayoutRoutes = {
@@ -141,8 +235,12 @@ const tagsDefaultLayoutRoutes = {
 }        
 
 const layoutRoutes = {
+    "/account\\b": () => html`<sonic-router .basePath=${basePath} .routes=${accountDefaultLayoutRoutes}></sonic-router>`,
     "/config\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configDefaultLayoutRoutes}></sonic-router>`,
+    "/connectivity\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityDefaultLayoutRoutes}></sonic-router>`,
+    "/data\\b": () => html`<sonic-router .basePath=${basePath} .routes=${dataDefaultLayoutRoutes}></sonic-router>`,
     "/invite\\b": () => html`<sonic-router .basePath=${basePath} .routes=${inviteDefaultLayoutRoutes}></sonic-router>`,
+    "/settings\\b": () => html`<sonic-router .basePath=${basePath} .routes=${settingsDefaultLayoutRoutes}></sonic-router>`,
     "/tache\\b": () => html`<sonic-router .basePath=${basePath} .routes=${tacheDefaultLayoutRoutes}></sonic-router>`,
     "/tags\\b": () => html`<sonic-router .basePath=${basePath} .routes=${tagsDefaultLayoutRoutes}></sonic-router>`,
     "/$": page,

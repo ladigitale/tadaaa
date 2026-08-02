@@ -98,3 +98,6 @@ build/Release/
 
 # Ops local-only (deploy helpers, never commit)
 .ops/local/
+
+# Local-only app (not published with this repo)
+apps/morseattack/

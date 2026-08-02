@@ -102,7 +102,7 @@ export class InvitePage extends LitElement {
   };
 
   private onGoAccount = () => {
-    navigateTo("/config/account");
+    navigateTo("/account");
   };
 
   render() {

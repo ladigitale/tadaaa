@@ -1,6 +1,5 @@
-import {html} from "lit";
-import "../../../components/config-data-page";
+import {legacyConfigRedirect} from "../../../utils/legacy-redirect";
 
-export default function ConfigDataRoutePage() {
-  return html`<config-data-page></config-data-page>`;
+export default function ConfigDataRedirect() {
+  return legacyConfigRedirect("/config/data");
 }

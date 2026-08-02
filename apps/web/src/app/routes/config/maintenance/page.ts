@@ -1,6 +1,5 @@
-import {html} from "lit";
-import "../../../components/config-maintenance-page";
+import {legacyConfigRedirect} from "../../../utils/legacy-redirect";
 
-export default function ConfigMaintenanceRoutePage() {
-  return html`<config-maintenance-page></config-maintenance-page>`;
+export default function ConfigMaintenanceRedirect() {
+  return legacyConfigRedirect("/config/maintenance");
 }

@@ -143,7 +143,7 @@ export class ConfigDatasetsPage extends LitElement {
         <div
           class="space-y-3 border-b-[.18rem] border-current pb-3 sm:space-y-4 sm:pb-4"
         >
-          <config-scope-header section="datasets"></config-scope-header>
+          <config-scope-header section="local"></config-scope-header>
         </div>
 
         <div class="mt-8 space-y-6" formDataProvider=${appConfigKey.path}>

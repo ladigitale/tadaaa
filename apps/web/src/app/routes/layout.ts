@@ -1,5 +1,6 @@
 import "@supersoniks/concorde/menu";
 import "@supersoniks/concorde/menu-item";
+import "@supersoniks/concorde/divider";
 import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/pop";
@@ -9,6 +10,7 @@ import type {DirectiveResult} from "lit/directive.js";
 import {t} from "@supersoniks/concorde/directives/Wording";
 import {tx} from "../i18n";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
+import {CONFIG_SECTION_GROUPS} from "../utils/config-sections";
 import "../components/todo-search-modal";
 import "../components/demo-tour-modal";
 import "../components/demo-header-badge";
@@ -41,6 +43,18 @@ const closeMainNavPop = {
     queueMicrotask(() => pop?.hide?.());
   },
 };
+
+function menuItemIcon(name: string) {
+  return html`
+    <sonic-icon
+      slot="prefix"
+      library=${ICON_LIBRARY}
+      prefix=${ICON_PREFIX}
+      name=${name}
+      size="sm"
+    ></sonic-icon>
+  `;
+}
 
 export default (children: DirectiveResult) => html`
   <div
@@ -79,39 +93,39 @@ export default (children: DirectiveResult) => html`
             direction="column"
             align="left"
             size="sm"
-            minWidth="12rem"
+            minWidth="14rem"
             @click=${closeMainNavPop}
           >
             <sonic-menu-item href="/tache" pushstate autoActive="partial">
-              <sonic-icon
-                slot="prefix"
-                library=${ICON_LIBRARY}
-                prefix=${ICON_PREFIX}
-                name="list"
-                size="sm"
-              ></sonic-icon>
+              ${menuItemIcon("list")}
               ${t("nav.tasks")}
             </sonic-menu-item>
             <sonic-menu-item href="/tags" pushstate autoActive="strict">
-              <sonic-icon
-                slot="prefix"
-                library=${ICON_LIBRARY}
-                prefix=${ICON_PREFIX}
-                name="label"
-                size="sm"
-              ></sonic-icon>
+              ${menuItemIcon("label")}
               ${t("nav.tags")}
             </sonic-menu-item>
-            <sonic-menu-item href="/config" pushstate autoActive="partial">
-              <sonic-icon
-                slot="prefix"
-                library=${ICON_LIBRARY}
-                prefix=${ICON_PREFIX}
-                name="settings"
-                size="sm"
-              ></sonic-icon>
-              ${t("nav.config")}
-            </sonic-menu-item>
+
+            ${CONFIG_SECTION_GROUPS.map(
+              (group) => html`
+                <sonic-divider
+                  label=${tx(group.labelKey)}
+                  align="left"
+                  size="sm"
+                ></sonic-divider>
+                ${group.items.map(
+                  (item) => html`
+                    <sonic-menu-item
+                      href=${item.href}
+                      pushstate
+                      autoActive="strict"
+                    >
+                      ${menuItemIcon(item.icon)}
+                      ${t(item.labelKey)}
+                    </sonic-menu-item>
+                  `,
+                )}
+              `,
+            )}
           </sonic-menu>
         </sonic-pop>
 

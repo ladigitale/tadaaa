@@ -10,14 +10,16 @@ export type ConfigSectionChoice = {
 };
 
 export type ConfigSectionGroup = {
+  id: string;
   labelKey: string;
   items: ConfigSectionChoice[];
 };
 
-/** Settings nav & landing: App → Cloud → Local data. */
+/** Menu & scope header : Personnalisation → Compte → Connectivité → Données. */
 export const CONFIG_SECTION_GROUPS: ConfigSectionGroup[] = [
   {
-    labelKey: "config.group.app",
+    id: "personalization",
+    labelKey: "nav.group.personalization",
     items: [
       {
         id: "appearance",
@@ -27,16 +29,31 @@ export const CONFIG_SECTION_GROUPS: ConfigSectionGroup[] = [
         href: configSectionPath("appearance"),
       },
       {
-        id: "issues",
-        labelKey: "config.section.issues",
-        descriptionKey: "config.section.issues.help",
+        id: "notifications",
+        labelKey: "config.section.notifications",
+        descriptionKey: "config.section.notifications.help",
+        icon: "bell",
+        href: configSectionPath("notifications"),
+      },
+      {
+        id: "install",
+        labelKey: "config.section.install",
+        descriptionKey: "config.section.install.help",
+        icon: "download",
+        href: configSectionPath("install"),
+      },
+      {
+        id: "links",
+        labelKey: "config.section.links",
+        descriptionKey: "config.section.links.help",
         icon: "link",
-        href: configSectionPath("issues"),
+        href: configSectionPath("links"),
       },
     ],
   },
   {
-    labelKey: "config.group.cloud",
+    id: "account",
+    labelKey: "nav.group.account",
     items: [
       {
         id: "account",
@@ -44,6 +61,19 @@ export const CONFIG_SECTION_GROUPS: ConfigSectionGroup[] = [
         descriptionKey: "config.section.account.help",
         icon: "user",
         href: configSectionPath("account"),
+      },
+    ],
+  },
+  {
+    id: "connectivity",
+    labelKey: "nav.group.connectivity",
+    items: [
+      {
+        id: "mcp",
+        labelKey: "config.section.mcp",
+        descriptionKey: "config.section.mcp.help",
+        icon: "terminal",
+        href: configSectionPath("mcp"),
       },
       {
         id: "webhooks",
@@ -69,21 +99,29 @@ export const CONFIG_SECTION_GROUPS: ConfigSectionGroup[] = [
     ],
   },
   {
-    labelKey: "config.group.local",
+    id: "data",
+    labelKey: "nav.group.data",
     items: [
       {
-        id: "datasets",
-        labelKey: "config.section.datasets",
-        descriptionKey: "config.section.datasets.help",
-        icon: "database",
-        href: configSectionPath("datasets"),
+        id: "cloud",
+        labelKey: "config.section.cloud",
+        descriptionKey: "config.section.cloud.help",
+        icon: "cloud",
+        href: configSectionPath("cloud"),
       },
       {
-        id: "data",
-        labelKey: "config.section.data",
-        descriptionKey: "config.section.data.help",
+        id: "local",
+        labelKey: "config.section.local",
+        descriptionKey: "config.section.local.help",
+        icon: "database",
+        href: configSectionPath("local"),
+      },
+      {
+        id: "export",
+        labelKey: "config.section.export",
+        descriptionKey: "config.section.export.help",
         icon: "page",
-        href: configSectionPath("data"),
+        href: configSectionPath("export"),
       },
       {
         id: "p2p",
@@ -105,3 +143,11 @@ export const CONFIG_SECTION_GROUPS: ConfigSectionGroup[] = [
 
 export const CONFIG_SECTIONS: ConfigSectionChoice[] =
   CONFIG_SECTION_GROUPS.flatMap((group) => group.items);
+
+export function groupForSection(
+  section: ConfigSection,
+): ConfigSectionGroup | undefined {
+  return CONFIG_SECTION_GROUPS.find((group) =>
+    group.items.some((item) => item.id === section),
+  );
+}

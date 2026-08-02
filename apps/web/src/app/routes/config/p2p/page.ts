@@ -1,6 +1,5 @@
-import {html} from "lit";
-import "../../../components/config-p2p-page";
+import {legacyConfigRedirect} from "../../../utils/legacy-redirect";
 
-export default function ConfigP2pRoutePage() {
-  return html`<config-p2p-page></config-p2p-page>`;
+export default function ConfigP2pRedirect() {
+  return legacyConfigRedirect("/config/p2p");
 }

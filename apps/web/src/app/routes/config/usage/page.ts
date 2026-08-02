@@ -1,6 +1,5 @@
-import {html} from "lit";
-import "../../../components/config-usage-page";
+import {legacyConfigRedirect} from "../../../utils/legacy-redirect";
 
-export default function ConfigUsageRoutePage() {
-  return html`<config-usage-page></config-usage-page>`;
+export default function ConfigUsageRedirect() {
+  return legacyConfigRedirect("/config/usage");
 }

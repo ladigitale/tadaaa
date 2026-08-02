@@ -264,7 +264,7 @@ export class ConfigIssuesPage extends LitElement {
         <div
           class="space-y-3 border-b-[.18rem] border-current pb-3 sm:space-y-4 sm:pb-4"
         >
-          <config-scope-header section="issues"></config-scope-header>
+          <config-scope-header section="links"></config-scope-header>
         </div>
 
         <div class="mt-8 space-y-6">

@@ -1,6 +1,5 @@
-import {html} from "lit";
-import "../../../components/config-datasets-page";
+import {legacyConfigRedirect} from "../../../utils/legacy-redirect";
 
-export default function ConfigDatasetsRoutePage() {
-  return html`<config-datasets-page></config-datasets-page>`;
+export default function ConfigDatasetsRedirect() {
+  return legacyConfigRedirect("/config/datasets");
 }

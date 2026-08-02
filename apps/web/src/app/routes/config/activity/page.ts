@@ -1,6 +1,5 @@
-import {html} from "lit";
-import "../../../components/config-activity-page";
+import {legacyConfigRedirect} from "../../../utils/legacy-redirect";
 
-export default function ConfigActivityRoutePage() {
-  return html`<config-activity-page></config-activity-page>`;
+export default function ConfigActivityRedirect() {
+  return legacyConfigRedirect("/config/activity");
 }
