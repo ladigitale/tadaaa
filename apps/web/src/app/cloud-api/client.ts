@@ -360,6 +360,167 @@ export async function revokeAccessToken(
   );
 }
 
+export type WebhookEventInfo = {
+  type: string;
+  description: string;
+};
+
+export type WebhookInfo = {
+  id: string;
+  url: string;
+  secretPrefix: string;
+  events: string[];
+  datasetId: string | null;
+  active: boolean;
+  createdAt: string;
+  lastDeliveryAt: string | null;
+  failureCount: number;
+};
+
+export type CreatedWebhook = {
+  webhook: WebhookInfo;
+  plainSecret: string;
+};
+
+export type WebhookDeliveryInfo = {
+  id: string;
+  eventId: string;
+  eventType: string;
+  status: "success" | "failed" | string;
+  httpStatus: number | null;
+  responseMs: number | null;
+  error: string | null;
+  requestBytes: number;
+  createdAt: string;
+};
+
+export type ActivityLogInfo = {
+  id: string;
+  category: string;
+  action: string;
+  meta: Record<string, unknown>;
+  ip: string | null;
+  createdAt: string;
+};
+
+export type UsageReport = {
+  from: string;
+  to: string;
+  totals: Record<string, number>;
+  byDay: Array<{
+    day: string;
+    datasetId: string | null;
+    counters: Record<string, number>;
+  }>;
+};
+
+export async function fetchWebhookEvents(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<WebhookEventInfo[]> {
+  const result = await cloudFetch<unknown>("/webhooks/events", {}, settings);
+  return asMemberCollection<WebhookEventInfo>(result);
+}
+
+export async function fetchWebhooks(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<WebhookInfo[]> {
+  const result = await cloudFetch<unknown>("/webhooks", {}, settings);
+  return asMemberCollection<WebhookInfo>(result);
+}
+
+export async function createWebhook(
+  input: {url: string; events?: string[]; datasetId?: string | null},
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<CreatedWebhook> {
+  return cloudFetch<CreatedWebhook>(
+    "/webhooks",
+    {method: "POST", body: JSON.stringify(input)},
+    settings,
+  );
+}
+
+export async function updateWebhook(
+  id: string,
+  patch: {
+    url?: string;
+    events?: string[];
+    active?: boolean;
+    datasetId?: string | null;
+  },
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<WebhookInfo> {
+  const result = await cloudFetch<{webhook: WebhookInfo}>(
+    `/webhooks/${encodeURIComponent(id)}`,
+    {method: "PATCH", body: JSON.stringify(patch)},
+    settings,
+  );
+  return result.webhook;
+}
+
+export async function deleteWebhook(
+  id: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<void> {
+  await cloudFetch<void>(
+    `/webhooks/${encodeURIComponent(id)}`,
+    {method: "DELETE"},
+    settings,
+  );
+}
+
+export async function fetchWebhookDeliveries(
+  id: string,
+  limit = 50,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<WebhookDeliveryInfo[]> {
+  const result = await cloudFetch<unknown>(
+    `/webhooks/${encodeURIComponent(id)}/deliveries?limit=${limit}`,
+    {},
+    settings,
+  );
+  return asMemberCollection<WebhookDeliveryInfo>(result);
+}
+
+export async function pingWebhook(
+  id: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<WebhookDeliveryInfo> {
+  const result = await cloudFetch<{delivery: WebhookDeliveryInfo}>(
+    `/webhooks/${encodeURIComponent(id)}/ping`,
+    {method: "POST"},
+    settings,
+  );
+  return result.delivery;
+}
+
+export async function fetchActivity(
+  category?: string,
+  limit = 50,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<ActivityLogInfo[]> {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+  params.set("limit", String(limit));
+  const result = await cloudFetch<unknown>(
+    `/activity?${params.toString()}`,
+    {},
+    settings,
+  );
+  return asMemberCollection<ActivityLogInfo>(result);
+}
+
+export async function fetchUsage(
+  from?: string,
+  to?: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<UsageReport> {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const q = params.toString();
+  return cloudFetch<UsageReport>(`/usage${q ? `?${q}` : ""}`, {}, settings);
+}
+
 export type AdminUserInfo = {
   id: string;
   email: string;

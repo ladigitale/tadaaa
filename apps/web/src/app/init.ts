@@ -56,6 +56,7 @@ export function initApp(): void {
     tagIds: [],
     startAt: "",
     endAt: "",
+    recurrence: "none",
   });
   set(todoEditKey.path, {
     text: "",
@@ -64,6 +65,7 @@ export function initApp(): void {
     tagIds: [],
     startAt: "",
     endAt: "",
+    recurrence: "none",
   });
   set(tagCreateKey.path, {name: "", color: "default"});
   set(tagEditKey.path, {name: "", color: "default"});

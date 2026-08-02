@@ -15,6 +15,7 @@ import type {
   UpdateTagPatch,
   UpdateTodoPatch,
 } from "./types";
+import {parseRecurrence} from "../utils/recurrence";
 
 export const PRIORITY_WEIGHT: Record<TodoPriority, number> = {
   low: 1,
@@ -271,6 +272,10 @@ export function applyTodoPatch(todo: Todo, patch: UpdateTodoPatch): Todo {
     next.endAt = trimmed || null;
   }
 
+  if (patch.recurrence !== undefined) {
+    next.recurrence = parseRecurrence(patch.recurrence);
+  }
+
   if (patch.done === false) {
     next.done = false;
   }
@@ -317,6 +322,8 @@ export function createTodoRecord(
     }
   }
 
+  const recurrence = parseRecurrence(input.recurrence);
+
   return {
     id: createId("todo"),
     text,
@@ -330,6 +337,7 @@ export function createTodoRecord(
     parentId,
     ...(startAt ? {startAt} : {}),
     ...(endAt ? {endAt} : {}),
+    recurrence,
     createdAt: new Date().toISOString(),
   };
 }
@@ -526,6 +534,9 @@ export function normalizeSnapshot(snapshot: DbSnapshot): DbSnapshot {
         ? (legacyTodo as Todo).endAt!.trim()
         : "";
 
+    const recurrence = parseRecurrence((legacyTodo as Todo).recurrence);
+    const fieldVersions = (legacyTodo as Todo).fieldVersions;
+
     const base: Todo = stripComputed({
       id: legacyTodo.id,
       text: legacyTodo.text,
@@ -540,7 +551,9 @@ export function normalizeSnapshot(snapshot: DbSnapshot): DbSnapshot {
       parentId,
       ...(rawStart ? {startAt: rawStart} : {}),
       ...(rawEnd ? {endAt: rawEnd} : {}),
+      recurrence,
       createdAt: legacyTodo.createdAt,
+      ...(fieldVersions ? {fieldVersions} : {}),
     });
     flattened.push(base);
 
@@ -554,6 +567,7 @@ export function normalizeSnapshot(snapshot: DbSnapshot): DbSnapshot {
         priority: "medium",
         tagIds: [],
         parentId: base.id,
+        recurrence: "none",
         createdAt: legacyTodo.createdAt,
       });
     }

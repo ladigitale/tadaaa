@@ -48,6 +48,10 @@ class Todo
     #[ORM\Column(type: 'date_immutable', nullable: true)]
     private ?\DateTimeImmutable $endAt = null;
 
+    /** none | daily | weekly | monthly */
+    #[ORM\Column(length: 16)]
+    private string $recurrence = 'none';
+
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
@@ -186,6 +190,19 @@ class Todo
         return $this;
     }
 
+    public function getRecurrence(): string
+    {
+        return $this->recurrence;
+    }
+
+    public function setRecurrence(string $recurrence): static
+    {
+        $allowed = ['none', 'daily', 'weekly', 'monthly'];
+        $this->recurrence = \in_array($recurrence, $allowed, true) ? $recurrence : 'none';
+
+        return $this;
+    }
+
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
@@ -243,6 +260,7 @@ class Todo
             'parentId' => $this->parentId,
             'startAt' => $this->startAt?->format('Y-m-d'),
             'endAt' => $this->endAt?->format('Y-m-d'),
+            'recurrence' => $this->recurrence,
             'createdAt' => $this->createdAt->format(\DateTimeInterface::ATOM),
             'fieldVersions' => $this->fieldVersions,
             'deletedAt' => $this->deletedAt?->format(\DateTimeInterface::ATOM),

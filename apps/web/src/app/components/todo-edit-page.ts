@@ -8,7 +8,7 @@ import {customElement, property, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
 import {fetchTags, fetchTodo, patchTodo} from "../api/client";
-import type {Tag, TodoPriority} from "../api/types";
+import type {Tag, TodoPriority, TodoRecurrence} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
 import {todoEditKey, type TodoEditForm} from "../dp";
 import {tx} from "../i18n";
@@ -17,6 +17,7 @@ import {TACHE_ROOT, tacheItemPath} from "../utils/tache-paths";
 import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {focusPrimaryInput} from "../utils/focus-primary-input";
 import {parseDateOnly} from "../utils/dates";
+import {parseRecurrence} from "../utils/recurrence";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
 import {showError} from "../utils/modal-dialog";
@@ -31,6 +32,15 @@ function priorityOptions(): PopSelectOption[] {
     {value: "low", label: tx("tasks.priority.low"), icon: "arrow-down"},
     {value: "medium", label: tx("tasks.priority.medium"), icon: "minus"},
     {value: "high", label: tx("tasks.priority.high"), icon: "arrow-up"},
+  ];
+}
+
+function recurrenceOptions(): PopSelectOption[] {
+  return [
+    {value: "none", label: tx("tasks.recurrence.none"), icon: "minus"},
+    {value: "daily", label: tx("tasks.recurrence.daily"), icon: "refresh"},
+    {value: "weekly", label: tx("tasks.recurrence.weekly"), icon: "refresh"},
+    {value: "monthly", label: tx("tasks.recurrence.monthly"), icon: "refresh"},
   ];
 }
 
@@ -63,11 +73,16 @@ export class TodoEditPage extends LitElement {
     tagIds: [],
     startAt: "",
     endAt: "",
+    recurrence: "none",
   };
 
   @subscribe(todoEditKey.priority)
   @state()
   editPriority: TodoPriority = "medium";
+
+  @subscribe(todoEditKey.recurrence)
+  @state()
+  editRecurrence: TodoRecurrence = "none";
 
   @subscribe(todoEditKey.tagIds)
   @state()
@@ -108,6 +123,7 @@ export class TodoEditPage extends LitElement {
         tagIds,
         startAt: todo.startAt?.trim() || "",
         endAt: todo.endAt?.trim() || "",
+        recurrence: parseRecurrence(todo.recurrence),
       });
     } catch {
       this.notFound = true;
@@ -149,6 +165,7 @@ export class TodoEditPage extends LitElement {
         tagIds,
         startAt: parseDateOnly(form.startAt),
         endAt: parseDateOnly(form.endAt),
+        recurrence: parseRecurrence(form.recurrence),
       });
       navigateTo(this.backHref, true);
     } catch (error) {
@@ -237,6 +254,18 @@ export class TodoEditPage extends LitElement {
               size="md"
               .value=${this.editPriority}
               .options=${priorityOptions()}
+              ?disabled=${this.busy}
+              minWidth="12rem"
+            ></pop-select>
+
+            <pop-select
+              label=${tx("tasks.form.recurrence")}
+              showLabel
+              name="recurrence"
+              mode="radio"
+              size="md"
+              .value=${this.editRecurrence}
+              .options=${recurrenceOptions()}
               ?disabled=${this.busy}
               minWidth="12rem"
             ></pop-select>

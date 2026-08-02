@@ -42,6 +42,7 @@ export function stampTodoPatch(
   if (patch.tagIds !== undefined) mark("tagIds");
   if (patch.startAt !== undefined) mark("startAt");
   if (patch.endAt !== undefined) mark("endAt");
+  if (patch.recurrence !== undefined) mark("recurrence");
 
   const next = applyTodoPatch(todo, patch);
   return {
@@ -129,6 +130,7 @@ export function applyRemoteTodo(
     parentId: remote.parentId,
     startAt: remote.startAt ?? null,
     endAt: remote.endAt ?? null,
+    recurrence: remote.recurrence ?? "none",
   };
 
   if (index < 0) {
@@ -147,6 +149,7 @@ export function applyRemoteTodo(
           parentId: remote.parentId,
           startAt: remote.startAt ?? null,
           endAt: remote.endAt ?? null,
+          recurrence: remote.recurrence ?? "none",
           createdAt: remote.createdAt,
           fieldVersions: remote.fieldVersions ?? {},
         },
@@ -183,6 +186,12 @@ export function applyRemoteTodo(
     if (field === "endAt") {
       const trimmed = typeof value === "string" ? value.trim() : "";
       merged.endAt = trimmed || null;
+    }
+    if (field === "recurrence") {
+      merged.recurrence =
+        value === "daily" || value === "weekly" || value === "monthly"
+          ? value
+          : "none";
     }
   });
   merged.fieldVersions = versions;

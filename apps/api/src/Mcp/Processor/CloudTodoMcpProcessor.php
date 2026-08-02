@@ -6,24 +6,35 @@ namespace App\Mcp\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Entity\AuditLog;
 use App\Entity\User;
 use App\Mcp\Tool\ActivateDatasetTool;
 use App\Mcp\Tool\BulkUpdateTodosTool;
 use App\Mcp\Tool\CreateLinkDetectorTool;
 use App\Mcp\Tool\CreateTagTool;
 use App\Mcp\Tool\CreateTodoTool;
+use App\Mcp\Tool\CreateWebhookTool;
 use App\Mcp\Tool\DeleteLinkDetectorTool;
 use App\Mcp\Tool\DeleteTagTool;
+use App\Mcp\Tool\DeleteWebhookTool;
 use App\Mcp\Tool\DescribeTextFormattingTool;
 use App\Mcp\Tool\ListDatasetsTool;
 use App\Mcp\Tool\ListLinkDetectorsTool;
 use App\Mcp\Tool\ListTagsTool;
 use App\Mcp\Tool\ListTodosTool;
+use App\Mcp\Tool\ListWebhookDeliveriesTool;
+use App\Mcp\Tool\ListWebhookEventsTool;
+use App\Mcp\Tool\ListWebhooksTool;
 use App\Mcp\Tool\UpdateLinkDetectorTool;
 use App\Mcp\Tool\UpdateTagTool;
 use App\Mcp\Tool\UpdateTodoTool;
+use App\Mcp\Tool\UpdateWebhookTool;
+use App\Service\AuditLogger;
 use App\Service\CloudTodoService;
 use App\Service\LinkDetectorService;
+use App\Service\UsageMeter;
+use App\Service\WebhookService;
+use App\Webhook\WebhookEventType;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -43,6 +54,9 @@ final class CloudTodoMcpProcessor implements ProcessorInterface
     public function __construct(
         private readonly CloudTodoService $todos,
         private readonly LinkDetectorService $linkDetectors,
+        private readonly WebhookService $webhooks,
+        private readonly AuditLogger $audit,
+        private readonly UsageMeter $usage,
         private readonly Security $security,
     ) {
     }
@@ -50,6 +64,18 @@ final class CloudTodoMcpProcessor implements ProcessorInterface
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): CallToolResult
     {
         $user = $this->requireUser();
+        $toolName = $this->toolName($data);
+        $active = $user->getActiveDataset();
+
+        try {
+            $this->audit->log($user, AuditLog::CATEGORY_MCP, 'mcp.tool_called', [
+                'tool' => $toolName,
+                'datasetId' => $active?->getId()->toRfc4122(),
+            ]);
+            $this->usage->increment($user, $active, UsageMeter::MCP_CALLS);
+        } catch (\Throwable) {
+            // Observability must not break MCP.
+        }
 
         $payload = match (true) {
             $data instanceof ListDatasetsTool => ['datasets' => $this->todos->listDatasets($user)],
@@ -72,6 +98,7 @@ final class CloudTodoMcpProcessor implements ProcessorInterface
                 $data->parentId,
                 $data->startAt,
                 $data->endAt,
+                $data->recurrence,
             ),
             $data instanceof CreateTagTool => $this->todos->createTag($user, $data->name, $data->color),
             $data instanceof UpdateTagTool => $this->updateTag($user, $data),
@@ -90,6 +117,22 @@ final class CloudTodoMcpProcessor implements ProcessorInterface
             $data instanceof UpdateLinkDetectorTool => $this->updateLinkDetector($user, $data),
             $data instanceof DeleteLinkDetectorTool => $this->linkDetectors->delete($user, $data->id),
             $data instanceof DescribeTextFormattingTool => $this->formattingGuide($user),
+            $data instanceof ListWebhookEventsTool => ['events' => WebhookEventType::catalogue()],
+            $data instanceof ListWebhooksTool => [
+                'webhooks' => array_map(
+                    $this->webhooks->serialize(...),
+                    $this->webhooks->listForUser($user),
+                ),
+            ],
+            $data instanceof CreateWebhookTool => $this->createWebhook($user, $data),
+            $data instanceof UpdateWebhookTool => $this->updateWebhook($user, $data),
+            $data instanceof DeleteWebhookTool => $this->deleteWebhook($user, $data),
+            $data instanceof ListWebhookDeliveriesTool => [
+                'deliveries' => array_map(
+                    $this->webhooks->serializeDelivery(...),
+                    $this->webhooks->listDeliveries($user, $data->id, max(1, min(200, $data->limit))),
+                ),
+            ],
             default => throw new \InvalidArgumentException(sprintf(
                 'Payload MCP non supporté : %s',
                 get_debug_type($data),
@@ -101,6 +144,73 @@ final class CloudTodoMcpProcessor implements ProcessorInterface
             false,
             $payload,
         );
+    }
+
+    /** @return array<string, mixed> */
+    private function createWebhook(User $user, CreateWebhookTool $data): array
+    {
+        $created = $this->webhooks->create($user, $data->url, $data->events, $data->datasetId);
+
+        return [
+            'webhook' => $this->webhooks->serialize($created['endpoint']),
+            'plainSecret' => $created['plainSecret'],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function updateWebhook(User $user, UpdateWebhookTool $data): array
+    {
+        $patch = [];
+        if ($data->url !== null) {
+            $patch['url'] = $data->url;
+        }
+        if ($data->events !== null) {
+            $patch['events'] = $data->events;
+        }
+        if ($data->active !== null) {
+            $patch['active'] = $data->active;
+        }
+        if ($data->datasetId !== null) {
+            $patch['datasetId'] = $data->datasetId === '' ? null : $data->datasetId;
+        }
+
+        return ['webhook' => $this->webhooks->serialize($this->webhooks->update($user, $data->id, $patch))];
+    }
+
+    /** @return array{ok: bool, id: string} */
+    private function deleteWebhook(User $user, DeleteWebhookTool $data): array
+    {
+        $this->webhooks->delete($user, $data->id);
+
+        return ['ok' => true, 'id' => $data->id];
+    }
+
+    private function toolName(mixed $data): string
+    {
+        return match (true) {
+            $data instanceof ListDatasetsTool => 'list_datasets',
+            $data instanceof ActivateDatasetTool => 'activate_dataset',
+            $data instanceof ListTagsTool => 'list_tags',
+            $data instanceof ListTodosTool => 'list_todos',
+            $data instanceof CreateTodoTool => 'create_todo',
+            $data instanceof CreateTagTool => 'create_tag',
+            $data instanceof UpdateTagTool => 'update_tag',
+            $data instanceof DeleteTagTool => 'delete_tag',
+            $data instanceof UpdateTodoTool => 'update_todo',
+            $data instanceof BulkUpdateTodosTool => 'bulk_update_todos',
+            $data instanceof ListLinkDetectorsTool => 'list_link_detectors',
+            $data instanceof CreateLinkDetectorTool => 'create_link_detector',
+            $data instanceof UpdateLinkDetectorTool => 'update_link_detector',
+            $data instanceof DeleteLinkDetectorTool => 'delete_link_detector',
+            $data instanceof DescribeTextFormattingTool => 'describe_text_formatting',
+            $data instanceof ListWebhookEventsTool => 'list_webhook_events',
+            $data instanceof ListWebhooksTool => 'list_webhooks',
+            $data instanceof CreateWebhookTool => 'create_webhook',
+            $data instanceof UpdateWebhookTool => 'update_webhook',
+            $data instanceof DeleteWebhookTool => 'delete_webhook',
+            $data instanceof ListWebhookDeliveriesTool => 'list_webhook_deliveries',
+            default => get_debug_type($data),
+        };
     }
 
     /** @return array<string, mixed> */
@@ -201,6 +311,9 @@ final class CloudTodoMcpProcessor implements ProcessorInterface
         }
         if ($data->endAt !== null) {
             $patch['endAt'] = $data->endAt === '' ? null : $data->endAt;
+        }
+        if ($data->recurrence !== null) {
+            $patch['recurrence'] = $data->recurrence;
         }
 
         return $this->todos->updateTodo($user, $data->id, $patch);

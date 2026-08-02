@@ -156,6 +156,7 @@ export class ConfigAccountPage extends LitElement {
       newCloudDatasetName: form?.newCloudDatasetName ?? "",
       newAccessTokenName: form?.newAccessTokenName ?? "",
       shareInviteEmail: form?.shareInviteEmail ?? "",
+      webhookUrl: form?.webhookUrl ?? "",
     });
     this.account = account;
     await this.reloadCloudState();

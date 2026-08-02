@@ -13,17 +13,21 @@ use App\Repository\DatasetRepository;
 use App\Repository\TagRepository;
 use App\Repository\TodoRepository;
 use App\Util\BaseIdParser;
+use App\Webhook\WebhookEventType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final class SyncService
 {
-    private const TODO_FIELDS = ['text', 'description', 'done', 'archived', 'priority', 'tagIds', 'parentId', 'startAt', 'endAt'];
+    private const TODO_FIELDS = ['text', 'description', 'done', 'archived', 'priority', 'tagIds', 'parentId', 'startAt', 'endAt', 'recurrence'];
     private const TAG_FIELDS = ['name', 'color'];
 
     /** @var list<array{type: string, id: string, text: string}> */
     private array $todoNotifyBuffer = [];
+
+    /** @var list<array{type: string, data: array<string, mixed>}> */
+    private array $webhookEventBuffer = [];
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
@@ -33,6 +37,7 @@ final class SyncService
         private readonly DatasetAccessService $access,
         private readonly DatasetRealtimePublisher $realtime,
         private readonly PushNotificationDispatcher $push,
+        private readonly WebhookDispatcher $webhooks,
     ) {
     }
 
@@ -82,6 +87,7 @@ final class SyncService
         $accepted = [];
         $rejected = [];
         $this->todoNotifyBuffer = [];
+        $this->webhookEventBuffer = [];
 
         foreach ($mutations as $mutation) {
             if (!is_array($mutation)) {
@@ -107,6 +113,10 @@ final class SyncService
                 $this->push->notifyTodoEvents($dataset, $user, $this->todoNotifyBuffer);
                 $this->todoNotifyBuffer = [];
             }
+            foreach ($this->webhookEventBuffer as $event) {
+                $this->webhooks->dispatch($dataset, $event['type'], $event['data'], $user);
+            }
+            $this->webhookEventBuffer = [];
         }
 
         return [
@@ -282,14 +292,30 @@ final class SyncService
                     'id' => $id,
                     'text' => $todo->getText(),
                 ];
-            } elseif ($existed && $prevDone !== null && $todo->isDone() !== $prevDone) {
-                $this->todoNotifyBuffer[] = [
-                    'type' => $todo->isDone()
-                        ? NotificationEventType::TODO_CHECKED
-                        : NotificationEventType::TODO_UNCHECKED,
-                    'id' => $id,
-                    'text' => $todo->getText(),
+                $this->webhookEventBuffer[] = [
+                    'type' => WebhookEventType::TODO_CREATED,
+                    'data' => $todo->toSyncArray(),
                 ];
+            } elseif ($existed && !$todo->isDeleted()) {
+                $this->webhookEventBuffer[] = [
+                    'type' => WebhookEventType::TODO_UPDATED,
+                    'data' => $todo->toSyncArray(),
+                ];
+                if ($prevDone !== null && $todo->isDone() !== $prevDone) {
+                    $this->todoNotifyBuffer[] = [
+                        'type' => $todo->isDone()
+                            ? NotificationEventType::TODO_CHECKED
+                            : NotificationEventType::TODO_UNCHECKED,
+                        'id' => $id,
+                        'text' => $todo->getText(),
+                    ];
+                    $this->webhookEventBuffer[] = [
+                        'type' => $todo->isDone()
+                            ? WebhookEventType::TODO_CHECKED
+                            : WebhookEventType::TODO_UNCHECKED,
+                        'data' => $todo->toSyncArray(),
+                    ];
+                }
             }
         }
 
@@ -304,6 +330,7 @@ final class SyncService
         $id = (string) $row['id'];
         $fieldVersions = $this->readFieldVersions($row);
         $tag = $this->tags->findOneForDataset($dataset, $id);
+        $existed = $tag !== null && !$tag->isDeleted();
 
         if ($tag === null) {
             $tag = new Tag($id, $dataset);
@@ -337,6 +364,13 @@ final class SyncService
 
         $tag->setFieldVersions($result['versions']);
 
+        if (!$replace && !$tag->isDeleted()) {
+            $this->webhookEventBuffer[] = [
+                'type' => $existed ? WebhookEventType::TAG_UPDATED : WebhookEventType::TAG_CREATED,
+                'data' => $tag->toSyncArray(),
+            ];
+        }
+
         return 'tag:'.$id;
     }
 
@@ -367,6 +401,13 @@ final class SyncService
                     'id' => $id,
                     'text' => $text !== '' ? $text : $todo->getText(),
                 ];
+                $this->webhookEventBuffer[] = [
+                    'type' => WebhookEventType::TODO_DELETED,
+                    'data' => [
+                        'id' => $id,
+                        'text' => $text !== '' ? $text : $todo->getText(),
+                    ],
+                ];
             }
 
             return 'todo:'.$id;
@@ -374,6 +415,7 @@ final class SyncService
 
         if ($entity === 'tag') {
             $tag = $this->tags->findOneForDataset($dataset, $id);
+            $wasActive = $tag !== null && !$tag->isDeleted();
             if ($tag === null) {
                 $tag = new Tag($id, $dataset);
                 $this->entityManager->persist($tag);
@@ -382,6 +424,12 @@ final class SyncService
             $versions = $tag->getFieldVersions();
             $versions['deletedAt'] = $deletedAt->format(\DateTimeInterface::ATOM);
             $tag->setFieldVersions($versions);
+            if ($wasActive) {
+                $this->webhookEventBuffer[] = [
+                    'type' => WebhookEventType::TAG_DELETED,
+                    'data' => ['id' => $id],
+                ];
+            }
 
             return 'tag:'.$id;
         }
@@ -401,6 +449,7 @@ final class SyncService
             'parentId' => $todo->setParentId(is_string($value) && $value !== '' ? $value : null),
             'startAt' => $todo->setStartAt($this->parseDateOnly($value)),
             'endAt' => $todo->setEndAt($this->parseDateOnly($value)),
+            'recurrence' => $todo->setRecurrence(TodoRecurrence::normalize(is_string($value) ? $value : null)),
             default => null,
         };
     }

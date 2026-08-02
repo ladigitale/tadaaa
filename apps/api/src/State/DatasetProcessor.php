@@ -13,7 +13,10 @@ use App\Entity\Dataset;
 use App\Entity\User;
 use App\Repository\DatasetRepository;
 use App\Service\DatasetAccessService;
+use App\Service\UsageMeter;
+use App\Service\WebhookDispatcher;
 use App\Util\BaseIdParser;
+use App\Webhook\WebhookEventType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Request;
@@ -30,6 +33,8 @@ final class DatasetProcessor implements ProcessorInterface
         private readonly DatasetRepository $datasets,
         private readonly DatasetAccessService $access,
         private readonly Security $security,
+        private readonly WebhookDispatcher $webhooks,
+        private readonly UsageMeter $usage,
     ) {
     }
 
@@ -75,6 +80,12 @@ final class DatasetProcessor implements ProcessorInterface
             }
 
             $this->entityManager->flush();
+            $this->webhooks->dispatch($data, WebhookEventType::DATASET_CREATED, [
+                'id' => $data->getId()->toRfc4122(),
+                'name' => $data->getName(),
+                'baseId' => BaseIdParser::format($data->getBaseId()),
+            ], $user);
+            $this->usage->increment($user, $data, UsageMeter::DATASETS_CREATED);
 
             return $data;
         }
@@ -99,6 +110,13 @@ final class DatasetProcessor implements ProcessorInterface
                 $user->setActiveDataset($replacement instanceof Dataset ? $replacement : null);
             }
 
+            $snapshot = [
+                'id' => $data->getId()->toRfc4122(),
+                'name' => $data->getName(),
+                'baseId' => BaseIdParser::format($data->getBaseId()),
+            ];
+            $this->webhooks->dispatch($data, WebhookEventType::DATASET_DELETED, $snapshot, $user);
+
             $this->entityManager->remove($data);
             $this->entityManager->flush();
 
@@ -119,6 +137,11 @@ final class DatasetProcessor implements ProcessorInterface
 
             $data->touch();
             $this->entityManager->flush();
+            $this->webhooks->dispatch($data, WebhookEventType::DATASET_UPDATED, [
+                'id' => $data->getId()->toRfc4122(),
+                'name' => $data->getName(),
+                'baseId' => BaseIdParser::format($data->getBaseId()),
+            ], $user);
 
             return $data;
         }

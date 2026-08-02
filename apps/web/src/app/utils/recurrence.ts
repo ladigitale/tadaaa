@@ -1,0 +1,58 @@
+import type {CreateTodoInput, Todo, TodoRecurrence} from "../api/types";
+import {addDays, parseDateOnly, shiftAnchor} from "./dates";
+
+export const TODO_RECURRENCES: TodoRecurrence[] = [
+  "none",
+  "daily",
+  "weekly",
+  "monthly",
+];
+
+export function parseRecurrence(value: unknown): TodoRecurrence {
+  if (value === "daily" || value === "weekly" || value === "monthly") {
+    return value;
+  }
+  return "none";
+}
+
+function shiftDate(dateOnly: string, recurrence: TodoRecurrence): string {
+  if (recurrence === "daily") return addDays(dateOnly, 1);
+  if (recurrence === "weekly") return addDays(dateOnly, 7);
+  return shiftAnchor(dateOnly, "month", 1);
+}
+
+/** Shift start/end independently; omit keys when the source had no date. */
+export function nextOccurrenceDates(
+  todo: {startAt?: string | null; endAt?: string | null},
+  recurrence: TodoRecurrence,
+): Pick<CreateTodoInput, "startAt" | "endAt"> {
+  if (recurrence === "none") return {};
+  const start = parseDateOnly(todo.startAt ?? null);
+  const end = parseDateOnly(todo.endAt ?? null);
+  if (!start && !end) return {};
+  return {
+    ...(start ? {startAt: shiftDate(start, recurrence)} : {}),
+    ...(end ? {endAt: shiftDate(end, recurrence)} : {}),
+  };
+}
+
+/**
+ * Build create input for the next occurrence after `completed` was marked done.
+ * Returns null when there is no active recurrence.
+ */
+export function buildNextOccurrenceInput(
+  completed: Todo,
+): CreateTodoInput | null {
+  const recurrence = parseRecurrence(completed.recurrence);
+  if (recurrence === "none") return null;
+  const dates = nextOccurrenceDates(completed, recurrence);
+  return {
+    text: completed.text,
+    description: completed.description ?? null,
+    priority: completed.priority,
+    tagIds: [...completed.tagIds],
+    parentId: completed.parentId,
+    recurrence,
+    ...dates,
+  };
+}

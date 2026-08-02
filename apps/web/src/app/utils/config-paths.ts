@@ -8,7 +8,10 @@ export type ConfigSection =
   | "data"
   | "p2p"
   | "maintenance"
-  | "datasets";
+  | "datasets"
+  | "webhooks"
+  | "activity"
+  | "usage";
 
 export function configSectionPath(section: ConfigSection): string {
   return `${CONFIG_ROOT}/${section}`;

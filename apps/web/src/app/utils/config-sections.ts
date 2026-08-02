@@ -45,6 +45,27 @@ export const CONFIG_SECTION_GROUPS: ConfigSectionGroup[] = [
         icon: "user",
         href: configSectionPath("account"),
       },
+      {
+        id: "webhooks",
+        labelKey: "config.section.webhooks",
+        descriptionKey: "config.section.webhooks.help",
+        icon: "flash",
+        href: configSectionPath("webhooks"),
+      },
+      {
+        id: "activity",
+        labelKey: "config.section.activity",
+        descriptionKey: "config.section.activity.help",
+        icon: "clock",
+        href: configSectionPath("activity"),
+      },
+      {
+        id: "usage",
+        labelKey: "config.section.usage",
+        descriptionKey: "config.section.usage.help",
+        icon: "graph-up",
+        href: configSectionPath("usage"),
+      },
     ],
   },
   {

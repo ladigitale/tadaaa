@@ -4,12 +4,15 @@ import "@supersoniks/concorde/core/components/functional/router/router";
 
 import layout from "./layout";
 import configAccountPage from "./config/account/page";
+import configActivityPage from "./config/activity/page";
 import configAppearancePage from "./config/appearance/page";
 import configDataPage from "./config/data/page";
 import configDatasetsPage from "./config/datasets/page";
 import configIssuesPage from "./config/issues/page";
 import configMaintenancePage from "./config/maintenance/page";
 import configP2pPage from "./config/p2p/page";
+import configUsagePage from "./config/usage/page";
+import configWebhooksPage from "./config/webhooks/page";
 import configPage from "./config/page";
 import invitePage from "./invite/page";
 import tacheItem_idEditPage from "./tache/item/[id]/edit/page";
@@ -26,6 +29,10 @@ import fallback from "./404";
 export const router = (basePath?:string) => {
 const configAccountDefaultLayoutRoutes = {
     "/config/account$": configAccountPage
+}        
+
+const configActivityDefaultLayoutRoutes = {
+    "/config/activity$": configActivityPage
 }        
 
 const configAppearanceDefaultLayoutRoutes = {
@@ -52,14 +59,25 @@ const configP2pDefaultLayoutRoutes = {
     "/config/p2p$": configP2pPage
 }        
 
+const configUsageDefaultLayoutRoutes = {
+    "/config/usage$": configUsagePage
+}        
+
+const configWebhooksDefaultLayoutRoutes = {
+    "/config/webhooks$": configWebhooksPage
+}        
+
 const configDefaultLayoutRoutes = {
     "/config/account\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configAccountDefaultLayoutRoutes}></sonic-router>`,
+    "/config/activity\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configActivityDefaultLayoutRoutes}></sonic-router>`,
     "/config/appearance\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configAppearanceDefaultLayoutRoutes}></sonic-router>`,
     "/config/data\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configDataDefaultLayoutRoutes}></sonic-router>`,
     "/config/datasets\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configDatasetsDefaultLayoutRoutes}></sonic-router>`,
     "/config/issues\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configIssuesDefaultLayoutRoutes}></sonic-router>`,
     "/config/maintenance\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configMaintenanceDefaultLayoutRoutes}></sonic-router>`,
     "/config/p2p\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configP2pDefaultLayoutRoutes}></sonic-router>`,
+    "/config/usage\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configUsageDefaultLayoutRoutes}></sonic-router>`,
+    "/config/webhooks\\b": () => html`<sonic-router .basePath=${basePath} .routes=${configWebhooksDefaultLayoutRoutes}></sonic-router>`,
     "/config$": configPage
 }        
 

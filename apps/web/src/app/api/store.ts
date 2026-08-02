@@ -38,6 +38,7 @@ import {
 } from "./data-package";
 import {getDemoDatasetName} from "./seed";
 import {getAppLocale} from "../i18n/locale";
+import {buildNextOccurrenceInput} from "../utils/recurrence";
 
 export type DatasetInfo = {
   id: string;
@@ -111,6 +112,44 @@ export type SyncMutationEvent = {
 export type TodoStoreOptions = {
   onMutation?: (event: SyncMutationEvent) => void;
 };
+
+function spawnRecurrence(
+  todos: Todo[],
+  completed: Todo,
+  notify?: (event: SyncMutationEvent) => void,
+): Todo | null {
+  const input = buildNextOccurrenceInput(completed);
+  if (!input) return null;
+  const next = stampTodoCreate(createTodoRecord(input, todos));
+  todos.unshift(next);
+  void notify?.({
+    entity: "todo",
+    op: "upsert",
+    record: next,
+    entityId: next.id,
+    fieldVersions: next.fieldVersions ?? {},
+  });
+  return next;
+}
+
+/** Clear recurrence on the completed instance so undo+redo does not re-spawn. */
+function clearRecurrenceAfterSpawn(
+  todos: Todo[],
+  completedId: string,
+  notify?: (event: SyncMutationEvent) => void,
+): void {
+  const index = todos.findIndex((todo) => todo.id === completedId);
+  if (index < 0) return;
+  const stamped = stampTodoPatch(todos[index], {recurrence: "none"});
+  todos[index] = stamped.todo;
+  void notify?.({
+    entity: "todo",
+    op: "upsert",
+    record: stamped.todo,
+    entityId: stamped.todo.id,
+    fieldVersions: stamped.todo.fieldVersions ?? {},
+  });
+}
 
 export function createTodoStore(
   repo: TodoRepository,
@@ -202,7 +241,8 @@ export function createTodoStore(
             validTagIds.has(tagId),
           );
         }
-        const stamped = stampTodoPatch(todos[index], nextPatch);
+        const before = todos[index];
+        const stamped = stampTodoPatch(before, nextPatch);
         todos[index] = stamped.todo;
         void notify?.({
           entity: "todo",
@@ -212,9 +252,18 @@ export function createTodoStore(
           fieldVersions: stamped.todo.fieldVersions ?? {},
         });
 
+        if (!before.done && stamped.todo.done) {
+          if (spawnRecurrence(todos, stamped.todo, notify)) {
+            clearRecurrenceAfterSpawn(todos, stamped.todo.id, notify);
+          }
+        }
+
         return {
           snapshot: {...snapshot, todos},
-          result: withChildCount(todos[index], todos),
+          result: withChildCount(
+            todos.find((todo) => todo.id === id) ?? stamped.todo,
+            todos,
+          ),
         };
       });
     },
@@ -357,16 +406,26 @@ export function createTodoStore(
           if (!ids.has(todo.id)) return todo;
           const stamped = stampTodoPatch(todo, nextPatch);
           void notify?.({
-          entity: "todo",
-          op: "upsert",
-          record: stamped.todo,
-          entityId: stamped.todo.id,
-          fieldVersions: stamped.todo.fieldVersions ?? {},
-        });
+            entity: "todo",
+            op: "upsert",
+            record: stamped.todo,
+            entityId: stamped.todo.id,
+            fieldVersions: stamped.todo.fieldVersions ?? {},
+          });
           return stamped.todo;
         });
+
+        const nextTodos = [...todos];
+        for (const before of snapshot.todos) {
+          if (!ids.has(before.id) || before.done) continue;
+          const after = nextTodos.find((todo) => todo.id === before.id);
+          if (after?.done && spawnRecurrence(nextTodos, after, notify)) {
+            clearRecurrenceAfterSpawn(nextTodos, after.id, notify);
+          }
+        }
+
         return {
-          snapshot: {...snapshot, todos},
+          snapshot: {...snapshot, todos: nextTodos},
           result: {updatedCount: ids.size},
         };
       });

@@ -57,6 +57,7 @@ export const TODO_SYNC_FIELDS = [
   "parentId",
   "startAt",
   "endAt",
+  "recurrence",
 ] as const;
 
 export const TAG_SYNC_FIELDS = ["name", "color"] as const;

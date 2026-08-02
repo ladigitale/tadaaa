@@ -13,6 +13,7 @@ use App\Repository\DatasetRepository;
 use App\Repository\TagRepository;
 use App\Repository\TodoRepository;
 use App\Util\BaseIdParser;
+use App\Webhook\WebhookEventType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -32,6 +33,8 @@ final class CloudTodoService
         private readonly DatasetAccessService $access,
         private readonly DatasetRealtimePublisher $realtime,
         private readonly PushNotificationDispatcher $push,
+        private readonly WebhookDispatcher $webhooks,
+        private readonly UsageMeter $usage,
     ) {
     }
 
@@ -109,6 +112,7 @@ final class CloudTodoService
         ?string $parentId = null,
         ?string $startAt = null,
         ?string $endAt = null,
+        ?string $recurrence = null,
     ): array {
         $dataset = $this->requireActiveDataset($user, write: true);
         $text = trim($text);
@@ -126,6 +130,7 @@ final class CloudTodoService
         $todo->setParentId($parentId);
         $todo->setStartAt($this->parseDateOnly($startAt));
         $todo->setEndAt($this->parseDateOnly($endAt));
+        $todo->setRecurrence(TodoRecurrence::normalize($recurrence));
         $todo->setFieldVersions([
             'text' => $now,
             'description' => $now,
@@ -136,6 +141,7 @@ final class CloudTodoService
             'parentId' => $now,
             'startAt' => $now,
             'endAt' => $now,
+            'recurrence' => $now,
         ]);
 
         $this->entityManager->persist($todo);
@@ -149,8 +155,11 @@ final class CloudTodoService
                 'text' => $text,
             ],
         ]);
+        $sync = $todo->toSyncArray();
+        $this->webhooks->dispatch($dataset, WebhookEventType::TODO_CREATED, $sync, $user);
+        $this->usage->increment($user, $dataset, UsageMeter::TODOS_CREATED);
 
-        return $todo->toSyncArray();
+        return $sync;
     }
 
     /**
@@ -202,11 +211,18 @@ final class CloudTodoService
             $todo->setEndAt($this->parseDateOnly(is_string($patch['endAt']) ? $patch['endAt'] : null));
             $versions['endAt'] = $now;
         }
+        if (array_key_exists('recurrence', $patch)) {
+            $todo->setRecurrence(TodoRecurrence::normalize(
+                is_string($patch['recurrence']) ? $patch['recurrence'] : null,
+            ));
+            $versions['recurrence'] = $now;
+        }
 
         $todo->setFieldVersions($versions);
-        $todo->getDataset()->touch();
+        $dataset = $todo->getDataset();
+        $dataset->touch();
         $this->entityManager->flush();
-        $this->realtime->publishDatasetChanged($todo->getDataset());
+        $this->realtime->publishDatasetChanged($dataset);
 
         $events = [];
         if (array_key_exists('done', $patch) && $todo->isDone() !== $prevDone) {
@@ -219,10 +235,48 @@ final class CloudTodoService
             ];
         }
         if ($events !== []) {
-            $this->push->notifyTodoEvents($todo->getDataset(), $user, $events);
+            $this->push->notifyTodoEvents($dataset, $user, $events);
         }
 
-        return $todo->toSyncArray();
+        $sync = $todo->toSyncArray();
+        $this->webhooks->dispatch($dataset, WebhookEventType::TODO_UPDATED, $sync, $user);
+        if (array_key_exists('done', $patch) && $todo->isDone() !== $prevDone) {
+            $this->webhooks->dispatch(
+                $dataset,
+                $todo->isDone() ? WebhookEventType::TODO_CHECKED : WebhookEventType::TODO_UNCHECKED,
+                $sync,
+                $user,
+            );
+        }
+        $this->usage->increment($user, $dataset, UsageMeter::TODOS_UPDATED);
+
+        if (!$prevDone && $todo->isDone() && TodoRecurrence::isActive($todo->getRecurrence())) {
+            $dates = TodoRecurrence::nextDates(
+                $todo->getStartAt(),
+                $todo->getEndAt(),
+                $todo->getRecurrence(),
+            );
+            $recurrence = $todo->getRecurrence();
+            // Past occurrence keeps no recurrence (avoids re-spawn on toggle).
+            $todo->setRecurrence(TodoRecurrence::NONE);
+            $versions['recurrence'] = $now;
+            $todo->setFieldVersions($versions);
+            $this->entityManager->flush();
+
+            $this->createTodo(
+                $user,
+                $todo->getText(),
+                $todo->getDescription(),
+                $todo->getPriority(),
+                $todo->getTagIds(),
+                $todo->getParentId(),
+                $dates['startAt'],
+                $dates['endAt'],
+                $recurrence,
+            );
+        }
+
+        return $sync;
     }
 
     /**
@@ -285,8 +339,11 @@ final class CloudTodoService
         $dataset->touch();
         $this->entityManager->flush();
         $this->realtime->publishDatasetChanged($dataset);
+        $sync = $tag->toSyncArray();
+        $this->webhooks->dispatch($dataset, WebhookEventType::TAG_CREATED, $sync, $user);
+        $this->usage->increment($user, $dataset, UsageMeter::TAGS_MUTATED);
 
-        return $tag->toSyncArray();
+        return $sync;
     }
 
     /**
@@ -330,8 +387,11 @@ final class CloudTodoService
         $dataset->touch();
         $this->entityManager->flush();
         $this->realtime->publishDatasetChanged($dataset);
+        $sync = $tag->toSyncArray();
+        $this->webhooks->dispatch($dataset, WebhookEventType::TAG_UPDATED, $sync, $user);
+        $this->usage->increment($user, $dataset, UsageMeter::TAGS_MUTATED);
 
-        return $tag->toSyncArray();
+        return $sync;
     }
 
     public function deleteTag(User $user, string $id): array
@@ -365,6 +425,8 @@ final class CloudTodoService
         $dataset->touch();
         $this->entityManager->flush();
         $this->realtime->publishDatasetChanged($dataset);
+        $this->webhooks->dispatch($dataset, WebhookEventType::TAG_DELETED, ['id' => $id], $user);
+        $this->usage->increment($user, $dataset, UsageMeter::TAGS_MUTATED);
 
         return ['ok' => true, 'id' => $id];
     }

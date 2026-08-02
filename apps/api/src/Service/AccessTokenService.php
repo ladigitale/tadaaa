@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\AccessToken;
+use App\Entity\AuditLog;
 use App\Entity\User;
 use App\Repository\AccessTokenRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -14,6 +15,7 @@ final class AccessTokenService
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly AccessTokenRepository $tokens,
+        private readonly AuditLogger $audit,
     ) {
     }
 
@@ -29,6 +31,12 @@ final class AccessTokenService
         $token = new AccessToken($user, $name !== '' ? $name : 'MCP', $hash, $prefix);
         $this->entityManager->persist($token);
         $this->entityManager->flush();
+
+        $this->audit->log($user, AuditLog::CATEGORY_TOKEN, 'token.created', [
+            'tokenId' => $token->getId()->toRfc4122(),
+            'name' => $token->getName(),
+            'tokenPrefix' => $token->getTokenPrefix(),
+        ]);
 
         return ['token' => $token, 'plainToken' => $plain];
     }
@@ -48,6 +56,12 @@ final class AccessTokenService
 
         $token->revoke();
         $this->entityManager->flush();
+
+        $this->audit->log($user, AuditLog::CATEGORY_TOKEN, 'token.revoked', [
+            'tokenId' => $token->getId()->toRfc4122(),
+            'name' => $token->getName(),
+            'tokenPrefix' => $token->getTokenPrefix(),
+        ]);
 
         return true;
     }

@@ -17,6 +17,7 @@ Lit / Concorde front + Symfony 8 / API Platform API.
 - **MCP HTTP** — todo/tag/link-detector tools for Cursor & Claude (`/mcp`; PAT `tada_…` or OAuth for Claude.ai)
 - **Link detectors** — turn ticket tokens (e.g. `RM-12345`) into links; sync with the cloud account
 - **Calendar & due dates** — list/calendar views; optional web notifications for invites and due dates
+- **Simple recurrence** — daily / weekly / monthly; completing a task spawns the next occurrence (dates shifted)
 - **PWA** — installable SPA (manifest + icons)
 - **P2P** — share a dataset between devices (PeerJS)
 - **i18n** — English / French UI wording

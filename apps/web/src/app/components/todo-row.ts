@@ -22,6 +22,7 @@ import "./tag-badge";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import {tacheItemEditPath, tacheItemMovePath, tacheItemPath} from "../utils/tache-paths";
 import {todoDateSpan, localeTag} from "../utils/dates";
+import {parseRecurrence} from "../utils/recurrence";
 
 const PRIORITY_TYPE: Record<
   TodoPriority,
@@ -377,11 +378,21 @@ export class TodoRow extends LitElement {
         ? formatShortDate(span.start)
         : `${formatShortDate(span.start)} → ${formatShortDate(span.end)}`
       : null;
+    const recurrence = parseRecurrence(this.todo.recurrence);
+    const recurrenceLabel =
+      recurrence === "none"
+        ? null
+        : tx(`tasks.recurrence.${recurrence}`);
     return html`
       <div class="flex flex-wrap items-center gap-1.5">
         <sonic-badge type=${priority.type} size="2xs">
           ${priority.label}
         </sonic-badge>
+        ${recurrenceLabel
+          ? html`<sonic-badge type="info" size="2xs"
+              >${recurrenceLabel}</sonic-badge
+            >`
+          : nothing}
         ${dateLabel
           ? html`<span class="text-[0.7rem] text-neutral-500">${dateLabel}</span>`
           : nothing}

@@ -14,6 +14,7 @@ use App\Repository\DatasetInviteRepository;
 use App\Repository\DatasetMemberRepository;
 use App\Repository\UserRepository;
 use App\Util\BaseIdParser;
+use App\Webhook\WebhookEventType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -31,6 +32,8 @@ final class DatasetShareService
         private readonly DatasetInviteRepository $invites,
         private readonly DatasetRealtimePublisher $realtime,
         private readonly UserRepository $users,
+        private readonly WebhookDispatcher $webhooks,
+        private readonly UsageMeter $usage,
     ) {
     }
 
@@ -107,12 +110,19 @@ final class DatasetShareService
         $this->entityManager->persist($invite);
         $this->entityManager->flush();
 
-        return [
+        $payload = [
             'token' => $token,
             'urlPath' => '/invite?token='.$token,
             'role' => $role->value,
             'expiresAt' => $expiresAt->format(\DateTimeInterface::ATOM),
         ];
+        $this->webhooks->dispatch($dataset, WebhookEventType::DATASET_INVITE_CREATED, [
+            'role' => $role->value,
+            'expiresAt' => $payload['expiresAt'],
+        ], $owner);
+        $this->usage->increment($owner, $dataset, UsageMeter::INVITES_SENT);
+
+        return $payload;
     }
 
     /**
@@ -159,6 +169,11 @@ final class DatasetShareService
         $role = $this->access->getRole($user, $dataset);
         $roleValue = $role?->value ?? $invite->getRole()->value;
         $this->realtime->publishMemberJoined($dataset, $user, $roleValue);
+        $this->webhooks->dispatch($dataset, WebhookEventType::DATASET_MEMBER_JOINED, [
+            'memberId' => $user->getId()->toRfc4122(),
+            'memberEmail' => $user->getEmail(),
+            'role' => $roleValue,
+        ], $user);
 
         return [
             'dataset' => [

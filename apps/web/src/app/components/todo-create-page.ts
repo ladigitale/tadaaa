@@ -9,7 +9,7 @@ import {customElement, property, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
 import {createTodo, fetchTags} from "../api/client";
-import type {Tag, TodoPriority} from "../api/types";
+import type {Tag, TodoPriority, TodoRecurrence} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
 import {todoCreateKey, type TodoCreateForm} from "../dp";
 import {tx} from "../i18n";
@@ -18,6 +18,7 @@ import {TACHE_ROOT, tacheItemPath} from "../utils/tache-paths";
 import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {focusPrimaryInput} from "../utils/focus-primary-input";
 import {parseDateOnly} from "../utils/dates";
+import {parseRecurrence} from "../utils/recurrence";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
 import {showError} from "../utils/modal-dialog";
@@ -36,6 +37,15 @@ function priorityOptions(): PopSelectOption[] {
   ];
 }
 
+function recurrenceOptions(): PopSelectOption[] {
+  return [
+    {value: "none", label: tx("tasks.recurrence.none"), icon: "minus"},
+    {value: "daily", label: tx("tasks.recurrence.daily"), icon: "refresh"},
+    {value: "weekly", label: tx("tasks.recurrence.weekly"), icon: "refresh"},
+    {value: "monthly", label: tx("tasks.recurrence.monthly"), icon: "refresh"},
+  ];
+}
+
 const emptyCreateForm = (): TodoCreateForm => ({
   text: "",
   description: "",
@@ -43,6 +53,7 @@ const emptyCreateForm = (): TodoCreateForm => ({
   tagIds: [],
   startAt: "",
   endAt: "",
+  recurrence: "none",
 });
 
 @customElement("todo-create-page")
@@ -63,6 +74,10 @@ export class TodoCreatePage extends LitElement {
   @subscribe(todoCreateKey.priority)
   @state()
   createPriority: TodoPriority = "medium";
+
+  @subscribe(todoCreateKey.recurrence)
+  @state()
+  createRecurrence: TodoRecurrence = "none";
 
   @subscribe(todoCreateKey.tagIds)
   @state()
@@ -118,6 +133,7 @@ export class TodoCreatePage extends LitElement {
         parentId,
         startAt,
         endAt,
+        recurrence: parseRecurrence(form.recurrence),
       });
       set(todoCreateKey.path, emptyCreateForm());
       navigateTo(this.cancelHref, true);
@@ -178,6 +194,18 @@ export class TodoCreatePage extends LitElement {
               size="md"
               .value=${this.createPriority}
               .options=${priorityOptions()}
+              ?disabled=${this.busy}
+              minWidth="12rem"
+            ></pop-select>
+
+            <pop-select
+              label=${tx("tasks.form.recurrence")}
+              showLabel
+              name="recurrence"
+              mode="radio"
+              size="md"
+              .value=${this.createRecurrence}
+              .options=${recurrenceOptions()}
               ?disabled=${this.busy}
               minWidth="12rem"
             ></pop-select>

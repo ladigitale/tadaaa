@@ -9,6 +9,9 @@ export interface Tag {
 
 export type TodoPriority = "low" | "medium" | "high";
 
+/** Simple recurrence: on complete, spawn next occurrence (dates shifted). */
+export type TodoRecurrence = "none" | "daily" | "weekly" | "monthly";
+
 export interface TodoAncestor {
   id: string;
   text: string;
@@ -30,6 +33,8 @@ export interface Todo {
   startAt?: string | null;
   /** Date de fin / échéance optionnelle (YYYY-MM-DD) */
   endAt?: string | null;
+  /** Récurrence simple (défaut none) */
+  recurrence?: TodoRecurrence;
   createdAt: string;
   fieldVersions?: FieldVersions;
   /** Calculé, non persisté */
@@ -88,6 +93,7 @@ export interface CreateTodoInput {
   parentId?: string | null;
   startAt?: string | null;
   endAt?: string | null;
+  recurrence?: TodoRecurrence | null;
 }
 
 export interface UpdateTodoPatch {
@@ -99,6 +105,7 @@ export interface UpdateTodoPatch {
   tagIds?: string[] | null;
   startAt?: string | null;
   endAt?: string | null;
+  recurrence?: TodoRecurrence | null;
 }
 
 export interface CreateTagInput {
