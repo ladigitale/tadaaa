@@ -21,6 +21,7 @@ import type {SyncState} from "../sync/outbox-types";
 import {showError} from "../utils/modal-dialog";
 import tailwind from "../../css/tailwind";
 import "./account-required-cta";
+import "./cloud-quota-gauges";
 import "./config-scope-header";
 import "./page-shell";
 
@@ -162,6 +163,7 @@ export class ConfigSyncPage extends LitElement {
                     ${t("account.sync.now")}
                   </sonic-button>
                 </sonic-form-actions>
+                <cloud-quota-gauges></cloud-quota-gauges>
                 <p class="text-sm text-neutral-500">${t("account.sync.help")}</p>
               `}
         </div>

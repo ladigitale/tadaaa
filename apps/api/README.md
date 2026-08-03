@@ -12,7 +12,9 @@ Symfony 8 + API Platform 4 (FrankenPHP).
 
 ## Local
 
-From the monorepo root:
+Front only (no Docker), from the monorepo root: `yarn start`.
+
+API via Compose:
 
 ```bash
 docker compose up --build -d
@@ -21,4 +23,10 @@ docker compose up --build -d
 - https://localhost:8443/api
 - https://localhost:8443/api/health
 
-`DATABASE_URL` points at the Compose `database` service. For PHP outside Docker, use `127.0.0.1:5433`.
+`DATABASE_URL` points at the Compose `database` service.  
+For PHP outside Docker, override in `.env.local`:
+
+```bash
+# Published Postgres port from compose.override.yaml (default 5433)
+DATABASE_URL="postgresql://app:!ChangeMe!@127.0.0.1:5433/tada?serverVersion=16&charset=utf8"
+```

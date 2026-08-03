@@ -125,6 +125,7 @@ export class ConfigAccountRegisterPage extends LitElement {
         email,
         password,
         form.accountApiBaseUrl,
+        form.accountWebsite ?? "",
       );
       clearAccountPasswordField();
       if (result.pending) {
@@ -182,6 +183,15 @@ export class ConfigAccountRegisterPage extends LitElement {
               type="password"
               autocomplete="new-password"
             ></sonic-input>
+            <div class="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
+              <sonic-input
+                formDataProvider=${appConfigKey.path}
+                name="accountWebsite"
+                label="Website"
+                tabindex="-1"
+                autocomplete="off"
+              ></sonic-input>
+            </div>
           </sonic-form-layout>
           <sonic-form-actions>
             <sonic-button

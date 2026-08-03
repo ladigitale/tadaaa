@@ -3,13 +3,27 @@
   "private": true,
   "version": "1.2.1",
   "workspaces": [
-    "apps/web"
+    "apps/web",
+    "apps/morseattack",
+    "apps/embed"
   ],
   "scripts": {
+    "start": "yarn --cwd apps/web dev",
     "dev": "yarn --cwd apps/web dev",
     "build": "yarn --cwd apps/web build",
     "preview": "yarn --cwd apps/web preview",
     "build:demo-api-sw": "yarn --cwd apps/web build:demo-api-sw",
+    "embed:build": "yarn --cwd apps/embed build && mkdir -p apps/web/public/embed && cp apps/embed/dist/embed.js apps/web/public/embed/embed.js",
+    "embed:dev": "yarn --cwd apps/embed dev",
+    "morse:dev": "yarn --cwd apps/morseattack dev",
+    "morse:dev:https": "yarn --cwd apps/morseattack dev:https",
+    "morse:dev:https:hmr": "yarn --cwd apps/morseattack dev:https:hmr",
+    "morse:build": "yarn --cwd apps/morseattack build",
+    "morse:preview": "yarn --cwd apps/morseattack preview",
+    "morse:serve:https": "yarn --cwd apps/morseattack serve:https",
+    "morse:test": "yarn --cwd apps/morseattack test",
+    "morse:e2e": "yarn --cwd apps/morseattack test:e2e",
+    "morse:e2e:install": "yarn --cwd apps/morseattack test:e2e:install",
     "ai:sync": "node scripts/sync-ai.mjs",
     "api:up": "docker compose up --build -d",
     "api:down": "docker compose down",

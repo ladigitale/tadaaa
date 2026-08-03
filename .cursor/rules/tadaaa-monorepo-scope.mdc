@@ -1,0 +1,18 @@
+---
+description: Monorepo Tadaaa includes web, api, and MorseAttack
+alwaysApply: true
+---
+
+# Monorepo apps
+
+This repo is **Tadaaa** and includes:
+
+| Path | App |
+|------|-----|
+| `apps/web/` | Tadaaa SPA (Concorde) |
+| `apps/api/` | Tadaaa API (Symfony + API Platform) |
+| `apps/morseattack/` | MorseAttack PWA (offline light/sound) |
+
+MorseAttack is part of this monorepo — do not treat it as out of scope or “forgotten”. Stay in the package the user is working on; do not drive-by edit the other apps unless asked.
+
+Scripts: Tadaaa `yarn dev` / `yarn api:up` — MorseAttack `yarn morse:dev` / `yarn morse:test` (port 3100). Details: `apps/morseattack/AGENTS.md`.

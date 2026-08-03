@@ -13,6 +13,16 @@ parameters:
     env(VAPID_PUBLIC_KEY): ''
     env(VAPID_PRIVATE_KEY): ''
     env(VAPID_SUBJECT): 'mailto:noreply@tadaaa.app'
+    env(MAIL_FROM): 'app@tadaaa.space'
+    env(APP_PUBLIC_URL): 'http://localhost:5173'
+    env(GOOGLE_CLIENT_ID): ''
+    env(GOOGLE_CLIENT_SECRET): ''
+    env(DEFAULT_STORAGE_QUOTA_BYTES): '5242880'
+    env(GLOBAL_MONTHLY_TRANSFER_BYTES): '5368709120'
+    env(FLOOR_PER_USER_MONTH_BYTES): '52428800'
+    env(CEIL_PER_USER_MONTH_BYTES): '524288000'
+    env(FLOOR_PER_USER_DAY_BYTES): '2097152'
+    env(CEIL_PER_USER_DAY_BYTES): '26214400'
 
 services:
     # default configuration for services in *this* file

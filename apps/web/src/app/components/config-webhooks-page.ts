@@ -66,6 +66,8 @@ export class ConfigWebhooksPage extends LitElement {
       newAccessTokenName: form?.newAccessTokenName ?? "",
       shareInviteEmail: form?.shareInviteEmail ?? "",
       webhookUrl: form?.webhookUrl ?? "",
+      embedName: form?.embedName ?? "",
+      embedOrigins: form?.embedOrigins ?? "",
     });
     void this.reload();
   }

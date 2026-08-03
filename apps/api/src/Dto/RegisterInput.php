@@ -15,4 +15,7 @@ final class RegisterInput
     #[Assert\NotBlank]
     #[Assert\Length(min: 8, max: 128)]
     public string $password = '';
+
+    /** Honeypot — must stay empty. */
+    public string $website = '';
 }

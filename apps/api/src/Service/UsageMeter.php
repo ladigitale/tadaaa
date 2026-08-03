@@ -21,6 +21,9 @@ final class UsageMeter
     public const WEBHOOK_FAILURES = 'webhook_failures';
     public const INVITES_SENT = 'invites_sent';
     public const DATASETS_CREATED = 'datasets_created';
+    public const EMBED_REQUESTS = 'embed_requests';
+    public const EMBED_BYTES = 'embed_bytes';
+    public const EMBED_ORIGIN_DENIED = 'embed_origin_denied';
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

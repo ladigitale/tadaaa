@@ -13,11 +13,35 @@ cd tadaaa
 bash scripts/install-prod.sh
 ```
 
-You only enter: **base domain**, **email**, **admin email/password**.  
-Everything else (secrets, CORS, MCP hosts, build, migrate, JWT, admin) is handled for you.
+You enter: **base domain**, **emails**, **admin password**, and optionally **Infomaniak SMTP**.  
+Secrets, CORS/MCP hosts, quota defaults, build, migrate, JWT, and admin user are handled for you.
 
 **Only env file versioned in the repo:** [`apps/api/.env`](../apps/api/.env) (generic template).  
 The installer writes a root `.env` that stays gitignored.
+
+### Updating an existing deploy
+
+On the VPS (repo already cloned):
+
+```bash
+cd tadaaa
+bash scripts/update-prod.sh --pull
+```
+
+This:
+
+1. `git pull --ff-only` (if `--pull`)
+2. **Merges missing `.env` keys** (mail, quotas, `APP_PUBLIC_URL`, …) without overwriting existing values
+3. Rebuilds the SPA
+4. `docker compose -f compose.prod.yaml up -d --build`
+5. Runs Doctrine migrations
+
+If `MAILER_DSN` is still `null://null`, set Infomaniak SMTP in `.env` then recreate PHP:
+
+```bash
+# edit .env — MAILER_DSN / MAIL_FROM / APP_PUBLIC_URL
+docker compose -f compose.prod.yaml up -d php
+```
 
 ---
 
@@ -70,6 +94,28 @@ VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=mailto:you@example.com
 
+# Transactional mail (Infomaniak SMTP) — URL-encode user/password (@→%40, $→%24, &→%26…)
+# MAILER_DSN=smtp://app%40example.com:url-encoded-pass@mail.infomaniak.com:587
+# MAIL_FROM=app@example.com
+MAILER_DSN=null://null
+MAIL_FROM=app@tadaaa.space
+
+# Front URL for email verification links (no trailing slash)
+APP_PUBLIC_URL=https://app.example.com
+
+# Google Calendar OAuth (optional) — enable Calendar API in Google Cloud Console
+# Redirect URI must be: https://api.example.com/api/google-calendar/callback
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
+
+# Free-tier quotas (storage 5 MiB; bandwidth shared across active users)
+DEFAULT_STORAGE_QUOTA_BYTES=5242880
+GLOBAL_MONTHLY_TRANSFER_BYTES=5368709120
+FLOOR_PER_USER_MONTH_BYTES=52428800
+CEIL_PER_USER_MONTH_BYTES=524288000
+FLOOR_PER_USER_DAY_BYTES=2097152
+CEIL_PER_USER_DAY_BYTES=26214400
+
 HTTP_PORT=80
 HTTPS_PORT=443
 HTTP3_PORT=443
@@ -103,18 +149,21 @@ docker compose -f compose.prod.yaml exec php bin/console app:user:create \
   you@example.com 'YourPassword' --admin --active
 ```
 
-Sign-ups create **`pending`** accounts until an admin approves them (Config → Cloud account).
+Sign-ups create **`pending`** accounts until the user confirms their email. Admins can still approve, disable, reject, or delete accounts (optional personal message emailed to the user).
+
+Free-tier quotas (override per user via admin API): **5 MiB** storage; bandwidth day/month shared from a global budget (`GLOBAL_MONTHLY_TRANSFER_BYTES`).
 
 ## Smoke tests
 
 1. `https://api.example.com/api/health` → `{"status":"ok"}`
-2. Register → `pending` (no JWT)
-3. Pending login → 403; after approve → login OK
-4. Disable → API / MCP cut off
+2. Register → `pending` + confirmation email (needs working `MAILER_DSN`)
+3. Click link → `/account/verify` → active + JWT; pending login without verify → 403
+4. Admin disable / reject / delete → email notice (optional personal message) → API / MCP cut off
 5. Front + sync; MCP Bearer / PAT on `/mcp`
 6. Mercure: open the same dataset on two browsers — edit on A → B pulls without refresh
 7. Web Push: enable notifications in Config → Appearance (account connected); invite / check a task with the other browser closed
-8. Claude.ai custom connector → `https://api.example.com/mcp` → Connect (OAuth); allowlist Anthropic egress `160.79.104.0/21` if you firewall inbound
+8. Quotas: Données → Sync shows storage + bandwidth gauges; over-quota sync → 413 / 429
+9. Claude.ai custom connector → `https://api.example.com/mcp` → Connect (OAuth); allowlist Anthropic egress `160.79.104.0/21` if you firewall inbound
 
 ## Coolify (optional)
 
@@ -126,15 +175,33 @@ Postgres volume + `pg_dump`; VPS snapshots; off-server copy of JWT keys.
 
 ## Local development
 
+### Front only (no Docker)
+
+```bash
+yarn install
+yarn start
+```
+
+SPA + IndexedDB / mock-api. No API container required.
+
+### API (Docker Compose)
+
 ```bash
 # apps/api/.env.local (gitignored)
 APP_ENV=dev
 REGISTRATION_AUTO_APPROVE=1
+# Compose host "database". PHP outside Docker: 127.0.0.1 + published port (5433).
+# DATABASE_URL="postgresql://app:!ChangeMe!@127.0.0.1:5433/tada?serverVersion=16&charset=utf8"
 DATABASE_URL="postgresql://app:!ChangeMe!@database:5432/tada?serverVersion=16&charset=utf8"
 CORS_ALLOW_ORIGIN='^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$'
 MCP_ALLOWED_HOSTS=localhost,127.0.0.1
 MERCURE_PUBLIC_URL=https://localhost:8443/.well-known/mercure
 MERCURE_JWT_SECRET="!ChangeThisMercureHubJWTSecretKey!"
+
+# Infomaniak SMTP (optional in local; required for verify emails when AUTO_APPROVE=0)
+# MAILER_DSN=smtp://app%40tadaaa.space:url-encoded-pass@mail.infomaniak.com:587
+# MAIL_FROM=app@tadaaa.space
+# APP_PUBLIC_URL=https://tada.julien.test
 ```
 
 Then `yarn api:up` && `yarn api:migrate`.

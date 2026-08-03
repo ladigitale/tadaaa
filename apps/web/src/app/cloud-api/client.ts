@@ -26,6 +26,23 @@ export type CloudDatasetInfo = {
 
 type MeResponse = {
   user: CloudUser;
+  quotas?: QuotasReport;
+};
+
+export type QuotasReport = {
+  storage: {
+    usedBytes: number;
+    quotaBytes: number | null;
+    unlimited: boolean;
+    ratio: number | null;
+  };
+  bandwidth: {
+    dayUsedBytes: number;
+    dayQuotaBytes: number | null;
+    monthUsedBytes: number;
+    monthQuotaBytes: number | null;
+    unlimited: boolean;
+  };
 };
 
 function asMemberCollection<T>(result: unknown): T[] {
@@ -89,6 +106,7 @@ export async function registerAccount(
   email: string,
   password: string,
   apiBaseUrl?: string,
+  website = "",
 ): Promise<{settings: AccountSettings; pending: boolean; message: string}> {
   const base = apiBaseUrl?.trim() || loadAccountSettings().apiBaseUrl;
   const settings: AccountSettings = {
@@ -106,7 +124,7 @@ export async function registerAccount(
     "/auth/register",
     {
       method: "POST",
-      body: JSON.stringify({email, password}),
+      body: JSON.stringify({email, password, website}),
     },
     settings,
   );
@@ -493,6 +511,140 @@ export async function pingWebhook(
   return result.delivery;
 }
 
+export type GoogleCalendarConnectionInfo = {
+  id: string;
+  email: string;
+  status: string;
+  updatedAt: string;
+};
+
+export type GoogleCalendarBindingInfo = {
+  id: string;
+  datasetId: string;
+  baseId: string;
+  datasetName: string;
+  googleCalendarId: string;
+  googleCalendarSummary: string;
+  tagIds: string[];
+  isDefault: boolean;
+  exportEnabled: boolean;
+  importEnabled: boolean;
+  priority: number;
+  watchExpiresAt?: string | null;
+  updatedAt: string;
+};
+
+export type GoogleCalendarStatus = {
+  configured: boolean;
+  connected: boolean;
+  connection: GoogleCalendarConnectionInfo | null;
+  bindings: GoogleCalendarBindingInfo[];
+};
+
+export type GoogleCalendarListItem = {
+  id: string;
+  summary: string;
+  primary: boolean;
+  accessRole: string;
+};
+
+export async function fetchGoogleCalendarStatus(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<GoogleCalendarStatus> {
+  return cloudFetch<GoogleCalendarStatus>("/google-calendar/status", {}, settings);
+}
+
+export async function connectGoogleCalendar(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<string> {
+  const result = await cloudFetch<{authorizeUrl: string}>(
+    "/google-calendar/connect",
+    {method: "POST"},
+    settings,
+  );
+  return result.authorizeUrl;
+}
+
+export async function disconnectGoogleCalendar(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<void> {
+  await cloudFetch<void>("/google-calendar/disconnect", {method: "POST"}, settings);
+}
+
+export async function fetchGoogleCalendars(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<GoogleCalendarListItem[]> {
+  const result = await cloudFetch<unknown>("/google-calendar/calendars", {}, settings);
+  return asMemberCollection<GoogleCalendarListItem>(result);
+}
+
+export async function createGoogleCalendarBinding(
+  input: {
+    datasetId: string;
+    googleCalendarId: string;
+    googleCalendarSummary?: string;
+    tagIds?: string[];
+    isDefault?: boolean;
+    exportEnabled?: boolean;
+    importEnabled?: boolean;
+    priority?: number;
+  },
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<GoogleCalendarBindingInfo> {
+  const result = await cloudFetch<{binding: GoogleCalendarBindingInfo}>(
+    "/google-calendar/bindings",
+    {method: "POST", body: JSON.stringify(input)},
+    settings,
+  );
+  return result.binding;
+}
+
+export async function updateGoogleCalendarBinding(
+  id: string,
+  patch: Partial<{
+    googleCalendarId: string;
+    googleCalendarSummary: string;
+    tagIds: string[];
+    isDefault: boolean;
+    exportEnabled: boolean;
+    importEnabled: boolean;
+    priority: number;
+  }>,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<GoogleCalendarBindingInfo> {
+  const result = await cloudFetch<{binding: GoogleCalendarBindingInfo}>(
+    `/google-calendar/bindings/${encodeURIComponent(id)}`,
+    {method: "PATCH", body: JSON.stringify(patch)},
+    settings,
+  );
+  return result.binding;
+}
+
+export async function deleteGoogleCalendarBinding(
+  id: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<void> {
+  await cloudFetch<void>(
+    `/google-calendar/bindings/${encodeURIComponent(id)}`,
+    {method: "DELETE"},
+    settings,
+  );
+}
+
+export async function syncGoogleCalendarNow(
+  bindingId?: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<{changed: number}> {
+  return cloudFetch<{changed: number}>(
+    "/google-calendar/sync",
+    {
+      method: "POST",
+      body: JSON.stringify(bindingId ? {bindingId} : {}),
+    },
+    settings,
+  );
+}
+
 export async function fetchActivity(
   category?: string,
   limit = 50,
@@ -527,6 +679,9 @@ export type AdminUserInfo = {
   createdAt: string;
   status: "pending" | "active" | "rejected" | "disabled";
   roles: string[];
+  storageQuotaBytes?: number | null;
+  bandwidthQuotaMonthBytes?: number | null;
+  emailVerifiedAt?: string | null;
 };
 
 export async function fetchAdminUsers(
@@ -538,13 +693,21 @@ export async function fetchAdminUsers(
   return asMemberCollection<AdminUserInfo>(result);
 }
 
+function moderationBody(message?: string): RequestInit {
+  return {
+    method: "POST",
+    body: JSON.stringify({message: message?.trim() ?? ""}),
+  };
+}
+
 export async function approveAdminUser(
   id: string,
   settings: AccountSettings = loadAccountSettings(),
+  message = "",
 ): Promise<AdminUserInfo> {
   const result = await cloudFetch<{user: AdminUserInfo}>(
     `/admin/users/${encodeURIComponent(id)}/approve`,
-    {method: "POST"},
+    moderationBody(message),
     settings,
   );
   return result.user;
@@ -553,10 +716,11 @@ export async function approveAdminUser(
 export async function rejectAdminUser(
   id: string,
   settings: AccountSettings = loadAccountSettings(),
+  message = "",
 ): Promise<AdminUserInfo> {
   const result = await cloudFetch<{user: AdminUserInfo}>(
     `/admin/users/${encodeURIComponent(id)}/reject`,
-    {method: "POST"},
+    moderationBody(message),
     settings,
   );
   return result.user;
@@ -565,13 +729,100 @@ export async function rejectAdminUser(
 export async function disableAdminUser(
   id: string,
   settings: AccountSettings = loadAccountSettings(),
+  message = "",
 ): Promise<AdminUserInfo> {
   const result = await cloudFetch<{user: AdminUserInfo}>(
     `/admin/users/${encodeURIComponent(id)}/disable`,
-    {method: "POST"},
+    moderationBody(message),
     settings,
   );
   return result.user;
+}
+
+export async function deleteAdminUser(
+  id: string,
+  settings: AccountSettings = loadAccountSettings(),
+  message = "",
+): Promise<void> {
+  await cloudFetch(
+    `/admin/users/${encodeURIComponent(id)}`,
+    {
+      method: "DELETE",
+      body: JSON.stringify({message: message.trim()}),
+    },
+    settings,
+  );
+}
+
+export async function updateAdminUserQuotas(
+  id: string,
+  body: {
+    storageQuotaBytes?: number | null;
+    bandwidthQuotaMonthBytes?: number | null;
+    resetStorage?: boolean;
+    resetBandwidth?: boolean;
+  },
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<AdminUserInfo> {
+  const result = await cloudFetch<{user: AdminUserInfo}>(
+    `/admin/users/${encodeURIComponent(id)}/quotas`,
+    {method: "PATCH", body: JSON.stringify(body)},
+    settings,
+  );
+  return result.user;
+}
+
+export async function verifyAccountEmail(
+  token: string,
+  apiBaseUrl?: string,
+): Promise<AccountSettings> {
+  const base = apiBaseUrl?.trim() || loadAccountSettings().apiBaseUrl;
+  const settings: AccountSettings = {
+    apiBaseUrl: base,
+    token: null,
+    user: null,
+  };
+  const result = await cloudFetch<{
+    token: string;
+    user: CloudUser;
+  }>(
+    "/auth/verify-email",
+    {method: "POST", body: JSON.stringify({token})},
+    settings,
+  );
+  const next: AccountSettings = {
+    apiBaseUrl: base,
+    token: result.token,
+    user: result.user,
+  };
+  saveAccountSettings(next);
+  resetMercureSubscription();
+  syncLinkDetectorsFromUser(result.user);
+  return next;
+}
+
+export async function resendVerificationEmail(
+  email: string,
+  apiBaseUrl?: string,
+): Promise<string> {
+  const base = apiBaseUrl?.trim() || loadAccountSettings().apiBaseUrl;
+  const settings: AccountSettings = {
+    apiBaseUrl: base,
+    token: null,
+    user: null,
+  };
+  const result = await cloudFetch<{message?: string}>(
+    "/auth/resend-verification",
+    {method: "POST", body: JSON.stringify({email})},
+    settings,
+  );
+  return result.message ?? tx("account.verify.resent");
+}
+
+export async function fetchQuotas(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<QuotasReport> {
+  return cloudFetch<QuotasReport>("/quotas", {}, settings);
 }
 
 export type DatasetMemberInfo = {
@@ -779,4 +1030,98 @@ export async function updateNotificationPreferences(
     settings,
   );
   return result.preferences ?? [];
+}
+
+export type EmbedKeyInfo = {
+  id: string;
+  name: string;
+  tokenPrefix: string;
+  datasetId: string;
+  datasetName: string;
+  allowedOrigins: string[];
+  tagIds: string[];
+  includeDone: boolean;
+  includeDescription: boolean;
+  active: boolean;
+  rateLimitPerMinute: number;
+  createdAt: string;
+  lastUsedAt: string | null;
+  lastOrigin: string | null;
+  requestCount: number;
+  bytesServed: number;
+};
+
+export type CreatedEmbedKey = {
+  embed: EmbedKeyInfo;
+  plainToken: string;
+};
+
+export async function fetchEmbedKeys(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<EmbedKeyInfo[]> {
+  const result = await cloudFetch<unknown>("/embeds", {}, settings);
+  return asMemberCollection<EmbedKeyInfo>(result);
+}
+
+export async function createEmbedKey(
+  input: {
+    name: string;
+    datasetId: string;
+    allowedOrigins?: string[];
+    tagIds?: string[];
+    includeDone?: boolean;
+    includeDescription?: boolean;
+    rateLimitPerMinute?: number;
+  },
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<CreatedEmbedKey> {
+  return cloudFetch<CreatedEmbedKey>(
+    "/embeds",
+    {method: "POST", body: JSON.stringify(input)},
+    settings,
+  );
+}
+
+export async function updateEmbedKey(
+  id: string,
+  patch: Partial<{
+    name: string;
+    datasetId: string;
+    allowedOrigins: string[];
+    tagIds: string[];
+    includeDone: boolean;
+    includeDescription: boolean;
+    active: boolean;
+    rateLimitPerMinute: number;
+  }>,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<EmbedKeyInfo> {
+  const result = await cloudFetch<{embed: EmbedKeyInfo}>(
+    `/embeds/${encodeURIComponent(id)}`,
+    {method: "PATCH", body: JSON.stringify(patch)},
+    settings,
+  );
+  return result.embed;
+}
+
+export async function rotateEmbedKey(
+  id: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<CreatedEmbedKey> {
+  return cloudFetch<CreatedEmbedKey>(
+    `/embeds/${encodeURIComponent(id)}/rotate`,
+    {method: "POST"},
+    settings,
+  );
+}
+
+export async function revokeEmbedKey(
+  id: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<void> {
+  await cloudFetch<void>(
+    `/embeds/${encodeURIComponent(id)}`,
+    {method: "DELETE"},
+    settings,
+  );
 }

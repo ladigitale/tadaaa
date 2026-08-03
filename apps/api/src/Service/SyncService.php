@@ -30,6 +30,9 @@ final class SyncService
     /** @var list<array{type: string, data: array<string, mixed>}> */
     private array $webhookEventBuffer = [];
 
+    /** @var list<string> */
+    private array $googleCalendarTodoIds = [];
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly DatasetRepository $datasets,
@@ -39,6 +42,7 @@ final class SyncService
         private readonly DatasetRealtimePublisher $realtime,
         private readonly PushNotificationDispatcher $push,
         private readonly WebhookDispatcher $webhooks,
+        private readonly GoogleCalendarSyncDispatcher $googleCalendar,
     ) {
     }
 
@@ -89,6 +93,7 @@ final class SyncService
         $rejected = [];
         $this->todoNotifyBuffer = [];
         $this->webhookEventBuffer = [];
+        $this->googleCalendarTodoIds = [];
 
         foreach ($mutations as $mutation) {
             if (!is_array($mutation)) {
@@ -118,6 +123,10 @@ final class SyncService
                 $this->webhooks->dispatch($dataset, $event['type'], $event['data'], $user);
             }
             $this->webhookEventBuffer = [];
+            if ($this->googleCalendarTodoIds !== []) {
+                $this->googleCalendar->dispatchTodos($dataset, $this->googleCalendarTodoIds);
+                $this->googleCalendarTodoIds = [];
+            }
         }
 
         return [
@@ -320,6 +329,8 @@ final class SyncService
             }
         }
 
+        $this->googleCalendarTodoIds[] = $id;
+
         return 'todo:'.$id;
     }
 
@@ -410,6 +421,7 @@ final class SyncService
                     ],
                 ];
             }
+            $this->googleCalendarTodoIds[] = $id;
 
             return 'todo:'.$id;
         }

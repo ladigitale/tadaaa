@@ -80,6 +80,7 @@ export class ConfigActivityPage extends LitElement {
                     <option value="mcp">mcp</option>
                     <option value="token">token</option>
                     <option value="oauth">oauth</option>
+                    <option value="embed">embed</option>
                   </select>
                 </label>
                 <sonic-button size="sm" @click=${() => this.reload()}>

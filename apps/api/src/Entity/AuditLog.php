@@ -19,6 +19,7 @@ class AuditLog
     public const CATEGORY_TOKEN = 'token';
     public const CATEGORY_OAUTH = 'oauth';
     public const CATEGORY_USAGE = 'usage';
+    public const CATEGORY_EMBED = 'embed';
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]

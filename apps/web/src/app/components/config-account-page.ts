@@ -15,6 +15,7 @@ import {tf, tx} from "../i18n";
 import {
   approveAdminUser,
   checkCloudApiHealth,
+  deleteAdminUser,
   disableAdminUser,
   fetchAdminUsers,
   logoutAccount,
@@ -52,6 +53,9 @@ export class ConfigAccountPage extends LitElement {
 
   @state()
   private adminUsers: AdminUserInfo[] = [];
+
+  @state()
+  private adminMessage = "";
 
   private onAccountChanged = () => {
     this.account = loadAccountSettings();
@@ -123,7 +127,7 @@ export class ConfigAccountPage extends LitElement {
     if (this.busy) return;
     this.busy = true;
     try {
-      await approveAdminUser(user.id, this.account);
+      await approveAdminUser(user.id, this.account, this.adminMessage);
       this.statusMessage = tx("account.admin.approve");
       await this.reloadCloudState();
     } catch (error) {
@@ -137,7 +141,7 @@ export class ConfigAccountPage extends LitElement {
     if (this.busy) return;
     this.busy = true;
     try {
-      await rejectAdminUser(user.id, this.account);
+      await rejectAdminUser(user.id, this.account, this.adminMessage);
       this.statusMessage = tx("account.admin.reject");
       await this.reloadCloudState();
     } catch (error) {
@@ -158,8 +162,29 @@ export class ConfigAccountPage extends LitElement {
     if (!ok) return;
     this.busy = true;
     try {
-      await disableAdminUser(user.id, this.account);
+      await disableAdminUser(user.id, this.account, this.adminMessage);
       this.statusMessage = tx("account.admin.disable");
+      await this.reloadCloudState();
+    } catch (error) {
+      await showError(error, tx("dialogs.error"));
+    } finally {
+      this.busy = false;
+    }
+  };
+
+  private onDeleteUser = async (user: AdminUserInfo) => {
+    if (this.busy) return;
+    const ok = await confirmDialog({
+      title: tx("account.admin.delete_title"),
+      message: tf("account.admin.delete_confirm", {email: user.email}),
+      confirmLabel: tx("account.admin.delete"),
+      danger: true,
+    });
+    if (!ok) return;
+    this.busy = true;
+    try {
+      await deleteAdminUser(user.id, this.account, this.adminMessage);
+      this.statusMessage = tx("account.admin.delete");
       await this.reloadCloudState();
     } catch (error) {
       await showError(error, tx("dialogs.error"));
@@ -204,6 +229,17 @@ export class ConfigAccountPage extends LitElement {
     return html`
       <section class="flex flex-col gap-3 border-t border-current/15 pt-8">
         <h2 class="text-lg font-semibold">${t("account.admin.title")}</h2>
+        <label class="flex flex-col gap-1 text-sm">
+          <span>${t("account.admin.message_label")}</span>
+          <textarea
+            class="min-h-[4.5rem] rounded border border-current/20 bg-transparent p-2"
+            .value=${this.adminMessage}
+            @input=${(e: Event) => {
+              this.adminMessage = (e.target as HTMLTextAreaElement).value;
+            }}
+            placeholder=${tx("account.admin.message_ph")}
+          ></textarea>
+        </label>
         ${pending.length === 0
           ? html`<p class="text-sm text-neutral-500">
               ${t("account.admin.no_pending")}
@@ -229,7 +265,7 @@ export class ConfigAccountPage extends LitElement {
                           </div>
                         </div>
                       </div>
-                      <div class="flex gap-2">
+                      <div class="flex flex-wrap gap-2">
                         <sonic-button
                           type="primary"
                           size="sm"
@@ -243,6 +279,14 @@ export class ConfigAccountPage extends LitElement {
                           ?disabled=${this.busy}
                           @click=${() => this.onRejectUser(user)}
                           >${t("account.admin.reject")}</sonic-button
+                        >
+                        <sonic-button
+                          type="danger"
+                          variant="outline"
+                          size="sm"
+                          ?disabled=${this.busy}
+                          @click=${() => this.onDeleteUser(user)}
+                          >${t("account.admin.delete")}</sonic-button
                         >
                       </div>
                     </li>
@@ -273,26 +317,36 @@ export class ConfigAccountPage extends LitElement {
                           </div>
                         </div>
                       </div>
-                      ${user.status === "active"
-                        ? html`<sonic-button
-                            type="danger"
-                            variant="outline"
-                            size="sm"
-                            ?disabled=${this.busy}
-                            @click=${() => this.onDisableUser(user)}
-                            >${t("account.admin.disable")}</sonic-button
-                          >`
-                        : user.status === "rejected" ||
-                            user.status === "disabled"
+                      <div class="flex flex-wrap gap-2">
+                        ${user.status === "active"
                           ? html`<sonic-button
-                              type="primary"
+                              type="danger"
                               variant="outline"
                               size="sm"
                               ?disabled=${this.busy}
-                              @click=${() => this.onApproveUser(user)}
-                              >${t("account.admin.reactivate")}</sonic-button
+                              @click=${() => this.onDisableUser(user)}
+                              >${t("account.admin.disable")}</sonic-button
                             >`
-                          : nothing}
+                          : user.status === "rejected" ||
+                              user.status === "disabled"
+                            ? html`<sonic-button
+                                type="primary"
+                                variant="outline"
+                                size="sm"
+                                ?disabled=${this.busy}
+                                @click=${() => this.onApproveUser(user)}
+                                >${t("account.admin.reactivate")}</sonic-button
+                              >`
+                            : nothing}
+                        <sonic-button
+                          type="danger"
+                          variant="outline"
+                          size="sm"
+                          ?disabled=${this.busy}
+                          @click=${() => this.onDeleteUser(user)}
+                          >${t("account.admin.delete")}</sonic-button
+                        >
+                      </div>
                     </li>
                   `,
                 )}

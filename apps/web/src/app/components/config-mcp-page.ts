@@ -75,6 +75,8 @@ export class ConfigMcpPage extends LitElement {
       newAccessTokenName: form?.newAccessTokenName ?? "",
       shareInviteEmail: form?.shareInviteEmail ?? "",
       webhookUrl: form?.webhookUrl ?? "",
+      embedName: form?.embedName ?? "",
+      embedOrigins: form?.embedOrigins ?? "",
     });
     this.account = account;
     await this.reload();

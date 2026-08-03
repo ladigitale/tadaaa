@@ -4,14 +4,13 @@ Monorepo: Concorde front (`apps/web`) + Symfony API (`apps/api`).
 
 ```bash
 yarn install
-yarn dev
-# optional API:
+yarn start
+# optional API (Docker):
 #   create apps/api/.env.local (gitignored) — see .ops/deploy.md
-yarn api:up
-yarn api:migrate
+#   yarn api:up && yarn api:migrate
 ```
 
-- Front: URL shown by Vite (often `http://localhost:3000`)
+- Front (no Docker): URL shown by Vite (often `http://localhost:3000`)
 - Compose API: `https://localhost:8443/api`
 
 ## Layout

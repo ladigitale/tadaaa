@@ -19,7 +19,7 @@ enum UserStatus: string
     public function denialMessage(): string
     {
         return match ($this) {
-            self::Pending => 'Votre demande de compte est en attente de validation.',
+            self::Pending => 'Vérifiez votre email pour activer le compte (lien reçu à l’inscription).',
             self::Rejected => 'Votre demande de compte a été refusée.',
             self::Disabled => 'Votre compte a été désactivé.',
             self::Active => 'Compte actif.',

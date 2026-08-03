@@ -5,8 +5,11 @@ import "@supersoniks/concorde/core/components/functional/router/router";
 import layout from "./layout";
 import accountLoginPage from "./account/login/page";
 import accountRegisterPage from "./account/register/page";
+import accountVerifyPage from "./account/verify/page";
 import accountPage from "./account/page";
 import connectivityActivityPage from "./connectivity/activity/page";
+import connectivityCalendarPage from "./connectivity/calendar/page";
+import connectivityEmbedsPage from "./connectivity/embeds/page";
 import connectivityMcpPage from "./connectivity/mcp/page";
 import connectivityUsagePage from "./connectivity/usage/page";
 import connectivityWebhooksPage from "./connectivity/webhooks/page";
@@ -42,14 +45,27 @@ const accountRegisterDefaultLayoutRoutes = {
     "/account/register$": accountRegisterPage
 }        
 
+const accountVerifyDefaultLayoutRoutes = {
+    "/account/verify$": accountVerifyPage
+}        
+
 const accountDefaultLayoutRoutes = {
     "/account/login\\b": () => html`<sonic-router .basePath=${basePath} .routes=${accountLoginDefaultLayoutRoutes}></sonic-router>`,
     "/account/register\\b": () => html`<sonic-router .basePath=${basePath} .routes=${accountRegisterDefaultLayoutRoutes}></sonic-router>`,
+    "/account/verify\\b": () => html`<sonic-router .basePath=${basePath} .routes=${accountVerifyDefaultLayoutRoutes}></sonic-router>`,
     "/account$": accountPage
 }        
 
 const connectivityActivityDefaultLayoutRoutes = {
     "/connectivity/activity$": connectivityActivityPage
+}        
+
+const connectivityCalendarDefaultLayoutRoutes = {
+    "/connectivity/calendar$": connectivityCalendarPage
+}        
+
+const connectivityEmbedsDefaultLayoutRoutes = {
+    "/connectivity/embeds$": connectivityEmbedsPage
 }        
 
 const connectivityMcpDefaultLayoutRoutes = {
@@ -66,6 +82,8 @@ const connectivityWebhooksDefaultLayoutRoutes = {
 
 const connectivityDefaultLayoutRoutes = {
     "/connectivity/activity\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityActivityDefaultLayoutRoutes}></sonic-router>`,
+    "/connectivity/calendar\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityCalendarDefaultLayoutRoutes}></sonic-router>`,
+    "/connectivity/embeds\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityEmbedsDefaultLayoutRoutes}></sonic-router>`,
     "/connectivity/mcp\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityMcpDefaultLayoutRoutes}></sonic-router>`,
     "/connectivity/usage\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityUsageDefaultLayoutRoutes}></sonic-router>`,
     "/connectivity/webhooks\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityWebhooksDefaultLayoutRoutes}></sonic-router>`

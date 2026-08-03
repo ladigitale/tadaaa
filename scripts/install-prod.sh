@@ -5,34 +5,23 @@
 # Usage (from repo root):
 #   bash scripts/install-prod.sh
 #
-# Only asks for a few values; secrets and CORS/MCP hosts are derived.
+# Asks for domain, emails, admin password, and optional Infomaniak SMTP.
+# Secrets, CORS/MCP hosts, quotas defaults, build, migrate, JWT, admin are derived.
+#
+# Later updates: bash scripts/update-prod.sh [--pull]
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# shellcheck source=lib/prod-env.sh
+source "$ROOT/scripts/lib/prod-env.sh"
+
 COMPOSE=(docker compose -f compose.prod.yaml)
 ENV_FILE="$ROOT/.env"
-RED=$'\033[0;31m'
-GRN=$'\033[0;32m'
-YLW=$'\033[1;33m'
-CYN=$'\033[0;36m'
-BLD=$'\033[1m'
-RST=$'\033[0m'
-
-say() { printf '%s\n' "$*"; }
-info() { printf '%s→%s %s\n' "$CYN" "$RST" "$*"; }
-ok() { printf '%s✓%s %s\n' "$GRN" "$RST" "$*"; }
-warn() { printf '%s!%s %s\n' "$YLW" "$RST" "$*"; }
-die() { printf '%s✗%s %s\n' "$RED" "$RST" "$*" >&2; exit 1; }
-
-need_cmd() {
-  command -v "$1" >/dev/null 2>&1 || die "Missing command: $1"
-}
 
 rand_hex() {
-  # 32 bytes → 64 hex chars
   if command -v openssl >/dev/null 2>&1; then
     openssl rand -hex 32
   else
@@ -41,12 +30,10 @@ rand_hex() {
 }
 
 escape_regex_host() {
-  # turn app.example.com → app\.example\.com
   printf '%s' "$1" | sed 's/\./\\./g'
 }
 
 prompt() {
-  # prompt VAR "Question" ["default"]
   local var="$1" question="$2" default="${3:-}" value
   if [[ -n "$default" ]]; then
     read -r -p "${question} [${default}]: " value || true
@@ -86,6 +73,7 @@ banner() {
   say "  • DNS A records already pointing to this server:"
   say "      app.<domain>  →  this IP"
   say "      api.<domain>  →  this IP"
+  say "  • Optional: Infomaniak mailbox SMTP (email verification / admin notices)"
   say ""
 }
 
@@ -124,8 +112,10 @@ install_docker_if_needed() {
   ok "Docker installed."
 }
 
+# Args: app_host api_host acme_email app_secret pg_pass mercure_secret vapid_pub vapid_priv mail_from mailer_dsn
 write_env() {
-  local app_host="$1" api_host="$2" email="$3" app_secret="$4" pg_pass="$5" mercure_secret="$6" vapid_public="$7" vapid_private="$8"
+  local app_host="$1" api_host="$2" email="$3" app_secret="$4" pg_pass="$5" mercure_secret="$6"
+  local vapid_public="$7" vapid_private="$8" mail_from="$9" mailer_dsn="${10}"
   local cors
   cors="^https://$(escape_regex_host "$app_host")\$"
 
@@ -151,6 +141,23 @@ VAPID_PUBLIC_KEY=${vapid_public}
 VAPID_PRIVATE_KEY=${vapid_private}
 VAPID_SUBJECT=mailto:${email}
 
+# Transactional mail (Infomaniak SMTP) — required for signup verification
+MAILER_DSN=${mailer_dsn}
+MAIL_FROM=${mail_from}
+APP_PUBLIC_URL=https://${app_host}
+
+# Google Calendar OAuth (optional — set in Google Cloud Console)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Free-tier quotas (override per user later via admin API)
+DEFAULT_STORAGE_QUOTA_BYTES=5242880
+GLOBAL_MONTHLY_TRANSFER_BYTES=5368709120
+FLOOR_PER_USER_MONTH_BYTES=52428800
+CEIL_PER_USER_MONTH_BYTES=524288000
+FLOOR_PER_USER_DAY_BYTES=2097152
+CEIL_PER_USER_DAY_BYTES=26214400
+
 HTTP_PORT=80
 HTTPS_PORT=443
 HTTP3_PORT=443
@@ -159,11 +166,34 @@ EOF
   ok "Wrote ${ENV_FILE}"
 }
 
+prompt_mail_config() {
+  # sets MAIL_FROM_OUT and MAILER_DSN_OUT
+  local domain_hint="$1" default_from="$2"
+  local mail_from smtp_user smtp_pass configure
+
+  prompt mail_from "From address for transactional mail (MAIL_FROM)" "$default_from"
+  MAIL_FROM_OUT="$mail_from"
+
+  say ""
+  say "Email verification needs SMTP (e.g. Infomaniak mail.infomaniak.com:587)."
+  read -r -p "Configure Infomaniak SMTP now? [Y/n] " configure || true
+  configure="${configure:-Y}"
+  if [[ ! "$configure" =~ ^[Yy]$ ]]; then
+    MAILER_DSN_OUT="null://null"
+    warn "MAILER_DSN left as null://null — set it in .env before opening registration."
+    return 0
+  fi
+
+  need_cmd python3
+  prompt smtp_user "SMTP username (full mailbox email)" "$mail_from"
+  prompt_secret smtp_pass "SMTP password (mailbox / app password)"
+  MAILER_DSN_OUT="$(build_infomaniak_dsn "$smtp_user" "$smtp_pass")"
+  ok "MAILER_DSN set for Infomaniak."
+}
+
 build_front() {
   local api_host="$1"
   info "Building front (VITE_API_BASE_URL=https://${api_host})…"
-  # Mount ONLY apps/web so Yarn does not see the monorepo workspaces root
-  # (otherwise deps hoist to /node_modules and break package.json paths + patch-package).
   rm -rf "$ROOT/node_modules" "$ROOT/yarn.lock"
   docker run --rm \
     -v "$ROOT/apps/web:/app" \
@@ -242,7 +272,7 @@ init_api() {
 }
 
 summary() {
-  local app_host="$1" api_host="$2" admin_email="$3"
+  local app_host="$1" api_host="$2" admin_email="$3" mailer_dsn="$4"
   say ""
   say "${BLD}Done.${RST}"
   say ""
@@ -252,7 +282,17 @@ summary() {
   say "  MCP:    ${GRN}https://${api_host}/mcp${RST}"
   say ""
   say "  Admin login: ${admin_email}"
-  say "  In the app → Config → Cloud account → API URL = https://${api_host}"
+  say "  In the app → Account → API URL = https://${api_host}"
+  say "  Sign-up: email confirmation (APP_PUBLIC_URL=https://${app_host})"
+  if [[ "$mailer_dsn" == "null://null" ]]; then
+    warn "MAILER_DSN is null — configure SMTP in .env then: docker compose -f compose.prod.yaml up -d php"
+  else
+    ok "SMTP configured (verification / moderation emails)."
+  fi
+  say "  Free-tier quotas: 5 MiB storage + dynamic bandwidth (see .env)"
+  say ""
+  say "Later updates:"
+  say "  bash scripts/update-prod.sh --pull"
   say ""
   say "Useful commands:"
   say "  docker compose -f compose.prod.yaml logs -f"
@@ -267,9 +307,10 @@ main() {
   local domain app_host api_host email admin_email admin_pass
   local app_secret pg_pass mercure_secret
   local vapid_public="" vapid_private=""
+  local MAIL_FROM_OUT MAILER_DSN_OUT
+  local default_mail_from
 
   prompt domain "Base domain (DNS must already point here)" ""
-  # strip protocol / trailing slash if user pasted a URL
   domain="${domain#https://}"
   domain="${domain#http://}"
   domain="${domain%/}"
@@ -292,6 +333,9 @@ main() {
   prompt admin_email "Admin account email" "$email"
   prompt_secret admin_pass "Admin password (min 8 chars)"
 
+  default_mail_from="app@${domain}"
+  prompt_mail_config "$domain" "$default_mail_from"
+
   check_dns_hint "$app_host"
   check_dns_hint "$api_host"
 
@@ -303,20 +347,36 @@ main() {
     warn "${ENV_FILE} already exists."
     read -r -p "Overwrite it? [y/N] " ow || true
     if [[ "$ow" =~ ^[Yy]$ ]]; then
-      write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass" "$mercure_secret" "$vapid_public" "$vapid_private"
+      write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass" "$mercure_secret" \
+        "$vapid_public" "$vapid_private" "$MAIL_FROM_OUT" "$MAILER_DSN_OUT"
     else
-      ok "Keeping existing .env"
-      # Prefer hosts already written in .env for rebuild/retry
-      # shellcheck disable=SC1090
+      ok "Keeping existing .env — merging missing mail/quota keys…"
       set -a
       # shellcheck source=/dev/null
       source "$ENV_FILE"
       set +a
       app_host="${APP_SERVER_NAME:-$app_host}"
       api_host="${API_SERVER_NAME:-$api_host}"
+      ensure_prod_env_defaults "$app_host" "$api_host" "${ACME_EMAIL:-$email}"
+      # If SMTP was just configured and .env still has null, offer to write it
+      if [[ "$MAILER_DSN_OUT" != "null://null" ]]; then
+        if grep -qE '^MAILER_DSN=null://null$' "$ENV_FILE" 2>/dev/null || ! grep -qE '^MAILER_DSN=.' "$ENV_FILE" 2>/dev/null; then
+          sed -i "s|^MAILER_DSN=.*|MAILER_DSN=${MAILER_DSN_OUT}|" "$ENV_FILE" 2>/dev/null \
+            || printf '\nMAILER_DSN=%s\n' "$MAILER_DSN_OUT" >>"$ENV_FILE"
+          sed -i "s|^MAIL_FROM=.*|MAIL_FROM=${MAIL_FROM_OUT}|" "$ENV_FILE" 2>/dev/null \
+            || printf '\nMAIL_FROM=%s\n' "$MAIL_FROM_OUT" >>"$ENV_FILE"
+          ok "Updated MAILER_DSN / MAIL_FROM in existing .env"
+        fi
+      fi
+      set -a
+      # shellcheck source=/dev/null
+      source "$ENV_FILE"
+      set +a
+      MAILER_DSN_OUT="${MAILER_DSN:-null://null}"
     fi
   else
-    write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass" "$mercure_secret" "$vapid_public" "$vapid_private"
+    write_env "$app_host" "$api_host" "$email" "$app_secret" "$pg_pass" "$mercure_secret" \
+      "$vapid_public" "$vapid_private" "$MAIL_FROM_OUT" "$MAILER_DSN_OUT"
   fi
 
   install_docker_if_needed
@@ -327,7 +387,7 @@ main() {
   sleep 5
   init_api "$admin_email" "$admin_pass"
   wait_api "$api_host"
-  summary "$app_host" "$api_host" "$admin_email"
+  summary "$app_host" "$api_host" "$admin_email" "$MAILER_DSN_OUT"
 }
 
 main "$@"

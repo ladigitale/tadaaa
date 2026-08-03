@@ -53,7 +53,12 @@ security:
         - { path: ^/oauth/, roles: PUBLIC_ACCESS }
         - { path: ^/api/health$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/register$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/verify-email$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/resend-verification$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/google-calendar/callback$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/google-calendar/push$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/public/embeds/, roles: PUBLIC_ACCESS }
         - { path: ^/api/docs, roles: ROLE_ADMIN }
         - { path: ^/api/contexts, roles: PUBLIC_ACCESS }
         - { path: ^/api$, roles: PUBLIC_ACCESS }

@@ -66,6 +66,28 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'json')]
     private array $notificationPrefs = [];
 
+    /** SHA-256 hex of the raw verify token (or null). */
+    #[ORM\Column(length: 64, nullable: true, unique: true)]
+    private ?string $emailVerifyToken = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $emailVerifyExpiresAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $emailVerifiedAt = null;
+
+    /**
+     * null = env default; 0 = unlimited; >0 = custom byte cap.
+     */
+    #[ORM\Column(type: 'bigint', nullable: true)]
+    private ?string $storageQuotaBytes = null;
+
+    /**
+     * null = dynamic default; 0 = unlimited; >0 = custom monthly transfer cap.
+     */
+    #[ORM\Column(type: 'bigint', nullable: true)]
+    private ?string $bandwidthQuotaMonthBytes = null;
+
     public function __construct(string $email = '', UserStatus $status = UserStatus::Pending)
     {
         $this->id = Uuid::v7();
@@ -210,6 +232,76 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setNotificationPrefs(array $notificationPrefs): static
     {
         $this->notificationPrefs = $notificationPrefs;
+
+        return $this;
+    }
+
+    public function getEmailVerifyToken(): ?string
+    {
+        return $this->emailVerifyToken;
+    }
+
+    public function setEmailVerifyToken(?string $emailVerifyToken): static
+    {
+        $this->emailVerifyToken = $emailVerifyToken;
+
+        return $this;
+    }
+
+    public function getEmailVerifyExpiresAt(): ?\DateTimeImmutable
+    {
+        return $this->emailVerifyExpiresAt;
+    }
+
+    public function setEmailVerifyExpiresAt(?\DateTimeImmutable $emailVerifyExpiresAt): static
+    {
+        $this->emailVerifyExpiresAt = $emailVerifyExpiresAt;
+
+        return $this;
+    }
+
+    public function getEmailVerifiedAt(): ?\DateTimeImmutable
+    {
+        return $this->emailVerifiedAt;
+    }
+
+    public function setEmailVerifiedAt(?\DateTimeImmutable $emailVerifiedAt): static
+    {
+        $this->emailVerifiedAt = $emailVerifiedAt;
+
+        return $this;
+    }
+
+    public function clearEmailVerificationChallenge(): static
+    {
+        $this->emailVerifyToken = null;
+        $this->emailVerifyExpiresAt = null;
+
+        return $this;
+    }
+
+    public function getStorageQuotaBytes(): ?int
+    {
+        return $this->storageQuotaBytes === null ? null : (int) $this->storageQuotaBytes;
+    }
+
+    public function setStorageQuotaBytes(?int $storageQuotaBytes): static
+    {
+        $this->storageQuotaBytes = $storageQuotaBytes === null ? null : (string) $storageQuotaBytes;
+
+        return $this;
+    }
+
+    public function getBandwidthQuotaMonthBytes(): ?int
+    {
+        return $this->bandwidthQuotaMonthBytes === null ? null : (int) $this->bandwidthQuotaMonthBytes;
+    }
+
+    public function setBandwidthQuotaMonthBytes(?int $bandwidthQuotaMonthBytes): static
+    {
+        $this->bandwidthQuotaMonthBytes = $bandwidthQuotaMonthBytes === null
+            ? null
+            : (string) $bandwidthQuotaMonthBytes;
 
         return $this;
     }

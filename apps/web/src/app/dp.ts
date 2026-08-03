@@ -1,5 +1,6 @@
 import {DataProviderKey} from "@supersoniks/concorde/dataProviderKey";
 import type {SortDirection, Tag, TodoPriority, TodoRecurrence, TodoSortBy} from "./api/types";
+import type {UsageFilterForm} from "./usage/catalog";
 
 export type TodosFilter = {
   q: string;
@@ -90,11 +91,14 @@ export type AppConfigForm = {
   p2pReceiveCode: string;
   accountEmail: string;
   accountPassword: string;
+  accountWebsite: string;
   accountApiBaseUrl: string;
   newCloudDatasetName: string;
   newAccessTokenName: string;
   shareInviteEmail: string;
   webhookUrl: string;
+  embedName: string;
+  embedOrigins: string;
 };
 
 export const todosFilterKey = new DataProviderKey<TodosFilter>("todosFilter");
@@ -115,3 +119,4 @@ export const todoTagsEditKey = new DataProviderKey<
   {todoId: string}
 >("todoTagsEdit.${todoId}");
 export const todosDoneKey = new DataProviderKey<TodosDoneForm>("todosDone");
+export const usageFilterKey = new DataProviderKey<UsageFilterForm>("usageFilter");

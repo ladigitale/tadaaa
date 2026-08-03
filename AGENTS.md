@@ -6,10 +6,11 @@
 |------|------|
 | `apps/web/` | Concorde SPA (front) — `src/app/` paths relative to this package |
 | `apps/api/` | Symfony 8 + API Platform |
+| `apps/morseattack/` | MorseAttack PWA (offline light/sound) — part of this monorepo; see package `AGENTS.md` |
 | `ai/starter/` | Agent overlay (repo root) |
 | `.cursor/skills/` | Concorde / starter skills |
 
-Root scripts: `yarn dev`, `yarn ai:sync`, `yarn api:up`.
+Root scripts: `yarn dev`, `yarn ai:sync`, `yarn api:up`. MorseAttack: `yarn morse:dev` / `yarn morse:test` (port 3100).
 
 ---
 

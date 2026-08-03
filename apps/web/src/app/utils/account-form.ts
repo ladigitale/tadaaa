@@ -11,11 +11,14 @@ export function hydrateAccountForm(account: AccountSettings): void {
     p2pReceiveCode: form?.p2pReceiveCode ?? "",
     accountEmail: account.user?.email ?? form?.accountEmail ?? "",
     accountPassword: "",
+    accountWebsite: "",
     accountApiBaseUrl: account.apiBaseUrl,
     newCloudDatasetName: form?.newCloudDatasetName ?? "",
     newAccessTokenName: form?.newAccessTokenName ?? "",
     shareInviteEmail: form?.shareInviteEmail ?? "",
     webhookUrl: form?.webhookUrl ?? "",
+    embedName: form?.embedName ?? "",
+    embedOrigins: form?.embedOrigins ?? "",
   });
 }
 

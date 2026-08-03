@@ -90,11 +90,25 @@ export const CONFIG_SECTION_GROUPS: ConfigSectionGroup[] = [
         href: configSectionPath("mcp"),
       },
       {
+        id: "calendar",
+        labelKey: "config.section.calendar",
+        descriptionKey: "config.section.calendar.help",
+        icon: "calendar",
+        href: configSectionPath("calendar"),
+      },
+      {
         id: "webhooks",
         labelKey: "config.section.webhooks",
         descriptionKey: "config.section.webhooks.help",
         icon: "flash",
         href: configSectionPath("webhooks"),
+      },
+      {
+        id: "embeds",
+        labelKey: "config.section.embeds",
+        descriptionKey: "config.section.embeds.help",
+        icon: "code",
+        href: configSectionPath("embeds"),
       },
       {
         id: "activity",
@@ -162,13 +176,23 @@ export const CONFIG_SECTION_GROUPS: ConfigSectionGroup[] = [
   },
 ];
 
-export const CONFIG_SECTIONS: ConfigSectionChoice[] =
-  CONFIG_SECTION_GROUPS.flatMap((group) => group.items);
+export const CONFIG_SECTIONS: ConfigSectionChoice[] = [
+  ...CONFIG_SECTION_GROUPS.flatMap((group) => group.items),
+  {
+    id: "accountVerify",
+    labelKey: "config.section.accountVerify",
+    descriptionKey: "config.section.accountVerify.help",
+    icon: "mail",
+    href: configSectionPath("accountVerify"),
+  },
+];
 
 export function groupForSection(
   section: ConfigSection,
 ): ConfigSectionGroup | undefined {
   return CONFIG_SECTION_GROUPS.find((group) =>
     group.items.some((item) => item.id === section),
-  );
+  ) ?? (section === "accountVerify"
+    ? CONFIG_SECTION_GROUPS.find((group) => group.id === "account")
+    : undefined);
 }

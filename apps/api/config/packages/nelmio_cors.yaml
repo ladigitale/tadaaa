@@ -7,4 +7,12 @@ nelmio_cors:
         expose_headers: ['Link', 'WWW-Authenticate', 'Mcp-Session-Id']
         max_age: 3600
     paths:
+        # Public embeds: CORS is applied dynamically per EmbedKey (EmbedCorsSubscriber).
+        '^/api/public/embeds':
+            origin_regex: false
+            allow_origin: []
+            allow_methods: ['GET', 'OPTIONS']
+            allow_headers: ['Content-Type', 'If-None-Match']
+            expose_headers: ['X-Tadaaa-Embed-Bytes', 'ETag']
+            max_age: 3600
         '^/': null
