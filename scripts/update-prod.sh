@@ -11,6 +11,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+ENV_FILE="$ROOT/.env"
 
 # shellcheck source=lib/prod-env.sh
 source "$ROOT/scripts/lib/prod-env.sh"

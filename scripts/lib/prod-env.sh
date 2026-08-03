@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Shared helpers for install-prod.sh / update-prod.sh (sourced, not executed).
 
-# Expects ROOT and ENV_FILE to be set by the caller.
+# Expects ROOT to be set by the caller. ENV_FILE defaults to $ROOT/.env.
 
 : "${ROOT:?}"
-: "${ENV_FILE:?}"
+: "${ENV_FILE:=$ROOT/.env}"
 
 RED=${RED:-$'\033[0;31m'}
 GRN=${GRN:-$'\033[0;32m'}

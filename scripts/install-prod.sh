@@ -14,12 +14,12 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+ENV_FILE="$ROOT/.env"
 
 # shellcheck source=lib/prod-env.sh
 source "$ROOT/scripts/lib/prod-env.sh"
 
 COMPOSE=(docker compose -f compose.prod.yaml)
-ENV_FILE="$ROOT/.env"
 
 rand_hex() {
   if command -v openssl >/dev/null 2>&1; then
