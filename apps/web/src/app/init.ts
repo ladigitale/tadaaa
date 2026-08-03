@@ -10,6 +10,7 @@ import {
   todoEditKey,
   todoMoveKey,
   todoSearchKey,
+  commandPaletteKey,
   appConfigKey,
   tagsListKey,
   todosFilterKey,
@@ -55,7 +56,9 @@ export function initApp(): void {
     priority: "medium",
     tagIds: [],
     startAt: "",
+    startTime: "",
     endAt: "",
+    endTime: "",
     recurrence: "none",
   });
   set(todoEditKey.path, {
@@ -64,7 +67,9 @@ export function initApp(): void {
     priority: "medium",
     tagIds: [],
     startAt: "",
+    startTime: "",
     endAt: "",
+    endTime: "",
     recurrence: "none",
   });
   set(tagCreateKey.path, {name: "", color: "default"});
@@ -79,6 +84,7 @@ export function initApp(): void {
     sortBy: "createdAt",
     sortDir: "desc",
   });
+  set(commandPaletteKey.path, {q: ""});
   const account = loadAccountSettings();
   set(appConfigKey.path, {
     newDatasetName: "",

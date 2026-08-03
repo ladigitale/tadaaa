@@ -1,18 +1,14 @@
-import "@supersoniks/concorde/input";
 import "@supersoniks/concorde/button";
-import "@supersoniks/concorde/badge";
 import "@supersoniks/concorde/alert";
-import "@supersoniks/concorde/form-layout";
 import "@supersoniks/concorde/form-actions";
 import {html, LitElement, nothing} from "lit";
 import {customElement, state} from "lit/decorators.js";
-import {subscribe} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
 import {
+  ACCOUNT_CHANGED_EVENT,
   isAccountConnected,
   isCloudAdmin,
   loadAccountSettings,
-  saveAccountSettings,
   type AccountSettings,
 } from "../account-settings";
 import {tf, tx} from "../i18n";
@@ -21,43 +17,26 @@ import {
   checkCloudApiHealth,
   disableAdminUser,
   fetchAdminUsers,
-  loginAccount,
   logoutAccount,
   refreshAccountSession,
-  registerAccount,
   rejectAdminUser,
   type AdminUserInfo,
 } from "../cloud-api/client";
 import {
-  getActiveDatasetSyncState,
-  getActivePendingCount,
-  runDatasetSync,
-} from "../sync/engine";
-import type {SyncState} from "../sync/outbox-types";
-import {read, set} from "../../utils/dataprovider";
-import {appConfigKey, type AppConfigForm} from "../dp";
+  clearAccountCredentialsFields,
+  hydrateAccountForm,
+} from "../utils/account-form";
+import {navigateTo} from "../utils/navigate";
 import {confirmDialog, showError} from "../utils/modal-dialog";
-import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
+import "./account-required-cta";
 import "./config-scope-header";
 import "./page-shell";
 import "./user-avatar";
 
 @customElement("config-account-page")
 export class ConfigAccountPage extends LitElement {
-  static styles = [tailwind, formLabelStyles];
-
-  @subscribe(appConfigKey.accountEmail)
-  @state()
-  accountEmail = "";
-
-  @subscribe(appConfigKey.accountPassword)
-  @state()
-  accountPassword = "";
-
-  @subscribe(appConfigKey.accountApiBaseUrl)
-  @state()
-  accountApiBaseUrl = "";
+  static styles = [tailwind];
 
   @state()
   private account: AccountSettings = loadAccountSettings();
@@ -72,37 +51,31 @@ export class ConfigAccountPage extends LitElement {
   private statusMessage = "";
 
   @state()
-  private pendingRegistrationMessage = "";
-
-  @state()
   private adminUsers: AdminUserInfo[] = [];
 
-  @state()
-  private syncState: SyncState | null = null;
-
-  @state()
-  private pendingSyncCount = 0;
+  private onAccountChanged = () => {
+    this.account = loadAccountSettings();
+    if (!isAccountConnected(this.account)) {
+      this.adminUsers = [];
+    }
+  };
 
   connectedCallback() {
     super.connectedCallback();
+    window.addEventListener(ACCOUNT_CHANGED_EVENT, this.onAccountChanged);
     void this.bootstrap();
+  }
+
+  disconnectedCallback() {
+    window.removeEventListener(ACCOUNT_CHANGED_EVENT, this.onAccountChanged);
+    super.disconnectedCallback();
   }
 
   private async bootstrap() {
     const account = loadAccountSettings();
-    const form = read(appConfigKey.path) as AppConfigForm | undefined;
-    set(appConfigKey.path, {
-      newDatasetName: form?.newDatasetName ?? "",
-      p2pReceiveCode: form?.p2pReceiveCode ?? "",
-      accountEmail: account.user?.email ?? form?.accountEmail ?? "",
-      accountPassword: "",
-      accountApiBaseUrl: account.apiBaseUrl,
-      newCloudDatasetName: form?.newCloudDatasetName ?? "",
-      newAccessTokenName: form?.newAccessTokenName ?? "",
-      shareInviteEmail: form?.shareInviteEmail ?? "",
-      webhookUrl: form?.webhookUrl ?? "",
-    });
+    hydrateAccountForm(account);
     this.account = account;
+    if (!isAccountConnected(account)) return;
     await this.reloadCloudState();
   }
 
@@ -110,14 +83,10 @@ export class ConfigAccountPage extends LitElement {
     this.apiHealthy = await checkCloudApiHealth(this.account);
     if (!isAccountConnected(this.account)) {
       this.adminUsers = [];
-      this.syncState = null;
-      this.pendingSyncCount = 0;
       return;
     }
     try {
       this.account = await refreshAccountSession(this.account);
-      this.syncState = await getActiveDatasetSyncState();
-      this.pendingSyncCount = await getActivePendingCount();
       if (isCloudAdmin(this.account)) {
         this.adminUsers = await fetchAdminUsers(undefined, this.account);
       } else {
@@ -126,128 +95,17 @@ export class ConfigAccountPage extends LitElement {
     } catch (error) {
       this.account = loadAccountSettings();
       this.adminUsers = [];
-      this.syncState = null;
-      this.pendingSyncCount = 0;
       this.statusMessage =
         error instanceof Error ? error.message : tx("dialogs.unknown_error");
       console.error(error);
     }
   }
 
-  private persistApiBaseUrl() {
-    const form = read(appConfigKey.path) as AppConfigForm;
-    const next = {
-      ...this.account,
-      apiBaseUrl: form.accountApiBaseUrl.trim(),
-    };
-    saveAccountSettings(next);
-    this.account = next;
-  }
-
-  private onLogin = async () => {
-    if (this.busy) return;
-    const form = read(appConfigKey.path) as AppConfigForm;
-    const email = form.accountEmail.trim();
-    const password = form.accountPassword;
-    if (!email || !password) {
-      await showError(
-        new Error(tx("dialogs.unknown_error")),
-        tx("dialogs.error"),
-      );
-      return;
-    }
-
-    this.busy = true;
-    this.statusMessage = "";
-    try {
-      this.persistApiBaseUrl();
-      this.account = await loginAccount(
-        email,
-        password,
-        form.accountApiBaseUrl,
-      );
-      set(appConfigKey.path, {...form, accountPassword: ""});
-      this.statusMessage = tx("account.connected_as");
-      await this.reloadCloudState();
-    } catch (error) {
-      await showError(error, tx("dialogs.error"));
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
-  };
-
-  private onRegister = async () => {
-    if (this.busy) return;
-    const form = read(appConfigKey.path) as AppConfigForm;
-    const email = form.accountEmail.trim();
-    const password = form.accountPassword;
-    if (!email || password.length < 8) {
-      await showError(
-        new Error(tx("dialogs.unknown_error")),
-        tx("dialogs.error"),
-      );
-      return;
-    }
-
-    this.busy = true;
-    this.statusMessage = "";
-    this.pendingRegistrationMessage = "";
-    try {
-      this.persistApiBaseUrl();
-      const result = await registerAccount(
-        email,
-        password,
-        form.accountApiBaseUrl,
-      );
-      set(appConfigKey.path, {...form, accountPassword: ""});
-      if (result.pending) {
-        this.pendingRegistrationMessage = result.message;
-        this.statusMessage = result.message;
-      } else {
-        this.account = result.settings;
-        this.statusMessage = result.message;
-        await this.reloadCloudState();
-      }
-    } catch (error) {
-      await showError(error, tx("dialogs.error"));
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
-  };
-
   private onLogout = async () => {
     if (this.busy) return;
     this.account = logoutAccount();
-    this.statusMessage = tx("account.logout");
-    const form = read(appConfigKey.path) as AppConfigForm;
-    set(appConfigKey.path, {
-      ...form,
-      accountPassword: "",
-      accountEmail: "",
-    });
-    await this.reloadCloudState();
-  };
-
-  private onSyncNow = async () => {
-    if (this.busy || !isAccountConnected(this.account)) return;
-    this.busy = true;
-    this.statusMessage = tx("account.sync.title");
-    try {
-      const result = await runDatasetSync({fullPull: true});
-      if (result.error) {
-        this.statusMessage = result.error;
-      } else {
-        this.statusMessage = tx("account.sync.now");
-      }
-      await this.reloadCloudState();
-    } catch (error) {
-      await showError(error, tx("dialogs.error"));
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
+    clearAccountCredentialsFields();
+    navigateTo("/");
   };
 
   private formatDate(value: string): string {
@@ -311,7 +169,6 @@ export class ConfigAccountPage extends LitElement {
   };
 
   private renderConnectionStatus() {
-    const connected = isAccountConnected(this.account);
     const healthLabel =
       this.apiHealthy === null
         ? tx("account.api_checking")
@@ -320,87 +177,21 @@ export class ConfigAccountPage extends LitElement {
           : tx("account.api_ko");
 
     return html`
-      <sonic-alert status=${connected ? "success" : "info"}>
-        ${connected
-          ? html`<span class="inline-flex items-center gap-2">
-              <user-avatar
-                email=${this.account.user?.email ?? ""}
-                .size=${28}
-              ></user-avatar>
-              <span
-                >${t("account.connected_as")}
-                <strong>${this.account.user?.email}</strong>.</span
-              >
-            </span>`
-          : html`${t("account.local_only")}`}
+      <sonic-alert status="success">
+        <span class="inline-flex items-center gap-2">
+          <user-avatar
+            email=${this.account.user?.email ?? ""}
+            .size=${28}
+          ></user-avatar>
+          <span
+            >${t("account.connected_as")}
+            <strong>${this.account.user?.email}</strong>.</span
+          >
+        </span>
         <div class="mt-1 text-sm opacity-80">${healthLabel}</div>
       </sonic-alert>
       ${this.statusMessage
         ? html`<p class="text-sm text-neutral-500">${this.statusMessage}</p>`
-        : nothing}
-    `;
-  }
-
-  private renderAuthForm() {
-    if (isAccountConnected(this.account)) {
-      return html`
-        <sonic-form-actions>
-          <sonic-button
-            type="neutral"
-            variant="outline"
-            ?disabled=${this.busy}
-            @click=${this.onLogout}
-          >
-            ${t("account.logout")}
-          </sonic-button>
-        </sonic-form-actions>
-      `;
-    }
-
-    return html`
-      <sonic-form-layout>
-        <sonic-input
-          formDataProvider=${appConfigKey.path}
-          name="accountApiBaseUrl"
-          label=${tx("account.api_url")}
-          placeholder=${tx("account.api_url_ph")}
-        ></sonic-input>
-        <sonic-input
-          formDataProvider=${appConfigKey.path}
-          name="accountEmail"
-          label=${tx("account.email")}
-          type="email"
-          autocomplete="username"
-        ></sonic-input>
-        <sonic-input
-          formDataProvider=${appConfigKey.path}
-          name="accountPassword"
-          label=${tx("account.password")}
-          type="password"
-          autocomplete="current-password"
-        ></sonic-input>
-      </sonic-form-layout>
-      <sonic-form-actions>
-        <sonic-button
-          type="primary"
-          ?disabled=${this.busy}
-          @click=${this.onLogin}
-        >
-          ${t("account.login")}
-        </sonic-button>
-        <sonic-button
-          variant="outline"
-          ?disabled=${this.busy}
-          @click=${this.onRegister}
-        >
-          ${t("account.register")}
-        </sonic-button>
-      </sonic-form-actions>
-      <p class="text-sm text-neutral-500">${t("account.register_hint")}</p>
-      ${this.pendingRegistrationMessage
-        ? html`<sonic-alert status="info"
-            >${this.pendingRegistrationMessage}</sonic-alert
-          >`
         : nothing}
     `;
   }
@@ -512,48 +303,26 @@ export class ConfigAccountPage extends LitElement {
     `;
   }
 
-  private renderSyncSection() {
-    if (!isAccountConnected(this.account)) return nothing;
-
-    const lastSync = this.syncState?.lastSyncAt
-      ? this.formatDate(this.syncState.lastSyncAt)
-      : tx("account.sync.never");
-
-    return html`
-      <section class="space-y-3 border-t border-current/15 pt-8">
-        <h2 class="text-lg font-semibold">${t("account.sync.title")}</h2>
-        <div class="flex flex-wrap items-center gap-2 text-sm">
-          <sonic-badge
-            type=${this.pendingSyncCount > 0 ? "warning" : "neutral"}
-            size="sm"
-          >
-            ${tf("account.sync.pending", {n: this.pendingSyncCount})}
-          </sonic-badge>
-          <span class="text-neutral-500"
-            >${t("account.sync.last")} ${lastSync}</span
-          >
-        </div>
-        ${this.syncState?.lastError
-          ? html`<sonic-alert type="warning" size="sm"
-              >${this.syncState.lastError}</sonic-alert
-            >`
-          : nothing}
-        <sonic-form-actions>
-          <sonic-button
-            type="primary"
-            size="sm"
-            ?disabled=${this.busy}
-            @click=${this.onSyncNow}
-          >
-            ${t("account.sync.now")}
-          </sonic-button>
-        </sonic-form-actions>
-        <p class="text-sm text-neutral-500">${t("account.sync.help")}</p>
-      </section>
-    `;
-  }
-
   render() {
+    const connected = isAccountConnected(this.account);
+
+    if (!connected) {
+      return html`
+        <page-shell>
+          <div
+            class="space-y-3 border-b-[.18rem] border-current pb-3 sm:space-y-4 sm:pb-4"
+          >
+            <config-scope-header section="account"></config-scope-header>
+          </div>
+          <div class="pt-8">
+            <account-required-cta
+              messageKey="account.local_only"
+            ></account-required-cta>
+          </div>
+        </page-shell>
+      `;
+    }
+
     return html`
       <page-shell>
         <div
@@ -563,8 +332,18 @@ export class ConfigAccountPage extends LitElement {
         </div>
 
         <div class="space-y-8 pt-8">
-          ${this.renderConnectionStatus()} ${this.renderAuthForm()}
-          ${this.renderAdminUsers()} ${this.renderSyncSection()}
+          ${this.renderConnectionStatus()}
+          <sonic-form-actions>
+            <sonic-button
+              type="neutral"
+              variant="outline"
+              ?disabled=${this.busy}
+              @click=${this.onLogout}
+            >
+              ${t("account.logout")}
+            </sonic-button>
+          </sonic-form-actions>
+          ${this.renderAdminUsers()}
         </div>
       </page-shell>
     `;

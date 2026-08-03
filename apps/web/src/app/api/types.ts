@@ -29,9 +29,9 @@ export interface Todo {
   tagIds: string[];
   /** null = tâche racine */
   parentId: string | null;
-  /** Date de début optionnelle (YYYY-MM-DD) */
+  /** Début optionnel : YYYY-MM-DD (journée) ou ISO UTC (…Z) */
   startAt?: string | null;
-  /** Date de fin / échéance optionnelle (YYYY-MM-DD) */
+  /** Fin / échéance optionnelle : YYYY-MM-DD (journée) ou ISO UTC (…Z) */
   endAt?: string | null;
   /** Récurrence simple (défaut none) */
   recurrence?: TodoRecurrence;

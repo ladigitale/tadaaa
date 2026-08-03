@@ -23,7 +23,9 @@ export type TodoCreateForm = {
   priority: TodoPriority;
   tagIds: string[];
   startAt: string;
+  startTime: string;
   endAt: string;
+  endTime: string;
   recurrence: TodoRecurrence;
 };
 
@@ -33,7 +35,9 @@ export type TodoEditForm = {
   priority: TodoPriority;
   tagIds: string[];
   startAt: string;
+  startTime: string;
   endAt: string;
+  endTime: string;
   recurrence: TodoRecurrence;
 };
 
@@ -77,6 +81,10 @@ export type TodoSearchForm = {
   sortDir: SortDirection;
 };
 
+export type CommandPaletteForm = {
+  q: string;
+};
+
 export type AppConfigForm = {
   newDatasetName: string;
   p2pReceiveCode: string;
@@ -97,6 +105,9 @@ export const tagEditKey = new DataProviderKey<TagEditForm>("tagEdit");
 export const tagsFilterKey = new DataProviderKey<TagsFilter>("tagsFilter");
 export const todoMoveKey = new DataProviderKey<TodoMoveForm>("todoMove");
 export const todoSearchKey = new DataProviderKey<TodoSearchForm>("todoSearch");
+export const commandPaletteKey = new DataProviderKey<CommandPaletteForm>(
+  "commandPalette",
+);
 export const appConfigKey = new DataProviderKey<AppConfigForm>("appConfig");
 export const tagsListKey = new DataProviderKey<Tag[]>("tagsList");
 export const todoTagsEditKey = new DataProviderKey<

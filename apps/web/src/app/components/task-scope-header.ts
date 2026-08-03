@@ -1,4 +1,5 @@
 import "@supersoniks/concorde/button";
+import "@supersoniks/concorde/badge";
 import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/pop";
 import "@supersoniks/concorde/menu";
@@ -7,7 +8,7 @@ import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {fetchTodo, patchTodo} from "../api/client";
+import {copyTodo, fetchTodo, patchTodo} from "../api/client";
 import type {Todo, TodoAncestor} from "../api/types";
 import {tf, tx} from "../i18n";
 import {
@@ -33,6 +34,7 @@ type ActionChoice = {
   label: string;
   icon: string;
   href: string;
+  badge?: number;
 };
 
 /**
@@ -184,9 +186,10 @@ export class TaskScopeHeader extends LitElement {
     return [
       {
         id: "children",
-        label: this.childrenLabel,
-        icon: "list",
+        label: tx("tasks.see"),
+        icon: "eye",
         href: tacheItemPath(id),
+        badge: this.scopeTodo?.childCount ?? 0,
       },
       {
         id: "create",
@@ -207,10 +210,6 @@ export class TaskScopeHeader extends LitElement {
         href: tacheItemMovePath(id),
       },
     ];
-  }
-
-  private get childrenLabel(): string {
-    return tf("tasks.subtasks", {n: this.scopeTodo?.childCount ?? 0});
   }
 
   private get currentAction(): ActionChoice | null {
@@ -248,6 +247,35 @@ export class TaskScopeHeader extends LitElement {
       ></sonic-icon>
     `;
   }
+
+  private renderCountBadge(count?: number) {
+    if (!count || count <= 0) return nothing;
+    return html`
+      <sonic-tooltip
+        slot="suffix"
+        label=${tf("tasks.subtasks", {n: count})}
+        placement="bottom"
+        class="inline-block"
+      >
+        <sonic-badge type="neutral" size="xs">${count}</sonic-badge>
+      </sonic-tooltip>
+    `;
+  }
+
+  private onCopy = async () => {
+    const todo = this.scopeTodo;
+    if (!todo || this.busy || todo.archived) return;
+
+    this.busy = true;
+    try {
+      await copyTodo(todo);
+    } catch (error) {
+      await showError(error);
+      console.error(error);
+    } finally {
+      this.busy = false;
+    }
+  };
 
   private onDeleteToggle = async () => {
     const todo = this.scopeTodo;
@@ -313,6 +341,7 @@ export class TaskScopeHeader extends LitElement {
             size="sm"
           ></sonic-icon>
           ${current.label}
+          ${this.renderCountBadge(current.badge)}
           <sonic-icon
             slot="suffix"
             library=${ICON_LIBRARY}
@@ -339,6 +368,7 @@ export class TaskScopeHeader extends LitElement {
               >
                 ${this.renderMenuItemIcon(choice.icon)}
                 ${choice.label}
+                ${this.renderCountBadge(choice.badge)}
               </sonic-menu-item>
             `,
           )}
@@ -352,6 +382,12 @@ export class TaskScopeHeader extends LitElement {
                 </sonic-menu-item>
               `
             : html`
+                <sonic-menu-item
+                  ?disabled=${this.busy}
+                  @click=${this.onCopy}
+                >
+                  ${this.renderMenuItemIcon("copy")} ${t("tasks.copy")}
+                </sonic-menu-item>
                 <sonic-menu-item
                   type="danger"
                   ?disabled=${this.busy}

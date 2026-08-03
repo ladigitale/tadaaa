@@ -34,6 +34,7 @@ import {appConfigKey, type AppConfigForm} from "../dp";
 import {confirmDialog, promptTextDialog, showError} from "../utils/modal-dialog";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
+import "./account-required-cta";
 import "./config-scope-header";
 import "./dataset-row";
 import "./page-shell";
@@ -513,9 +514,9 @@ export class ConfigCloudDatasetsPage extends LitElement {
 
         <div class="space-y-6 pt-8">
           ${!connected
-            ? html`<sonic-alert type="info"
-                >${t("data.need_account")}</sonic-alert
-              >`
+            ? html`<account-required-cta
+                messageKey="data.need_account"
+              ></account-required-cta>`
             : html`
                 <p class="text-sm text-neutral-500">${t("cloud.datasets_help")}</p>
                 ${this.statusMessage

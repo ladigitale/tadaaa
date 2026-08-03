@@ -13,6 +13,7 @@ use App\Repository\DatasetRepository;
 use App\Repository\TagRepository;
 use App\Repository\TodoRepository;
 use App\Util\BaseIdParser;
+use App\Util\TodoDate;
 use App\Webhook\WebhookEventType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -128,8 +129,8 @@ final class CloudTodoService
         $todo->setPriority($priority);
         $todo->setTagIds($tagIds ?? []);
         $todo->setParentId($parentId);
-        $todo->setStartAt($this->parseDateOnly($startAt));
-        $todo->setEndAt($this->parseDateOnly($endAt));
+        $todo->setStartAt(TodoDate::parse($startAt));
+        $todo->setEndAt(TodoDate::parse($endAt));
         $todo->setRecurrence(TodoRecurrence::normalize($recurrence));
         $todo->setFieldVersions([
             'text' => $now,
@@ -160,6 +161,55 @@ final class CloudTodoService
         $this->usage->increment($user, $dataset, UsageMeter::TODOS_CREATED);
 
         return $sync;
+    }
+
+    /**
+     * Duplique une tâche (champs métier) ; done/archived restent faux.
+     *
+     * @return array{todo: array<string, mixed>, copiedFrom: string, children: list<array<string, mixed>>}
+     */
+    public function copyTodo(User $user, string $id, bool $includeChildren = false): array
+    {
+        $source = $this->requireTodo($user, $id);
+        $created = $this->createTodo(
+            $user,
+            $source->getText(),
+            $source->getDescription(),
+            $source->getPriority(),
+            $source->getTagIds(),
+            $source->getParentId(),
+            TodoDate::format($source->getStartAt()),
+            TodoDate::format($source->getEndAt()),
+            $source->getRecurrence(),
+        );
+
+        $children = [];
+        if ($includeChildren) {
+            $dataset = $source->getDataset();
+            $newParentId = (string) $created['id'];
+            foreach ($this->todos->findChangedSince($dataset, null) as $child) {
+                if ($child->isDeleted() || $child->getParentId() !== $id) {
+                    continue;
+                }
+                $children[] = $this->createTodo(
+                    $user,
+                    $child->getText(),
+                    $child->getDescription(),
+                    $child->getPriority(),
+                    $child->getTagIds(),
+                    $newParentId,
+                    TodoDate::format($child->getStartAt()),
+                    TodoDate::format($child->getEndAt()),
+                    $child->getRecurrence(),
+                );
+            }
+        }
+
+        return [
+            'todo' => $created,
+            'copiedFrom' => $id,
+            'children' => $children,
+        ];
     }
 
     /**
@@ -204,11 +254,11 @@ final class CloudTodoService
             $versions['parentId'] = $now;
         }
         if (array_key_exists('startAt', $patch)) {
-            $todo->setStartAt($this->parseDateOnly(is_string($patch['startAt']) ? $patch['startAt'] : null));
+            $todo->setStartAt(TodoDate::parse(is_string($patch['startAt']) ? $patch['startAt'] : null));
             $versions['startAt'] = $now;
         }
         if (array_key_exists('endAt', $patch)) {
-            $todo->setEndAt($this->parseDateOnly(is_string($patch['endAt']) ? $patch['endAt'] : null));
+            $todo->setEndAt(TodoDate::parse(is_string($patch['endAt']) ? $patch['endAt'] : null));
             $versions['endAt'] = $now;
         }
         if (array_key_exists('recurrence', $patch)) {
@@ -545,18 +595,4 @@ final class CloudTodoService
         };
     }
 
-    private function parseDateOnly(?string $value): ?\DateTimeImmutable
-    {
-        if ($value === null) {
-            return null;
-        }
-        $trimmed = trim($value);
-        if ($trimmed === '') {
-            return null;
-        }
-        $datePart = substr($trimmed, 0, 10);
-        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $datePart);
-
-        return $date === false ? null : $date;
-    }
 }

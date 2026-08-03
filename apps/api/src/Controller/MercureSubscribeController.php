@@ -54,32 +54,6 @@ final class MercureSubscribeController extends AbstractController
         return $this->credentialsResponse($topics);
     }
 
-    /**
-     * Credentials for EventSource subscription (hub URL + subscriber JWT + topic).
-     *
-     * @deprecated Prefer GET /api/mercure?baseId=… (also covers user notifications).
-     */
-    #[Route('/api/datasets/{baseId}/mercure', name: 'api_dataset_mercure_subscribe', methods: ['GET'])]
-    public function subscribe(string $baseId): JsonResponse
-    {
-        $this->assertMercureReady();
-
-        /** @var User $user */
-        $user = $this->getUser();
-        $datasetTopic = $this->topicForReadableDataset($user, $baseId);
-        $topics = [
-            DatasetRealtimePublisher::topicForUser($user),
-            $datasetTopic,
-        ];
-
-        $response = $this->credentialsResponse($topics);
-        // Keep legacy shape: single `topic` = dataset (clients that only read one topic).
-        $data = json_decode($response->getContent() ?: '{}', true, 512, \JSON_THROW_ON_ERROR);
-        $data['topic'] = $datasetTopic;
-
-        return $this->json($data);
-    }
-
     private function assertMercureReady(): void
     {
         if (!$this->mercure->isEnabled()) {

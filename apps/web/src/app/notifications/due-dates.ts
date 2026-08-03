@@ -1,7 +1,13 @@
 import {fetchTodos} from "../api/client";
 import type {Todo} from "../api/types";
 import {tf, tx} from "../i18n";
-import {addDays, parseDateOnly, todayDateOnly} from "../utils/dates";
+import {
+  addDays,
+  isDateOnly,
+  parseTodoDate,
+  toDateOnly,
+  todayDateOnly,
+} from "../utils/dates";
 import {tacheItemPath} from "../utils/tache-paths";
 import {areWebNotificationsEnabled} from "../settings";
 import {SonicToast} from "@supersoniks/concorde/toast";
@@ -41,23 +47,33 @@ function markNotified(todoId: string, endAt: string, kind: DueKind): void {
   }
 }
 
-function collectDueHits(todos: Todo[], today: string): DueHit[] {
+function collectDueHits(todos: Todo[], today: string, now: Date = new Date()): DueHit[] {
   const tomorrow = addDays(today, 1);
   const hits: DueHit[] = [];
 
   for (const todo of todos) {
     if (todo.archived || todo.done) continue;
-    const endAt = parseDateOnly(todo.endAt ?? null);
-    if (!endAt) continue;
+    const wire = parseTodoDate(todo.endAt ?? null);
+    if (!wire) continue;
+    const localDay = toDateOnly(wire);
+    if (!localDay) continue;
 
     let kind: DueKind | null = null;
-    if (endAt < today) kind = "overdue";
-    else if (endAt === today) kind = "today";
-    else if (endAt === tomorrow) kind = "tomorrow";
+    if (localDay < today) {
+      kind = "overdue";
+    } else if (localDay === today) {
+      if (!isDateOnly(wire) && new Date(wire).getTime() < now.getTime()) {
+        kind = "overdue";
+      } else {
+        kind = "today";
+      }
+    } else if (localDay === tomorrow) {
+      kind = "tomorrow";
+    }
     if (!kind) continue;
-    if (wasNotified(todo.id, endAt, kind)) continue;
+    if (wasNotified(todo.id, wire, kind)) continue;
 
-    hits.push({todo, kind, endAt});
+    hits.push({todo, kind, endAt: wire});
   }
 
   return hits;

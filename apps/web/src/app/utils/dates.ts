@@ -1,6 +1,7 @@
 import {getAppLocale} from "../i18n/locale";
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const TIME_RE = /^(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
 /** Validate and normalize a YYYY-MM-DD string; returns null if invalid. */
 export function parseDateOnly(value: unknown): string | null {
@@ -21,6 +22,169 @@ export function parseDateOnly(value: unknown): string | null {
     return null;
   }
   return trimmed;
+}
+
+export function isDateOnly(value: string): boolean {
+  return DATE_RE.test(value.trim());
+}
+
+/** Canonical wire: YYYY-MM-DD (all-day) or YYYY-MM-DDTHH:mm:ssZ. */
+export function parseTodoDate(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const dateOnly = parseDateOnly(trimmed);
+  if (dateOnly) return dateOnly;
+
+  const instant = Date.parse(trimmed);
+  if (Number.isNaN(instant)) return null;
+  const utc = new Date(instant);
+  // Midnight UTC → all-day wire (matches API TodoDate::format).
+  if (
+    utc.getUTCHours() === 0 &&
+    utc.getUTCMinutes() === 0 &&
+    utc.getUTCSeconds() === 0 &&
+    utc.getUTCMilliseconds() === 0
+  ) {
+    return formatUtcDateOnly(utc);
+  }
+  return formatUtcDateTimeZ(utc);
+}
+
+/** Local calendar day for a wire value (date-only or UTC instant). */
+export function toDateOnly(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const dateOnly = parseDateOnly(trimmed);
+  if (dateOnly) return dateOnly;
+  const wire = parseTodoDate(trimmed);
+  if (!wire) return null;
+  if (isDateOnly(wire)) return wire;
+  const d = new Date(wire);
+  if (Number.isNaN(d.getTime())) return null;
+  return todayDateOnly(d);
+}
+
+export type LocalDateTimeInput = {date: string; time: string};
+
+/** Hydrate date/time form fields from wire (time empty = all-day). */
+export function localInputFromWire(wire: unknown): LocalDateTimeInput {
+  const parsed = parseTodoDate(wire);
+  if (!parsed) return {date: "", time: ""};
+  if (isDateOnly(parsed)) return {date: parsed, time: ""};
+  const d = new Date(parsed);
+  if (Number.isNaN(d.getTime())) return {date: "", time: ""};
+  const date = todayDateOnly(d);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return {date, time: `${hh}:${mm}`};
+}
+
+/** Build wire from local date + optional HH:mm. */
+export function wireFromLocalInput(
+  date: unknown,
+  time: unknown,
+): string | null {
+  const dateOnly = parseDateOnly(date);
+  if (!dateOnly) return null;
+  const timeStr = typeof time === "string" ? time.trim() : "";
+  if (!timeStr) return dateOnly;
+  const match = TIME_RE.exec(timeStr);
+  if (!match) return dateOnly;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = match[3] !== undefined ? Number(match[3]) : 0;
+  if (
+    hours > 23 ||
+    minutes > 59 ||
+    seconds > 59 ||
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes)
+  ) {
+    return dateOnly;
+  }
+  const [y, m, d] = dateOnly.split("-").map(Number);
+  const local = new Date(y, m - 1, d, hours, minutes, seconds, 0);
+  if (Number.isNaN(local.getTime())) return dateOnly;
+  return parseTodoDate(local.toISOString());
+}
+
+/** Keep local time (if any) when moving a wire value to a new calendar day. */
+export function rewireOnDate(
+  originalWire: unknown,
+  newDateOnly: string,
+): string | null {
+  const day = parseDateOnly(newDateOnly);
+  if (!day) return null;
+  const {time} = localInputFromWire(originalWire);
+  return wireFromLocalInput(day, time);
+}
+
+/** Parse HH:mm[:ss] to minutes from midnight; null if invalid. */
+export function parseTimeToMinutes(time: unknown): number | null {
+  if (typeof time !== "string") return null;
+  const match = TIME_RE.exec(time.trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+export function minutesToTime(totalMinutes: number): string {
+  const clamped = Math.max(0, Math.min(24 * 60 - 1, Math.round(totalMinutes)));
+  const hh = String(Math.floor(clamped / 60)).padStart(2, "0");
+  const mm = String(clamped % 60).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+export function snapMinutes(totalMinutes: number, step = 15): number {
+  const snapped = Math.round(totalMinutes / step) * step;
+  return Math.max(0, Math.min(24 * 60 - step, snapped));
+}
+
+/** Local HH:mm label for minutes-from-midnight. */
+export function formatMinutesLabel(totalMinutes: number): string {
+  const [y, m, d] = todayDateOnly().split("-").map(Number);
+  const date = new Date(y, m - 1, d, 0, 0, 0, 0);
+  date.setMinutes(totalMinutes);
+  return date.toLocaleTimeString(localeTag(), {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** Short label: date, or date + local time when timed. */
+export function formatTodoDateLabel(wire: unknown): string {
+  const parsed = parseTodoDate(wire);
+  if (!parsed) return "";
+  if (isDateOnly(parsed)) {
+    const [y, m, d] = parsed.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString(localeTag(), {
+      day: "numeric",
+      month: "short",
+    });
+  }
+  const date = new Date(parsed);
+  if (Number.isNaN(date.getTime())) return parsed;
+  return date.toLocaleString(localeTag(), {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatUtcDateTimeZ(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  const hh = String(date.getUTCHours()).padStart(2, "0");
+  const mm = String(date.getUTCMinutes()).padStart(2, "0");
+  const ss = String(date.getUTCSeconds()).padStart(2, "0");
+  return `${y}-${m}-${d}T${hh}:${mm}:${ss}Z`;
 }
 
 /** Local calendar today as YYYY-MM-DD. */
@@ -58,13 +222,13 @@ export function daysBetween(start: string, end: string): number {
   return Math.round((t1 - t0) / 86_400_000);
 }
 
-/** Inclusive span for a todo; inverted bounds are normalized. */
+/** Inclusive calendar span for a todo; inverted bounds are normalized. */
 export function todoDateSpan(todo: {
   startAt?: string | null;
   endAt?: string | null;
 }): {start: string; end: string} | null {
-  const start = parseDateOnly(todo.startAt ?? null);
-  const end = parseDateOnly(todo.endAt ?? null);
+  const start = toDateOnly(todo.startAt ?? null);
+  const end = toDateOnly(todo.endAt ?? null);
   if (!start && !end) return null;
   if (start && !end) return {start, end: start};
   if (!start && end) return {start: end, end};

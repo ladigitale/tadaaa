@@ -15,6 +15,7 @@ import {
   applyRemoteTodo,
   normalizeSnapshotWithVersions,
 } from "./merge";
+import {TODO_SYNC_FIELDS} from "./field-versions";
 import {
   countPendingMutations,
   getSyncState,
@@ -24,6 +25,7 @@ import {
   removeMutations,
   resetFailedMutations,
   saveSyncState,
+  type SyncMutation,
   type SyncState,
 } from "./outbox";
 import {detectRemoteTodoNotifyChanges} from "../notifications/todo-diff";
@@ -38,6 +40,80 @@ export type SyncRunResult = {
   bootstrapped: boolean;
   error?: string;
 };
+
+type PullApplyResult = {
+  todos: number;
+  todoIds: string[];
+  tags: number;
+  serverTime: string;
+};
+
+/** TTL pour ignorer l’écho Mercure de nos propres push (2e sync sans pushedTodoIds). */
+const RECENT_PUSH_TTL_MS = 8_000;
+/** id → expiry ms */
+const recentlyPushedTodoIds = new Map<string, number>();
+
+function rememberPushedTodoIds(ids: ReadonlySet<string>): void {
+  const until = Date.now() + RECENT_PUSH_TTL_MS;
+  for (const id of ids) {
+    recentlyPushedTodoIds.set(id, until);
+  }
+}
+
+function isRecentlyPushedTodo(id: string): boolean {
+  const until = recentlyPushedTodoIds.get(id);
+  if (until === undefined) return false;
+  if (Date.now() > until) {
+    recentlyPushedTodoIds.delete(id);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Create réel (stampTodoCreate) : tous les champs sync + createdAt au même instant.
+ * Un patch garde un createdAt ancien alors que `done`/etc. sont plus récents —
+ * ne pas confondre avec la présence de `createdAt` dans fieldVersions (toujours là).
+ */
+export function isTodoCreateMutation(mutation: SyncMutation): boolean {
+  if (mutation.entity !== "todo" || mutation.op !== "upsert") return false;
+  const versions = mutation.fieldVersions ?? {};
+  const createdAt = versions.createdAt;
+  if (!createdAt) return false;
+  return TODO_SYNC_FIELDS.every((field) => versions[field] === createdAt);
+}
+
+/**
+ * Create / delete / spawn récurrence → la queue doit se recharger.
+ * Un upsert in-place (done, texte…) a déjà mis l’UI à jour localement.
+ */
+export function mutationsChangeListShape(
+  accepted: readonly SyncMutation[],
+): boolean {
+  return accepted.some(
+    (mutation) =>
+      mutation.entity === "todo" &&
+      (mutation.op === "delete" || isTodoCreateMutation(mutation)),
+  );
+}
+
+/** Refresh UI seulement si le delta n’est pas l’écho de nos propres upserts. */
+export function shouldRefreshTodosAfterSync(options: {
+  pullTodoIds: readonly string[];
+  pullTags: number;
+  pushedTodoIds: ReadonlySet<string>;
+  acceptedMutations: readonly SyncMutation[];
+}): boolean {
+  const foreignTodos = options.pullTodoIds.some(
+    (id) =>
+      !options.pushedTodoIds.has(id) && !isRecentlyPushedTodo(id),
+  );
+  return (
+    foreignTodos ||
+    options.pullTags > 0 ||
+    mutationsChangeListShape(options.acceptedMutations)
+  );
+}
 
 /** Debounce des syncs déclenchées par mutations locales. */
 const AUTO_SYNC_DEBOUNCE_MS = 300;
@@ -57,7 +133,7 @@ async function applyPullToLocal(
   baseId: string,
   since: string | null,
   options: {notify?: boolean; ignoreTodoIds?: ReadonlySet<string>} = {},
-): Promise<{todos: number; tags: number; serverTime: string}> {
+): Promise<PullApplyResult> {
   const settings = loadAccountSettings();
   const pull = await pullDatasetSync(baseId, since, settings);
 
@@ -100,6 +176,7 @@ async function applyPullToLocal(
 
   return {
     todos: pull.todos.length,
+    todoIds: pull.todos.map((todo) => todo.id),
     tags: pull.tags.length,
     serverTime: pull.serverTime,
   };
@@ -172,13 +249,14 @@ async function runDatasetSyncUnlocked(
     const pending = isReader ? [] : await listPendingMutations(datasetBaseId);
     let pushed = 0;
     const pushedTodoIds = new Set<string>();
+    let acceptedMutations: SyncMutation[] = [];
 
     if (pending.length > 0) {
       const ids = pending.map((mutation) => mutation.id);
       await markMutationsInflight(ids);
       const result = await pushDatasetSync(datasetBaseId, pending, settings);
       const accepted = new Set(result.accepted);
-      const acceptedMutations = pending.filter((mutation) =>
+      acceptedMutations = pending.filter((mutation) =>
         accepted.has(`${mutation.entity}:${mutation.entityId}`),
       );
       const acceptedIds = acceptedMutations.map((mutation) => mutation.id);
@@ -187,6 +265,7 @@ async function runDatasetSyncUnlocked(
           pushedTodoIds.add(mutation.entityId);
         }
       }
+      rememberPushedTodoIds(pushedTodoIds);
       await removeMutations(acceptedIds);
 
       const rejectedIds = pending
@@ -213,13 +292,21 @@ async function runDatasetSyncUnlocked(
     };
     await saveSyncState(state);
 
-    const changed = pushed > 0 || pull.todos > 0 || pull.tags > 0;
-    if (changed) {
+    const needsUiRefresh = shouldRefreshTodosAfterSync({
+      pullTodoIds: pull.todoIds,
+      pullTags: pull.tags,
+      pushedTodoIds,
+      acceptedMutations,
+    });
+    if (needsUiRefresh) {
       const filter = read(todosFilterKey.path) as TodosFilter;
       set(todosFilterKey.path, {...filter, _rev: (filter._rev ?? 0) + 1});
       if (pull.tags > 0) {
         set(tagsListKey.path, await getIdbTodoStore().listTags());
       }
+    }
+    // Due dates même sans reload queue (check local = done déjà à jour en UI).
+    if (pushed > 0 || pull.todos > 0 || pull.tags > 0) {
       void checkDueDates();
     }
 

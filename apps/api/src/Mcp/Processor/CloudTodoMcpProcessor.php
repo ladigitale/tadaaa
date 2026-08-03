@@ -12,6 +12,7 @@ use App\Mcp\Tool\ActivateDatasetTool;
 use App\Mcp\Tool\BulkUpdateTodosTool;
 use App\Mcp\Tool\CreateLinkDetectorTool;
 use App\Mcp\Tool\CreateTagTool;
+use App\Mcp\Tool\CopyTodoTool;
 use App\Mcp\Tool\CreateTodoTool;
 use App\Mcp\Tool\CreateWebhookTool;
 use App\Mcp\Tool\DeleteLinkDetectorTool;
@@ -100,6 +101,7 @@ final class CloudTodoMcpProcessor implements ProcessorInterface
                 $data->endAt,
                 $data->recurrence,
             ),
+            $data instanceof CopyTodoTool => $this->todos->copyTodo($user, $data->id, $data->includeChildren),
             $data instanceof CreateTagTool => $this->todos->createTag($user, $data->name, $data->color),
             $data instanceof UpdateTagTool => $this->updateTag($user, $data),
             $data instanceof DeleteTagTool => $this->todos->deleteTag($user, $data->id),
@@ -193,6 +195,7 @@ final class CloudTodoMcpProcessor implements ProcessorInterface
             $data instanceof ListTagsTool => 'list_tags',
             $data instanceof ListTodosTool => 'list_todos',
             $data instanceof CreateTodoTool => 'create_todo',
+            $data instanceof CopyTodoTool => 'copy_todo',
             $data instanceof CreateTagTool => 'create_tag',
             $data instanceof UpdateTagTool => 'update_tag',
             $data instanceof DeleteTagTool => 'delete_tag',

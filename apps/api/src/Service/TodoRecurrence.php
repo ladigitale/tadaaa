@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Util\TodoDate;
+
 /**
  * Simple todo recurrence: shift calendar dates for the next occurrence.
  */
@@ -45,8 +47,8 @@ final class TodoRecurrence
         }
 
         return [
-            'startAt' => $startAt !== null ? self::shift($startAt, $recurrence)->format('Y-m-d') : null,
-            'endAt' => $endAt !== null ? self::shift($endAt, $recurrence)->format('Y-m-d') : null,
+            'startAt' => $startAt !== null ? TodoDate::format(self::shift($startAt, $recurrence)) : null,
+            'endAt' => $endAt !== null ? TodoDate::format(self::shift($endAt, $recurrence)) : null,
         ];
     }
 

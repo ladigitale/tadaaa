@@ -6,10 +6,13 @@ export type ConfigSection =
   | "install"
   | "links"
   | "account"
+  | "accountLogin"
+  | "accountRegister"
   | "mcp"
   | "webhooks"
   | "activity"
   | "usage"
+  | "sync"
   | "cloud"
   | "local"
   | "export"
@@ -22,10 +25,13 @@ export const SECTION_PATHS: Record<ConfigSection, string> = {
   install: "/settings/install",
   links: "/settings/links",
   account: "/account",
+  accountLogin: "/account/login",
+  accountRegister: "/account/register",
   mcp: "/connectivity/mcp",
   webhooks: "/connectivity/webhooks",
   activity: "/connectivity/activity",
   usage: "/connectivity/usage",
+  sync: "/data/sync",
   cloud: "/data/cloud",
   local: "/data/local",
   export: "/data/export",

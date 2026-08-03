@@ -27,6 +27,7 @@ import {confirmDialog, showError} from "../utils/modal-dialog";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
 import "./access-token-row";
+import "./account-required-cta";
 import "./config-scope-header";
 import "./page-shell";
 
@@ -207,9 +208,9 @@ export class ConfigMcpPage extends LitElement {
 
         <div class="space-y-6 pt-8">
           ${!connected
-            ? html`<sonic-alert type="info"
-                >${t("connectivity.need_account")}</sonic-alert
-              >`
+            ? html`<account-required-cta
+                messageKey="connectivity.need_account"
+              ></account-required-cta>`
             : html`
                 <p class="text-sm text-neutral-500">
                   ${tf("account.mcp.help", {url: this.mcpUrl})}

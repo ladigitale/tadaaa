@@ -16,7 +16,7 @@ import {navigateTo} from "../utils/navigate";
 import {TACHE_ROOT, tacheItemPath} from "../utils/tache-paths";
 import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {focusPrimaryInput} from "../utils/focus-primary-input";
-import {parseDateOnly} from "../utils/dates";
+import {localInputFromWire, wireFromLocalInput} from "../utils/dates";
 import {parseRecurrence} from "../utils/recurrence";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
@@ -72,7 +72,9 @@ export class TodoEditPage extends LitElement {
     priority: "medium",
     tagIds: [],
     startAt: "",
+    startTime: "",
     endAt: "",
+    endTime: "",
     recurrence: "none",
   };
 
@@ -115,14 +117,18 @@ export class TodoEditPage extends LitElement {
       this.tags = tags;
       this.parentTodoId = todo.parentId?.trim() || "";
       const tagIds = [...todo.tagIds];
+      const start = localInputFromWire(todo.startAt);
+      const end = localInputFromWire(todo.endAt);
       // tagIds tout de suite : le tag-picker réhydrate FormCheckable au mount.
       set(todoEditKey.path, {
         text: todo.text,
         description: todo.description ?? "",
         priority: todo.priority ?? "medium",
         tagIds,
-        startAt: todo.startAt?.trim() || "",
-        endAt: todo.endAt?.trim() || "",
+        startAt: start.date,
+        startTime: start.time,
+        endAt: end.date,
+        endTime: end.time,
         recurrence: parseRecurrence(todo.recurrence),
       });
     } catch {
@@ -163,8 +169,8 @@ export class TodoEditPage extends LitElement {
         description: form.description?.trim() || null,
         priority: (form.priority ?? "medium") as TodoPriority,
         tagIds,
-        startAt: parseDateOnly(form.startAt),
-        endAt: parseDateOnly(form.endAt),
+        startAt: wireFromLocalInput(form.startAt, form.startTime),
+        endAt: wireFromLocalInput(form.endAt, form.endTime),
         recurrence: parseRecurrence(form.recurrence),
       });
       navigateTo(this.backHref, true);
@@ -241,9 +247,21 @@ export class TodoEditPage extends LitElement {
             ></sonic-input>
 
             <sonic-input
+              type="time"
+              name="startTime"
+              label=${tx("tasks.form.start_time")}
+            ></sonic-input>
+
+            <sonic-input
               type="date"
               name="endAt"
               label=${tx("tasks.form.end_at")}
+            ></sonic-input>
+
+            <sonic-input
+              type="time"
+              name="endTime"
+              label=${tx("tasks.form.end_time")}
             ></sonic-input>
 
             <pop-select

@@ -9,6 +9,7 @@ import {tx} from "../i18n";
 import {fetchActivity, type ActivityLogInfo} from "../cloud-api/client";
 import {showError} from "../utils/modal-dialog";
 import tailwind from "../../css/tailwind";
+import "./account-required-cta";
 import "./config-scope-header";
 import "./page-shell";
 
@@ -58,7 +59,9 @@ export class ConfigActivityPage extends LitElement {
       <page-shell>
         <config-scope-header section="activity"></config-scope-header>
         ${!this.connected
-          ? html`<sonic-alert type="info">${t("activity.need_account")}</sonic-alert>`
+          ? html`<account-required-cta
+              messageKey="activity.need_account"
+            ></account-required-cta>`
           : html`
               <p class="text-sm opacity-80 mb-4">${t("activity.intro")}</p>
               <div class="flex flex-wrap items-center gap-3 mb-4">

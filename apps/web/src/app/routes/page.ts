@@ -1,8 +1,12 @@
 import {html} from "lit";
-import {navigateTo} from "../utils/navigate";
+import "../components/home-landing";
+import "../components/page-shell";
 
-/** Redirection vers la liste des tâches. */
+/** Site root: guest landing, or redirect to tasks when signed in. */
 export default function HomePage() {
-  queueMicrotask(() => navigateTo("/tache", true));
-  return html``;
+  return html`
+    <page-shell>
+      <home-landing></home-landing>
+    </page-shell>
+  `;
 }

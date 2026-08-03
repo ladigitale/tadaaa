@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\TodoRepository;
+use App\Util\TodoDate;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: TodoRepository::class)]
@@ -42,10 +43,10 @@ class Todo
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $parentId = null;
 
-    #[ORM\Column(type: 'date_immutable', nullable: true)]
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $startAt = null;
 
-    #[ORM\Column(type: 'date_immutable', nullable: true)]
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $endAt = null;
 
     /** none | daily | weekly | monthly */
@@ -258,8 +259,8 @@ class Todo
             'priority' => $this->priority,
             'tagIds' => $this->tagIds,
             'parentId' => $this->parentId,
-            'startAt' => $this->startAt?->format('Y-m-d'),
-            'endAt' => $this->endAt?->format('Y-m-d'),
+            'startAt' => TodoDate::format($this->startAt),
+            'endAt' => TodoDate::format($this->endAt),
             'recurrence' => $this->recurrence,
             'createdAt' => $this->createdAt->format(\DateTimeInterface::ATOM),
             'fieldVersions' => $this->fieldVersions,

@@ -1,20 +1,33 @@
+import "@supersoniks/concorde/badge";
 import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
+import "@supersoniks/concorde/menu";
+import "@supersoniks/concorde/menu-item";
+import "@supersoniks/concorde/pop";
 import "@supersoniks/concorde/tooltip";
-import {css, html, LitElement, nothing, PropertyValues} from "lit";
+import {css, html, LitElement, nothing, PropertyValues, TemplateResult} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {fetchTodos, patchTodo} from "../api/client";
+import {copyTodo, fetchTodos, patchTodo} from "../api/client";
 import type {Todo, TodoPriority, TodoStatusFilter} from "../api/types";
-import type {TodosFilter} from "../dp";
+import type {TodoCreateForm, TodosFilter} from "../dp";
 import {tf, tx} from "../i18n";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import {isActiveDatasetReadonly} from "../sync/cloud-access";
-import {navigateTo} from "../utils/navigate";
-import {tacheItemPath} from "../utils/tache-paths";
+import {
+  tacheItemEditPath,
+  tacheItemMovePath,
+  tacheItemNewPath,
+  tacheItemPath,
+  tacheNewPath,
+} from "../utils/tache-paths";
 import {
   type CalendarMode,
   filterCalendarTodos,
+  moveTimedTodoToMinutes,
+  partitionDayTodos,
+  previewTimedDragMinutes,
+  resizeTimedTodoEdge,
   resizeTodoDates,
   shiftTodoDates,
   todosForDay,
@@ -25,25 +38,40 @@ import {
   dayOfMonth,
   daysBetween,
   formatDayTitle,
+  formatMinutesLabel,
   formatMonthTitle,
   formatWeekTitle,
   formatYearTitle,
+  minutesToTime,
   monthGridDays,
   monthRangeContaining,
   monthShortName,
   sameMonth,
   shiftAnchor,
+  snapMinutes,
+  toDateOnly,
   todayDateOnly,
   todoDateSpan,
   weekRangeContaining,
   weekdayLabels,
   yearRangeContaining,
 } from "../utils/dates";
-import {showError} from "../utils/modal-dialog";
+import {
+  clearCalendarDragToast,
+  toastCalendarDrag,
+} from "../notifications/sonic-toasts";
+import {confirmDialog, showError} from "../utils/modal-dialog";
+import {navigateTo} from "../utils/navigate";
+import {stashTodoCreateDraft} from "../utils/todo-create-draft";
 import tailwind from "../../css/tailwind";
+
+const DOUBLE_ACTIVATE_MS = 350;
+
+type SonicPop = HTMLElement & {show: () => void};
 
 const STORAGE_KEY = "tada-tasks-calendar-view";
 const MONTH_CHIP_LIMIT = 3;
+const DAY_HOURS = 24;
 
 type StoredState = {
   mode: CalendarMode;
@@ -57,8 +85,18 @@ type DragState = {
   todoId: string;
   originDay: string;
   currentDay: string;
+  /** Day-view timed drag: minutes from midnight (snapped). */
+  originMinutes: number | null;
+  currentMinutes: number | null;
+  /** Timed block bounds at drag start (for move/resize preview). */
+  originStartMin: number | null;
+  originEndMin: number | null;
   moved: boolean;
+  pointerX: number;
+  pointerY: number;
 };
+
+type DateSpan = {start: string; end: string};
 
 function loadState(): StoredState {
   try {
@@ -136,6 +174,7 @@ export class TasksCalendar extends LitElement {
         border-radius: 0.35rem;
         padding: 0.25rem;
         background: var(--sc-base, #fff);
+        cursor: pointer;
       }
 
       .cal-cell[data-muted="true"] {
@@ -147,8 +186,38 @@ export class TasksCalendar extends LitElement {
         outline-offset: -2px;
       }
 
+      .cal-cell[data-anchor="true"] {
+        outline: 2px solid var(--sc-primary, #2563eb);
+        outline-offset: -2px;
+      }
+
+      .cal-year-month[data-anchor="true"] {
+        outline: 2px solid var(--sc-primary, #2563eb);
+        outline-offset: -2px;
+      }
+
+      .cal-cell[data-preview="true"] {
+        background: color-mix(in srgb, var(--sc-primary, #2563eb) 10%, transparent);
+        border-color: color-mix(in srgb, var(--sc-primary, #2563eb) 45%, transparent);
+      }
+
       .cal-cell[data-drop="true"] {
-        background: color-mix(in srgb, currentColor 8%, transparent);
+        background: color-mix(in srgb, var(--sc-primary, #2563eb) 18%, transparent);
+        border-color: var(--sc-primary, #2563eb);
+        box-shadow: inset 0 0 0 1px var(--sc-primary, #2563eb);
+      }
+
+      .cal-cell[data-drop="true"] .cal-day-num {
+        color: var(--sc-primary, #2563eb);
+      }
+
+      :host([data-dragging="true"]) {
+        cursor: grabbing;
+        user-select: none;
+      }
+
+      :host([data-dragging="true"]) .cal-chip {
+        cursor: grabbing;
       }
 
       .cal-chip {
@@ -157,12 +226,12 @@ export class TasksCalendar extends LitElement {
         gap: 0.15rem;
         width: 100%;
         margin-top: 0.15rem;
-        padding: 0.1rem 0.25rem;
+        padding: 0.1rem 0.2rem;
         border: 1px solid;
         border-radius: 0.25rem;
         font-size: 0.65rem;
         line-height: 1.2;
-        cursor: pointer;
+        cursor: grab;
         text-align: left;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -176,13 +245,36 @@ export class TasksCalendar extends LitElement {
         text-decoration: line-through;
       }
 
+      .cal-chip[data-source="true"] {
+        opacity: 0.35;
+        outline: 1px dashed color-mix(in srgb, currentColor 50%, transparent);
+      }
+
+      .cal-chip[data-preview-chip="true"] {
+        opacity: 0.95;
+        pointer-events: none;
+        box-shadow: 0 0 0 1px var(--sc-primary, #2563eb);
+      }
+
+      .cal-grip,
       .cal-handle {
-        flex: 0 0 0.35rem;
-        align-self: stretch;
-        border-radius: 0.1rem;
-        background: color-mix(in srgb, currentColor 35%, transparent);
-        cursor: ew-resize;
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        color: color-mix(in srgb, currentColor 70%, transparent);
         touch-action: none;
+      }
+
+      .cal-grip {
+        cursor: grab;
+      }
+
+      .cal-handle {
+        cursor: ew-resize;
+        border-radius: 0.15rem;
+        padding: 0 0.05rem;
+        background: color-mix(in srgb, currentColor 12%, transparent);
       }
 
       .cal-chip-label {
@@ -192,11 +284,238 @@ export class TasksCalendar extends LitElement {
         text-overflow: ellipsis;
       }
 
+      .cal-chip-pop,
       .cal-chip-tooltip {
         display: block;
         width: 100%;
         min-width: 0;
       }
+
+      .cal-day-event-pop {
+        position: absolute;
+        left: 0.2rem;
+        right: 0.2rem;
+        z-index: 2;
+        display: block;
+      }
+
+      .cal-drag-ghost {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 40;
+        display: flex;
+        max-width: 14rem;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.45rem;
+        border: 1px solid;
+        border-radius: 0.3rem;
+        font-size: 0.7rem;
+        line-height: 1.2;
+        pointer-events: none;
+        box-shadow: 0 8px 20px color-mix(in srgb, #000 18%, transparent);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .cal-day {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-height: 0;
+      }
+
+      .cal-allday {
+        border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+        border-radius: 0.35rem;
+        padding: 0.35rem 0.5rem;
+        background: var(--sc-base, #fff);
+      }
+
+      .cal-allday-label {
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: color-mix(in srgb, currentColor 55%, transparent);
+        margin-bottom: 0.2rem;
+      }
+
+      .cal-day-scroll {
+        overflow: auto;
+        max-height: min(70vh, 36rem);
+        border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+        border-radius: 0.35rem;
+        background: var(--sc-base, #fff);
+      }
+
+      .cal-day-grid {
+        position: relative;
+        display: grid;
+        grid-template-columns: 3.25rem 1fr;
+        --cal-hour-h: 48px;
+      }
+
+      .cal-day-hours {
+        grid-column: 1;
+        position: relative;
+        height: calc(var(--cal-hour-h) * 24);
+      }
+
+      .cal-day-hour {
+        height: var(--cal-hour-h);
+        padding-right: 0.35rem;
+        font-size: 0.65rem;
+        line-height: 1;
+        text-align: right;
+        color: color-mix(in srgb, currentColor 50%, transparent);
+        transform: translateY(-0.35em);
+      }
+
+      .cal-day-hour:first-child {
+        transform: none;
+        padding-top: 0.15rem;
+      }
+
+      .cal-day-lanes {
+        grid-column: 2;
+        position: relative;
+        height: calc(var(--cal-hour-h) * 24);
+        border-left: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+      }
+
+      .cal-day-slot {
+        position: absolute;
+        left: 0;
+        right: 0;
+        z-index: 1;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+      }
+
+      .cal-day-slot:hover,
+      .cal-day-slot:focus-visible {
+        background: color-mix(in srgb, var(--sc-primary, #2563eb) 7%, transparent);
+      }
+
+      .cal-day-line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+        pointer-events: none;
+      }
+
+      .cal-day-now {
+        position: absolute;
+        left: 0;
+        right: 0;
+        z-index: 3;
+        border-top: 2px solid var(--sc-danger, #dc2626);
+        pointer-events: none;
+      }
+
+      .cal-day-now::before {
+        content: "";
+        position: absolute;
+        left: -0.3rem;
+        top: -0.3rem;
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 999px;
+        background: var(--sc-danger, #dc2626);
+      }
+
+      .cal-day-event {
+        box-sizing: border-box;
+        display: flex;
+        width: 100%;
+        height: 100%;
+        flex-direction: column;
+        gap: 0.1rem;
+        padding: 0.45rem 0.35rem 0.45rem;
+        border: 1px solid;
+        border-radius: 0.3rem;
+        font-size: 0.7rem;
+        line-height: 1.25;
+        cursor: grab;
+        overflow: hidden;
+        text-align: left;
+        touch-action: none;
+        user-select: none;
+      }
+
+      .cal-day-event[data-done="true"] {
+        opacity: 0.55;
+        text-decoration: line-through;
+      }
+
+      .cal-day-event[data-preview="true"] {
+        opacity: 0.85;
+        pointer-events: none;
+        box-shadow: 0 0 0 1px var(--sc-primary, #2563eb);
+      }
+
+      .cal-day-event[data-source="true"] {
+        opacity: 0.35;
+        outline: 1px dashed color-mix(in srgb, currentColor 50%, transparent);
+      }
+
+      .cal-day-event-time {
+        font-size: 0.62rem;
+        font-weight: 600;
+        opacity: 0.8;
+      }
+
+      .cal-day-event-title {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 500;
+      }
+
+      .cal-day-handle {
+        position: absolute;
+        left: 0.35rem;
+        right: 0.35rem;
+        z-index: 3;
+        height: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: ns-resize;
+        color: color-mix(in srgb, currentColor 65%, transparent);
+        touch-action: none;
+        border-radius: 0.15rem;
+      }
+
+      .cal-day-handle:hover,
+      .cal-day-handle:focus-visible {
+        background: color-mix(in srgb, currentColor 14%, transparent);
+        color: currentColor;
+      }
+
+      .cal-day-handle-start {
+        top: 0;
+      }
+
+      .cal-day-handle-end {
+        bottom: 0;
+      }
+
+      .cal-day-handle-bar {
+        width: 1.25rem;
+        height: 0.15rem;
+        border-radius: 999px;
+        background: currentColor;
+      }
+
     `,
   ];
 
@@ -221,6 +540,10 @@ export class TasksCalendar extends LitElement {
   @state() private isReadonly = false;
   @state() private drag: DragState | null = null;
   @state() private busyId: string | null = null;
+  /** Pop à ouvrir après un clic sans drag (évite le conflit click/toggle). */
+  private dragTriggerPop: SonicPop | null = null;
+  /** Double-clic / double-tap unifié (souris + tactile). */
+  private lastActivate: {key: string; at: number} | null = null;
 
   connectedCallback() {
     super.connectedCallback();
@@ -238,6 +561,7 @@ export class TasksCalendar extends LitElement {
     window.removeEventListener("pointermove", this.onPointerMove);
     window.removeEventListener("pointerup", this.onPointerUp);
     window.removeEventListener("keydown", this.onKeyDown);
+    this.clearDrag();
   }
 
   protected updated(changed: PropertyValues) {
@@ -330,6 +654,16 @@ export class TasksCalendar extends LitElement {
     this.persist();
   }
 
+  private focusDay(day: string) {
+    this.anchor = day;
+    this.persist();
+  }
+
+  private focusMonth(year: number, monthIndex0: number) {
+    this.anchor = `${year}-${String(monthIndex0 + 1).padStart(2, "0")}-01`;
+    this.persist();
+  }
+
   private openDay(day: string) {
     this.anchor = day;
     this.setMode("day");
@@ -340,15 +674,196 @@ export class TasksCalendar extends LitElement {
     this.setMode("month");
   }
 
-  private openTodo(todo: Todo, event?: Event) {
-    event?.stopPropagation();
-    if (this.drag) return;
-    navigateTo(tacheItemPath(todo.id));
+  /**
+   * Premier clic → action simple (focus) ; second clic/tap rapide → double.
+   * Couvre souris et tactile (pas de dépendance à `dblclick`).
+   */
+  private onActivate(
+    key: string,
+    onSingle: () => void,
+    onDouble: () => void,
+  ) {
+    const now = performance.now();
+    if (
+      this.lastActivate &&
+      this.lastActivate.key === key &&
+      now - this.lastActivate.at < DOUBLE_ACTIVATE_MS
+    ) {
+      this.lastActivate = null;
+      onDouble();
+      return;
+    }
+    this.lastActivate = {key, at: now};
+    onSingle();
+  }
+
+  private openCreate(draft: Partial<TodoCreateForm>) {
+    if (this.isReadonly) return;
+    stashTodoCreateDraft(draft);
+    const parent = this.filter.parentId?.trim();
+    navigateTo(parent ? tacheItemNewPath(parent) : tacheNewPath());
+  }
+
+  private createTodoForDay(day: string) {
+    this.openCreate({startAt: day, endAt: day});
+  }
+
+  private createTodoAtHour(hour: number) {
+    const startMin = Math.max(0, Math.min(23, hour)) * 60;
+    const endMin = Math.min(startMin + 60, 24 * 60 - 1);
+    this.openCreate({
+      startAt: this.anchor,
+      startTime: minutesToTime(startMin),
+      endAt: this.anchor,
+      endTime: minutesToTime(endMin),
+    });
+  }
+
+  private renderMenuItemIcon(name: string) {
+    return html`
+      <sonic-icon
+        slot="prefix"
+        library=${ICON_LIBRARY}
+        prefix=${ICON_PREFIX}
+        name=${name}
+        size="sm"
+      ></sonic-icon>
+    `;
+  }
+
+  private renderTodoActionsMenu(todo: Todo): TemplateResult {
+    const childCount = todo.childCount ?? 0;
+    const busy = this.busyId === todo.id;
+    return html`
+      <sonic-menu
+        slot="content"
+        direction="column"
+        align="left"
+        size="sm"
+        minWidth="12rem"
+      >
+        ${!todo.archived
+          ? html`
+              <sonic-menu-item
+                href=${tacheItemPath(todo.id)}
+                pushstate
+                ?disabled=${busy}
+              >
+                ${this.renderMenuItemIcon("eye")}
+                ${t("tasks.see")}
+                ${childCount > 0
+                  ? html`
+                      <sonic-badge slot="suffix" type="neutral" size="xs"
+                        >${childCount}</sonic-badge
+                      >
+                    `
+                  : nothing}
+              </sonic-menu-item>
+              <sonic-menu-item
+                ?disabled=${busy || this.isReadonly}
+                @click=${() => this.onToggleDoneTodo(todo)}
+              >
+                ${this.renderMenuItemIcon(
+                  todo.done ? "undo" : "check-circle",
+                )}
+                ${t(todo.done ? "tasks.mark_undone" : "tasks.mark_done")}
+              </sonic-menu-item>
+              <sonic-menu-item
+                href=${tacheItemEditPath(todo.id)}
+                pushstate
+                ?disabled=${busy || this.isReadonly}
+              >
+                ${this.renderMenuItemIcon("edit-pencil")} ${t("tasks.edit")}
+              </sonic-menu-item>
+              <sonic-menu-item
+                href=${tacheItemMovePath(todo.id)}
+                pushstate
+                ?disabled=${busy || this.isReadonly}
+              >
+                ${this.renderMenuItemIcon("data-transfer-both")}
+                ${t("tasks.move")}
+              </sonic-menu-item>
+              <sonic-menu-item
+                ?disabled=${busy || this.isReadonly}
+                @click=${() => this.onCopyTodo(todo)}
+              >
+                ${this.renderMenuItemIcon("copy")} ${t("tasks.copy")}
+              </sonic-menu-item>
+              <sonic-menu-item
+                type="danger"
+                ?disabled=${busy || this.isReadonly}
+                @click=${() => this.onDeleteToggleTodo(todo)}
+              >
+                ${this.renderMenuItemIcon("trash")} ${t("tasks.delete")}
+              </sonic-menu-item>
+            `
+          : html`
+              <sonic-menu-item
+                ?disabled=${busy || this.isReadonly}
+                @click=${() => this.onDeleteToggleTodo(todo)}
+              >
+                ${this.renderMenuItemIcon("undo")} ${t("tasks.restore")}
+              </sonic-menu-item>
+            `}
+      </sonic-menu>
+    `;
+  }
+
+  private async onToggleDoneTodo(todo: Todo) {
+    if (todo.archived || this.isReadonly || this.busyId) return;
+    this.busyId = todo.id;
+    try {
+      await patchTodo(todo.id, {done: !todo.done});
+      await this.reload();
+    } catch (error) {
+      await showError(error);
+      console.error(error);
+    } finally {
+      this.busyId = null;
+    }
+  }
+
+  private async onCopyTodo(todo: Todo) {
+    if (todo.archived || this.isReadonly || this.busyId) return;
+    this.busyId = todo.id;
+    try {
+      await copyTodo(todo);
+      await this.reload();
+    } catch (error) {
+      await showError(error);
+      console.error(error);
+    } finally {
+      this.busyId = null;
+    }
+  }
+
+  private async onDeleteToggleTodo(todo: Todo) {
+    if (this.isReadonly || this.busyId) return;
+    const deleting = !todo.archived;
+    if (deleting) {
+      const ok = await confirmDialog({
+        title: tx("tasks.delete_title"),
+        message: tx("tasks.delete_confirm"),
+        confirmLabel: tx("tasks.delete"),
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    this.busyId = todo.id;
+    try {
+      await patchTodo(todo.id, {archived: !todo.archived});
+      await this.reload();
+    } catch (error) {
+      await showError(error);
+      console.error(error);
+    } finally {
+      this.busyId = null;
+    }
   }
 
   private onKeyDown = (event: KeyboardEvent) => {
     if (event.key === "Escape" && this.drag) {
-      this.drag = null;
+      this.clearDrag();
     }
   };
 
@@ -360,57 +875,247 @@ export class TasksCalendar extends LitElement {
     return cell?.dataset.day ?? null;
   }
 
+  private minutesFromPoint(clientY: number): number | null {
+    const lanes = this.shadowRoot?.querySelector(
+      ".cal-day-lanes",
+    ) as HTMLElement | null;
+    if (!lanes) return null;
+    const rect = lanes.getBoundingClientRect();
+    if (rect.height <= 0) return null;
+    const ratio = (clientY - rect.top) / rect.height;
+    return snapMinutes(ratio * DAY_HOURS * 60);
+  }
+
+  private clearDrag() {
+    this.drag = null;
+    this.dragTriggerPop = null;
+    this.removeAttribute("data-dragging");
+    clearCalendarDragToast();
+  }
+
+  private syncDragToast(drag: DragState) {
+    if (!drag.moved) return;
+    const todo = this.todos.find((item) => item.id === drag.todoId);
+    if (!todo) return;
+    const detail =
+      drag.currentMinutes !== null
+        ? tf("calendar.drag.drop_at", {
+            time: formatMinutesLabel(drag.currentMinutes),
+          })
+        : tf("calendar.drag.drop_on", {
+            day: formatDayTitle(drag.currentDay),
+          });
+    toastCalendarDrag({
+      title: this.dragKindLabel(drag.kind),
+      text: `${todo.text} — ${detail}`,
+    });
+  }
+
+  private syncGhostPosition(x: number, y: number) {
+    const ghost = this.shadowRoot?.querySelector(
+      ".cal-drag-ghost",
+    ) as HTMLElement | null;
+    if (!ghost) return;
+    ghost.style.transform = `translate(${x + 12}px, ${y + 12}px)`;
+  }
+
   private beginDrag(
     kind: DragKind,
     todo: Todo,
     originDay: string,
     event: PointerEvent,
+    originMinutes: number | null = null,
+    originBounds: {startMin: number; endMin: number} | null = null,
   ) {
     if (this.isReadonly || this.busyId) return;
     event.preventDefault();
     event.stopPropagation();
+    this.dragTriggerPop = (event.currentTarget as HTMLElement | null)?.closest(
+      "sonic-pop",
+    ) as SonicPop | null;
+    this.setAttribute("data-dragging", "true");
     this.drag = {
       kind,
       todoId: todo.id,
       originDay,
       currentDay: originDay,
+      originMinutes,
+      currentMinutes: originMinutes,
+      originStartMin: originBounds?.startMin ?? null,
+      originEndMin: originBounds?.endMin ?? null,
       moved: false,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
     };
+    requestAnimationFrame(() =>
+      this.syncGhostPosition(event.clientX, event.clientY),
+    );
   }
 
   private onPointerMove = (event: PointerEvent) => {
     if (!this.drag) return;
+    this.syncGhostPosition(event.clientX, event.clientY);
+    let moved = this.drag.moved;
+    if (!moved) {
+      const dx = event.clientX - this.drag.pointerX;
+      const dy = event.clientY - this.drag.pointerY;
+      moved = dx * dx + dy * dy > 36;
+    }
+
+    if (this.drag.originMinutes !== null) {
+      const minutes = this.minutesFromPoint(event.clientY);
+      if (minutes !== null && minutes !== this.drag.currentMinutes) {
+        const next = {
+          ...this.drag,
+          currentMinutes: minutes,
+          moved: true,
+          pointerX: event.clientX,
+          pointerY: event.clientY,
+        };
+        this.drag = next;
+        this.syncDragToast(next);
+        return;
+      }
+      if (moved !== this.drag.moved) {
+        const next = {
+          ...this.drag,
+          moved,
+          pointerX: event.clientX,
+          pointerY: event.clientY,
+        };
+        this.drag = next;
+        this.syncDragToast(next);
+      }
+      return;
+    }
+
     const day = this.dayFromPoint(event.clientX, event.clientY);
     if (day && day !== this.drag.currentDay) {
-      this.drag = {...this.drag, currentDay: day, moved: true};
+      const next = {
+        ...this.drag,
+        currentDay: day,
+        moved: true,
+        pointerX: event.clientX,
+        pointerY: event.clientY,
+      };
+      this.drag = next;
+      this.syncDragToast(next);
+      return;
+    }
+    if (moved !== this.drag.moved) {
+      const next = {
+        ...this.drag,
+        moved,
+        pointerX: event.clientX,
+        pointerY: event.clientY,
+      };
+      this.drag = next;
+      this.syncDragToast(next);
     }
   };
 
   private onPointerUp = () => {
     if (!this.drag) return;
     const drag = this.drag;
-    this.drag = null;
+    const pop = this.dragTriggerPop;
+    this.clearDrag();
     if (!drag.moved) {
-      if (drag.kind === "move") {
-        const todo = this.todos.find((item) => item.id === drag.todoId);
-        if (todo) navigateTo(tacheItemPath(todo.id));
-      }
+      if (drag.kind === "move") pop?.show();
       return;
     }
     void this.applyDrag(drag);
   };
 
+  private previewSpanForDrag(drag: DragState): DateSpan | null {
+    const todo = this.todos.find((item) => item.id === drag.todoId);
+    if (!todo) return null;
+    if (drag.kind === "move") {
+      const delta = daysBetween(drag.originDay, drag.currentDay);
+      if (delta === 0) return todoDateSpan(todo);
+      const next = shiftTodoDates(todo, delta);
+      return next
+        ? {
+            start: toDateOnly(next.startAt) ?? next.startAt,
+            end: toDateOnly(next.endAt) ?? next.endAt,
+          }
+        : null;
+    }
+    const next = resizeTodoDates(
+      todo,
+      drag.kind === "resize-start" ? "start" : "end",
+      drag.currentDay,
+    );
+    return next
+      ? {
+          start: toDateOnly(next.startAt) ?? next.startAt,
+          end: toDateOnly(next.endAt) ?? next.endAt,
+        }
+      : null;
+  }
+
+  private dayInSpan(day: string, span: DateSpan | null): boolean {
+    if (!span) return false;
+    const start = toDateOnly(span.start) ?? span.start;
+    const end = toDateOnly(span.end) ?? span.end;
+    return day >= start && day <= end;
+  }
+
+  private dragKindIcon(kind: DragKind): string {
+    if (kind === "resize-start") return "nav-arrow-left";
+    if (kind === "resize-end") return "nav-arrow-right";
+    return "more-vert";
+  }
+
+  private dragKindLabel(kind: DragKind): string {
+    if (kind === "resize-start") return tx("calendar.drag.resize_start");
+    if (kind === "resize-end") return tx("calendar.drag.resize_end");
+    return tx("calendar.drag.move");
+  }
+
+  private renderIcon(name: string, size: "xs" | "sm" = "xs") {
+    return html`
+      <sonic-icon
+        library=${ICON_LIBRARY}
+        prefix=${ICON_PREFIX}
+        name=${name}
+        size=${size}
+      ></sonic-icon>
+    `;
+  }
+
   private async applyDrag(drag: DragState) {
     const todo = this.todos.find((item) => item.id === drag.todoId);
-    if (!todo || drag.currentDay === drag.originDay) return;
+    if (!todo) return;
 
     let next: {startAt: string; endAt: string} | null = null;
-    if (drag.kind === "move") {
-      next = shiftTodoDates(todo, daysBetween(drag.originDay, drag.currentDay));
-    } else if (drag.kind === "resize-start") {
-      next = resizeTodoDates(todo, "start", drag.currentDay);
+    if (drag.originMinutes !== null && drag.currentMinutes !== null) {
+      if (drag.currentMinutes === drag.originMinutes) return;
+      if (drag.kind === "move") {
+        next = moveTimedTodoToMinutes(
+          todo,
+          drag.originDay,
+          drag.currentMinutes,
+        );
+      } else {
+        next = resizeTimedTodoEdge(
+          todo,
+          drag.originDay,
+          drag.kind === "resize-start" ? "start" : "end",
+          drag.currentMinutes,
+        );
+      }
     } else {
-      next = resizeTodoDates(todo, "end", drag.currentDay);
+      if (drag.currentDay === drag.originDay) return;
+      if (drag.kind === "move") {
+        next = shiftTodoDates(
+          todo,
+          daysBetween(drag.originDay, drag.currentDay),
+        );
+      } else if (drag.kind === "resize-start") {
+        next = resizeTodoDates(todo, "start", drag.currentDay);
+      } else {
+        next = resizeTodoDates(todo, "end", drag.currentDay);
+      }
     }
     if (!next) return;
 
@@ -509,12 +1214,23 @@ export class TasksCalendar extends LitElement {
     `;
   }
 
-  private renderChip(todo: Todo, day: string, showHandles = false) {
+  private renderChip(
+    todo: Todo,
+    day: string,
+    showHandles = false,
+    opts: {preview?: boolean; inPreviewSpan?: boolean} = {},
+  ) {
     const span = todoDateSpan(todo);
     const isStart = span?.start === day;
     const isEnd = span?.end === day;
     const multi = Boolean(span && span.start !== span.end);
-    return html`
+    const canDrag = showHandles && !this.isReadonly && !opts.preview;
+    const isDragged = Boolean(
+      this.drag?.moved && this.drag.todoId === todo.id && !opts.preview,
+    );
+    const isLeaving = isDragged && !opts.inPreviewSpan;
+    const isLanding = opts.preview || (isDragged && Boolean(opts.inPreviewSpan));
+    const chip = html`
       <sonic-tooltip
         class="cal-chip-tooltip"
         label=${todo.text}
@@ -524,81 +1240,306 @@ export class TasksCalendar extends LitElement {
           type="button"
           class="cal-chip ${priorityTone(todo.priority)}"
           data-done=${todo.done ? "true" : "false"}
+          data-source=${isLeaving ? "true" : "false"}
+          data-preview-chip=${isLanding ? "true" : "false"}
           @pointerdown=${(event: PointerEvent) => {
-            if (!showHandles || this.isReadonly) return;
+            if (!canDrag) return;
             this.beginDrag("move", todo, day, event);
           }}
           @click=${(event: Event) => {
-            if (showHandles && !this.isReadonly) {
+            if (opts.preview || canDrag) {
+              // Preview: inerte. Drag: ouverture via pointerup→show()
+              // pour ne pas toggler/fermer le pop juste après.
               event.preventDefault();
               event.stopPropagation();
-              return;
             }
-            this.openTodo(todo, event);
           }}
         >
-          ${showHandles && multi && isStart && !this.isReadonly
+          ${canDrag && multi && isStart
             ? html`
                 <span
                   class="cal-handle"
+                  title=${tx("calendar.drag.resize_start")}
                   @pointerdown=${(event: PointerEvent) =>
                     this.beginDrag("resize-start", todo, day, event)}
-                ></span>
+                >
+                  ${this.renderIcon("nav-arrow-left")}
+                </span>
+              `
+            : nothing}
+          ${canDrag
+            ? html`
+                <span class="cal-grip" aria-hidden="true">
+                  ${this.renderIcon("more-vert")}
+                </span>
+              `
+            : nothing}
+          ${opts.preview && this.drag
+            ? html`
+                <span class="cal-grip" aria-hidden="true">
+                  ${this.renderIcon(this.dragKindIcon(this.drag.kind))}
+                </span>
               `
             : nothing}
           <span class="cal-chip-label">${todo.text}</span>
-          ${showHandles && multi && isEnd && !this.isReadonly
+          ${canDrag && multi && isEnd
             ? html`
                 <span
                   class="cal-handle"
+                  title=${tx("calendar.drag.resize_end")}
                   @pointerdown=${(event: PointerEvent) =>
                     this.beginDrag("resize-end", todo, day, event)}
-                ></span>
+                >
+                  ${this.renderIcon("nav-arrow-right")}
+                </span>
               `
             : nothing}
         </button>
       </sonic-tooltip>
     `;
+    if (opts.preview) return chip;
+    return html`
+      <sonic-pop class="cal-chip-pop" placement="bottom">
+        ${chip} ${this.renderTodoActionsMenu(todo)}
+      </sonic-pop>
+    `;
   }
 
-  private renderDayView() {
-    const items = todosForDay(this.filtered, this.anchor);
-    if (items.length === 0) {
+  private renderDragGhost() {
+    if (!this.drag?.moved) return nothing;
+    const todo = this.todos.find((item) => item.id === this.drag!.todoId);
+    if (!todo) return nothing;
+    return html`
+      <div
+        class="cal-drag-ghost ${priorityTone(todo.priority)}"
+        style=${`transform: translate(${this.drag.pointerX + 12}px, ${this.drag.pointerY + 12}px)`}
+      >
+        ${this.renderIcon(this.dragKindIcon(this.drag.kind))}
+        <span class="cal-chip-label">${todo.text}</span>
+      </div>
+    `;
+  }
+
+  private renderDayTimedEvent(
+    todo: Todo,
+    startMin: number,
+    endMin: number,
+    opts: {preview?: boolean; source?: boolean} = {},
+  ) {
+    const top = (startMin / (DAY_HOURS * 60)) * 100;
+    const height = Math.max(
+      ((endMin - startMin) / (DAY_HOURS * 60)) * 100,
+      (30 / (DAY_HOURS * 60)) * 100,
+    );
+    const canDrag = !this.isReadonly && !opts.preview;
+    const bounds = {startMin, endMin};
+    const timeLabel = `${formatMinutesLabel(startMin)} – ${formatMinutesLabel(endMin)}`;
+    const eventButton = html`
+      <button
+        type="button"
+        class="cal-day-event ${priorityTone(todo.priority)}"
+        data-done=${todo.done ? "true" : "false"}
+        data-preview=${opts.preview ? "true" : "false"}
+        data-source=${opts.source ? "true" : "false"}
+        title=${`${todo.text} (${timeLabel})`}
+        @pointerdown=${(event: PointerEvent) => {
+          if (!canDrag) return;
+          this.beginDrag("move", todo, this.anchor, event, startMin, bounds);
+        }}
+        @click=${(event: Event) => {
+          if (opts.preview || canDrag) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }}
+      >
+        ${canDrag
+          ? html`
+              <span
+                class="cal-day-handle cal-day-handle-start"
+                title=${tx("calendar.drag.resize_start")}
+                @pointerdown=${(event: PointerEvent) =>
+                  this.beginDrag(
+                    "resize-start",
+                    todo,
+                    this.anchor,
+                    event,
+                    startMin,
+                    bounds,
+                  )}
+              >
+                <span class="cal-day-handle-bar" aria-hidden="true"></span>
+              </span>
+            `
+          : nothing}
+        <span class="cal-day-event-time">${timeLabel}</span>
+        <span class="cal-day-event-title">${todo.text}</span>
+        ${canDrag
+          ? html`
+              <span
+                class="cal-day-handle cal-day-handle-end"
+                title=${tx("calendar.drag.resize_end")}
+                @pointerdown=${(event: PointerEvent) =>
+                  this.beginDrag(
+                    "resize-end",
+                    todo,
+                    this.anchor,
+                    event,
+                    endMin,
+                    bounds,
+                  )}
+              >
+                <span class="cal-day-handle-bar" aria-hidden="true"></span>
+              </span>
+            `
+          : nothing}
+      </button>
+    `;
+    if (opts.preview) {
       return html`
-        <div class="rounded border border-dashed border-neutral-300 p-6 text-center">
-          <p class="text-sm text-neutral-600">${t("calendar.empty")}</p>
-          <p class="mt-1 text-xs text-neutral-500">${t("calendar.empty_hint")}</p>
+        <div
+          class="cal-day-event-pop"
+          style=${`top:${top}%;height:${height}%`}
+        >
+          ${eventButton}
         </div>
       `;
     }
     return html`
-      <ul class="divide-y divide-neutral-200">
-        ${items.map(
-          (todo) => html`
-            <li class="py-3">
-              <button
-                type="button"
-                class="flex w-full items-start gap-2 text-left"
-                @click=${() => this.openTodo(todo)}
-              >
-                <span
-                  class="mt-0.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full border ${priorityTone(
-                    todo.priority,
-                  )}"
-                ></span>
-                <span class="min-w-0 flex-1">
-                  <span
-                    class="block text-sm font-medium ${todo.done
-                      ? "text-neutral-400 line-through"
-                      : "text-neutral-900"}"
-                    >${todo.text}</span
-                  >
-                </span>
-              </button>
-            </li>
-          `,
-        )}
-      </ul>
+      <sonic-pop
+        class="cal-day-event-pop"
+        placement="bottom"
+        style=${`top:${top}%;height:${height}%`}
+      >
+        ${eventButton} ${this.renderTodoActionsMenu(todo)}
+      </sonic-pop>
+    `;
+  }
+
+  private renderDayView() {
+    const {allDay, timed} = partitionDayTodos(this.filtered, this.anchor);
+    const now = new Date();
+    const isToday = this.anchor === todayDateOnly(now);
+    const nowMin = isToday ? now.getHours() * 60 + now.getMinutes() : null;
+
+    const timeDrag = this.drag;
+    const dragTimed =
+      timeDrag?.moved &&
+      timeDrag.originMinutes !== null &&
+      timeDrag.currentMinutes !== null &&
+      timeDrag.originStartMin !== null &&
+      timeDrag.originEndMin !== null
+        ? this.todos.find((item) => item.id === timeDrag.todoId)
+        : null;
+    const previewBounds =
+      dragTimed &&
+      timeDrag &&
+      timeDrag.currentMinutes !== null &&
+      timeDrag.originStartMin !== null &&
+      timeDrag.originEndMin !== null
+        ? previewTimedDragMinutes(
+            timeDrag.kind,
+            timeDrag.originStartMin,
+            timeDrag.originEndMin,
+            timeDrag.currentMinutes,
+          )
+        : null;
+
+    const isEmpty = allDay.length === 0 && timed.length === 0;
+
+    return html`
+      <div class="cal-day" data-day=${this.anchor}>
+        ${isEmpty
+          ? html`
+              <div class="rounded border border-dashed border-neutral-300 px-3 py-2">
+                <p class="text-sm text-neutral-600">${t("calendar.empty")}</p>
+                <p class="mt-0.5 text-xs text-neutral-500">
+                  ${t("calendar.empty_hint")}
+                </p>
+              </div>
+            `
+          : nothing}
+        ${allDay.length > 0
+          ? html`
+              <div class="cal-allday">
+                <div class="cal-allday-label">${t("calendar.all_day")}</div>
+                ${allDay.map((item) =>
+                  this.renderChip(item.todo, this.anchor, true),
+                )}
+              </div>
+            `
+          : nothing}
+        <div class="cal-day-scroll">
+          <div class="cal-day-grid">
+            <div class="cal-day-hours" aria-hidden="true">
+              ${Array.from({length: DAY_HOURS}, (_, hour) => {
+                return html`
+                  <div class="cal-day-hour">
+                    ${hour === 0 ? "" : formatMinutesLabel(hour * 60)}
+                  </div>
+                `;
+              })}
+            </div>
+            <div class="cal-day-lanes">
+              ${Array.from(
+                {length: DAY_HOURS},
+                (_, hour) => html`
+                  <div
+                    class="cal-day-line"
+                    style=${`top: ${(hour / DAY_HOURS) * 100}%`}
+                  ></div>
+                  <button
+                    type="button"
+                    class="cal-day-slot"
+                    style=${`top: ${(hour / DAY_HOURS) * 100}%; height: ${100 / DAY_HOURS}%`}
+                    title=${this.isReadonly
+                      ? ""
+                      : tf("calendar.create_hour_hint", {
+                          time: formatMinutesLabel(hour * 60),
+                        })}
+                    ?disabled=${this.isReadonly}
+                    @click=${(event: Event) => {
+                      event.stopPropagation();
+                      this.onActivate(
+                        `hour:${this.anchor}:${hour}`,
+                        () => undefined,
+                        () => this.createTodoAtHour(hour),
+                      );
+                    }}
+                  ></button>
+                `,
+              )}
+              ${nowMin !== null
+                ? html`<div
+                    class="cal-day-now"
+                    style=${`top: ${(nowMin / (DAY_HOURS * 60)) * 100}%`}
+                  ></div>`
+                : nothing}
+              ${timed.map((item) => {
+                const isDragged = Boolean(
+                  this.drag?.moved &&
+                    this.drag.todoId === item.todo.id &&
+                    this.drag.originMinutes !== null,
+                );
+                return this.renderDayTimedEvent(
+                  item.todo,
+                  item.startMin,
+                  item.endMin,
+                  {source: isDragged},
+                );
+              })}
+              ${dragTimed && previewBounds
+                ? this.renderDayTimedEvent(
+                    dragTimed,
+                    previewBounds.startMin,
+                    previewBounds.endMin,
+                    {preview: true},
+                  )
+                : nothing}
+            </div>
+          </div>
+        </div>
+      </div>
     `;
   }
 
@@ -612,7 +1553,15 @@ export class TasksCalendar extends LitElement {
         : monthGridDays(this.anchor);
     const month = monthRangeContaining(this.anchor);
     const today = todayDateOnly();
-    const dropDay = this.drag?.currentDay ?? null;
+    const dropDay = this.drag?.moved ? this.drag.currentDay : null;
+    const previewSpan =
+      this.drag?.moved && this.drag
+        ? this.previewSpanForDrag(this.drag)
+        : null;
+    const dragTodo =
+      this.drag?.moved && this.drag
+        ? this.todos.find((item) => item.id === this.drag!.todoId)
+        : null;
     const labels = weekdayLabels(true);
 
     return html`
@@ -633,24 +1582,51 @@ export class TasksCalendar extends LitElement {
             kind === "month" ? items.slice(0, MONTH_CHIP_LIMIT) : items;
           const overflow =
             kind === "month" ? Math.max(0, items.length - MONTH_CHIP_LIMIT) : 0;
+          const isDrop = dropDay === day;
+          const isPreview = this.dayInSpan(day, previewSpan);
+          const showPreviewChip =
+            Boolean(dragTodo && isPreview) &&
+            !items.some((item) => item.id === dragTodo!.id);
           return html`
             <div
               class="cal-cell"
               data-day=${day}
               data-muted=${inMonth ? "false" : "true"}
               data-today=${day === today ? "true" : "false"}
-              data-drop=${dropDay === day ? "true" : "false"}
-              @click=${() => this.openDay(day)}
+              data-anchor=${day === this.anchor ? "true" : "false"}
+              data-preview=${isPreview ? "true" : "false"}
+              data-drop=${isDrop ? "true" : "false"}
+              title=${this.isReadonly ? "" : tx("calendar.create_day_hint")}
+              @click=${() =>
+                this.onActivate(
+                  `day:${day}`,
+                  () => this.focusDay(day),
+                  () => this.createTodoForDay(day),
+                )}
             >
               <div class="flex items-center justify-between px-0.5">
-                <span class="text-xs font-semibold">${dayOfMonth(day)}</span>
-                ${items.length > 0
-                  ? html`<span class="text-[0.6rem] text-neutral-400"
-                      >${items.length}</span
+                <span class="cal-day-num text-xs font-semibold"
+                  >${dayOfMonth(day)}</span
+                >
+                ${isDrop
+                  ? html`<span class="text-[0.6rem] font-medium text-[var(--sc-primary,#2563eb)]"
+                      >${this.renderIcon(this.dragKindIcon(this.drag!.kind))}</span
                     >`
-                  : nothing}
+                  : items.length > 0
+                    ? html`<span class="text-[0.6rem] text-neutral-400"
+                        >${items.length}</span
+                      >`
+                    : nothing}
               </div>
-              ${visible.map((todo) => this.renderChip(todo, day, true))}
+              ${visible.map((todo) =>
+                this.renderChip(todo, day, true, {inPreviewSpan: isPreview}),
+              )}
+              ${showPreviewChip && dragTodo
+                ? this.renderChip(dragTodo, day, false, {
+                    preview: true,
+                    inPreviewSpan: true,
+                  })
+                : nothing}
               ${overflow > 0
                 ? html`
                     <button
@@ -687,13 +1663,22 @@ export class TasksCalendar extends LitElement {
           const isCurrent = today.startsWith(
             `${year}-${String(monthIndex0 + 1).padStart(2, "0")}`,
           );
+          const monthKey = `${year}-${String(monthIndex0 + 1).padStart(2, "0")}`;
+          const isAnchor = this.anchor.startsWith(monthKey);
           return html`
             <button
               type="button"
-              class="rounded border border-neutral-200 p-3 text-left hover:bg-neutral-50 ${isCurrent
+              class="cal-year-month rounded border border-neutral-200 p-3 text-left hover:bg-neutral-50 ${isCurrent
                 ? "outline outline-2 outline-offset-[-2px]"
                 : ""}"
-              @click=${() => this.openMonth(year, monthIndex0)}
+              data-anchor=${isAnchor ? "true" : "false"}
+              title=${tx("calendar.open_month_hint")}
+              @click=${() =>
+                this.onActivate(
+                  `month:${year}:${monthIndex0}`,
+                  () => this.focusMonth(year, monthIndex0),
+                  () => this.openMonth(year, monthIndex0),
+                )}
             >
               <div class="text-sm font-semibold">${monthShortName(monthIndex0)}</div>
               <div class="mt-1 text-xs text-neutral-500">
@@ -721,6 +1706,7 @@ export class TasksCalendar extends LitElement {
       <div class="flex flex-col gap-3">
         ${this.renderToolbar()}
         ${this.renderBody()}
+        ${this.renderDragGhost()}
       </div>
     `;
   }

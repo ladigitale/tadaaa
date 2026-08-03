@@ -23,6 +23,7 @@ import {
 import {isAccountConnected} from "../account-settings";
 import {showAlert} from "../utils/modal-dialog";
 import tailwind from "../../css/tailwind";
+import "./account-required-cta";
 import "./config-scope-header";
 import "./page-shell";
 
@@ -245,6 +246,11 @@ export class ConfigNotificationsPage extends LitElement {
               : tx("notif.status.no")}
           </li>
         </ul>
+        ${status.code === "need_account"
+          ? html`<div class="mt-3">
+              <account-required-cta bare></account-required-cta>
+            </div>`
+          : nothing}
         ${canRetry
           ? html`
               <div class="mt-2">

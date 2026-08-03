@@ -1,0 +1,8 @@
+/** Side-effect: registers built-in Ctrl+Shift+P providers. */
+import "./providers";
+
+export {collectCommandGroups, registerCommandProvider} from "./registry";
+export {warmCommandPaletteCache} from "./providers";
+export type {CommandGroup} from "./registry";
+export type {CommandItem, CommandItemType, CommandProvider} from "./types";
+export {COMMAND_TYPE_ORDER} from "./types";

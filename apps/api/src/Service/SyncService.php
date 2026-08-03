@@ -13,6 +13,7 @@ use App\Repository\DatasetRepository;
 use App\Repository\TagRepository;
 use App\Repository\TodoRepository;
 use App\Util\BaseIdParser;
+use App\Util\TodoDate;
 use App\Webhook\WebhookEventType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -447,33 +448,11 @@ final class SyncService
             'priority' => $todo->setPriority(is_string($value) ? $value : 'medium'),
             'tagIds' => $todo->setTagIds(is_array($value) ? array_values(array_map('strval', $value)) : []),
             'parentId' => $todo->setParentId(is_string($value) && $value !== '' ? $value : null),
-            'startAt' => $todo->setStartAt($this->parseDateOnly($value)),
-            'endAt' => $todo->setEndAt($this->parseDateOnly($value)),
+            'startAt' => $todo->setStartAt(TodoDate::parse(is_string($value) ? $value : null)),
+            'endAt' => $todo->setEndAt(TodoDate::parse(is_string($value) ? $value : null)),
             'recurrence' => $todo->setRecurrence(TodoRecurrence::normalize(is_string($value) ? $value : null)),
             default => null,
         };
-    }
-
-    private function parseDateOnly(mixed $value): ?\DateTimeImmutable
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-        if (!is_string($value)) {
-            return null;
-        }
-        $trimmed = trim($value);
-        if ($trimmed === '') {
-            return null;
-        }
-        // Accept YYYY-MM-DD or ISO datetime prefix
-        $datePart = substr($trimmed, 0, 10);
-        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $datePart);
-        if ($date === false) {
-            return null;
-        }
-
-        return $date;
     }
 
     private function applyTagField(Tag $tag, string $field, mixed $value): void

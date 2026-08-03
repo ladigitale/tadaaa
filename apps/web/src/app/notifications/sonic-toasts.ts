@@ -84,3 +84,50 @@ export function toastMemberJoined(info: {
     console.warn("[toast] member joined failed", error);
   }
 }
+
+const CALENDAR_DRAG_TOAST_ID = "calendar-drag";
+
+/** Live toast while dragging a task in the calendar (upsert by stable id). */
+export function toastCalendarDrag(info: {
+  title: string;
+  text: string;
+}): void {
+  const title = info.title;
+  const text = escapeHtml(info.text);
+  try {
+    const host = SonicToast.getInstance();
+    const existing = host.toasts.some((item) => item.id === CALENDAR_DRAG_TOAST_ID);
+    if (existing) {
+      host.toasts = host.toasts.map((item) =>
+        item.id === CALENDAR_DRAG_TOAST_ID
+          ? {
+              ...item,
+              title,
+              text,
+              status: "info",
+              preserve: true,
+            }
+          : item,
+      );
+      return;
+    }
+    SonicToast.add({
+      id: CALENDAR_DRAG_TOAST_ID,
+      title,
+      text,
+      status: "info",
+      preserve: true,
+    });
+  } catch (error) {
+    console.warn("[toast] calendar drag failed", error);
+  }
+}
+
+export function clearCalendarDragToast(): void {
+  try {
+    const host = SonicToast.getInstance();
+    host.toasts = host.toasts.filter((item) => item.id !== CALENDAR_DRAG_TOAST_ID);
+  } catch (error) {
+    console.warn("[toast] calendar drag clear failed", error);
+  }
+}

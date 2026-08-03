@@ -18,11 +18,8 @@ export class AppRouterHost extends LitElement {
     this.setAttribute("serviceURL", getMockApiServiceUrl());
     this.setAttribute("wordingProvider", "wordings");
     initApp();
-
-    const path = document.location.pathname;
-    if (!path || path === "/" || path === "/index.html") {
-      history.replaceState(null, "", "/tache");
-    }
+    // Root `/` is the guest landing (home-landing). Redirect to /tache only
+    // after a verified cloud session — never here at boot.
   }
 
   render() {

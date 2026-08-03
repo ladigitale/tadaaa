@@ -10,7 +10,7 @@ import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {patchTodo} from "../api/client";
+import {copyTodo, patchTodo} from "../api/client";
 import type {Tag, Todo, TodoPriority} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
 import {tagsListKey, todosDoneKey} from "../dp";
@@ -21,7 +21,7 @@ import {confirmDialog, showError} from "../utils/modal-dialog";
 import "./tag-badge";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import {tacheItemEditPath, tacheItemMovePath, tacheItemPath} from "../utils/tache-paths";
-import {todoDateSpan, localeTag} from "../utils/dates";
+import {formatTodoDateLabel} from "../utils/dates";
 import {parseRecurrence} from "../utils/recurrence";
 
 const PRIORITY_TYPE: Record<
@@ -42,14 +42,6 @@ function priorityLabel(priority: TodoPriority): string {
     default:
       return tx("tasks.priority.medium");
   }
-}
-
-function formatShortDate(dateOnly: string): string {
-  const [y, m, d] = dateOnly.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(localeTag(), {
-    day: "numeric",
-    month: "short",
-  });
 }
 
 function normalizeIds(value: unknown): string[] {
@@ -159,6 +151,28 @@ export class TodoRow extends LitElement {
     return this.todo.childCount ?? 0;
   }
 
+  private get subtasksLabel(): string {
+    return tf("tasks.subtasks", {n: this.childCount});
+  }
+
+  private renderChildCountBadge(options?: {slot?: string; absolute?: boolean}) {
+    if (this.childCount <= 0) return nothing;
+    return html`
+      <sonic-tooltip
+        label=${this.subtasksLabel}
+        placement="bottom"
+        slot=${options?.slot ?? nothing}
+        class=${options?.absolute
+          ? "absolute right-1 bottom-1 translate-x-1/2 translate-y-1/2 transform"
+          : "inline-block"}
+      >
+        <sonic-badge type="neutral" size="xs"
+          >${this.childCount}</sonic-badge
+        >
+      </sonic-tooltip>
+    `;
+  }
+
   connectedCallback() {
     // Garantit un tableau : sinon le 1er initPublisher FormCheckable écrit `[]`
     // et efface toutes les autres values déjà présentes.
@@ -238,6 +252,13 @@ export class TodoRow extends LitElement {
     }
   }
 
+  private onCopy = () => {
+    if (!this.todo || this.todo.archived) return;
+    void this.runAction(async () => {
+      await copyTodo(this.todo);
+    });
+  };
+
   private onDeleteToggle = async () => {
     const deleting = !this.todo.archived;
     if (deleting) {
@@ -267,29 +288,28 @@ export class TodoRow extends LitElement {
     `;
   }
 
-  private get childrenLabel(): string {
-    return tf("tasks.subtasks", {n: this.childCount});
-  }
-
-  private renderChildrenButton() {
+  private renderSeeButton() {
     if (this.todo.archived) return nothing;
 
     return html`
-      <sonic-button
-        href=${this.childrenHref}
-        pushstate
-        size="sm"
-        variant="ghost"
-        ?disabled=${this.busy}
-      >
-        <sonic-icon
-          library=${ICON_LIBRARY}
-          prefix=${ICON_PREFIX}
-          name="list"
+      <div class="relative inline-block">
+        <sonic-button
+          href=${this.childrenHref}
+          pushstate
+          shape="circle"
           size="sm"
-        ></sonic-icon>
-        ${this.childrenLabel}
-      </sonic-button>
+          ?disabled=${this.busy}
+          data-aria-label=${tx("tasks.see")}
+        >
+          <sonic-icon
+            library=${ICON_LIBRARY}
+            prefix=${ICON_PREFIX}
+            name="eye"
+            size="lg"
+          ></sonic-icon>
+        </sonic-button>
+        ${this.renderChildCountBadge({absolute: true})}
+      </div>
     `;
   }
 
@@ -327,8 +347,9 @@ export class TodoRow extends LitElement {
                   pushstate
                   ?disabled=${this.busy}
                 >
-                  ${this.renderMenuItemIcon("list")}
-                  ${this.childrenLabel}
+                  ${this.renderMenuItemIcon("eye")}
+                  ${t("tasks.see")}
+                  ${this.renderChildCountBadge({slot: "suffix"})}
                 </sonic-menu-item>
                 <sonic-menu-item
                   href=${tacheItemEditPath(this.todo.id)}
@@ -344,6 +365,12 @@ export class TodoRow extends LitElement {
                 >
                   ${this.renderMenuItemIcon("data-transfer-both")}
                   ${t("tasks.move")}
+                </sonic-menu-item>
+                <sonic-menu-item
+                  ?disabled=${this.busy}
+                  @click=${this.onCopy}
+                >
+                  ${this.renderMenuItemIcon("copy")} ${t("tasks.copy")}
                 </sonic-menu-item>
                 <sonic-menu-item
                   type="danger"
@@ -372,12 +399,16 @@ export class TodoRow extends LitElement {
 
   private renderMeta() {
     const priority = this.priorityMeta;
-    const span = todoDateSpan(this.todo);
-    const dateLabel = span
-      ? span.start === span.end
-        ? formatShortDate(span.start)
-        : `${formatShortDate(span.start)} → ${formatShortDate(span.end)}`
-      : null;
+    const startLabel = this.todo.startAt
+      ? formatTodoDateLabel(this.todo.startAt)
+      : "";
+    const endLabel = this.todo.endAt
+      ? formatTodoDateLabel(this.todo.endAt)
+      : "";
+    const dateLabel =
+      startLabel && endLabel && startLabel !== endLabel
+        ? `${startLabel} → ${endLabel}`
+        : startLabel || endLabel || null;
     const recurrence = parseRecurrence(this.todo.recurrence);
     const recurrenceLabel =
       recurrence === "none"
@@ -448,7 +479,7 @@ export class TodoRow extends LitElement {
           ${this.renderBody()}
 
           <div class="flex shrink-0 items-center gap-0.5">
-            ${this.renderChildrenButton()} ${this.renderActionsMenu()}
+            ${this.renderSeeButton()} ${this.renderActionsMenu()}
           </div>
         </div>
       </article>

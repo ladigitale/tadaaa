@@ -21,6 +21,7 @@ import {showError} from "../utils/modal-dialog";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import {tx} from "../i18n";
 import tailwind from "../../css/tailwind";
+import "./account-required-cta";
 import "./page-shell";
 
 function readInviteToken(): string {
@@ -101,10 +102,6 @@ export class InvitePage extends LitElement {
     }
   };
 
-  private onGoAccount = () => {
-    navigateTo("/account");
-  };
-
   render() {
     const connected = isAccountConnected(this.account);
 
@@ -141,14 +138,9 @@ export class InvitePage extends LitElement {
             : nothing}
 
           ${!connected
-            ? html`
-                <p class="text-sm text-neutral-600">
-                  ${t("invite.need_account")}
-                </p>
-                <sonic-button type="primary" @click=${this.onGoAccount}
-                  >${t("invite.go_account")}</sonic-button
-                >
-              `
+            ? html`<account-required-cta
+                messageKey="invite.need_account"
+              ></account-required-cta>`
             : nothing}
 
           ${this.preview

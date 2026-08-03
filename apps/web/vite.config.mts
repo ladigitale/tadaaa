@@ -30,9 +30,10 @@ const config = {
       ignored: ["**/*.svg"],
     },
     proxy: {
-      // Évite le mixed content HTTPS (Vite) → HTTP (httpd devops)
+      // Browser → same-origin /tada-cloud/* ; Vite (nodejs container) → API on Docker net.
+      // Override: VITE_CLOUD_PROXY_TARGET=https://tada-api.julien.test (host-side Vite).
       "/tada-cloud": {
-        target: "https://tada-api.julien.test",
+        target: process.env.VITE_CLOUD_PROXY_TARGET || "http://php",
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/tada-cloud/, ""),

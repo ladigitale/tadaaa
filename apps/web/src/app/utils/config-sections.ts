@@ -15,8 +15,35 @@ export type ConfigSectionGroup = {
   items: ConfigSectionChoice[];
 };
 
-/** Menu & scope header : Personnalisation → Compte → Connectivité → Données. */
+/** Menu & scope header : Compte (top) → Personnalisation → Connectivité → Données. */
 export const CONFIG_SECTION_GROUPS: ConfigSectionGroup[] = [
+  {
+    id: "account",
+    labelKey: "nav.group.account",
+    items: [
+      {
+        id: "account",
+        labelKey: "config.section.account",
+        descriptionKey: "config.section.account.help",
+        icon: "user",
+        href: configSectionPath("account"),
+      },
+      {
+        id: "accountLogin",
+        labelKey: "config.section.accountLogin",
+        descriptionKey: "config.section.accountLogin.help",
+        icon: "log-in",
+        href: configSectionPath("accountLogin"),
+      },
+      {
+        id: "accountRegister",
+        labelKey: "config.section.accountRegister",
+        descriptionKey: "config.section.accountRegister.help",
+        icon: "user-plus",
+        href: configSectionPath("accountRegister"),
+      },
+    ],
+  },
   {
     id: "personalization",
     labelKey: "nav.group.personalization",
@@ -48,19 +75,6 @@ export const CONFIG_SECTION_GROUPS: ConfigSectionGroup[] = [
         descriptionKey: "config.section.links.help",
         icon: "link",
         href: configSectionPath("links"),
-      },
-    ],
-  },
-  {
-    id: "account",
-    labelKey: "nav.group.account",
-    items: [
-      {
-        id: "account",
-        labelKey: "config.section.account",
-        descriptionKey: "config.section.account.help",
-        icon: "user",
-        href: configSectionPath("account"),
       },
     ],
   },
@@ -102,6 +116,13 @@ export const CONFIG_SECTION_GROUPS: ConfigSectionGroup[] = [
     id: "data",
     labelKey: "nav.group.data",
     items: [
+      {
+        id: "sync",
+        labelKey: "config.section.sync",
+        descriptionKey: "config.section.sync.help",
+        icon: "data-transfer-both",
+        href: configSectionPath("sync"),
+      },
       {
         id: "cloud",
         labelKey: "config.section.cloud",

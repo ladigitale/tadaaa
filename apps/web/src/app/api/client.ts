@@ -113,6 +113,20 @@ export async function createTodo(input: CreateTodoInput): Promise<Todo> {
   return result.data;
 }
 
+/** Duplique une tâche (non terminée / non archivée), même parent. */
+export async function copyTodo(source: Todo): Promise<Todo> {
+  return createTodo({
+    text: source.text,
+    description: source.description ?? null,
+    priority: source.priority,
+    tagIds: source.tagIds,
+    parentId: source.parentId,
+    startAt: source.startAt ?? null,
+    endAt: source.endAt ?? null,
+    recurrence: source.recurrence ?? null,
+  });
+}
+
 export async function patchTodo(
   id: string,
   patch: UpdateTodoPatch,

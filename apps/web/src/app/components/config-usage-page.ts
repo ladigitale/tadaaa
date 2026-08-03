@@ -7,6 +7,7 @@ import {isAccountConnected} from "../account-settings";
 import {fetchUsage, type UsageReport} from "../cloud-api/client";
 import {showError} from "../utils/modal-dialog";
 import tailwind from "../../css/tailwind";
+import "./account-required-cta";
 import "./config-scope-header";
 import "./page-shell";
 
@@ -58,7 +59,9 @@ export class ConfigUsagePage extends LitElement {
       <page-shell>
         <config-scope-header section="usage"></config-scope-header>
         ${!this.connected
-          ? html`<sonic-alert type="info">${t("usage.need_account")}</sonic-alert>`
+          ? html`<account-required-cta
+              messageKey="usage.need_account"
+            ></account-required-cta>`
           : html`
               <p class="text-sm opacity-80 mb-4">${t("usage.intro")}</p>
               <sonic-button size="sm" class="mb-4" @click=${() => this.reload()}>

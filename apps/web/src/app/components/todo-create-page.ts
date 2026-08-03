@@ -17,7 +17,8 @@ import {navigateTo} from "../utils/navigate";
 import {TACHE_ROOT, tacheItemPath} from "../utils/tache-paths";
 import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {focusPrimaryInput} from "../utils/focus-primary-input";
-import {parseDateOnly} from "../utils/dates";
+import {wireFromLocalInput} from "../utils/dates";
+import {takeTodoCreateDraft} from "../utils/todo-create-draft";
 import {parseRecurrence} from "../utils/recurrence";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
@@ -52,7 +53,9 @@ const emptyCreateForm = (): TodoCreateForm => ({
   priority: "medium",
   tagIds: [],
   startAt: "",
+  startTime: "",
   endAt: "",
+  endTime: "",
   recurrence: "none",
 });
 
@@ -88,7 +91,8 @@ export class TodoCreatePage extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    set(todoCreateKey.path, emptyCreateForm());
+    const draft = takeTodoCreateDraft();
+    set(todoCreateKey.path, {...emptyCreateForm(), ...draft});
     void this.loadTags();
   }
 
@@ -123,8 +127,8 @@ export class TodoCreatePage extends LitElement {
 
     this.busy = true;
     try {
-      const startAt = parseDateOnly(form.startAt);
-      const endAt = parseDateOnly(form.endAt);
+      const startAt = wireFromLocalInput(form.startAt, form.startTime);
+      const endAt = wireFromLocalInput(form.endAt, form.endTime);
       await createTodo({
         text,
         description: form.description?.trim() || null,
@@ -181,9 +185,21 @@ export class TodoCreatePage extends LitElement {
             ></sonic-input>
 
             <sonic-input
+              type="time"
+              name="startTime"
+              label=${tx("tasks.form.start_time")}
+            ></sonic-input>
+
+            <sonic-input
               type="date"
               name="endAt"
               label=${tx("tasks.form.end_at")}
+            ></sonic-input>
+
+            <sonic-input
+              type="time"
+              name="endTime"
+              label=${tx("tasks.form.end_time")}
             ></sonic-input>
 
             <pop-select

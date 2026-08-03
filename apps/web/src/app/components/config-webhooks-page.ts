@@ -29,6 +29,7 @@ import {appConfigKey, type AppConfigForm} from "../dp";
 import {confirmDialog, showError} from "../utils/modal-dialog";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
+import "./account-required-cta";
 import "./config-scope-header";
 import "./page-shell";
 
@@ -192,7 +193,9 @@ export class ConfigWebhooksPage extends LitElement {
       <page-shell>
         <config-scope-header section="webhooks"></config-scope-header>
         ${!this.connected
-          ? html`<sonic-alert type="info">${t("webhooks.need_account")}</sonic-alert>`
+          ? html`<account-required-cta
+              messageKey="webhooks.need_account"
+            ></account-required-cta>`
           : html`
               <p class="text-sm opacity-80 mb-4">${t("webhooks.intro")}</p>
               ${this.plainSecret
