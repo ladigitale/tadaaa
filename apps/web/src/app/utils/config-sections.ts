@@ -90,13 +90,6 @@ export const CONFIG_SECTION_GROUPS: ConfigSectionGroup[] = [
         href: configSectionPath("mcp"),
       },
       {
-        id: "calendar",
-        labelKey: "config.section.calendar",
-        descriptionKey: "config.section.calendar.help",
-        icon: "calendar",
-        href: configSectionPath("calendar"),
-      },
-      {
         id: "webhooks",
         labelKey: "config.section.webhooks",
         descriptionKey: "config.section.webhooks.help",

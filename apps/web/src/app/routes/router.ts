@@ -8,7 +8,6 @@ import accountRegisterPage from "./account/register/page";
 import accountVerifyPage from "./account/verify/page";
 import accountPage from "./account/page";
 import connectivityActivityPage from "./connectivity/activity/page";
-import connectivityCalendarPage from "./connectivity/calendar/page";
 import connectivityEmbedsPage from "./connectivity/embeds/page";
 import connectivityMcpPage from "./connectivity/mcp/page";
 import connectivityUsagePage from "./connectivity/usage/page";
@@ -60,10 +59,6 @@ const connectivityActivityDefaultLayoutRoutes = {
     "/connectivity/activity$": connectivityActivityPage
 }        
 
-const connectivityCalendarDefaultLayoutRoutes = {
-    "/connectivity/calendar$": connectivityCalendarPage
-}        
-
 const connectivityEmbedsDefaultLayoutRoutes = {
     "/connectivity/embeds$": connectivityEmbedsPage
 }        
@@ -82,7 +77,6 @@ const connectivityWebhooksDefaultLayoutRoutes = {
 
 const connectivityDefaultLayoutRoutes = {
     "/connectivity/activity\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityActivityDefaultLayoutRoutes}></sonic-router>`,
-    "/connectivity/calendar\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityCalendarDefaultLayoutRoutes}></sonic-router>`,
     "/connectivity/embeds\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityEmbedsDefaultLayoutRoutes}></sonic-router>`,
     "/connectivity/mcp\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityMcpDefaultLayoutRoutes}></sonic-router>`,
     "/connectivity/usage\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityUsageDefaultLayoutRoutes}></sonic-router>`,

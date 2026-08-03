@@ -10,7 +10,6 @@ export type ConfigSection =
   | "accountRegister"
   | "accountVerify"
   | "mcp"
-  | "calendar"
   | "webhooks"
   | "embeds"
   | "activity"
@@ -32,7 +31,6 @@ export const SECTION_PATHS: Record<ConfigSection, string> = {
   accountRegister: "/account/register",
   accountVerify: "/account/verify",
   mcp: "/connectivity/mcp",
-  calendar: "/connectivity/calendar",
   webhooks: "/connectivity/webhooks",
   embeds: "/connectivity/embeds",
   activity: "/connectivity/activity",

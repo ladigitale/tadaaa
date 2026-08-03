@@ -42,8 +42,6 @@ ensure_prod_env_defaults() {
   ensure_env_key "MAILER_DSN" "null://null"
   ensure_env_key "MAIL_FROM" "$mail_from"
   ensure_env_key "APP_PUBLIC_URL" "https://${app_host}"
-  ensure_env_key "GOOGLE_CLIENT_ID" ""
-  ensure_env_key "GOOGLE_CLIENT_SECRET" ""
   ensure_env_key "DEFAULT_STORAGE_QUOTA_BYTES" "5242880"
   ensure_env_key "GLOBAL_MONTHLY_TRANSFER_BYTES" "5368709120"
   ensure_env_key "FLOOR_PER_USER_MONTH_BYTES" "52428800"

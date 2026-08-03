@@ -103,11 +103,6 @@ MAIL_FROM=app@tadaaa.space
 # Front URL for email verification links (no trailing slash)
 APP_PUBLIC_URL=https://app.example.com
 
-# Google Calendar OAuth (optional) — enable Calendar API in Google Cloud Console
-# Redirect URI must be: https://api.example.com/api/google-calendar/callback
-# GOOGLE_CLIENT_ID=
-# GOOGLE_CLIENT_SECRET=
-
 # Free-tier quotas (storage 5 MiB; bandwidth shared across active users)
 DEFAULT_STORAGE_QUOTA_BYTES=5242880
 GLOBAL_MONTHLY_TRANSFER_BYTES=5368709120

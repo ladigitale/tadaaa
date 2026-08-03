@@ -146,10 +146,6 @@ MAILER_DSN=${mailer_dsn}
 MAIL_FROM=${mail_from}
 APP_PUBLIC_URL=https://${app_host}
 
-# Google Calendar OAuth (optional — set in Google Cloud Console)
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-
 # Free-tier quotas (override per user later via admin API)
 DEFAULT_STORAGE_QUOTA_BYTES=5242880
 GLOBAL_MONTHLY_TRANSFER_BYTES=5368709120

@@ -36,7 +36,6 @@ final class CloudTodoService
         private readonly PushNotificationDispatcher $push,
         private readonly WebhookDispatcher $webhooks,
         private readonly UsageMeter $usage,
-        private readonly GoogleCalendarSyncDispatcher $googleCalendar,
     ) {
     }
 
@@ -160,7 +159,6 @@ final class CloudTodoService
         $sync = $todo->toSyncArray();
         $this->webhooks->dispatch($dataset, WebhookEventType::TODO_CREATED, $sync, $user);
         $this->usage->increment($user, $dataset, UsageMeter::TODOS_CREATED);
-        $this->googleCalendar->dispatchTodo($dataset, $todo);
 
         return $sync;
     }
@@ -327,8 +325,6 @@ final class CloudTodoService
                 $recurrence,
             );
         }
-
-        $this->googleCalendar->dispatchTodo($dataset, $todo);
 
         return $sync;
     }
