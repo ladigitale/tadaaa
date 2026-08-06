@@ -7,10 +7,25 @@ import "@supersoniks/concorde/pop";
 import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement, nothing, PropertyValues, TemplateResult} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
+import {get, patch, post, type ApiResult} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {copyTodo, fetchTodos, patchTodo} from "../api/client";
-import type {Todo, TodoPriority, TodoStatusFilter} from "../api/types";
+import {
+  apiResultError,
+  endpoints,
+  readApiData,
+  type ApiData,
+} from "../api/endpoints";
+import {buildTodosQuery, todoCopyInput} from "../api/todos-query";
+import type {
+  Todo,
+  TodoPriority,
+  TodosListResponse,
+  TodoStatusFilter,
+  UpdateTodoPatch,
+} from "../api/types";
 import type {TodoCreateForm, TodosFilter} from "../dp";
+import {dp, set} from "../../utils/dataprovider";
+import {bumpTodosRev} from "../init";
 import {tf, tx} from "../i18n";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import {isActiveDatasetReadonly} from "../sync/cloud-access";
@@ -540,6 +555,44 @@ export class TasksCalendar extends LitElement {
   @state() private isReadonly = false;
   @state() private drag: DragState | null = null;
   @state() private busyId: string | null = null;
+
+  /** Cible du `@patch` / `@post` copy calendrier. */
+  @property({type: String})
+  todoId = "";
+
+  @property({type: String})
+  todosQuery = "";
+
+  @get(endpoints.todos.dynamic, {
+    skipEmptyPlaceholder: true,
+    triggerKey: endpoints.keys.refresh.calendarTodos,
+  })
+  @state()
+  todosPayload: ApiResult<TodosListResponse> | null = null;
+
+  @patch(endpoints.todos.patch, endpoints.keys.submit.calendarTodoPatch, {
+    skipEmptyPlaceholder: true,
+    autoPostOnBodyMutation: false,
+    triggerKey: endpoints.keys.refresh.calendarTodoPatch,
+  })
+  @state()
+  patchPayload: ApiResult<ApiData<Todo>> | null = null;
+
+  @post(endpoints.todos.collection, endpoints.keys.submit.calendarTodoCopy, {
+    autoPostOnBodyMutation: false,
+    triggerKey: endpoints.keys.refresh.calendarTodoCopy,
+  })
+  @state()
+  copyPayload: ApiResult<ApiData<Todo>> | null = null;
+
+  private pendingPatch:
+    | {kind: "reload"}
+    | {kind: "dates"; todoId: string}
+    | null = null;
+
+  private pendingCopy = false;
+  private pendingReload = false;
+
   /** Pop à ouvrir après un clic sans drag (évite le conflit click/toggle). */
   private dragTriggerPop: SonicPop | null = null;
   /** Double-clic / double-tap unifié (souris + tactile). */
@@ -568,6 +621,53 @@ export class TasksCalendar extends LitElement {
     if (changed.has("filter")) {
       void this.reload();
     }
+    if (changed.has("todosPayload") && this.pendingReload) {
+      void this.finishReload();
+    }
+    if (changed.has("patchPayload") && this.pendingPatch) {
+      void this.finishPatch();
+    }
+    if (changed.has("copyPayload") && this.pendingCopy) {
+      void this.finishCopy();
+    }
+  }
+
+  private async queueTodoPatch(
+    todoId: string,
+    patchBody: UpdateTodoPatch,
+    pending: NonNullable<typeof this.pendingPatch>,
+  ) {
+    this.busyId = todoId;
+    this.todoId = todoId;
+    this.pendingPatch = pending;
+    set(endpoints.keys.submit.calendarTodoPatch.path, patchBody);
+    await this.updateComplete;
+    dp(endpoints.keys.refresh.calendarTodoPatch).invalidate();
+  }
+
+  private async finishPatch() {
+    const pending = this.pendingPatch;
+    this.pendingPatch = null;
+    set(endpoints.keys.submit.calendarTodoPatch.path, null);
+
+    const updated = readApiData(this.patchPayload);
+    if (!updated) {
+      await showError(apiResultError(this.patchPayload));
+      this.busyId = null;
+      return;
+    }
+
+    if (pending?.kind === "dates") {
+      this.todos = this.todos.map((item) =>
+        item.id === updated.id ? {...item, ...updated} : item,
+      );
+      this.busyId = null;
+      return;
+    }
+
+    bumpTodosRev();
+    await this.reload();
+    this.busyId = null;
   }
 
   private persist() {
@@ -583,30 +683,38 @@ export class TasksCalendar extends LitElement {
 
   private async reload() {
     this.loading = true;
-    try {
-      const tagIds = Array.isArray(this.filter.tags)
-        ? this.filter.tags.filter(Boolean)
-        : [];
-      const [list, readonly] = await Promise.all([
-        fetchTodos({
-          status: calendarStatus(this.filter.status),
-          q: this.filter.q?.trim() || null,
-          tagIds: tagIds.length > 0 ? tagIds : null,
-          parentId: this.filter.parentId || "",
-          recursive: Boolean(this.filter.recursive),
-          sortBy: "startAt",
-          sortDir: "asc",
-          limit: 5000,
-        }),
-        isActiveDatasetReadonly(),
-      ]);
-      this.todos = list.data;
+    this.pendingReload = true;
+    const tagIds = Array.isArray(this.filter.tags)
+      ? this.filter.tags.filter(Boolean)
+      : [];
+    this.todosQuery = buildTodosQuery({
+      status: calendarStatus(this.filter.status),
+      q: this.filter.q?.trim() || null,
+      tagIds: tagIds.length > 0 ? tagIds : null,
+      parentId: this.filter.parentId || "",
+      recursive: Boolean(this.filter.recursive),
+      sortBy: "startAt",
+      sortDir: "asc",
+      limit: 5000,
+    });
+    await this.updateComplete;
+    dp(endpoints.keys.refresh.calendarTodos).invalidate();
+    void isActiveDatasetReadonly().then((readonly) => {
       this.isReadonly = readonly;
-    } catch (error) {
-      await showError(error);
-    } finally {
+    });
+  }
+
+  private async finishReload() {
+    if (this.todosPayload == null) return;
+    this.pendingReload = false;
+    const data = this.todosPayload.result?.data;
+    if (!Array.isArray(data)) {
+      await showError(apiResultError(this.todosPayload));
       this.loading = false;
+      return;
     }
+    this.todos = data;
+    this.loading = false;
   }
 
   private get filtered(): Todo[] {
@@ -811,30 +919,30 @@ export class TasksCalendar extends LitElement {
 
   private async onToggleDoneTodo(todo: Todo) {
     if (todo.archived || this.isReadonly || this.busyId) return;
-    this.busyId = todo.id;
-    try {
-      await patchTodo(todo.id, {done: !todo.done});
-      await this.reload();
-    } catch (error) {
-      await showError(error);
-      console.error(error);
-    } finally {
-      this.busyId = null;
-    }
+    await this.queueTodoPatch(todo.id, {done: !todo.done}, {kind: "reload"});
   }
 
   private async onCopyTodo(todo: Todo) {
     if (todo.archived || this.isReadonly || this.busyId) return;
     this.busyId = todo.id;
-    try {
-      await copyTodo(todo);
-      await this.reload();
-    } catch (error) {
-      await showError(error);
-      console.error(error);
-    } finally {
+    this.pendingCopy = true;
+    set(endpoints.keys.submit.calendarTodoCopy.path, todoCopyInput(todo));
+    await this.updateComplete;
+    dp(endpoints.keys.refresh.calendarTodoCopy).invalidate();
+  }
+
+  private async finishCopy() {
+    this.pendingCopy = false;
+    set(endpoints.keys.submit.calendarTodoCopy.path, null);
+    const created = readApiData(this.copyPayload);
+    if (!created) {
+      await showError(apiResultError(this.copyPayload));
       this.busyId = null;
+      return;
     }
+    bumpTodosRev();
+    await this.reload();
+    this.busyId = null;
   }
 
   private async onDeleteToggleTodo(todo: Todo) {
@@ -849,16 +957,11 @@ export class TasksCalendar extends LitElement {
       });
       if (!ok) return;
     }
-    this.busyId = todo.id;
-    try {
-      await patchTodo(todo.id, {archived: !todo.archived});
-      await this.reload();
-    } catch (error) {
-      await showError(error);
-      console.error(error);
-    } finally {
-      this.busyId = null;
-    }
+    await this.queueTodoPatch(
+      todo.id,
+      {archived: !todo.archived},
+      {kind: "reload"},
+    );
   }
 
   private onKeyDown = (event: KeyboardEvent) => {
@@ -1119,20 +1222,11 @@ export class TasksCalendar extends LitElement {
     }
     if (!next) return;
 
-    this.busyId = todo.id;
-    try {
-      const updated = await patchTodo(todo.id, {
-        startAt: next.startAt,
-        endAt: next.endAt,
-      });
-      this.todos = this.todos.map((item) =>
-        item.id === updated.id ? {...item, ...updated} : item,
-      );
-    } catch (error) {
-      await showError(error);
-    } finally {
-      this.busyId = null;
-    }
+    await this.queueTodoPatch(
+      todo.id,
+      {startAt: next.startAt, endAt: next.endAt},
+      {kind: "dates", todoId: todo.id},
+    );
   }
 
   private renderModeButtons() {

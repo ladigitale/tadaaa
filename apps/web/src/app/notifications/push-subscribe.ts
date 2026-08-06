@@ -1,8 +1,11 @@
 import {isAccountConnected} from "../account-settings";
 import {
+  fetchPushSubscriptions,
   fetchVapidPublicKey,
   registerPushSubscription,
   revokePushSubscription,
+  sendPushTest,
+  type PushTestResult,
 } from "../cloud-api/client";
 
 export type PushStatusCode =
@@ -16,6 +19,7 @@ export type PushStatusCode =
   | "server_disabled"
   | "no_service_worker"
   | "not_subscribed"
+  | "server_missing"
   | "register_failed"
   | "offline";
 
@@ -29,6 +33,10 @@ export type PushStatus = {
   hasServiceWorker: boolean;
   hasPushSubscription: boolean;
   registeredOnServer: boolean;
+  /** Active subscriptions stored for this account on the API. */
+  serverSubscriptionCount: number;
+  /** Host of the local PushManager endpoint when known (e.g. fcm.googleapis.com). */
+  endpointHost?: string;
   detail?: string;
 };
 
@@ -102,12 +110,22 @@ function baseStatus(
     hasServiceWorker: false,
     hasPushSubscription: false,
     registeredOnServer: false,
+    serverSubscriptionCount: 0,
     ...partial,
   };
 }
 
+function endpointHostOf(endpoint: string): string | undefined {
+  try {
+    const host = new URL(endpoint).host;
+    return host || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
- * Probe live push readiness (permission, SW, VAPID, browser subscription).
+ * Probe live push readiness (permission, SW, VAPID, browser + server subscription).
  * Does not mutate subscriptions.
  */
 export async function probePushStatus(options?: {
@@ -191,6 +209,13 @@ export async function probePushStatus(options?: {
 
     const subscription = await registration.pushManager.getSubscription();
     if (!subscription) {
+      let serverSubscriptionCount = 0;
+      try {
+        const listed = await fetchPushSubscriptions();
+        serverSubscriptionCount = listed.subscriptions.length;
+      } catch {
+        /* ignore list errors when local sub is missing */
+      }
       return emitStatus(
         baseStatus({
           code: "not_subscribed",
@@ -200,6 +225,50 @@ export async function probePushStatus(options?: {
           vapidEnabled: true,
           hasServiceWorker: true,
           hasPushSubscription: false,
+          serverSubscriptionCount,
+        }),
+      );
+    }
+
+    const endpoint = subscription.endpoint;
+    const endpointHost = endpointHostOf(endpoint);
+    let serverSubscriptionCount = 0;
+    let registeredOnServer = false;
+    try {
+      const listed = await fetchPushSubscriptions();
+      serverSubscriptionCount = listed.subscriptions.length;
+      registeredOnServer = listed.subscriptions.some(
+        (row) => row.endpoint === endpoint,
+      );
+    } catch (error) {
+      return emitStatus(
+        baseStatus({
+          code: "register_failed",
+          settingEnabled: true,
+          permission,
+          accountConnected: true,
+          vapidEnabled: true,
+          hasServiceWorker: true,
+          hasPushSubscription: true,
+          endpointHost,
+          detail: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
+
+    if (!registeredOnServer) {
+      return emitStatus(
+        baseStatus({
+          code: "server_missing",
+          settingEnabled: true,
+          permission,
+          accountConnected: true,
+          vapidEnabled: true,
+          hasServiceWorker: true,
+          hasPushSubscription: true,
+          registeredOnServer: false,
+          serverSubscriptionCount,
+          endpointHost,
         }),
       );
     }
@@ -214,6 +283,8 @@ export async function probePushStatus(options?: {
         hasServiceWorker: true,
         hasPushSubscription: true,
         registeredOnServer: true,
+        serverSubscriptionCount,
+        endpointHost,
       }),
     );
   } catch (error) {
@@ -286,20 +357,7 @@ export async function subscribeServerPush(): Promise<boolean> {
       keys: {p256dh: json.keys.p256dh, auth: json.keys.auth},
       userAgent: navigator.userAgent,
     });
-    pushActive = true;
-    emitStatus(
-      baseStatus({
-        code: "ready",
-        settingEnabled: true,
-        permission: Notification.permission,
-        accountConnected: true,
-        vapidEnabled: true,
-        hasServiceWorker: true,
-        hasPushSubscription: true,
-        registeredOnServer: true,
-      }),
-    );
-    return true;
+    return (await probePushStatus({settingEnabled: true})).code === "ready";
   } catch (error) {
     console.warn("[push] subscribe failed", error);
     pushActive = false;
@@ -314,6 +372,10 @@ export async function subscribeServerPush(): Promise<boolean> {
     );
     return false;
   }
+}
+
+export async function requestPushTest(): Promise<PushTestResult> {
+  return sendPushTest();
 }
 
 export async function unsubscribeServerPush(): Promise<void> {

@@ -6,12 +6,23 @@ import "@supersoniks/concorde/menu-item";
 import "@supersoniks/concorde/form-actions";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
-import {subscribe} from "@supersoniks/concorde/decorators";
+import {
+  get,
+  post,
+  subscribe,
+  type ApiResult,
+} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {fetchTodo, fetchTodos, moveTodo} from "../api/client";
+import {
+  apiResultError,
+  endpoints,
+  readApiData,
+  type ApiData,
+} from "../api/endpoints";
 import type {Todo} from "../api/types";
 import {set} from "../../utils/dataprovider";
-import {todoMoveKey} from "../dp";
+import {todoMoveKey, todosCatalogKey} from "../dp";
+import {bumpTodosRev} from "../init";
 import {tx} from "../i18n";
 import {navigateTo} from "../utils/navigate";
 import {TACHE_ROOT, tacheItemPath} from "../utils/tache-paths";
@@ -93,14 +104,45 @@ export class TodoMovePage extends LitElement {
   @state()
   private busy = false;
 
+  @get(endpoints.todos.byId, {skipEmptyPlaceholder: true})
+  @state()
+  todoPayload: ApiResult<ApiData<Todo>> | null = null;
+
+  @subscribe(todosCatalogKey)
+  @state()
+  catalogTodos: Todo[] = [];
+
+  @post(endpoints.todos.move, endpoints.keys.submit.todoMove, {
+    skipEmptyPlaceholder: true,
+  })
+  @state()
+  movePayload: ApiResult<ApiData<Todo>> | null = null;
+
+  private lastHydratedTodoId = "";
+  private pendingSubmit = false;
+
   connectedCallback() {
     super.connectedCallback();
-    void this.load();
+    set(todoMoveKey.path, {q: ""});
   }
 
   protected updated(changed: Map<string, unknown>) {
-    if (changed.has("todoId") && this.todoId) {
-      void this.load();
+    if (changed.has("todoId")) {
+      this.lastHydratedTodoId = "";
+      this.loading = Boolean(this.todoId);
+      this.notFound = false;
+      this.selectedTarget = "";
+      set(todoMoveKey.path, {q: ""});
+    }
+    if (
+      changed.has("todoPayload") ||
+      changed.has("catalogTodos") ||
+      changed.has("todoId")
+    ) {
+      this.hydrateFromPayloads();
+    }
+    if (changed.has("movePayload") && this.pendingSubmit) {
+      void this.finishSubmit();
     }
   }
 
@@ -118,73 +160,81 @@ export class TodoMovePage extends LitElement {
     );
   }
 
-  private async load() {
+  private hydrateFromPayloads() {
     if (!this.todoId) return;
 
-    this.loading = true;
-    this.notFound = false;
-    this.selectedTarget = "";
-    set(todoMoveKey.path, {q: ""});
+    const todoPayload = this.todoPayload;
+    if (todoPayload == null) {
+      this.loading = true;
+      return;
+    }
 
-    try {
-      const [todo, response] = await Promise.all([
-        fetchTodo(this.todoId),
-        fetchTodos({status: "all", limit: 500, recursive: true}),
-      ]);
-      this.parentTodoId = todo.parentId?.trim() || "";
-
-      const blocked = new Set<string>([todo.id]);
-      let grew = true;
-      while (grew) {
-        grew = false;
-        for (const item of response.data ?? []) {
-          if (
-            item.parentId &&
-            blocked.has(item.parentId) &&
-            !blocked.has(item.id)
-          ) {
-            blocked.add(item.id);
-            grew = true;
-          }
-        }
-      }
-
-      this.targets = (response.data ?? []).filter(
-        (item) => !blocked.has(item.id) && !item.archived,
-      );
-    } catch {
+    const todo = readApiData(todoPayload);
+    if (!todo?.id) {
       this.notFound = true;
       this.targets = [];
-    } finally {
       this.loading = false;
+      return;
     }
 
-    if (!this.notFound) {
+    const catalog = Array.isArray(this.catalogTodos) ? this.catalogTodos : [];
+    this.parentTodoId = todo.parentId?.trim() || "";
+
+    const blocked = new Set<string>([todo.id]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const item of catalog) {
+        if (
+          item.parentId &&
+          blocked.has(item.parentId) &&
+          !blocked.has(item.id)
+        ) {
+          blocked.add(item.id);
+          grew = true;
+        }
+      }
+    }
+
+    this.targets = catalog.filter(
+      (item) => !blocked.has(item.id) && !item.archived,
+    );
+    this.notFound = false;
+    this.loading = false;
+
+    if (todo.id !== this.lastHydratedTodoId) {
+      this.lastHydratedTodoId = todo.id;
       void focusPrimaryInput(this);
     }
+  }
+
+  private async finishSubmit() {
+    this.pendingSubmit = false;
+    set(endpoints.keys.submit.todoMove.path, null);
+    const todo = readApiData(this.movePayload);
+    if (!todo) {
+      await showError(apiResultError(this.movePayload));
+      this.busy = false;
+      return;
+    }
+    bumpTodosRev();
+    set(todoMoveKey.path, {q: ""});
+    navigateTo(this.backHref, true);
   }
 
   private selectTarget(target: string) {
     this.selectedTarget = target;
   }
 
-  private async onSubmit() {
+  private onSubmit() {
     if (!this.selectedTarget || !this.todoId || this.busy) return;
 
     const parentId =
       this.selectedTarget === ROOT_VALUE ? null : this.selectedTarget;
 
     this.busy = true;
-    try {
-      await moveTodo(this.todoId, parentId);
-      set(todoMoveKey.path, {q: ""});
-      navigateTo(this.backHref, true);
-    } catch (error) {
-      await showError(error);
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
+    this.pendingSubmit = true;
+    set(endpoints.keys.submit.todoMove.path, {parentId});
   }
 
   private renderMenuItem(value: string, label: string, icon: string) {

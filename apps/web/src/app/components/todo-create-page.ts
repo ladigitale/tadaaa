@@ -4,14 +4,21 @@ import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/form-layout";
 import "@supersoniks/concorde/form-actions";
+import "@supersoniks/concorde/tooltip";
 import {html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
-import {subscribe} from "@supersoniks/concorde/decorators";
+import {post, subscribe, type ApiResult} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {createTodo, fetchTags} from "../api/client";
-import type {Tag, TodoPriority, TodoRecurrence} from "../api/types";
+import {
+  apiResultError,
+  endpoints,
+  readApiData,
+  type ApiData,
+} from "../api/endpoints";
+import type {Tag, Todo, TodoPriority, TodoRecurrence} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
-import {todoCreateKey, type TodoCreateForm} from "../dp";
+import {tagsListKey, todoCreateKey, type TodoCreateForm} from "../dp";
+import {bumpTodosRev} from "../init";
 import {tx} from "../i18n";
 import {navigateTo} from "../utils/navigate";
 import {TACHE_ROOT, tacheItemPath} from "../utils/tache-paths";
@@ -20,6 +27,7 @@ import {focusPrimaryInput} from "../utils/focus-primary-input";
 import {wireFromLocalInput} from "../utils/dates";
 import {takeTodoCreateDraft} from "../utils/todo-create-draft";
 import {parseRecurrence} from "../utils/recurrence";
+import {shortcuts} from "../shortcuts";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
 import {showError} from "../utils/modal-dialog";
@@ -67,8 +75,9 @@ export class TodoCreatePage extends LitElement {
   @property({type: String})
   parentId = "";
 
+  @subscribe(tagsListKey)
   @state()
-  private tags: Tag[] = [];
+  tags: Tag[] = [];
 
   @subscribe(todoCreateKey)
   @state()
@@ -89,25 +98,46 @@ export class TodoCreatePage extends LitElement {
   @state()
   private busy = false;
 
+  @post(endpoints.todos.collection, endpoints.keys.submit.todoCreate)
+  @state()
+  createPayload: ApiResult<ApiData<Todo>> | null = null;
+
+  private pendingSubmit = false;
+
   connectedCallback() {
     super.connectedCallback();
     const draft = takeTodoCreateDraft();
     set(todoCreateKey.path, {...emptyCreateForm(), ...draft});
-    void this.loadTags();
   }
 
   protected firstUpdated() {
     void focusPrimaryInput(this);
   }
 
-  private async loadTags() {
-    this.tags = await fetchTags();
+  protected updated(changed: Map<string, unknown>) {
+    if (changed.has("createPayload") && this.pendingSubmit) {
+      void this.finishSubmit();
+    }
+  }
+
+  private async finishSubmit() {
+    this.pendingSubmit = false;
+    set(endpoints.keys.submit.todoCreate.path, null);
+    const todo = readApiData(this.createPayload);
+    if (!todo) {
+      await showError(apiResultError(this.createPayload));
+      this.busy = false;
+      return;
+    }
+    bumpTodosRev();
+    set(todoCreateKey.path, emptyCreateForm());
+    navigateTo(this.cancelHref, true);
   }
 
   private onFormKeyDown = (event: KeyboardEvent) => {
     if (!isEnterSubmitEvent(event)) return;
     event.preventDefault();
-    void this.onSubmit();
+    this.onSubmit();
   };
 
   private get cancelHref(): string {
@@ -115,7 +145,7 @@ export class TodoCreatePage extends LitElement {
     return id ? tacheItemPath(id) : TACHE_ROOT;
   }
 
-  private async onSubmit() {
+  private onSubmit() {
     const form = read(todoCreateKey.path) as TodoCreateForm;
     const text = form.text?.trim();
     if (!text || this.busy) return;
@@ -126,27 +156,17 @@ export class TodoCreatePage extends LitElement {
     const parentId = this.parentId?.trim() || null;
 
     this.busy = true;
-    try {
-      const startAt = wireFromLocalInput(form.startAt, form.startTime);
-      const endAt = wireFromLocalInput(form.endAt, form.endTime);
-      await createTodo({
-        text,
-        description: form.description?.trim() || null,
-        priority: (form.priority ?? "medium") as TodoPriority,
-        tagIds,
-        parentId,
-        startAt,
-        endAt,
-        recurrence: parseRecurrence(form.recurrence),
-      });
-      set(todoCreateKey.path, emptyCreateForm());
-      navigateTo(this.cancelHref, true);
-    } catch (error) {
-      await showError(error);
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
+    this.pendingSubmit = true;
+    set(endpoints.keys.submit.todoCreate.path, {
+      text,
+      description: form.description?.trim() || null,
+      priority: (form.priority ?? "medium") as TodoPriority,
+      tagIds,
+      parentId,
+      startAt: wireFromLocalInput(form.startAt, form.startTime),
+      endAt: wireFromLocalInput(form.endAt, form.endTime),
+      recurrence: parseRecurrence(form.recurrence),
+    });
   }
 
   render() {
@@ -254,19 +274,28 @@ export class TodoCreatePage extends LitElement {
               >
                 ${t("common.cancel")}
               </sonic-button>
-              <sonic-button
-                type="primary"
-                ?disabled=${this.busy}
-                @click=${this.onSubmit}
+              <sonic-tooltip
+                label=${shortcuts.withHint(tx("common.add"), "submitForm")}
+                placement="top"
               >
-                <sonic-icon
-                  library=${ICON_LIBRARY}
-                  prefix=${ICON_PREFIX}
-                  name="plus"
-                  size="sm"
-                ></sonic-icon>
-                ${t("common.add")}
-              </sonic-button>
+                <sonic-button
+                  type="primary"
+                  ?disabled=${this.busy}
+                  data-aria-label=${shortcuts.withHint(
+                    tx("common.add"),
+                    "submitForm",
+                  )}
+                  @click=${this.onSubmit}
+                >
+                  <sonic-icon
+                    library=${ICON_LIBRARY}
+                    prefix=${ICON_PREFIX}
+                    name="plus"
+                    size="sm"
+                  ></sonic-icon>
+                  ${t("common.add")}
+                </sonic-button>
+              </sonic-tooltip>
             </sonic-form-actions>
           </sonic-form-layout>
         </div>

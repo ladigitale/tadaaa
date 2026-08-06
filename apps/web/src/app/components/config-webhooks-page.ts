@@ -26,6 +26,7 @@ import {
 } from "../cloud-api/client";
 import {read, set} from "../../utils/dataprovider";
 import {appConfigKey, type AppConfigForm} from "../dp";
+import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {confirmDialog, showError} from "../utils/modal-dialog";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
@@ -102,6 +103,12 @@ export class ConfigWebhooksPage extends LitElement {
       this.selectedEvents = [...this.selectedEvents, type];
     }
   }
+
+  private onFormKeyDown = (event: KeyboardEvent) => {
+    if (!isEnterSubmitEvent(event)) return;
+    event.preventDefault();
+    void this.onCreate();
+  };
 
   private onCreate = async () => {
     const form = read(appConfigKey.path) as AppConfigForm;
@@ -209,7 +216,10 @@ export class ConfigWebhooksPage extends LitElement {
                   `
                 : nothing}
 
-              <section class="border-t border-[color:var(--sc-border)] pt-4 mb-6">
+              <section
+                class="border-t border-[color:var(--sc-border)] pt-4 mb-6"
+                @keydown=${this.onFormKeyDown}
+              >
                 <sonic-form-layout>
                   <label class="form-label">
                     <span>${t("webhooks.url")}</span>

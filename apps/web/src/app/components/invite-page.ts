@@ -17,9 +17,14 @@ import {
 } from "../cloud-api/client";
 import {openCloudDatasetForEditing} from "../sync/engine";
 import {navigateTo} from "../utils/navigate";
+import {
+  clearPendingInviteToken,
+  savePendingInviteToken,
+} from "../utils/pending-invite";
 import {showError} from "../utils/modal-dialog";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import {tx} from "../i18n";
+import {TACHE_ROOT} from "../utils/tache-paths";
 import tailwind from "../../css/tailwind";
 import "./account-required-cta";
 import "./page-shell";
@@ -48,9 +53,13 @@ export class InvitePage extends LitElement {
   @state()
   private statusMessage = "";
 
+  @state()
+  private autoAcceptAttempted = false;
+
   connectedCallback() {
     super.connectedCallback();
     this.token = readInviteToken();
+    if (this.token) savePendingInviteToken(this.token);
     void this.loadPreview();
   }
 
@@ -59,15 +68,16 @@ export class InvitePage extends LitElement {
       this.statusMessage = tx("invite.invalid_token");
       return;
     }
-    if (!isAccountConnected(this.account)) {
-      this.statusMessage = tx("invite.need_login");
-      return;
-    }
     this.busy = true;
     try {
       this.preview = await previewDatasetInvite(this.token, this.account);
       if (!this.preview.usable) {
         this.statusMessage = tx("invite.unusable");
+        return;
+      }
+      if (isAccountConnected(this.account) && !this.autoAcceptAttempted) {
+        this.autoAcceptAttempted = true;
+        await this.acceptInvite();
       }
     } catch (error) {
       this.preview = null;
@@ -78,12 +88,13 @@ export class InvitePage extends LitElement {
     }
   }
 
-  private onAccept = async () => {
-    if (!this.token || this.busy || !isAccountConnected(this.account)) return;
+  private async acceptInvite() {
+    if (!this.token || !isAccountConnected(this.account)) return;
     this.busy = true;
     this.statusMessage = "";
     try {
       const result = await acceptDatasetInvite(this.token, this.account);
+      clearPendingInviteToken();
       const sync = await openCloudDatasetForEditing({
         id: result.dataset.id,
         baseId: result.dataset.baseId,
@@ -92,14 +103,20 @@ export class InvitePage extends LitElement {
       });
       if (sync.error) {
         this.statusMessage = sync.error;
+        return;
       }
-      navigateTo("/tache");
+      navigateTo(TACHE_ROOT, true);
     } catch (error) {
       await showError(error, tx("invite.accept_error"));
       console.error(error);
     } finally {
       this.busy = false;
     }
+  }
+
+  private onAccept = async () => {
+    if (this.busy) return;
+    await this.acceptInvite();
   };
 
   render() {
@@ -140,6 +157,7 @@ export class InvitePage extends LitElement {
           ${!connected
             ? html`<account-required-cta
                 messageKey="invite.need_account"
+                inviteToken=${this.token}
               ></account-required-cta>`
             : nothing}
 
@@ -155,12 +173,14 @@ export class InvitePage extends LitElement {
                     — ${t("invite.expires")}
                     ${new Date(this.preview.expiresAt).toLocaleString()}
                   </p>
-                  <sonic-button
-                    type="primary"
-                    ?disabled=${this.busy || !this.preview.usable}
-                    @click=${this.onAccept}
-                    >${t("invite.accept")}</sonic-button
-                  >
+                  ${connected
+                    ? html`<sonic-button
+                        type="primary"
+                        ?disabled=${this.busy || !this.preview.usable}
+                        @click=${this.onAccept}
+                        >${t("invite.accept")}</sonic-button
+                      >`
+                    : nothing}
                 </div>
               `
             : nothing}

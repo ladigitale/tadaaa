@@ -7,9 +7,23 @@ import "@supersoniks/concorde/menu-item";
 import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
+import {
+  get,
+  patch,
+  post,
+  type ApiResult,
+} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {copyTodo, fetchTodo, patchTodo} from "../api/client";
+import {
+  apiResultError,
+  endpoints,
+  readApiData,
+  type ApiData,
+} from "../api/endpoints";
+import {todoCopyInput} from "../api/todos-query";
 import type {Todo, TodoAncestor} from "../api/types";
+import {set} from "../../utils/dataprovider";
+import {bumpTodosRev} from "../init";
 import {tf, tx} from "../i18n";
 import {
   TACHE_ROOT,
@@ -141,14 +155,34 @@ export class TaskScopeHeader extends LitElement {
   @state()
   private busy = false;
 
-  connectedCallback() {
-    super.connectedCallback();
-    void this.syncScope();
-  }
+  @get(endpoints.todos.byScopeId, {skipEmptyPlaceholder: true})
+  @state()
+  scopePayload: ApiResult<ApiData<Todo>> | null = null;
+
+  @patch(endpoints.todos.scopePatch, endpoints.keys.submit.todoScopePatch, {
+    skipEmptyPlaceholder: true,
+  })
+  @state()
+  patchPayload: ApiResult<ApiData<Todo>> | null = null;
+
+  @post(endpoints.todos.collection, endpoints.keys.submit.todoScopeCopy, {
+    skipEmptyPlaceholder: true,
+  })
+  @state()
+  copyPayload: ApiResult<ApiData<Todo>> | null = null;
+
+  private pendingSubmit = false;
+  private pendingCopy = false;
 
   protected updated(changed: Map<string, unknown>) {
-    if (changed.has("scopeId")) {
-      void this.syncScope();
+    if (changed.has("scopeId") || changed.has("scopePayload")) {
+      this.hydrateScope();
+    }
+    if (changed.has("patchPayload") && this.pendingSubmit) {
+      void this.finishArchiveSubmit();
+    }
+    if (changed.has("copyPayload") && this.pendingCopy) {
+      void this.finishCopy();
     }
   }
 
@@ -167,6 +201,27 @@ export class TaskScopeHeader extends LitElement {
 
   private get isArchived(): boolean {
     return Boolean(this.scopeTodo?.archived);
+  }
+
+  private hydrateScope() {
+    const scopeId = this.scopeId?.trim() || "";
+    if (!scopeId) {
+      this.scopeTodo = null;
+      this.ancestors = [];
+      return;
+    }
+
+    if (this.scopePayload == null) return;
+
+    const todo = readApiData(this.scopePayload);
+    if (!todo?.id) {
+      this.scopeTodo = null;
+      this.ancestors = [];
+      return;
+    }
+
+    this.scopeTodo = todo;
+    this.ancestors = todo.ancestors ?? [];
   }
 
   private get actionChoices(): ActionChoice[] {
@@ -218,24 +273,6 @@ export class TaskScopeHeader extends LitElement {
     return choices.find((choice) => choice.id === this.action) ?? choices[0];
   }
 
-  private async syncScope() {
-    const scopeId = this.scopeId?.trim() || "";
-    if (!scopeId) {
-      this.scopeTodo = null;
-      this.ancestors = [];
-      return;
-    }
-
-    try {
-      const todo = await fetchTodo(scopeId);
-      this.scopeTodo = todo;
-      this.ancestors = todo.ancestors ?? [];
-    } catch {
-      this.scopeTodo = null;
-      this.ancestors = [];
-    }
-  }
-
   private renderMenuItemIcon(name: string) {
     return html`
       <sonic-icon
@@ -262,24 +299,34 @@ export class TaskScopeHeader extends LitElement {
     `;
   }
 
-  private onCopy = async () => {
+  private onCopy = () => {
     const todo = this.scopeTodo;
-    if (!todo || this.busy || todo.archived) return;
+    const scopeId = this.scopeId?.trim();
+    if (!todo || !scopeId || this.busy || todo.archived) return;
 
     this.busy = true;
-    try {
-      await copyTodo(todo);
-    } catch (error) {
-      await showError(error);
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
+    this.pendingCopy = true;
+    set(endpoints.keys.paths.todoScopeCopy(scopeId), todoCopyInput(todo));
   };
+
+  private async finishCopy() {
+    const scopeId = this.scopeId?.trim();
+    this.pendingCopy = false;
+    if (scopeId) set(endpoints.keys.paths.todoScopeCopy(scopeId), null);
+    const created = readApiData(this.copyPayload);
+    if (!created) {
+      await showError(apiResultError(this.copyPayload));
+      this.busy = false;
+      return;
+    }
+    bumpTodosRev();
+    this.busy = false;
+  }
 
   private onDeleteToggle = async () => {
     const todo = this.scopeTodo;
-    if (!todo || this.busy) return;
+    const scopeId = this.scopeId?.trim();
+    if (!todo || !scopeId || this.busy) return;
 
     const deleting = !todo.archived;
     if (deleting) {
@@ -293,17 +340,27 @@ export class TaskScopeHeader extends LitElement {
     }
 
     this.busy = true;
-    try {
-      await patchTodo(todo.id, {archived: !todo.archived});
-      const parentId = todo.parentId?.trim();
-      navigateTo(parentId ? tacheItemPath(parentId) : TACHE_ROOT, true);
-    } catch (error) {
-      await showError(error);
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
+    this.pendingSubmit = true;
+    set(endpoints.keys.paths.todoScopePatch(scopeId), {archived: !todo.archived});
   };
+
+  private async finishArchiveSubmit() {
+    const todo = this.scopeTodo;
+    const scopeId = this.scopeId?.trim();
+    this.pendingSubmit = false;
+    if (scopeId) set(endpoints.keys.paths.todoScopePatch(scopeId), null);
+
+    const updated = readApiData(this.patchPayload);
+    if (!updated) {
+      await showError(apiResultError(this.patchPayload));
+      this.busy = false;
+      return;
+    }
+
+    bumpTodosRev();
+    const parentId = todo?.parentId?.trim();
+    navigateTo(parentId ? tacheItemPath(parentId) : TACHE_ROOT, true);
+  }
 
   private renderActionMenu() {
     const current = this.currentAction;

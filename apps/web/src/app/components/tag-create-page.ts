@@ -3,15 +3,22 @@ import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/form-layout";
 import "@supersoniks/concorde/form-actions";
+import "@supersoniks/concorde/tooltip";
 import {html, LitElement} from "lit";
 import {customElement, state} from "lit/decorators.js";
-import {subscribe} from "@supersoniks/concorde/decorators";
+import {post, subscribe, type ApiResult} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {createTag} from "../api/client";
+import {
+  apiResultError,
+  endpoints,
+  readApiData,
+  type ApiData,
+} from "../api/endpoints";
 import {TAG_COLORS} from "../api/store-logic";
 import type {Tag, TagColor} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
 import {tagCreateKey, type TagCreateForm} from "../dp";
+import {bumpTagsList, bumpTodosRev} from "../init";
 import {tx} from "../i18n";
 import {navigateTo} from "../utils/navigate";
 import {isEnterSubmitEvent} from "../utils/form-enter-submit";
@@ -21,6 +28,7 @@ import tailwind from "../../css/tailwind";
 import {showError} from "../utils/modal-dialog";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import {TAGS_ROOT} from "../utils/tag-paths";
+import {shortcuts} from "../shortcuts";
 import "./page-shell";
 import "./tag-badge";
 import "./tag-scope-header";
@@ -45,6 +53,12 @@ export class TagCreatePage extends LitElement {
   @state()
   private busy = false;
 
+  @post(endpoints.tags.collection, endpoints.keys.submit.tagCreate)
+  @state()
+  createPayload: ApiResult<ApiData<Tag>> | null = null;
+
+  private pendingSubmit = false;
+
   private get previewTag(): Tag {
     const name = this.name?.trim();
     return {
@@ -63,31 +77,44 @@ export class TagCreatePage extends LitElement {
     void focusPrimaryInput(this);
   }
 
+  protected updated(changed: Map<string, unknown>) {
+    if (changed.has("createPayload") && this.pendingSubmit) {
+      void this.finishSubmit();
+    }
+  }
+
+  private async finishSubmit() {
+    this.pendingSubmit = false;
+    set(endpoints.keys.submit.tagCreate.path, null);
+    const tag = readApiData(this.createPayload);
+    if (!tag) {
+      await showError(apiResultError(this.createPayload));
+      this.busy = false;
+      return;
+    }
+    bumpTodosRev();
+    bumpTagsList();
+    set(tagCreateKey.path, emptyTagForm());
+    navigateTo(TAGS_ROOT, true);
+  }
+
   private onFormKeyDown = (event: KeyboardEvent) => {
     if (!isEnterSubmitEvent(event)) return;
     event.preventDefault();
-    void this.onSubmit();
+    this.onSubmit();
   };
 
-  private async onSubmit() {
+  private onSubmit() {
     const form = read(tagCreateKey.path) as TagCreateForm;
     const name = form.name?.trim();
     if (!name || this.busy) return;
 
     this.busy = true;
-    try {
-      await createTag({
-        name,
-        color: form.color ?? "default",
-      });
-      set(tagCreateKey.path, emptyTagForm());
-      navigateTo(TAGS_ROOT, true);
-    } catch (error) {
-      await showError(error);
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
+    this.pendingSubmit = true;
+    set(endpoints.keys.submit.tagCreate.path, {
+      name,
+      color: form.color ?? "default",
+    });
   }
 
   render() {
@@ -161,19 +188,28 @@ export class TagCreatePage extends LitElement {
               >
                 ${t("common.cancel")}
               </sonic-button>
-              <sonic-button
-                type="primary"
-                ?disabled=${this.busy}
-                @click=${this.onSubmit}
+              <sonic-tooltip
+                label=${shortcuts.withHint(tx("common.add"), "submitForm")}
+                placement="top"
               >
-                <sonic-icon
-                  library=${ICON_LIBRARY}
-                  prefix=${ICON_PREFIX}
-                  name="plus"
-                  size="sm"
-                ></sonic-icon>
-                ${t("common.add")}
-              </sonic-button>
+                <sonic-button
+                  type="primary"
+                  ?disabled=${this.busy}
+                  data-aria-label=${shortcuts.withHint(
+                    tx("common.add"),
+                    "submitForm",
+                  )}
+                  @click=${this.onSubmit}
+                >
+                  <sonic-icon
+                    library=${ICON_LIBRARY}
+                    prefix=${ICON_PREFIX}
+                    name="plus"
+                    size="sm"
+                  ></sonic-icon>
+                  ${t("common.add")}
+                </sonic-button>
+              </sonic-tooltip>
             </sonic-form-actions>
           </sonic-form-layout>
         </div>

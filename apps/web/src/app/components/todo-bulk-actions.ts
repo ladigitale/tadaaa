@@ -7,9 +7,19 @@ import "@supersoniks/concorde/divider";
 import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
-import {bulkUpdateTodos, fetchTodos} from "../api/client";
-import type {UpdateTodoPatch} from "../api/types";
+import {get, post, type ApiResult} from "@supersoniks/concorde/decorators";
+import {
+  apiResultError,
+  endpoints,
+  readApiData,
+  type ApiData,
+  type BulkUpdateBody,
+} from "../api/endpoints";
+import {buildTodosQuery} from "../api/todos-query";
+import type {UpdateTodoPatch, TodosListResponse} from "../api/types";
 import type {TodosFilter} from "../dp";
+import {dp, set} from "../../utils/dataprovider";
+import {bumpTodosRev} from "../init";
 import {tf, tx} from "../i18n";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import {
@@ -92,8 +102,47 @@ export class TodoBulkActions extends LitElement {
   @property()
   viewMode: TasksViewMode = "list";
 
+  @property({type: String})
+  todosQuery = "";
+
   @state()
   private busy = false;
+
+  @get(endpoints.todos.dynamic, {
+    skipEmptyPlaceholder: true,
+    triggerKey: endpoints.keys.refresh.bulkCount,
+  })
+  @state()
+  countPayload: ApiResult<TodosListResponse> | null = null;
+
+  @post(endpoints.todos.bulk, endpoints.keys.submit.bulkUpdate)
+  @state()
+  bulkPayload: ApiResult<ApiData<{updatedCount: number}>> | null = null;
+
+  private pendingCount: {
+    resolve: (n: number) => void;
+    reject: (error: Error) => void;
+  } | null = null;
+
+  private pendingBulk: {
+    action: BulkAction;
+  } | null = null;
+
+  protected updated(changed: Map<string, unknown>) {
+    if (changed.has("countPayload") && this.pendingCount) {
+      const pending = this.pendingCount;
+      this.pendingCount = null;
+      const total = this.countPayload?.result?.total;
+      if (typeof total === "number") {
+        pending.resolve(total);
+      } else {
+        pending.reject(apiResultError(this.countPayload));
+      }
+    }
+    if (changed.has("bulkPayload") && this.pendingBulk) {
+      void this.finishBulk();
+    }
+  }
 
   private renderMenuIcon(name: string) {
     return html`
@@ -114,14 +163,23 @@ export class TodoBulkActions extends LitElement {
         detail: {mode},
         bubbles: true,
         composed: true,
-      })
+      }),
     );
   }
 
-  private async countMatching(): Promise<number> {
-    const params = todosFilterToListParams(this.filter);
-    const result = await fetchTodos({...params, offset: 0, limit: 1});
-    return result.total;
+  private countMatching(): Promise<number> {
+    const params = {
+      ...todosFilterToListParams(this.filter),
+      offset: 0,
+      limit: 1,
+    };
+    this.todosQuery = buildTodosQuery(params);
+    return new Promise<number>((resolve, reject) => {
+      this.pendingCount = {resolve, reject};
+      void this.updateComplete.then(() => {
+        dp(endpoints.keys.refresh.bulkCount).invalidate();
+      });
+    });
   }
 
   private async runAction(action: BulkAction) {
@@ -132,6 +190,7 @@ export class TodoBulkActions extends LitElement {
       const total = await this.countMatching();
       if (total === 0) {
         await showAlert(action.confirmTitle, tx("tasks.empty_filtered"));
+        this.busy = false;
         return;
       }
 
@@ -141,39 +200,59 @@ export class TodoBulkActions extends LitElement {
         confirmLabel: action.confirmLabel,
         danger: action.danger,
       });
-      if (!ok) return;
+      if (!ok) {
+        this.busy = false;
+        return;
+      }
 
-      const result = await bulkUpdateTodos(
-        todosFilterToListParams(this.filter),
-        action.patch
-      );
-      await showAlert(
-        action.confirmTitle,
-        result.updatedCount === 0
-          ? tx("tasks.bulk.result_none")
-          : tf("tasks.bulk.result_ok", {n: result.updatedCount})
-      );
+      this.pendingBulk = {action};
+      const body: BulkUpdateBody = {
+        filter: todosFilterToListParams(this.filter),
+        patch: action.patch,
+      };
+      set(endpoints.keys.submit.bulkUpdate.path, body);
     } catch (error) {
       await showError(error);
       console.error(error);
-    } finally {
       this.busy = false;
     }
   }
 
+  private async finishBulk() {
+    const pending = this.pendingBulk;
+    this.pendingBulk = null;
+    set(endpoints.keys.submit.bulkUpdate.path, null);
+
+    const result = readApiData(this.bulkPayload);
+    if (!result) {
+      await showError(apiResultError(this.bulkPayload));
+      this.busy = false;
+      return;
+    }
+
+    bumpTodosRev();
+    await showAlert(
+      pending!.action.confirmTitle,
+      result.updatedCount === 0
+        ? tx("tasks.bulk.result_none")
+        : tf("tasks.bulk.result_ok", {n: result.updatedCount}),
+    );
+    this.busy = false;
+  }
+
   render() {
-    const actionsAria = tx("common.actions");
+    const bulkMenuAria = tx("tasks.bulk.menu_aria");
 
     return html`
       <sonic-pop class="inline-block" placement="bottom-end">
-        <sonic-tooltip label=${actionsAria} placement="bottom">
+        <sonic-tooltip label=${bulkMenuAria} placement="bottom">
           <sonic-button
             shape="circle"
             size="sm"
             variant="ghost"
             ?disabled=${this.busy}
             ?loading=${this.busy}
-            data-aria-label=${actionsAria}
+            data-aria-label=${bulkMenuAria}
           >
             <sonic-icon
               library=${ICON_LIBRARY}
@@ -209,20 +288,20 @@ export class TodoBulkActions extends LitElement {
           </sonic-menu-item>
 
           <sonic-divider
-            label=${actionsAria}
+            label=${tx("tasks.bulk.section")}
             align="left"
             size="sm"
           ></sonic-divider>
           ${bulkActions().map(
             (action) => html`
               <sonic-menu-item
-                type=${action.danger ? "danger" : "default"}
                 ?disabled=${this.busy}
+                type=${action.danger ? "danger" : "default"}
                 @click=${() => void this.runAction(action)}
               >
                 ${this.renderMenuIcon(action.icon)} ${action.label}
               </sonic-menu-item>
-            `
+            `,
           )}
         </sonic-menu>
       </sonic-pop>

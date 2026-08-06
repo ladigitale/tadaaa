@@ -16,7 +16,9 @@ import {
   approveAdminUser,
   checkCloudApiHealth,
   deleteAdminUser,
+  deleteMyAccount,
   disableAdminUser,
+  exportMyAccountData,
   fetchAdminUsers,
   logoutAccount,
   refreshAccountSession,
@@ -28,10 +30,16 @@ import {
   hydrateAccountForm,
 } from "../utils/account-form";
 import {navigateTo} from "../utils/navigate";
-import {confirmDialog, showError} from "../utils/modal-dialog";
+import {legalPath} from "../legal";
+import {
+  confirmDialog,
+  promptTextDialog,
+  showError,
+} from "../utils/modal-dialog";
 import tailwind from "../../css/tailwind";
 import "./account-required-cta";
 import "./config-scope-header";
+import "./legal-footer-links";
 import "./page-shell";
 import "./user-avatar";
 
@@ -110,6 +118,65 @@ export class ConfigAccountPage extends LitElement {
     this.account = logoutAccount();
     clearAccountCredentialsFields();
     navigateTo("/");
+  };
+
+  private onExportMyData = async () => {
+    if (this.busy) return;
+    this.busy = true;
+    try {
+      const pack = await exportMyAccountData(this.account);
+      const blob = new Blob([JSON.stringify(pack, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `tadaaa-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      this.statusMessage = tx("account.gdpr.export_ok");
+    } catch (error) {
+      await showError(error, tx("dialogs.error"));
+    } finally {
+      this.busy = false;
+    }
+  };
+
+  private onDeleteMyAccount = async () => {
+    if (this.busy) return;
+    const email = this.account.user?.email ?? "";
+    const confirmed = await confirmDialog({
+      title: tx("account.gdpr.delete_title"),
+      message: tx("account.gdpr.delete_help"),
+      confirmLabel: tx("account.gdpr.delete"),
+      danger: true,
+    });
+    if (!confirmed) return;
+    const typed = await promptTextDialog({
+      title: tx("account.gdpr.delete_title"),
+      label: tx("account.gdpr.delete_prompt"),
+      confirmLabel: tx("account.gdpr.delete"),
+    });
+    if (typed === null) return;
+    if (typed.toLowerCase() !== email.toLowerCase()) {
+      await showError(
+        new Error(tx("account.gdpr.delete_mismatch")),
+        tx("dialogs.error"),
+      );
+      return;
+    }
+    this.busy = true;
+    try {
+      await deleteMyAccount(typed, this.account);
+      this.account = logoutAccount();
+      clearAccountCredentialsFields();
+      this.statusMessage = tx("account.gdpr.delete_ok");
+      navigateTo("/");
+    } catch (error) {
+      await showError(error, tx("dialogs.error"));
+    } finally {
+      this.busy = false;
+    }
   };
 
   private formatDate(value: string): string {
@@ -218,6 +285,43 @@ export class ConfigAccountPage extends LitElement {
       ${this.statusMessage
         ? html`<p class="text-sm text-neutral-500">${this.statusMessage}</p>`
         : nothing}
+    `;
+  }
+
+  private renderGdprSection() {
+    return html`
+      <section class="flex flex-col gap-3 border-t border-current/15 pt-8">
+        <h2 class="text-lg font-semibold">${t("account.gdpr.title")}</h2>
+        <p class="text-sm text-neutral-600">${t("account.gdpr.export_help")}</p>
+        <sonic-form-actions>
+          <sonic-button
+            variant="outline"
+            ?disabled=${this.busy}
+            @click=${this.onExportMyData}
+          >
+            ${t("account.gdpr.export")}
+          </sonic-button>
+          <sonic-button
+            type="danger"
+            variant="outline"
+            ?disabled=${this.busy}
+            @click=${this.onDeleteMyAccount}
+          >
+            ${t("account.gdpr.delete")}
+          </sonic-button>
+        </sonic-form-actions>
+        <p class="text-sm text-neutral-500">
+          <a
+            href=${legalPath("privacy")}
+            class="underline"
+            @click=${(e: Event) => {
+              e.preventDefault();
+              navigateTo(legalPath("privacy"));
+            }}
+            >${t("legal.nav.privacy")}</a
+          >
+        </p>
+      </section>
     `;
   }
 
@@ -397,7 +501,9 @@ export class ConfigAccountPage extends LitElement {
               ${t("account.logout")}
             </sonic-button>
           </sonic-form-actions>
+          ${this.renderGdprSection()}
           ${this.renderAdminUsers()}
+          <legal-footer-links></legal-footer-links>
         </div>
       </page-shell>
     `;

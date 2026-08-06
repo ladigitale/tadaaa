@@ -3,15 +3,27 @@ import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
 import "@supersoniks/concorde/form-layout";
 import "@supersoniks/concorde/form-actions";
+import "@supersoniks/concorde/tooltip";
 import {html, LitElement} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
-import {subscribe} from "@supersoniks/concorde/decorators";
+import {
+  get,
+  patch,
+  subscribe,
+  type ApiResult,
+} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {fetchTag, patchTag} from "../api/client";
+import {
+  apiResultError,
+  endpoints,
+  readApiData,
+  type ApiData,
+} from "../api/endpoints";
 import {TAG_COLORS} from "../api/store-logic";
 import type {Tag, TagColor} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
 import {tagEditKey, type TagEditForm} from "../dp";
+import {bumpTagsList, bumpTodosRev} from "../init";
 import {tx} from "../i18n";
 import {navigateTo} from "../utils/navigate";
 import {isEnterSubmitEvent} from "../utils/form-enter-submit";
@@ -21,6 +33,7 @@ import tailwind from "../../css/tailwind";
 import {showError} from "../utils/modal-dialog";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import {TAGS_ROOT} from "../utils/tag-paths";
+import {shortcuts} from "../shortcuts";
 import "./page-shell";
 import "./tag-badge";
 import "./tag-scope-header";
@@ -49,6 +62,19 @@ export class TagEditPage extends LitElement {
   @state()
   private busy = false;
 
+  @get(endpoints.tags.byId, {skipEmptyPlaceholder: true})
+  @state()
+  tagPayload: ApiResult<ApiData<Tag>> | null = null;
+
+  @patch(endpoints.tags.patch, endpoints.keys.submit.tagEdit, {
+    skipEmptyPlaceholder: true,
+  })
+  @state()
+  savePayload: ApiResult<ApiData<Tag>> | null = null;
+
+  private lastHydratedTagId = "";
+  private pendingSubmit = false;
+
   private get previewTag(): Tag {
     const name = this.name?.trim();
     return {
@@ -58,59 +84,79 @@ export class TagEditPage extends LitElement {
     };
   }
 
-  connectedCallback() {
-    super.connectedCallback();
-    void this.load();
-  }
-
   protected updated(changed: Map<string, unknown>) {
-    if (changed.has("tagId") && this.tagId) {
-      void this.load();
+    if (changed.has("tagId")) {
+      this.lastHydratedTagId = "";
+      this.loading = Boolean(this.tagId);
+      this.notFound = false;
+    }
+    if (changed.has("tagPayload") || changed.has("tagId")) {
+      this.hydrateFromPayload();
+    }
+    if (changed.has("savePayload") && this.pendingSubmit) {
+      void this.finishSubmit();
     }
   }
 
-  private async load() {
+  private async finishSubmit() {
+    this.pendingSubmit = false;
+    set(endpoints.keys.submit.tagEdit.path, null);
+    const tag = readApiData(this.savePayload);
+    if (!tag) {
+      await showError(apiResultError(this.savePayload));
+      this.busy = false;
+      return;
+    }
+    bumpTodosRev();
+    bumpTagsList();
+    navigateTo(TAGS_ROOT, true);
+  }
+
+  private hydrateFromPayload() {
     if (!this.tagId) return;
-    this.loading = true;
-    this.notFound = false;
-    try {
-      const tag = await fetchTag(this.tagId);
-      set(tagEditKey.path, {name: tag.name, color: tag.color});
-    } catch {
-      this.notFound = true;
-    } finally {
-      this.loading = false;
+
+    const payload = this.tagPayload;
+    if (payload == null) {
+      this.loading = true;
+      return;
     }
 
-    if (!this.notFound) {
-      void focusPrimaryInput(this);
+    const tag = payload.result?.data;
+    if (!tag?.id) {
+      this.notFound = true;
+      this.loading = false;
+      return;
     }
+
+    if (tag.id === this.lastHydratedTagId) {
+      this.loading = false;
+      return;
+    }
+
+    this.lastHydratedTagId = tag.id;
+    this.notFound = false;
+    set(tagEditKey.path, {name: tag.name, color: tag.color});
+    this.loading = false;
+    void focusPrimaryInput(this);
   }
 
   private onFormKeyDown = (event: KeyboardEvent) => {
     if (!isEnterSubmitEvent(event)) return;
     event.preventDefault();
-    void this.onSubmit();
+    this.onSubmit();
   };
 
-  private async onSubmit() {
+  private onSubmit() {
     const form = read(tagEditKey.path) as TagEditForm;
     const name = form.name?.trim();
     if (!name || !this.tagId || this.busy) return;
 
     this.busy = true;
-    try {
-      await patchTag(this.tagId, {
-        name,
-        color: form.color ?? "default",
-      });
-      navigateTo(TAGS_ROOT, true);
-    } catch (error) {
-      await showError(error);
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
+    this.pendingSubmit = true;
+    set(endpoints.keys.submit.tagEdit.path, {
+      name,
+      color: form.color ?? "default",
+    });
   }
 
   private renderScopeHeader() {
@@ -214,13 +260,22 @@ export class TagEditPage extends LitElement {
               >
                 ${t("common.cancel")}
               </sonic-button>
-              <sonic-button
-                type="primary"
-                ?disabled=${this.busy}
-                @click=${this.onSubmit}
+              <sonic-tooltip
+                label=${shortcuts.withHint(tx("common.save"), "submitForm")}
+                placement="top"
               >
-                ${t("common.save")}
-              </sonic-button>
+                <sonic-button
+                  type="primary"
+                  ?disabled=${this.busy}
+                  data-aria-label=${shortcuts.withHint(
+                    tx("common.save"),
+                    "submitForm",
+                  )}
+                  @click=${this.onSubmit}
+                >
+                  ${t("common.save")}
+                </sonic-button>
+              </sonic-tooltip>
             </sonic-form-actions>
           </sonic-form-layout>
         </div>

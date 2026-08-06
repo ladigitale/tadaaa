@@ -94,6 +94,35 @@ final class PushSubscriptionService
         }
     }
 
+    /**
+     * @return list<array{
+     *     id: string,
+     *     endpoint: string,
+     *     endpointHost: string,
+     *     userAgent: string|null,
+     *     createdAt: string,
+     *     lastSeenAt: string|null
+     * }>
+     */
+    public function listActiveForUser(User $user): array
+    {
+        $rows = [];
+        foreach ($this->subscriptions->findActiveForUser($user) as $sub) {
+            $endpoint = $sub->getEndpoint();
+            $host = parse_url($endpoint, \PHP_URL_HOST);
+            $rows[] = [
+                'id' => $sub->getId()->toRfc4122(),
+                'endpoint' => $endpoint,
+                'endpointHost' => is_string($host) && $host !== '' ? $host : 'unknown',
+                'userAgent' => $sub->getUserAgent(),
+                'createdAt' => $sub->getCreatedAt()->format(\DateTimeInterface::ATOM),
+                'lastSeenAt' => $sub->getLastSeenAt()?->format(\DateTimeInterface::ATOM),
+            ];
+        }
+
+        return $rows;
+    }
+
     private function assertPushKey(string $value, string $name): string
     {
         $value = trim($value);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Dto\DeleteAccountInput;
 use App\Dto\RegisterInput;
 use App\Dto\ResendVerificationInput;
 use App\Dto\VerifyEmailInput;
@@ -14,6 +15,8 @@ use App\Repository\UserRepository;
 use App\Service\AccountMailer;
 use App\Service\BandwidthQuota;
 use App\Service\StorageQuota;
+use App\Service\UserAccountDeletion;
+use App\Service\UserDataExport;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -39,8 +42,12 @@ final class AuthController extends AbstractController
         private readonly AccountMailer $accountMailer,
         private readonly StorageQuota $storageQuota,
         private readonly BandwidthQuota $bandwidthQuota,
+        private readonly UserDataExport $userDataExport,
+        private readonly UserAccountDeletion $userAccountDeletion,
         #[Autowire(service: 'limiter.register')]
         private readonly RateLimiterFactoryInterface $registerLimiter,
+        #[Autowire(service: 'limiter.account_gdpr')]
+        private readonly RateLimiterFactoryInterface $accountGdprLimiter,
         #[Autowire('%env(bool:REGISTRATION_AUTO_APPROVE)%')]
         private readonly bool $registrationAutoApprove,
     ) {
@@ -76,6 +83,7 @@ final class AuthController extends AbstractController
             $user = new User($email, UserStatus::Active);
             $user->setPassword($this->passwordHasher->hashPassword($user, $input->password));
             $user->setEmailVerifiedAt(new \DateTimeImmutable());
+            $user->setTermsAcceptedAt(new \DateTimeImmutable());
             $defaultDataset = new Dataset('Mon jeu');
             $user->addDataset($defaultDataset);
             $user->setActiveDataset($defaultDataset);
@@ -92,6 +100,7 @@ final class AuthController extends AbstractController
 
         $user = new User($email, UserStatus::Pending);
         $user->setPassword($this->passwordHasher->hashPassword($user, $input->password));
+        $user->setTermsAcceptedAt(new \DateTimeImmutable());
         $rawToken = $this->issueEmailVerifyToken($user);
 
         $defaultDataset = new Dataset('Mon jeu');
@@ -179,6 +188,52 @@ final class AuthController extends AbstractController
         }
 
         return $this->json($ok);
+    }
+
+    #[Route('/me/export', name: 'api_auth_me_export', methods: ['GET'])]
+    #[IsGranted('ROLE_USER')]
+    public function exportMe(): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $limiter = $this->accountGdprLimiter->create('export-'.$user->getId()->toRfc4122());
+        if (!$limiter->consume(1)->isAccepted()) {
+            return $this->json(
+                ['error' => 'Trop de tentatives — réessayez plus tard.'],
+                Response::HTTP_TOO_MANY_REQUESTS,
+            );
+        }
+
+        return $this->json($this->userDataExport->export($user));
+    }
+
+    #[Route('/me', name: 'api_auth_me_delete', methods: ['DELETE'])]
+    #[IsGranted('ROLE_USER')]
+    public function deleteMe(
+        #[MapRequestPayload] DeleteAccountInput $input,
+    ): JsonResponse {
+        /** @var User $user */
+        $user = $this->getUser();
+        $limiter = $this->accountGdprLimiter->create('delete-'.$user->getId()->toRfc4122());
+        if (!$limiter->consume(1)->isAccepted()) {
+            return $this->json(
+                ['error' => 'Trop de tentatives — réessayez plus tard.'],
+                Response::HTTP_TOO_MANY_REQUESTS,
+            );
+        }
+
+        $confirm = strtolower(trim($input->confirmEmail));
+        if ($confirm !== $user->getEmail()) {
+            return $this->json(
+                ['error' => 'L’email de confirmation ne correspond pas.'],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $email = $user->getEmail();
+        $this->userAccountDeletion->delete($user);
+
+        return $this->json(['deleted' => true, 'email' => $email]);
     }
 
     #[Route('/me', name: 'api_auth_me', methods: ['GET'])]

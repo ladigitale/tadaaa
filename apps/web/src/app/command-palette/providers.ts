@@ -1,5 +1,10 @@
-import {fetchTags, fetchTodos} from "../api/client";
 import type {Tag, Todo} from "../api/types";
+import {read} from "../../utils/dataprovider";
+import {
+  tagsListKey,
+  todosArchivedCatalogKey,
+  todosCatalogKey,
+} from "../dp";
 import {tx} from "../i18n";
 import {CONFIG_SECTIONS} from "../utils/config-sections";
 import {NAV_SECTIONS} from "../utils/nav-sections";
@@ -12,25 +17,14 @@ import type {CommandItem} from "./types";
 let cachedTodos: Todo[] = [];
 let cachedTags: Tag[] = [];
 
-async function loadTodosForPalette(): Promise<Todo[]> {
-  const [active, archived] = await Promise.all([
-    fetchTodos({
-      status: "all",
-      limit: 500,
-      recursive: true,
-      sortBy: "createdAt",
-      sortDir: "desc",
-    }),
-    fetchTodos({
-      status: "archived",
-      limit: 500,
-      recursive: true,
-      sortBy: "createdAt",
-      sortDir: "desc",
-    }),
-  ]);
+function readTodosCatalog(): Todo[] {
+  const active = read(todosCatalogKey.path) as Todo[] | null;
+  const archived = read(todosArchivedCatalogKey.path) as Todo[] | null;
   const byId = new Map<string, Todo>();
-  for (const todo of [...(active.data ?? []), ...(archived.data ?? [])]) {
+  for (const todo of [
+    ...(Array.isArray(active) ? active : []),
+    ...(Array.isArray(archived) ? archived : []),
+  ]) {
     byId.set(todo.id, todo);
   }
   return [...byId.values()];
@@ -39,12 +33,9 @@ async function loadTodosForPalette(): Promise<Todo[]> {
 /** Prefetch dynamic sources once per palette open (keeps typing local). */
 export async function warmCommandPaletteCache(): Promise<void> {
   try {
-    const [todos, tags] = await Promise.all([
-      loadTodosForPalette(),
-      fetchTags(),
-    ]);
-    cachedTodos = todos;
-    cachedTags = tags;
+    cachedTodos = readTodosCatalog();
+    const tags = read(tagsListKey.path) as Tag[] | null;
+    cachedTags = Array.isArray(tags) ? tags : [];
   } catch {
     cachedTodos = [];
     cachedTags = [];

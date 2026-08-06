@@ -49,6 +49,16 @@ ensure_prod_env_defaults() {
   ensure_env_key "FLOOR_PER_USER_DAY_BYTES" "2097152"
   ensure_env_key "CEIL_PER_USER_DAY_BYTES" "26214400"
 
+  # Legal identity (fill manually — empty placeholders)
+  ensure_env_key "LEGAL_PUBLISHER_NAME" ""
+  ensure_env_key "LEGAL_PUBLISHER_EMAIL" ""
+  ensure_env_key "LEGAL_PUBLISHER_ADDRESS" ""
+  ensure_env_key "LEGAL_SIRET" ""
+  ensure_env_key "LEGAL_HOST_NAME" ""
+  ensure_env_key "LEGAL_HOST_ADDRESS" ""
+  ensure_env_key "LEGAL_HOST_CONTACT" ""
+  ensure_env_key "LEGAL_PRIVACY_EMAIL" ""
+
   # Keep Mercure public URL coherent if missing
   ensure_env_key "MERCURE_PUBLIC_URL" "https://${api_host}/.well-known/mercure"
 }

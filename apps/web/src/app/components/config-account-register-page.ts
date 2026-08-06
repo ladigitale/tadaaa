@@ -19,6 +19,7 @@ import {
   refreshAccountSession,
   registerAccount,
 } from "../cloud-api/client";
+import {legalPath} from "../legal";
 import {read} from "../../utils/dataprovider";
 import {appConfigKey, type AppConfigForm} from "../dp";
 import {
@@ -26,15 +27,40 @@ import {
   hydrateAccountForm,
   persistAccountApiBaseUrl,
 } from "../utils/account-form";
+import {
+  captureInviteQueryParam,
+  inviteAuthPath,
+  navigateAfterAuth,
+} from "../utils/pending-invite";
 import {navigateTo} from "../utils/navigate";
-import {configSectionPath} from "../utils/config-paths";
-import {TACHE_ROOT} from "../utils/tache-paths";
+import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {showError} from "../utils/modal-dialog";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
 import "./account-api-url-field";
 import "./config-scope-header";
 import "./page-shell";
+
+function acceptTermsLabel() {
+  const termsHref = legalPath("terms");
+  const privacyHref = legalPath("privacy");
+  const link = (href: string, label: string) => html`<a
+    href=${href}
+    class="underline"
+    @click=${(e: Event) => {
+      e.preventDefault();
+      navigateTo(href);
+    }}
+    >${label}</a
+  >`;
+  // FR/EN templates: "… {terms} … {privacy}."
+  const raw = tx("account.accept_terms");
+  const [before, mid, after = ""] = raw.split(/\{terms\}|\{privacy\}/);
+  return html`${before}${link(termsHref, tx("account.accept_terms_terms"))}${mid}${link(
+    privacyHref,
+    tx("account.accept_terms_privacy"),
+  )}${after}`;
+}
 
 @customElement("config-account-register-page")
 export class ConfigAccountRegisterPage extends LitElement {
@@ -67,15 +93,21 @@ export class ConfigAccountRegisterPage extends LitElement {
   @state()
   private pendingRegistrationMessage = "";
 
+  @state()
+  private acceptedTerms = false;
+
   private onAccountChanged = () => {
     this.account = loadAccountSettings();
     if (isAccountConnected(this.account)) {
-      navigateTo(TACHE_ROOT, true);
+      void navigateAfterAuth(this.account).catch((error) => {
+        console.error(error);
+      });
     }
   };
 
   connectedCallback() {
     super.connectedCallback();
+    captureInviteQueryParam();
     window.addEventListener(ACCOUNT_CHANGED_EVENT, this.onAccountChanged);
     void this.bootstrap();
   }
@@ -91,7 +123,7 @@ export class ConfigAccountRegisterPage extends LitElement {
       try {
         const next = await refreshAccountSession(account);
         if (isAccountConnected(next)) {
-          navigateTo(TACHE_ROOT, true);
+          await navigateAfterAuth(next);
           return;
         }
       } catch {
@@ -103,8 +135,21 @@ export class ConfigAccountRegisterPage extends LitElement {
     this.apiHealthy = await checkCloudApiHealth(this.account);
   }
 
+  private onFormKeyDown = (event: KeyboardEvent) => {
+    if (!isEnterSubmitEvent(event)) return;
+    event.preventDefault();
+    void this.onRegister();
+  };
+
   private onRegister = async () => {
     if (this.busy) return;
+    if (!this.acceptedTerms) {
+      await showError(
+        new Error(tx("account.accept_terms_required")),
+        tx("dialogs.error"),
+      );
+      return;
+    }
     const form = read(appConfigKey.path) as AppConfigForm;
     const email = form.accountEmail.trim();
     const password = form.accountPassword;
@@ -126,6 +171,7 @@ export class ConfigAccountRegisterPage extends LitElement {
         password,
         form.accountApiBaseUrl,
         form.accountWebsite ?? "",
+        true,
       );
       clearAccountPasswordField();
       if (result.pending) {
@@ -133,7 +179,7 @@ export class ConfigAccountRegisterPage extends LitElement {
         this.statusMessage = result.message;
       } else {
         this.account = result.settings;
-        navigateTo(TACHE_ROOT);
+        await navigateAfterAuth(result.settings);
       }
     } catch (error) {
       await showError(error, tx("dialogs.error"));
@@ -159,7 +205,7 @@ export class ConfigAccountRegisterPage extends LitElement {
           <config-scope-header section="accountRegister"></config-scope-header>
         </div>
 
-        <div class="space-y-6 pt-8">
+        <div class="space-y-6 pt-8" @keydown=${this.onFormKeyDown}>
           <sonic-alert status="info">
             ${t("account.register_intro")}
             <div class="mt-1 text-sm opacity-80">${healthLabel}</div>
@@ -193,6 +239,17 @@ export class ConfigAccountRegisterPage extends LitElement {
               ></sonic-input>
             </div>
           </sonic-form-layout>
+          <label class="flex cursor-pointer items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              class="mt-1"
+              .checked=${this.acceptedTerms}
+              @change=${(e: Event) => {
+                this.acceptedTerms = (e.target as HTMLInputElement).checked;
+              }}
+            />
+            <span>${acceptTermsLabel()}</span>
+          </label>
           <sonic-form-actions>
             <sonic-button
               type="primary"
@@ -203,7 +260,7 @@ export class ConfigAccountRegisterPage extends LitElement {
             </sonic-button>
             <sonic-button
               variant="outline"
-              href=${configSectionPath("accountLogin")}
+              href=${inviteAuthPath("accountLogin")}
               pushstate
             >
               ${t("account.go_login")}

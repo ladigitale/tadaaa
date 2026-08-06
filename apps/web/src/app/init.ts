@@ -1,5 +1,6 @@
-import {read, set} from "../utils/dataprovider";
+import {dp, read, set} from "../utils/dataprovider";
 import {initApiConfiguration} from "./api/config";
+import {endpoints} from "./api/endpoints";
 import {installMockApiFetchFallback} from "./api/mock-api-fetch-fallback";
 import {registerServiceWorker} from "./api/register";
 import {
@@ -31,11 +32,13 @@ import {initPwaInstallListeners} from "./pwa-install";
 import {startDueDateWatcher} from "./notifications/due-dates";
 import {areWebNotificationsEnabled} from "./settings";
 import {subscribeServerPush} from "./notifications/push-subscribe";
+import {shortcuts} from "./shortcuts";
 
 export function initApp(): void {
   initAppLocale();
   initTheme();
   initPwaInstallListeners();
+  shortcuts.install();
   // Avant tout fetch : sous Apache, /mock-api sans SW = index.html (JSON parse fail).
   installMockApiFetchFallback();
   initApiConfiguration();
@@ -97,6 +100,19 @@ export function initApp(): void {
     shareInviteEmail: "",
   });
   set(tagsListKey.path, []);
+  const submit = endpoints.keys.submit;
+  set(submit.todoCreate.path, null);
+  set(submit.todoEdit.path, null);
+  set(submit.tagCreate.path, null);
+  set(submit.tagEdit.path, null);
+  set(submit.todoMove.path, null);
+  set(submit.calendarTodoPatch.path, null);
+  set(submit.calendarTodoCopy.path, null);
+  set(submit.bulkUpdate.path, null);
+  set(submit.purgeArchived.path, null);
+  set(submit.datasetCreate.path, null);
+  set(submit.datasetActivate.path, null);
+  set(submit.dataImport.path, null);
   void registerServiceWorker().then(() => {
     if (areWebNotificationsEnabled() && isAccountConnected()) {
       void subscribeServerPush();
@@ -148,4 +164,15 @@ export function initApp(): void {
 export function bumpTodosRev(): void {
   const filter = read(todosFilterKey.path) as TodosFilter;
   set(todosFilterKey.path, {...filter, _rev: (filter._rev ?? 0) + 1});
+  bumpTodosCatalog();
+}
+
+/** Relance le `@get` de `<todos-catalog-loader>` → catalogues DP. */
+export function bumpTodosCatalog(): void {
+  dp(endpoints.keys.refresh.todosCatalog).invalidate();
+}
+
+/** Relance le `@get` de `<tags-list-loader>` → `tagsListKey`. */
+export function bumpTagsList(): void {
+  dp(endpoints.keys.refresh.tagsList).invalidate();
 }

@@ -13,6 +13,7 @@ import {read} from "../../utils/dataprovider";
 import {appConfigKey, type AppConfigForm} from "../dp";
 import {tx} from "../i18n";
 import {refreshConfigAppData} from "../utils/config-refresh";
+import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {confirmDialog, showAlert, showError} from "../utils/modal-dialog";
 import {
   P2P_BROKER_LABEL,
@@ -90,6 +91,12 @@ export class ConfigP2pPage extends LitElement {
     } finally {
       this.busy = false;
     }
+  };
+
+  private onFormKeyDown = (event: KeyboardEvent) => {
+    if (!isEnterSubmitEvent(event)) return;
+    event.preventDefault();
+    void this.onP2pReceive();
   };
 
   private onP2pReceive = async () => {
@@ -245,6 +252,7 @@ export class ConfigP2pPage extends LitElement {
             <div
               class="flex flex-wrap items-end gap-2"
               formDataProvider=${appConfigKey.path}
+              @keydown=${this.onFormKeyDown}
             >
               <sonic-input
                 name="p2pReceiveCode"

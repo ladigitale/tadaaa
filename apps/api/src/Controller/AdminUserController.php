@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Entity\UserStatus;
 use App\Repository\UserRepository;
 use App\Service\AccountMailer;
+use App\Service\UserAccountDeletion;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -27,6 +28,7 @@ final class AdminUserController extends AbstractController
         private readonly UserRepository $users,
         private readonly EntityManagerInterface $entityManager,
         private readonly AccountMailer $accountMailer,
+        private readonly UserAccountDeletion $userAccountDeletion,
     ) {
     }
 
@@ -88,14 +90,7 @@ final class AdminUserController extends AbstractController
         }
 
         $email = $user->getEmail();
-        try {
-            $this->accountMailer->sendModerationNotice($user, 'deleted', $this->readMessage($request));
-        } catch (\Throwable) {
-            // still delete
-        }
-
-        $this->entityManager->remove($user);
-        $this->entityManager->flush();
+        $this->userAccountDeletion->delete($user, 'deleted', $this->readMessage($request));
 
         return $this->json(['deleted' => true, 'email' => $email]);
     }

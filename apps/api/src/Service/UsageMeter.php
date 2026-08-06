@@ -67,11 +67,13 @@ final class UsageMeter
      * @return array{
      *   from: string,
      *   to: string,
+     *   scope: 'user'|'all',
+     *   userId: ?string,
      *   totals: array<string, int>,
      *   byDay: list<array{day: string, datasetId: ?string, counters: array<string, int>}>,
      * }
      */
-    public function report(User $owner, \DateTimeImmutable $from, \DateTimeImmutable $to): array
+    public function report(?User $owner, \DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
         $rows = $this->usage->findRange($owner, $from, $to);
         $totals = [];
@@ -91,6 +93,8 @@ final class UsageMeter
         return [
             'from' => $from->format('Y-m-d'),
             'to' => $to->format('Y-m-d'),
+            'scope' => $owner === null ? 'all' : 'user',
+            'userId' => $owner?->getId()->toRfc4122(),
             'totals' => $totals,
             'byDay' => $byDay,
         ];

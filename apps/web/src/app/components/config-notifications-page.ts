@@ -1,7 +1,7 @@
 import "@supersoniks/concorde/button";
 import {html, LitElement, nothing} from "lit";
 import {customElement, state} from "lit/decorators.js";
-import {tx} from "../i18n";
+import {tf, tx} from "../i18n";
 import {areWebNotificationsEnabled} from "../settings";
 import {
   disableWebNotifications,
@@ -10,6 +10,7 @@ import {
 } from "../notifications/web-notifications";
 import {
   probePushStatus,
+  requestPushTest,
   subscribePushStatus,
   subscribeServerPush,
   type PushStatus,
@@ -47,6 +48,7 @@ const STATUS_LABEL: Record<PushStatusCode, string> = {
   server_disabled: "notif.status.server_disabled",
   no_service_worker: "notif.status.no_service_worker",
   not_subscribed: "notif.status.not_subscribed",
+  server_missing: "notif.status.server_missing",
   register_failed: "notif.status.register_failed",
   offline: "notif.status.offline",
 };
@@ -69,10 +71,16 @@ export class ConfigNotificationsPage extends LitElement {
   private pushBusy = false;
 
   @state()
+  private testBusy = false;
+
+  @state()
   private prefs: NotificationPreferenceRow[] = [];
 
   @state()
   private prefsLoading = false;
+
+  @state()
+  private lastTestSummary: string | null = null;
 
   private unsubPush: (() => void) | null = null;
 
@@ -168,6 +176,65 @@ export class ConfigNotificationsPage extends LitElement {
     }
   };
 
+  private onSendTest = async () => {
+    if (!isAccountConnected() || !this.webNotifications) return;
+    this.testBusy = true;
+    this.lastTestSummary = null;
+    try {
+      const result = await requestPushTest();
+      this.lastTestSummary = this.formatTestResult(result);
+      await showAlert(tx("notif.test.title"), this.lastTestSummary);
+      await this.refreshPushStatus();
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      this.lastTestSummary = detail;
+      await showAlert(tx("notif.test.title"), detail);
+    } finally {
+      this.testBusy = false;
+    }
+  };
+
+  private formatTestResult(result: {
+    ok: boolean;
+    code: string;
+    sent: number;
+    failed: number;
+    results: Array<{
+      endpointHost: string;
+      success: boolean;
+      reason: string | null;
+      statusCode: number | null;
+    }>;
+  }): string {
+    if (result.code === "server_disabled") {
+      return tx("notif.test.server_disabled");
+    }
+    if (result.code === "no_subscriptions") {
+      return tx("notif.test.no_subscriptions");
+    }
+    const lines = [
+      tf("notif.test.summary", {sent: result.sent, failed: result.failed}),
+    ];
+    for (const row of result.results) {
+      if (row.success) {
+        lines.push(tf("notif.test.row_ok", {host: row.endpointHost}));
+      } else {
+        const reason =
+          row.reason ??
+          (row.statusCode != null ? `HTTP ${row.statusCode}` : "error");
+        lines.push(
+          tf("notif.test.row_fail", {host: row.endpointHost, reason}),
+        );
+      }
+    }
+    if (result.ok && result.failed === 0) {
+      lines.push(tx("notif.test.hint_ok"));
+    } else if (!result.ok) {
+      lines.push(tx("notif.test.hint_fail"));
+    }
+    return lines.join("\n");
+  }
+
   private onTogglePref = async (type: string, enabled: boolean) => {
     if (!isAccountConnected()) return;
     try {
@@ -187,7 +254,8 @@ export class ConfigNotificationsPage extends LitElement {
       code === "unsupported" ||
       code === "server_disabled" ||
       code === "register_failed" ||
-      code === "no_service_worker"
+      code === "no_service_worker" ||
+      code === "server_missing"
     ) {
       return "border-red-600/30 bg-red-50 text-red-900";
     }
@@ -202,9 +270,16 @@ export class ConfigNotificationsPage extends LitElement {
       this.webNotifications &&
       isAccountConnected() &&
       (status.code === "not_subscribed" ||
+        status.code === "server_missing" ||
         status.code === "register_failed" ||
         status.code === "no_service_worker" ||
         status.code === "server_disabled");
+    const canTest =
+      this.webNotifications &&
+      isAccountConnected() &&
+      (status.code === "ready" ||
+        status.code === "server_missing" ||
+        status.serverSubscriptionCount > 0);
 
     return html`
       <div
@@ -245,24 +320,56 @@ export class ConfigNotificationsPage extends LitElement {
               ? tx("notif.status.yes")
               : tx("notif.status.no")}
           </li>
+          <li>
+            ${tx("notif.status.line_server")}:
+            ${status.registeredOnServer
+              ? tx("notif.status.yes")
+              : tx("notif.status.no")}
+            (${status.serverSubscriptionCount})
+          </li>
+          ${status.endpointHost
+            ? html`<li>
+                ${tx("notif.status.line_endpoint")}: ${status.endpointHost}
+              </li>`
+            : nothing}
         </ul>
         ${status.code === "need_account"
           ? html`<div class="mt-3">
               <account-required-cta bare></account-required-cta>
             </div>`
           : nothing}
-        ${canRetry
+        ${canRetry || canTest
           ? html`
-              <div class="mt-2">
-                <sonic-button
-                  size="sm"
-                  type="default"
-                  ?disabled=${this.pushBusy}
-                  @click=${this.onRetryPush}
-                  >${tx("notif.status.retry")}</sonic-button
-                >
+              <div class="mt-2 flex flex-wrap gap-2">
+                ${canRetry
+                  ? html`
+                      <sonic-button
+                        size="sm"
+                        type="default"
+                        ?disabled=${this.pushBusy || this.testBusy}
+                        @click=${this.onRetryPush}
+                        >${tx("notif.status.retry")}</sonic-button
+                      >
+                    `
+                  : nothing}
+                ${canTest
+                  ? html`
+                      <sonic-button
+                        size="sm"
+                        type="default"
+                        ?disabled=${this.pushBusy || this.testBusy}
+                        @click=${this.onSendTest}
+                        >${tx("notif.test.button")}</sonic-button
+                      >
+                    `
+                  : nothing}
               </div>
             `
+          : nothing}
+        ${this.lastTestSummary
+          ? html`<p class="mt-2 whitespace-pre-line text-xs opacity-90">
+              ${this.lastTestSummary}
+            </p>`
           : nothing}
       </div>
     `;

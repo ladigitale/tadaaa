@@ -1,4 +1,4 @@
-/** Side-effect: registers built-in Ctrl+Shift+P providers. */
+/** Side-effect: registers built-in command palette providers. */
 import "./providers";
 
 export {collectCommandGroups, registerCommandProvider} from "./registry";

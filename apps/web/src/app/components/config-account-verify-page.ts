@@ -11,9 +11,11 @@ import {
 import {tx} from "../i18n";
 import {verifyAccountEmail} from "../cloud-api/client";
 import {hydrateAccountForm} from "../utils/account-form";
-import {navigateTo} from "../utils/navigate";
-import {configSectionPath} from "../utils/config-paths";
-import {TACHE_ROOT} from "../utils/tache-paths";
+import {
+  inviteAuthPath,
+  navigateAfterAuth,
+  readPendingInviteToken,
+} from "../utils/pending-invite";
 import {showError} from "../utils/modal-dialog";
 import tailwind from "../../css/tailwind";
 import "./config-scope-header";
@@ -29,7 +31,9 @@ export class ConfigAccountVerifyPage extends LitElement {
 
   private onAccountChanged = () => {
     if (isAccountConnected()) {
-      navigateTo(TACHE_ROOT, true);
+      void navigateAfterAuth(loadAccountSettings()).catch((error) => {
+        console.error(error);
+      });
     }
   };
 
@@ -56,9 +60,9 @@ export class ConfigAccountVerifyPage extends LitElement {
     this.error = "";
     try {
       hydrateAccountForm(loadAccountSettings());
-      await verifyAccountEmail(token);
+      const settings = await verifyAccountEmail(token);
       this.done = true;
-      navigateTo(TACHE_ROOT, true);
+      await navigateAfterAuth(settings);
     } catch (error) {
       this.error =
         error instanceof Error ? error.message : tx("dialogs.unknown_error");
@@ -85,7 +89,10 @@ export class ConfigAccountVerifyPage extends LitElement {
             ? html`<sonic-alert status="error">${this.error}</sonic-alert>
                 <sonic-button
                   variant="outline"
-                  href=${configSectionPath("accountLogin")}
+                  href=${inviteAuthPath(
+                    "accountLogin",
+                    readPendingInviteToken() || undefined,
+                  )}
                   pushstate
                   >${t("account.go_login")}</sonic-button
                 >`

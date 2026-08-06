@@ -1,5 +1,12 @@
 import {DataProviderKey} from "@supersoniks/concorde/dataProviderKey";
-import type {SortDirection, Tag, TodoPriority, TodoRecurrence, TodoSortBy} from "./api/types";
+import type {
+  SortDirection,
+  Tag,
+  Todo,
+  TodoPriority,
+  TodoRecurrence,
+  TodoSortBy,
+} from "./api/types";
 import type {UsageFilterForm} from "./usage/catalog";
 
 export type TodosFilter = {
@@ -114,6 +121,12 @@ export const commandPaletteKey = new DataProviderKey<CommandPaletteForm>(
 );
 export const appConfigKey = new DataProviderKey<AppConfigForm>("appConfig");
 export const tagsListKey = new DataProviderKey<Tag[]>("tagsList");
+/** Catalogue actif (status=all) — publié par `<todos-catalog-loader>`. */
+export const todosCatalogKey = new DataProviderKey<Todo[]>("todosCatalog");
+/** Catalogue archivé — publié par `<todos-catalog-loader>`. */
+export const todosArchivedCatalogKey = new DataProviderKey<Todo[]>(
+  "todosArchivedCatalog",
+);
 export const todoTagsEditKey = new DataProviderKey<
   TodoTagsEdit,
   {todoId: string}

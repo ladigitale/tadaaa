@@ -5,4 +5,5 @@ export function navigateTo(path: string, replace = false): void {
   } else {
     history.pushState(null, "", path);
   }
+  window.dispatchEvent(new PopStateEvent("popstate"));
 }

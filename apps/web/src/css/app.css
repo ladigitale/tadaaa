@@ -1,5 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bangers&family=Barlow:wght@400;500;600;700&family=Bebas+Neue&family=Cabin:wght@400;500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Comic+Neue:wght@400;700&family=DM+Sans:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Josefin+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Mochiy+Pop+One&family=Monoton&family=Outfit:wght@400;500;600;700&family=Oxanium:wght@500;600;700&family=Poiret+One&family=Public+Sans:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Rowdies:wght@400;700&family=Share+Tech+Mono&family=Sora:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Teko:wght@500;600;700&family=Unbounded:wght@500;600;700&family=VT323&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap");
 
 /*
 Default theme (data-theme omitted).
@@ -9,42 +8,39 @@ https://delanfranchi.github.io/concordecolors/
 :root {
   color-scheme: light;
 
-  /* base / content */
-  --sc-base: #fafaf9;
-  --sc-base-content: #1c1917;
+  /* Electric stone — acid accents */
+  --sc-base: #f4f2ff;
+  --sc-base-content: #14101f;
+  --sc-base-50: #e8e4f8;
+  --sc-base-100: #d4cef0;
+  --sc-base-200: #b8aee0;
+  --sc-base-300: #9488c4;
+  --sc-base-400: #6e64a0;
+  --sc-base-500: #524878;
+  --sc-base-600: #3a3258;
+  --sc-base-700: #282240;
+  --sc-base-800: #1a162c;
+  --sc-base-900: #100e1a;
 
-  /* neutral colors */
-  --sc-base-50: #f0f0ef;
-  --sc-base-100: #e6e5e4;
-  --sc-base-200: #cdcccb;
-  --sc-base-300: #bcbbba;
-  --sc-base-400: #999795;
-  --sc-base-500: #82807e;
-  --sc-base-600: #615e5d;
-  --sc-base-700: #423f3d;
-  --sc-base-800: #2e2b29;
-  --sc-base-900: #1c1917;
+  --sc-primary: #4f1fff;
+  --sc-primary-content: #f8f6ff;
+  --sc-info: #00c8ff;
+  --sc-info-content: #002430;
+  --sc-success: #b8f000;
+  --sc-success-content: #1a2200;
+  --sc-warning: #ff6b1a;
+  --sc-warning-content: #fff5ee;
+  --sc-danger: #ff1a6a;
+  --sc-danger-content: #fff0f5;
 
-  /* Semantic colors */
-  --sc-primary: #10298e;
-  --sc-primary-content: #ffffff;
-  --sc-info: #27b2ff;
-  --sc-info-content: #ffffff;
-  --sc-success: #00cc57;
-  --sc-success-content: #111827;
-  --sc-warning: #ff5a29;
-  --sc-warning-content: #ffffff;
-  --sc-danger: #f40e44;
-  --sc-danger-content: #ffffff;
-
-  /* Base style */
-  --sc-rounded: 0.5rem;
+  --sc-rounded: 0.625rem;
   --sc-btn-rounded: 9999px;
   --sc-border-width: max(2px, 0.125rem);
 
-  /* Fonts */
-  --sc-font-family-base: "Hanken Grotesk", sans-serif;
-  --sc-headings-font-family: var(--sc-font-family-base);
+  /* Sans only — geometric product */
+  --sc-font-family-base: "DM Sans", ui-sans-serif, sans-serif;
+  --sc-font-family-headings: "Space Grotesk", ui-sans-serif, sans-serif;
+  --sc-headings-font-family: var(--sc-font-family-headings);
 }
 
 /* set global styles */
@@ -74,6 +70,30 @@ sonic-scope {
 
 sonic-router {
   display: block;
+}
+
+/* FAB (new task / tag) sits above the legal footer chrome. */
+.app-shell {
+  /* border + py-2 + text-xs row — keep in sync with layout footer. */
+  --app-shell-footer-offset: 2.75rem;
+}
+
+/* Guest landing: full-viewport canvas shows through the shell */
+html[data-landing] .app-shell {
+  background-color: transparent;
+}
+
+html[data-landing] .app-shell-chrome {
+  position: relative;
+  z-index: 2;
+  background-color: color-mix(in srgb, var(--sc-base) 86%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html[data-landing] .app-shell-main {
+  background-color: transparent;
+  overflow: hidden;
 }
 
 /* Scrollbar type docs Concorde — fine, visible au survol */

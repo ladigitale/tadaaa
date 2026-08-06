@@ -9,11 +9,17 @@ import {html, LitElement, nothing} from "lit";
 import {customElement, query, state} from "lit/decorators.js";
 import {handle, subscribe} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {fetchTags, fetchTodos} from "../api/client";
+import {endpoints} from "../api/endpoints";
 import {filterTodos} from "../api/store-logic";
 import type {SortDirection, Tag, Todo, TodoSortBy} from "../api/types";
-import {read, set} from "../../utils/dataprovider";
-import {todoSearchKey, type TodoSearchForm} from "../dp";
+import {dp, read, set} from "../../utils/dataprovider";
+import {
+  tagsListKey,
+  todoSearchKey,
+  todosArchivedCatalogKey,
+  todosCatalogKey,
+  type TodoSearchForm,
+} from "../dp";
 import {tx} from "../i18n";
 import {navigateTo} from "../utils/navigate";
 import {tacheItemPath} from "../utils/tache-paths";
@@ -47,11 +53,17 @@ export class TodoSearchModal extends LitElement {
   @query("#todoSearchModal")
   private modal?: HTMLElement & {show: () => void; hide: () => void};
 
+  @subscribe(todosCatalogKey)
   @state()
-  private todos: Todo[] = [];
+  activeCatalog: Todo[] = [];
 
+  @subscribe(todosArchivedCatalogKey)
   @state()
-  private tags: Tag[] = [];
+  archivedCatalog: Todo[] = [];
+
+  @subscribe(tagsListKey)
+  @state()
+  tags: Tag[] = [];
 
   /** Champs abonnés unitairement (formDataProvider écrit en nested path). */
   @subscribe(todoSearchKey.q)
@@ -81,22 +93,7 @@ export class TodoSearchModal extends LitElement {
   @state()
   private loading = false;
 
-  private onKeyDown = (event: KeyboardEvent) => {
-    const isModifier = event.metaKey || event.ctrlKey;
-    if (!isModifier || event.key.toLowerCase() !== "k") return;
-    event.preventDefault();
-    void this.open();
-  };
-
-  connectedCallback() {
-    super.connectedCallback();
-    window.addEventListener("keydown", this.onKeyDown);
-  }
-
-  disconnectedCallback() {
-    window.removeEventListener("keydown", this.onKeyDown);
-    super.disconnectedCallback();
-  }
+  private waitingCatalog = false;
 
   @handle(todoSearchKey.sort)
   onSortKeyChange(sort: string) {
@@ -144,10 +141,21 @@ export class TodoSearchModal extends LitElement {
     return Array.isArray(this.selectedTags) ? this.selectedTags : [];
   }
 
+  private get mergedTodos(): Todo[] {
+    const byId = new Map<string, Todo>();
+    for (const todo of [
+      ...(Array.isArray(this.activeCatalog) ? this.activeCatalog : []),
+      ...(Array.isArray(this.archivedCatalog) ? this.archivedCatalog : []),
+    ]) {
+      byId.set(todo.id, todo);
+    }
+    return [...byId.values()];
+  }
+
   private get filteredTodos(): Todo[] {
     const knownTagIds = this.tags.map((tag) => tag.id);
     const result = filterTodos(
-      this.todos,
+      this.mergedTodos,
       {
         status: this.status ?? "all",
         tagIds: this.tagsValue,
@@ -162,46 +170,28 @@ export class TodoSearchModal extends LitElement {
     return result.slice(0, RESULT_LIMIT);
   }
 
-  /** Charge actives + archivées pour filtrer côté client (statut compris). */
-  private async loadTodosForSearch(): Promise<Todo[]> {
-    const [active, archived] = await Promise.all([
-      fetchTodos({
-        status: "all",
-        limit: 500,
-        recursive: true,
-        sortBy: "createdAt",
-        sortDir: "desc",
-      }),
-      fetchTodos({
-        status: "archived",
-        limit: 500,
-        recursive: true,
-        sortBy: "createdAt",
-        sortDir: "desc",
-      }),
-    ]);
-    const byId = new Map<string, Todo>();
-    for (const todo of [...(active.data ?? []), ...(archived.data ?? [])]) {
-      byId.set(todo.id, todo);
+  protected updated(changed: Map<string, unknown>) {
+    if (
+      (changed.has("activeCatalog") || changed.has("archivedCatalog")) &&
+      this.waitingCatalog
+    ) {
+      this.waitingCatalog = false;
+      this.loading = false;
     }
-    return [...byId.values()];
   }
 
   async open() {
     set(todoSearchKey.path, emptySearchForm());
     this.loading = true;
+    this.waitingCatalog = true;
+    dp(endpoints.keys.refresh.todosCatalog).invalidate();
 
-    try {
-      const [todos, tags] = await Promise.all([
-        this.loadTodosForSearch(),
-        fetchTags(),
-      ]);
-      this.todos = todos;
-      this.tags = tags;
-    } catch {
-      this.todos = [];
-      this.tags = [];
-    } finally {
+    // Peinture immédiate si le catalogue est déjà chaud.
+    if (
+      Array.isArray(this.activeCatalog) ||
+      Array.isArray(this.archivedCatalog)
+    ) {
+      this.waitingCatalog = false;
       this.loading = false;
     }
 

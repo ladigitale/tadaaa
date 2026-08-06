@@ -29,6 +29,7 @@ import {
   EMBED_PRESETS,
   type EmbedPresetId,
 } from "../utils/embed-presets";
+import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
 import "./account-required-cta";
@@ -145,6 +146,12 @@ export class ConfigEmbedsPage extends LitElement {
     }
   }
 
+  private onFormKeyDown = (event: KeyboardEvent) => {
+    if (!isEnterSubmitEvent(event)) return;
+    event.preventDefault();
+    void this.onCreate();
+  };
+
   private onCreate = async () => {
     const form = read(appConfigKey.path) as AppConfigForm;
     const name = (form?.embedName ?? this.embedName).trim();
@@ -251,7 +258,10 @@ export class ConfigEmbedsPage extends LitElement {
                 : nothing}
               ${this.renderPresets()}
 
-              <section class="border-t border-[color:var(--sc-border)] pt-4 mb-6">
+              <section
+                class="border-t border-[color:var(--sc-border)] pt-4 mb-6"
+                @keydown=${this.onFormKeyDown}
+              >
                 <h2 class="text-base font-medium mb-3">${t("embeds.create_title")}</h2>
                 <sonic-form-layout>
                   <label class="form-label">

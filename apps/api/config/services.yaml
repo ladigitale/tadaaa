@@ -21,6 +21,15 @@ parameters:
     env(CEIL_PER_USER_MONTH_BYTES): '524288000'
     env(FLOOR_PER_USER_DAY_BYTES): '2097152'
     env(CEIL_PER_USER_DAY_BYTES): '26214400'
+    # Legal identity (personne physique) — leave empty in git; set in deploy .env
+    env(LEGAL_PUBLISHER_NAME): ''
+    env(LEGAL_PUBLISHER_EMAIL): ''
+    env(LEGAL_PUBLISHER_ADDRESS): ''
+    env(LEGAL_SIRET): ''
+    env(LEGAL_HOST_NAME): ''
+    env(LEGAL_HOST_ADDRESS): ''
+    env(LEGAL_HOST_CONTACT): ''
+    env(LEGAL_PRIVACY_EMAIL): ''
 
 services:
     # default configuration for services in *this* file

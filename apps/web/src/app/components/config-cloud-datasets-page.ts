@@ -31,6 +31,7 @@ import {getIdbTodoStore} from "../api/store-idb";
 import {getActiveDatasetSyncState, openCloudDatasetForEditing} from "../sync/engine";
 import {read, set} from "../../utils/dataprovider";
 import {appConfigKey, type AppConfigForm} from "../dp";
+import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {confirmDialog, promptTextDialog, showError} from "../utils/modal-dialog";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
@@ -147,6 +148,18 @@ export class ConfigCloudDatasetsPage extends LitElement {
         return "";
     }
   }
+
+  private onCreateFormKeyDown = (event: KeyboardEvent) => {
+    if (!isEnterSubmitEvent(event)) return;
+    event.preventDefault();
+    void this.onCreateCloudDataset();
+  };
+
+  private onInviteFormKeyDown = (event: KeyboardEvent) => {
+    if (!isEnterSubmitEvent(event)) return;
+    event.preventDefault();
+    void this.onInviteByEmail();
+  };
 
   private onCreateCloudDataset = async () => {
     if (this.busy || !isAccountConnected(this.account)) return;
@@ -430,24 +443,26 @@ export class ConfigCloudDatasetsPage extends LitElement {
             >${tx("cloud.create_link")}</sonic-button
           >
         </div>
-        <sonic-form-layout>
-          <sonic-input
-            formDataProvider=${appConfigKey.path}
-            name="shareInviteEmail"
-            type="email"
-            label=${tx("cloud.invite_email")}
-            placeholder=${tx("cloud.invite_email_ph")}
-          ></sonic-input>
-        </sonic-form-layout>
-        <sonic-form-actions>
-          <sonic-button
-            size="sm"
-            type="primary"
-            ?disabled=${this.busy}
-            @click=${this.onInviteByEmail}
-            >${tx("cloud.invite_email_send")}</sonic-button
-          >
-        </sonic-form-actions>
+        <div @keydown=${this.onInviteFormKeyDown}>
+          <sonic-form-layout>
+            <sonic-input
+              formDataProvider=${appConfigKey.path}
+              name="shareInviteEmail"
+              type="email"
+              label=${tx("cloud.invite_email")}
+              placeholder=${tx("cloud.invite_email_ph")}
+            ></sonic-input>
+          </sonic-form-layout>
+          <sonic-form-actions>
+            <sonic-button
+              size="sm"
+              type="primary"
+              ?disabled=${this.busy}
+              @click=${this.onInviteByEmail}
+              >${tx("cloud.invite_email_send")}</sonic-button
+            >
+          </sonic-form-actions>
+        </div>
         <p class="text-sm text-neutral-500">${tx("cloud.invite_email_help")}</p>
         ${this.lastInviteUrl
           ? html`
@@ -534,24 +549,26 @@ export class ConfigCloudDatasetsPage extends LitElement {
                     `
                   : nothing}
                 ${this.renderSharePanel()}
-                <sonic-form-layout>
-                  <sonic-input
-                    formDataProvider=${appConfigKey.path}
-                    name="newCloudDatasetName"
-                    label=${tx("cloud.new_dataset")}
-                    placeholder=${tx("cloud.new_dataset_ph")}
-                  ></sonic-input>
-                </sonic-form-layout>
-                <sonic-form-actions>
-                  <sonic-button
-                    type="primary"
-                    size="sm"
-                    ?disabled=${this.busy}
-                    @click=${this.onCreateCloudDataset}
-                  >
-                    ${t("cloud.create")}
-                  </sonic-button>
-                </sonic-form-actions>
+                <div @keydown=${this.onCreateFormKeyDown}>
+                  <sonic-form-layout>
+                    <sonic-input
+                      formDataProvider=${appConfigKey.path}
+                      name="newCloudDatasetName"
+                      label=${tx("cloud.new_dataset")}
+                      placeholder=${tx("cloud.new_dataset_ph")}
+                    ></sonic-input>
+                  </sonic-form-layout>
+                  <sonic-form-actions>
+                    <sonic-button
+                      type="primary"
+                      size="sm"
+                      ?disabled=${this.busy}
+                      @click=${this.onCreateCloudDataset}
+                    >
+                      ${t("cloud.create")}
+                    </sonic-button>
+                  </sonic-form-actions>
+                </div>
 
                 ${this.cloudDatasets.length === 0
                   ? html`<p class="text-sm text-neutral-500">

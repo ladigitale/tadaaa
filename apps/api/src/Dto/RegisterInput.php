@@ -18,4 +18,7 @@ final class RegisterInput
 
     /** Honeypot — must stay empty. */
     public string $website = '';
+
+    #[Assert\IsTrue(message: 'Vous devez accepter les CGU et la politique de confidentialité.')]
+    public bool $acceptedTerms = false;
 }

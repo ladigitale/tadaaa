@@ -2,16 +2,22 @@ import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
 import {html, LitElement} from "lit";
 import {customElement, state} from "lit/decorators.js";
+import {put, type ApiResult} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
+import {exportTodosSnapshot} from "../api/client";
 import {
-  exportTodosSnapshot,
-  importTodosSnapshot,
-} from "../api/client";
+  apiResultError,
+  endpoints,
+  readApiData,
+  type ApiData,
+} from "../api/endpoints";
 import {
   exportFileName,
   parseDataPackage,
   TADA_DATA_VERSION,
+  type TadaDataPackage,
 } from "../api/data-package";
+import {set} from "../../utils/dataprovider";
 import {tx} from "../i18n";
 import {refreshConfigAppData} from "../utils/config-refresh";
 import {confirmDialog, showError} from "../utils/modal-dialog";
@@ -26,6 +32,18 @@ export class ConfigDataPage extends LitElement {
 
   @state()
   private busy = false;
+
+  @put(endpoints.data.import, endpoints.keys.submit.dataImport)
+  @state()
+  importPayload: ApiResult<ApiData<TadaDataPackage>> | null = null;
+
+  private pendingImport = false;
+
+  protected updated(changed: Map<string, unknown>) {
+    if (changed.has("importPayload") && this.pendingImport) {
+      void this.finishImport();
+    }
+  }
 
   private onExport = async () => {
     if (this.busy) return;
@@ -96,8 +114,20 @@ export class ConfigDataPage extends LitElement {
     if (!ok) return;
 
     this.busy = true;
+    this.pendingImport = true;
+    set(endpoints.keys.submit.dataImport.path, parsed);
+  };
+
+  private async finishImport() {
+    this.pendingImport = false;
+    set(endpoints.keys.submit.dataImport.path, null);
+    const pkg = readApiData(this.importPayload);
+    if (!pkg) {
+      await showError(apiResultError(this.importPayload), tx("dialogs.error"));
+      this.busy = false;
+      return;
+    }
     try {
-      await importTodosSnapshot(parsed);
       await refreshConfigAppData();
     } catch (error) {
       await showError(error, tx("dialogs.error"));
@@ -105,7 +135,7 @@ export class ConfigDataPage extends LitElement {
     } finally {
       this.busy = false;
     }
-  };
+  }
 
   render() {
     return html`

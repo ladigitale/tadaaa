@@ -16,7 +16,6 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
-#[IsGranted('ROLE_USER')]
 final class DatasetShareController extends AbstractController
 {
     public function __construct(
@@ -26,6 +25,7 @@ final class DatasetShareController extends AbstractController
     }
 
     #[Route('/api/datasets/{id}/invites', name: 'api_dataset_invites_create', methods: ['POST'])]
+    #[IsGranted('ROLE_USER')]
     public function createInvite(string $id, Request $request): JsonResponse
     {
         /** @var User $user */
@@ -43,6 +43,7 @@ final class DatasetShareController extends AbstractController
      * when an active account exists for that address.
      */
     #[Route('/api/datasets/{id}/invites/email', name: 'api_dataset_invites_email', methods: ['POST'])]
+    #[IsGranted('ROLE_USER')]
     public function inviteByEmail(string $id, Request $request): JsonResponse
     {
         /** @var User $user */
@@ -60,6 +61,7 @@ final class DatasetShareController extends AbstractController
     }
 
     #[Route('/api/datasets/{id}/members', name: 'api_dataset_members_list', methods: ['GET'])]
+    #[IsGranted('ROLE_USER')]
     public function listMembers(string $id): JsonResponse
     {
         /** @var User $user */
@@ -70,6 +72,7 @@ final class DatasetShareController extends AbstractController
     }
 
     #[Route('/api/datasets/{id}/members/{userId}', name: 'api_dataset_members_remove', methods: ['DELETE'])]
+    #[IsGranted('ROLE_USER')]
     public function removeMember(string $id, string $userId): JsonResponse
     {
         /** @var User $user */
@@ -87,6 +90,7 @@ final class DatasetShareController extends AbstractController
     }
 
     #[Route('/api/invites/{token}/accept', name: 'api_invites_accept', methods: ['POST'])]
+    #[IsGranted('ROLE_USER')]
     public function acceptInvite(string $token): JsonResponse
     {
         /** @var User $user */

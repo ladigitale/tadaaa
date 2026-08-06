@@ -13,7 +13,6 @@ import {customElement, property, query, state} from "lit/decorators.js";
 import type {DirectiveResult} from "lit/directive.js";
 import {handle, subscribe} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {fetchTags} from "../api/client";
 import {getMockApiServiceUrl} from "../api/config";
 import type {
   Tag,
@@ -39,6 +38,7 @@ import {
   tacheItemNewPath,
   tacheNewPath,
 } from "../utils/tache-paths";
+import {shortcuts} from "../shortcuts";
 
 type TasksViewMode = "list" | "calendar";
 
@@ -106,7 +106,7 @@ export class TodoApp extends LitElement {
         pointer-events: none;
         position: fixed;
         inset-inline: 0;
-        bottom: 0;
+        bottom: var(--app-shell-footer-offset, 0px);
         z-index: 20;
         padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
       }
@@ -145,8 +145,9 @@ export class TodoApp extends LitElement {
   @query("#todoFiltersModal")
   private filtersModal?: HTMLElement & {show: () => void; hide: () => void};
 
+  @subscribe(tagsListKey)
   @state()
-  private tags: Tag[] = [];
+  tags: Tag[] = [];
 
   @state()
   private viewMode: TasksViewMode = loadViewMode();
@@ -172,7 +173,6 @@ export class TodoApp extends LitElement {
       set(todosDoneKey.path, {ids: []});
     }
     this.viewMode = loadViewMode();
-    void this.reloadTags();
     this.syncFilterParent();
   }
 
@@ -235,14 +235,13 @@ export class TodoApp extends LitElement {
     set(todosFilterKey.path, {...filter, recursive});
   }
 
-  private async reloadTags() {
-    const tags = await fetchTags();
-    this.tags = tags;
-    set(tagsListKey.path, tags);
-
+  /** Prune les ids de filtre invalides quand `tagsListKey` change. */
+  @handle(tagsListKey)
+  onTagsListChange(tags: Tag[] | null) {
+    const list = Array.isArray(tags) ? tags : [];
     const selected = Array.isArray(this.filter?.tags) ? this.filter.tags : [];
     const valid = selected.filter((tagId) =>
-      tags.some((tag) => tag.id === tagId),
+      list.some((tag) => tag.id === tagId),
     );
     if (valid.length !== selected.length) {
       dp(`${todosFilterKey.path}/tags`).set(valid);
@@ -405,6 +404,10 @@ export class TodoApp extends LitElement {
       : [];
     const isCalendar = this.viewMode === "calendar";
     const filterAria = tx("tasks.filter.open_aria");
+    const addLabel = this.parentId?.trim()
+      ? tx("tasks.new_sub")
+      : tx("tasks.new");
+    const addHint = shortcuts.withHint(addLabel, "newItem");
 
     return html`
       <div
@@ -490,20 +493,23 @@ export class TodoApp extends LitElement {
 
         <div class="todo-app-add">
           <div class="todo-app-add-inner">
-            <sonic-button
-              href=${this.addHref}
-              pushstate
-              type="primary"
-              size="sm"
-            >
-              <sonic-icon
-                library=${ICON_LIBRARY}
-                prefix=${ICON_PREFIX}
-                name="plus"
+            <sonic-tooltip label=${addHint} placement="top">
+              <sonic-button
+                href=${this.addHref}
+                pushstate
+                type="primary"
                 size="sm"
-              ></sonic-icon>
-              ${this.parentId?.trim() ? t("tasks.new_sub") : t("tasks.new")}
-            </sonic-button>
+                data-aria-label=${addHint}
+              >
+                <sonic-icon
+                  library=${ICON_LIBRARY}
+                  prefix=${ICON_PREFIX}
+                  name="plus"
+                  size="sm"
+                ></sonic-icon>
+                ${addLabel}
+              </sonic-button>
+            </sonic-tooltip>
           </div>
         </div>
       </div>

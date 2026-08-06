@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Service\PushFeature;
+use App\Service\PushNotificationDispatcher;
 use App\Service\PushSubscriptionService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -21,6 +22,7 @@ final class PushController extends AbstractController
     public function __construct(
         private readonly PushFeature $push,
         private readonly PushSubscriptionService $subscriptions,
+        private readonly PushNotificationDispatcher $dispatcher,
     ) {
     }
 
@@ -37,6 +39,15 @@ final class PushController extends AbstractController
         return $this->json([
             'publicKey' => $this->push->getPublicKey(),
             'enabled' => true,
+        ]);
+    }
+
+    #[Route('/subscriptions', name: 'api_push_subscriptions_list', methods: ['GET'])]
+    public function listSubscriptions(): JsonResponse
+    {
+        return $this->json([
+            'enabled' => $this->push->isEnabled(),
+            'subscriptions' => $this->subscriptions->listActiveForUser($this->user()),
         ]);
     }
 
@@ -60,6 +71,13 @@ final class PushController extends AbstractController
         $this->subscriptions->revoke($this->user(), $endpoint);
 
         return $this->json(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/test', name: 'api_push_test', methods: ['POST'])]
+    public function sendTest(): JsonResponse
+    {
+        // Always 200 with structured result so the client can show send diagnostics.
+        return $this->json($this->dispatcher->sendTestToUser($this->user()));
     }
 
     private function user(): User

@@ -122,6 +122,9 @@ export class MainNavMenu extends LitElement {
     );
 
     return html`
+      <div
+        class="custom-scroll max-h-[min(36rem,calc(100dvh-5.5rem))] overflow-y-auto overscroll-contain"
+      >
       <sonic-menu
         direction="column"
         align="left"
@@ -168,6 +171,7 @@ export class MainNavMenu extends LitElement {
           `,
         )}
       </sonic-menu>
+      </div>
     `;
   }
 }

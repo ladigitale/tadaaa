@@ -39,19 +39,21 @@ class UsageDailyRepository extends ServiceEntityRepository
     /**
      * @return list<UsageDaily>
      */
-    public function findRange(User $owner, \DateTimeImmutable $from, \DateTimeImmutable $to): array
+    public function findRange(?User $owner, \DateTimeImmutable $from, \DateTimeImmutable $to): array
     {
-        /** @var list<UsageDaily> $rows */
-        $rows = $this->createQueryBuilder('u')
-            ->andWhere('u.owner = :owner')
+        $qb = $this->createQueryBuilder('u')
             ->andWhere('u.day >= :from')
             ->andWhere('u.day <= :to')
-            ->setParameter('owner', $owner)
             ->setParameter('from', $from->setTime(0, 0))
             ->setParameter('to', $to->setTime(0, 0))
-            ->orderBy('u.day', 'ASC')
-            ->getQuery()
-            ->getResult();
+            ->orderBy('u.day', 'ASC');
+
+        if ($owner !== null) {
+            $qb->andWhere('u.owner = :owner')->setParameter('owner', $owner);
+        }
+
+        /** @var list<UsageDaily> $rows */
+        $rows = $qb->getQuery()->getResult();
 
         return $rows;
     }

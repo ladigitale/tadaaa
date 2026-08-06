@@ -111,6 +111,17 @@ CEIL_PER_USER_MONTH_BYTES=524288000
 FLOOR_PER_USER_DAY_BYTES=2097152
 CEIL_PER_USER_DAY_BYTES=26214400
 
+# Legal identity (individual publisher) — set in production; leave empty in git.
+# Exposed publicly via GET /api/legal for Mentions / Privacy pages.
+# LEGAL_PUBLISHER_NAME=Jane Doe
+# LEGAL_PUBLISHER_EMAIL=you@example.com
+# LEGAL_PUBLISHER_ADDRESS=1 rue Example, 75000 Paris
+# LEGAL_SIRET=
+# LEGAL_HOST_NAME=Example Hosting
+# LEGAL_HOST_ADDRESS=Host address
+# LEGAL_HOST_CONTACT=https://host.example.com/support
+# LEGAL_PRIVACY_EMAIL=privacy@example.com
+
 HTTP_PORT=80
 HTTPS_PORT=443
 HTTP3_PORT=443
@@ -151,14 +162,17 @@ Free-tier quotas (override per user via admin API): **5 MiB** storage; bandwidth
 ## Smoke tests
 
 1. `https://api.example.com/api/health` → `{"status":"ok"}`
-2. Register → `pending` + confirmation email (needs working `MAILER_DSN`)
-3. Click link → `/account/verify` → active + JWT; pending login without verify → 403
-4. Admin disable / reject / delete → email notice (optional personal message) → API / MCP cut off
-5. Front + sync; MCP Bearer / PAT on `/mcp`
-6. Mercure: open the same dataset on two browsers — edit on A → B pulls without refresh
-7. Web Push: enable notifications in Config → Appearance (account connected); invite / check a task with the other browser closed
-8. Quotas: Données → Sync shows storage + bandwidth gauges; over-quota sync → 413 / 429
-9. Claude.ai custom connector → `https://api.example.com/mcp` → Connect (OAuth); allowlist Anthropic egress `160.79.104.0/21` if you firewall inbound
+2. `https://api.example.com/api/legal` → publisher fields (`configured: true` once `LEGAL_*` are set)
+3. Register → must accept CGU/privacy → `pending` + confirmation email (needs working `MAILER_DSN`)
+4. Click link → `/account/verify` → active + JWT; pending login without verify → 403
+5. Account → Export my data / Delete my account (confirm email)
+6. Admin disable / reject / delete → email notice (optional personal message) → API / MCP cut off
+7. Front + sync; MCP Bearer / PAT on `/mcp`
+8. Mercure: open the same dataset on two browsers — edit on A → B pulls without refresh
+9. Web Push: enable notifications in Config → Appearance (account connected); invite / check a task with the other browser closed
+10. Legal pages: `/legal/mentions`, `/legal/privacy`, `/legal/terms`, `/legal/cookies`
+11. Quotas: Données → Sync shows storage + bandwidth gauges; over-quota sync → 413 / 429
+12. Claude.ai custom connector → `https://api.example.com/mcp` → Connect (OAuth); allowlist Anthropic egress `160.79.104.0/21` if you firewall inbound
 
 ## Coolify (optional)
 

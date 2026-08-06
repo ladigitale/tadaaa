@@ -13,8 +13,8 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "nav.group.connectivity": "Connectivity",
     "nav.group.data": "Data",
     "nav.search": "Search…",
-    "nav.search_aria": "Search tasks (Ctrl+K)",
-    "nav.command_aria": "Jump anywhere (Ctrl+Shift+P)",
+    "nav.search_aria": "Search tasks",
+    "nav.command_aria": "Jump anywhere",
     "nav.main_aria": "Main navigation",
     "nav.menu_aria": "Open menu",
 
@@ -29,7 +29,6 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "command.type.task": "Tasks",
 
     "demo.badge": "Demo",
-    "demo.badge_title": "This is a free playground — reopen the short tour",
     "demo.tour.skip": "Skip",
     "demo.tour.next": "Next",
     "demo.tour.start": "Let’s go",
@@ -45,11 +44,11 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "demo.tour.s3.title": "Tags & search",
     "demo.tour.s3.subtitle": "Find anything fast",
     "demo.tour.s3.body":
-      "Use Tags to organize. Press Ctrl+Shift+P to jump anywhere, or Ctrl+K to search tasks with filters. Ticket tokens like RM-12345 become links.",
+      "Use Tags to organize. Press Ctrl+Shift+P to jump anywhere, Ctrl+K to search tasks with filters, or Enter for a new task. Ticket tokens like RM-12345 become links.",
     "demo.tour.s4.title": "Optional cloud",
     "demo.tour.s4.subtitle": "Stay local, or go further",
     "demo.tour.s4.body":
-      "Settings lets you theme the app, export data, or sign in for cloud sync & sharing. Reopen this tour anytime via the Demo badge.",
+      "Settings lets you theme the app, export data, or sign in for cloud sync & sharing.",
 
     "common.ok": "OK",
     "common.cancel": "Cancel",
@@ -202,6 +201,8 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "usage.need_account": "Sign in under Account to view usage.",
     "usage.intro":
       "Interactive usage dashboard — filters drive live charts (Stripe-style KPIs, Grafana time series, GitHub heatmap, Fitness rings).",
+    "usage.intro_admin":
+      "Platform-wide usage by default. Filter by user to drill down into a single account.",
     "usage.none": "No usage recorded yet.",
     "usage.loading": "Loading usage…",
     "usage.refresh": "Refresh",
@@ -214,6 +215,8 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "usage.filter.range_7d": "7 days",
     "usage.filter.range_30d": "30 days",
     "usage.filter.range_90d": "90 days",
+    "usage.filter.user": "User",
+    "usage.filter.user_all": "All users",
     "usage.filter.metrics": "Metrics",
     "usage.filter.metrics_all": "All metrics",
     "usage.filter.dataset": "Dataset",
@@ -289,6 +292,8 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "notif.status.line_vapid": "Server push (VAPID)",
     "notif.status.line_sw": "Service worker",
     "notif.status.line_device": "Device subscription",
+    "notif.status.line_server": "Registered on API",
+    "notif.status.line_endpoint": "Push endpoint host",
     "notif.status.ready": "Ready — this device will receive server push, including when the app is closed.",
     "notif.status.checking": "Checking push status…",
     "notif.status.local_only": "Notifications are off for this app, or only local (no server push registration yet).",
@@ -299,8 +304,18 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "notif.status.server_disabled": "Server push is not configured (missing VAPID keys on the API).",
     "notif.status.no_service_worker": "Service worker unavailable — push cannot register on this device.",
     "notif.status.not_subscribed": "Permission OK, but this device is not subscribed yet. Tap “Register this device”.",
+    "notif.status.server_missing": "Browser subscription exists, but this endpoint is missing on the API. Tap “Register this device”.",
     "notif.status.register_failed": "Could not register this device for server push. Check the network and try again.",
     "notif.status.offline": "You are offline — push registration needs a network connection.",
+    "notif.test.button": "Send test notification",
+    "notif.test.title": "Push test",
+    "notif.test.summary": "FCM/push accepted: {sent} · failed: {failed}",
+    "notif.test.row_ok": "• {host}: OK",
+    "notif.test.row_fail": "• {host}: {reason}",
+    "notif.test.server_disabled": "Server push is not configured (missing VAPID keys).",
+    "notif.test.no_subscriptions": "No active push subscription on the API for this account.",
+    "notif.test.hint_ok": "If nothing appears on the phone, check Android notification permission for Chrome/the PWA and battery restrictions.",
+    "notif.test.hint_fail": "The API could not deliver to FCM — check VAPID keys and subscription freshness.",
     "notif.prefs_title": "Event types",
     "notif.prefs_help": "Choose which events send a push to your devices.",
     "notif.prefs_loading": "Loading preferences…",
@@ -374,6 +389,95 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "home.landing.try_local": "Try without an account",
     "home.landing.footnote":
       "You can create an account anytime from the menu.",
+
+    "legal.nav_aria": "Legal",
+    "legal.nav.mentions": "Legal notice",
+    "legal.nav.privacy": "Privacy",
+    "legal.nav.terms": "Terms",
+    "legal.nav.cookies": "Cookies",
+    "legal.nav.github": "GitHub",
+    "legal.placeholder": "Not configured",
+    "legal.not_configured":
+      "Publisher identity is not fully configured on this deployment. Contact the operator.",
+    "legal.load_error": "Could not load publisher details from the API.",
+    "legal.disclaimer":
+      "These texts are informational templates for this software. They are not a substitute for legal advice.",
+
+    "legal.mentions.title": "Legal notice",
+    "legal.mentions.intro":
+      "This service (Tadaaa) is provided as a web application. Identity of the publisher is set by the operator of this deployment.",
+    "legal.mentions.editor":
+      "Publisher (individual): {publisherName}. Contact: {publisherEmail}. Address: {publisherAddress}.",
+    "legal.mentions.director":
+      "Publication director: {publisherName} (same as the publisher).",
+    "legal.mentions.host":
+      "Hosting provider: {hostName}. Address: {hostAddress}. Contact: {hostContact}.",
+    "legal.mentions.contact":
+      "For any question about this service: {publisherEmail}.",
+    "legal.mentions.siret": "SIRET: {siret}.",
+
+    "legal.privacy.title": "Privacy policy",
+    "legal.privacy.intro":
+      "This policy describes how personal data is processed when you use a Tadaaa cloud account on this deployment.",
+    "legal.privacy.controller":
+      "Data controller: {publisherName} ({privacyEmail}). Address: {publisherAddress}.",
+    "legal.privacy.purposes":
+      "Purposes: create and manage your account; store and sync tasks, tags and datasets; optional push notifications; sharing and invites; webhooks, embeds and MCP access tokens; security and abuse prevention (including limited audit/usage metrics).",
+    "legal.privacy.legal_bases":
+      "Legal bases: performance of the contract (account and sync), legitimate interest (security, service improvement), and consent where required (e.g. optional push notifications, acceptance of terms at sign-up).",
+    "legal.privacy.recipients":
+      "Recipients: the publisher and hosting provider; technical processors required to run the stack (email delivery, push gateways such as FCM/Mozilla, optional PeerJS for P2P sharing). Data is not sold.",
+    "legal.privacy.retention":
+      "Retention: account and cloud data while your account is active; deleted when you delete your account (or when an admin does). Local-only data stays in your browser until you clear it. Technical logs may be kept for a limited period for security.",
+    "legal.privacy.rights":
+      "Your rights (GDPR): access, rectification, erasure, restriction, objection, and portability. In the app you can export your data and delete your account from Account settings.",
+    "legal.privacy.contact":
+      "To exercise your rights or ask a privacy question, contact {privacyEmail}. You may also lodge a complaint with your supervisory authority (e.g. CNIL in France).",
+
+    "legal.terms.title": "Terms of use",
+    "legal.terms.intro":
+      "By creating an account or using the cloud features of this Tadaaa deployment, you agree to these terms.",
+    "legal.terms.service":
+      "Tadaaa is a task-management tool with optional cloud sync and sharing. The service is provided “as is”; availability and features may change.",
+    "legal.terms.account":
+      "You must provide a valid email, keep credentials confidential, and not use the service for unlawful content or abuse (spam, attacks, quota circumvention).",
+    "legal.terms.responsibilities":
+      "You remain responsible for content you store and for people you invite. The publisher is not liable for indirect damages or loss of local browser data.",
+    "legal.terms.termination":
+      "You may delete your account at any time. The publisher may suspend or delete accounts that violate these terms or threaten the service.",
+    "legal.terms.law":
+      "These terms are governed by French law. Disputes shall be brought before the competent French courts, subject to mandatory consumer protections.",
+
+    "legal.cookies.title": "Cookies & local storage",
+    "legal.cookies.intro":
+      "This application does not rely on advertising or analytics cookies of its own. Session and preferences use browser storage.",
+    "legal.cookies.local":
+      "Essential local storage: account session (JWT), UI theme and notification preferences, and local task data when you use the offline mode.",
+    "legal.cookies.third_parties":
+      "Third parties that may set cookies or process technical data when you use related features: Google Fonts (if loaded), PeerJS cloud for optional P2P sharing, and push providers (e.g. FCM) if you enable notifications.",
+    "legal.cookies.manage":
+      "You can clear site data in your browser settings, revoke push subscriptions in Notifications, and delete your cloud account from Account settings.",
+
+    "account.accept_terms":
+      "I accept the {terms} and the {privacy}.",
+    "account.accept_terms_terms": "terms of use",
+    "account.accept_terms_privacy": "privacy policy",
+    "account.accept_terms_required":
+      "You must accept the terms and privacy policy to create an account.",
+    "account.gdpr.title": "Your data",
+    "account.gdpr.export": "Export my data",
+    "account.gdpr.export_help":
+      "Download a JSON file with your profile, datasets, todos, tags, webhooks, and related metadata (no secrets).",
+    "account.gdpr.export_ok": "Export downloaded.",
+    "account.gdpr.delete": "Delete my account",
+    "account.gdpr.delete_title": "Delete your account",
+    "account.gdpr.delete_help":
+      "Permanently deletes your cloud account and associated server data. Local browser data is not removed automatically.",
+    "account.gdpr.delete_prompt":
+      "Type your account email to confirm permanent deletion.",
+    "account.gdpr.delete_mismatch": "Email does not match your account.",
+    "account.gdpr.delete_ok": "Your account has been deleted.",
+
     "account.api_url": "API URL",
     "account.api_url_help":
       "Keep the provided value. Change it only for a custom or self-hosted API.",
@@ -491,7 +595,7 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "invite.title": "Invitation",
     "invite.subtitle": "Join a shared dataset",
     "invite.need_account":
-      "An active cloud account is required to accept an invitation.",
+      "Create or sign in to a cloud account to join this dataset. After that, the invitation is accepted automatically.",
     "invite.go_account": "Go to account",
     "invite.role": "Role",
     "invite.role_writer": "write",
@@ -501,7 +605,7 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "invite.open": "View invitation",
     "invite.invalid_token": "Invalid invitation link (missing token).",
     "invite.need_login":
-      "Sign in to your cloud account, then open this link again.",
+      "Sign in or register with your cloud account — the invitation will be accepted automatically.",
     "invite.unusable": "This invitation is no longer valid.",
     "invite.load_error": "Could not load the invitation.",
     "invite.accept_error": "Could not accept the invitation",
@@ -609,6 +713,8 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "tasks.bulk.mark_undone": "Mark as to do",
     "tasks.bulk.delete": "Delete",
     "tasks.bulk.restore": "Restore",
+    "tasks.bulk.section": "On all filtered tasks",
+    "tasks.bulk.menu_aria": "Actions on all filtered tasks",
     "tasks.bulk.confirm_done_title": "Mark as done",
     "tasks.bulk.confirm_undone_title": "Mark as to do",
     "tasks.bulk.confirm_delete_title": "Delete tasks",
@@ -726,8 +832,8 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "nav.group.connectivity": "Connectivité",
     "nav.group.data": "Données",
     "nav.search": "Recherche…",
-    "nav.search_aria": "Rechercher une tâche (Ctrl+K)",
-    "nav.command_aria": "Aller n’importe où (Ctrl+Shift+P)",
+    "nav.search_aria": "Rechercher une tâche",
+    "nav.command_aria": "Aller n’importe où",
     "nav.main_aria": "Navigation principale",
     "nav.menu_aria": "Ouvrir le menu",
 
@@ -742,7 +848,6 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "command.type.task": "Tâches",
 
     "demo.badge": "Démo",
-    "demo.badge_title": "Espace de jeu libre — rouvrir le mini-tour",
     "demo.tour.skip": "Passer",
     "demo.tour.next": "Suivant",
     "demo.tour.start": "C’est parti",
@@ -758,11 +863,11 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "demo.tour.s3.title": "Étiquettes & recherche",
     "demo.tour.s3.subtitle": "Retrouvez tout vite",
     "demo.tour.s3.body":
-      "Organisez avec les étiquettes. Ctrl+Shift+P pour aller n’importe où, Ctrl+K pour chercher une tâche avec filtres. Les jetons du type RM-12345 deviennent des liens.",
+      "Organisez avec les étiquettes. Ctrl+Shift+P pour aller n’importe où, Ctrl+K pour chercher une tâche avec filtres, Entrée pour une nouvelle tâche. Les jetons du type RM-12345 deviennent des liens.",
     "demo.tour.s4.title": "Cloud optionnel",
     "demo.tour.s4.subtitle": "Restez local, ou allez plus loin",
     "demo.tour.s4.body":
-      "La config permet le thème, l’export, ou une connexion pour sync & partage. Rouvrez ce tour à tout moment via le badge Démo.",
+      "La config permet le thème, l’export, ou une connexion pour sync & partage.",
 
     "common.ok": "OK",
     "common.cancel": "Annuler",
@@ -919,6 +1024,8 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "usage.need_account": "Connectez-vous dans Compte pour voir l’usage.",
     "usage.intro":
       "Tableau de bord interactif — les filtres pilotent les graphiques (KPI type Stripe, séries Grafana, heatmap GitHub, anneaux Fitness).",
+    "usage.intro_admin":
+      "Usage de toute la plateforme par défaut. Filtrez par utilisateur pour zoomer sur un compte.",
     "usage.none": "Aucun usage enregistré.",
     "usage.loading": "Chargement de l’usage…",
     "usage.refresh": "Actualiser",
@@ -931,6 +1038,8 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "usage.filter.range_7d": "7 jours",
     "usage.filter.range_30d": "30 jours",
     "usage.filter.range_90d": "90 jours",
+    "usage.filter.user": "Utilisateur",
+    "usage.filter.user_all": "Tous les utilisateurs",
     "usage.filter.metrics": "Métriques",
     "usage.filter.metrics_all": "Toutes les métriques",
     "usage.filter.dataset": "Jeu de données",
@@ -1006,6 +1115,8 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "notif.status.line_vapid": "Push serveur (VAPID)",
     "notif.status.line_sw": "Service worker",
     "notif.status.line_device": "Abonnement appareil",
+    "notif.status.line_server": "Enregistré sur l’API",
+    "notif.status.line_endpoint": "Hôte endpoint push",
     "notif.status.ready": "Prêt — cet appareil recevra le push serveur, même app fermée.",
     "notif.status.checking": "Vérification de l’état du push…",
     "notif.status.local_only": "Notifications désactivées pour l’app, ou locales seulement (pas encore d’enregistrement serveur).",
@@ -1016,8 +1127,18 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "notif.status.server_disabled": "Push serveur non configuré (clés VAPID manquantes sur l’API).",
     "notif.status.no_service_worker": "Service worker indisponible — impossible d’enregistrer le push sur cet appareil.",
     "notif.status.not_subscribed": "Permission OK, mais cet appareil n’est pas encore abonné. Touchez « Enregistrer cet appareil ».",
+    "notif.status.server_missing": "Abonnement navigateur présent, mais cet endpoint manque sur l’API. Touchez « Enregistrer cet appareil ».",
     "notif.status.register_failed": "Impossible d’enregistrer cet appareil au push serveur. Vérifiez le réseau et réessayez.",
     "notif.status.offline": "Hors ligne — l’enregistrement push nécessite une connexion.",
+    "notif.test.button": "Envoyer une notif de test",
+    "notif.test.title": "Test push",
+    "notif.test.summary": "Accepté par FCM/push : {sent} · échecs : {failed}",
+    "notif.test.row_ok": "• {host} : OK",
+    "notif.test.row_fail": "• {host} : {reason}",
+    "notif.test.server_disabled": "Push serveur non configuré (clés VAPID manquantes).",
+    "notif.test.no_subscriptions": "Aucun abonnement push actif sur l’API pour ce compte.",
+    "notif.test.hint_ok": "Si rien n’apparaît sur le téléphone, vérifiez la permission notifs Chrome/PWA et les restrictions batterie.",
+    "notif.test.hint_fail": "L’API n’a pas pu livrer à FCM — vérifiez les clés VAPID et la fraîcheur de l’abonnement.",
     "notif.prefs_title": "Types d’événements",
     "notif.prefs_help": "Choisissez quels événements envoient un push sur vos appareils.",
     "notif.prefs_loading": "Chargement des préférences…",
@@ -1093,6 +1214,96 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "home.landing.try_local": "Tester sans compte",
     "home.landing.footnote":
       "Vous pourrez créer un compte plus tard depuis le menu.",
+
+    "legal.nav_aria": "Informations légales",
+    "legal.nav.mentions": "Mentions légales",
+    "legal.nav.privacy": "Confidentialité",
+    "legal.nav.terms": "CGU",
+    "legal.nav.cookies": "Cookies",
+    "legal.nav.github": "GitHub",
+    "legal.placeholder": "Non configuré",
+    "legal.not_configured":
+      "L’identité de l’éditeur n’est pas entièrement configurée sur ce déploiement. Contactez l’opérateur.",
+    "legal.load_error":
+      "Impossible de charger les informations éditeur depuis l’API.",
+    "legal.disclaimer":
+      "Ces textes sont des modèles informatifs fournis avec le logiciel. Ils ne remplacent pas un conseil juridique.",
+
+    "legal.mentions.title": "Mentions légales",
+    "legal.mentions.intro":
+      "Le service Tadaaa est fourni sous forme d’application web. L’identité de l’éditeur dépend de l’opérateur de ce déploiement.",
+    "legal.mentions.editor":
+      "Éditeur (personne physique) : {publisherName}. Contact : {publisherEmail}. Adresse : {publisherAddress}.",
+    "legal.mentions.director":
+      "Directeur de la publication : {publisherName} (également éditeur).",
+    "legal.mentions.host":
+      "Hébergeur : {hostName}. Adresse : {hostAddress}. Contact : {hostContact}.",
+    "legal.mentions.contact":
+      "Pour toute question relative au service : {publisherEmail}.",
+    "legal.mentions.siret": "SIRET : {siret}.",
+
+    "legal.privacy.title": "Politique de confidentialité",
+    "legal.privacy.intro":
+      "Cette politique décrit le traitement des données personnelles lorsque vous utilisez un compte cloud Tadaaa sur ce déploiement.",
+    "legal.privacy.controller":
+      "Responsable du traitement : {publisherName} ({privacyEmail}). Adresse : {publisherAddress}.",
+    "legal.privacy.purposes":
+      "Finalités : créer et gérer le compte ; stocker et synchroniser tâches, tags et jeux de données ; notifications push optionnelles ; partage et invitations ; webhooks, embeds et jetons MCP ; sécurité et prévention des abus (y compris journaux d’audit / usage limités).",
+    "legal.privacy.legal_bases":
+      "Bases légales : exécution du contrat (compte et sync), intérêt légitime (sécurité, fonctionnement), et consentement le cas échéant (notifications push optionnelles, acceptation des CGU à l’inscription).",
+    "legal.privacy.recipients":
+      "Destinataires : l’éditeur et l’hébergeur ; prestataires techniques nécessaires (envoi d’emails, passerelles push type FCM/Mozilla, PeerJS optionnel pour le partage P2P). Les données ne sont pas vendues.",
+    "legal.privacy.retention":
+      "Durées : données de compte et cloud tant que le compte est actif ; suppression à la suppression du compte (ou par un administrateur). Les données purement locales restent dans le navigateur jusqu’à effacement. Les journaux techniques peuvent être conservés pour une durée limitée pour la sécurité.",
+    "legal.privacy.rights":
+      "Vos droits (RGPD) : accès, rectification, effacement, limitation, opposition et portabilité. Dans l’application, vous pouvez exporter vos données et supprimer votre compte depuis Compte.",
+    "legal.privacy.contact":
+      "Pour exercer vos droits ou poser une question privacy, contactez {privacyEmail}. Vous pouvez aussi saisir la CNIL (ou l’autorité de votre pays).",
+
+    "legal.terms.title": "Conditions générales d’utilisation",
+    "legal.terms.intro":
+      "En créant un compte ou en utilisant les fonctions cloud de ce déploiement Tadaaa, vous acceptez les présentes conditions.",
+    "legal.terms.service":
+      "Tadaaa est un outil de gestion de tâches avec synchronisation et partage optionnels. Le service est fourni « en l’état » ; la disponibilité et les fonctionnalités peuvent évoluer.",
+    "legal.terms.account":
+      "Vous devez fournir un email valide, protéger vos identifiants, et ne pas utiliser le service à des fins illicites ou abusives (spam, attaques, contournement de quotas).",
+    "legal.terms.responsibilities":
+      "Vous restez responsable du contenu stocké et des personnes invitées. L’éditeur n’est pas responsable des dommages indirects ni de la perte de données locales du navigateur.",
+    "legal.terms.termination":
+      "Vous pouvez supprimer votre compte à tout moment. L’éditeur peut suspendre ou supprimer un compte en cas de violation des présentes ou de menace pour le service.",
+    "legal.terms.law":
+      "Les présentes sont régies par le droit français. Les litiges relèvent des tribunaux français compétents, sous réserve des dispositions impératives de protection des consommateurs.",
+
+    "legal.cookies.title": "Cookies et stockage local",
+    "legal.cookies.intro":
+      "Cette application n’utilise pas de cookies publicitaires ou analytiques qui lui sont propres. La session et les préférences s’appuient sur le stockage du navigateur.",
+    "legal.cookies.local":
+      "Stockage local essentiel : session de compte (JWT), thème et préférences de notification, et données de tâches locales en mode hors-ligne.",
+    "legal.cookies.third_parties":
+      "Tiers susceptibles de déposer des cookies ou de traiter des données techniques : Google Fonts (si chargées), PeerJS cloud pour le partage P2P optionnel, et fournisseurs de push (ex. FCM) si vous activez les notifications.",
+    "legal.cookies.manage":
+      "Vous pouvez effacer les données du site dans les réglages du navigateur, révoquer les abonnements push dans Notifications, et supprimer votre compte cloud depuis Compte.",
+
+    "account.accept_terms":
+      "J’accepte les {terms} et la {privacy}.",
+    "account.accept_terms_terms": "CGU",
+    "account.accept_terms_privacy": "politique de confidentialité",
+    "account.accept_terms_required":
+      "Vous devez accepter les CGU et la politique de confidentialité pour créer un compte.",
+    "account.gdpr.title": "Vos données",
+    "account.gdpr.export": "Exporter mes données",
+    "account.gdpr.export_help":
+      "Télécharge un fichier JSON (profil, jeux, todos, tags, webhooks et métadonnées — sans secrets).",
+    "account.gdpr.export_ok": "Export téléchargé.",
+    "account.gdpr.delete": "Supprimer mon compte",
+    "account.gdpr.delete_title": "Supprimer votre compte",
+    "account.gdpr.delete_help":
+      "Supprime définitivement votre compte cloud et les données associées côté serveur. Les données locales du navigateur ne sont pas effacées automatiquement.",
+    "account.gdpr.delete_prompt":
+      "Saisissez l’email de votre compte pour confirmer la suppression définitive.",
+    "account.gdpr.delete_mismatch": "L’email ne correspond pas à votre compte.",
+    "account.gdpr.delete_ok": "Votre compte a été supprimé.",
+
     "account.api_url": "URL de l’API",
     "account.api_url_help":
       "Conservez la valeur fournie. Ne la changez que pour une API personnalisée ou auto-hébergée.",
@@ -1217,7 +1428,7 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "invite.title": "Invitation",
     "invite.subtitle": "Rejoindre un jeu de données partagé",
     "invite.need_account":
-      "Un compte cloud actif est requis pour accepter une invitation.",
+      "Créez ou connectez un compte cloud pour rejoindre ce jeu. L’invitation sera ensuite acceptée automatiquement.",
     "invite.go_account": "Aller au compte",
     "invite.role": "Rôle",
     "invite.role_writer": "écriture",
@@ -1227,7 +1438,7 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "invite.open": "Voir l’invitation",
     "invite.invalid_token": "Lien d’invitation invalide (token manquant).",
     "invite.need_login":
-      "Connectez-vous à votre compte cloud, puis rouvrez ce lien.",
+      "Connectez-vous ou inscrivez-vous — l’invitation sera acceptée automatiquement.",
     "invite.unusable": "Cette invitation n’est plus valide.",
     "invite.load_error": "Impossible de charger l’invitation.",
     "invite.accept_error": "Impossible d’accepter l’invitation",
@@ -1336,6 +1547,8 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "tasks.bulk.mark_undone": "Marquer comme à faire",
     "tasks.bulk.delete": "Supprimer",
     "tasks.bulk.restore": "Restaurer",
+    "tasks.bulk.section": "Sur toutes les tâches filtrées",
+    "tasks.bulk.menu_aria": "Actions sur toutes les tâches filtrées",
     "tasks.bulk.confirm_done_title": "Marquer comme faites",
     "tasks.bulk.confirm_undone_title": "Marquer comme à faire",
     "tasks.bulk.confirm_delete_title": "Supprimer les tâches",

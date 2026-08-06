@@ -1,21 +1,22 @@
 import "@supersoniks/concorde/input";
 import "@supersoniks/concorde/button";
 import {html, LitElement, nothing} from "lit";
-import {customElement, state} from "lit/decorators.js";
-import {subscribe} from "@supersoniks/concorde/decorators";
+import {customElement, property, state} from "lit/decorators.js";
+import {get, post, subscribe, type ApiResult} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
+import {deleteDataset, renameDataset} from "../api/client";
 import {
-  activateDataset,
-  createDataset,
-  deleteDataset,
-  fetchDatasets,
-  renameDataset,
-} from "../api/client";
-import type {DatasetInfo} from "../api/store";
-import {read, set} from "../../utils/dataprovider";
+  apiResultError,
+  endpoints,
+  readApiData,
+  type ApiData,
+} from "../api/endpoints";
+import type {CreateDatasetInput, DatasetInfo} from "../api/store";
+import {dp, read, set} from "../../utils/dataprovider";
 import {appConfigKey, type AppConfigForm} from "../dp";
 import {tf, tx} from "../i18n";
 import {refreshConfigAppData} from "../utils/config-refresh";
+import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {confirmDialog, promptTextDialog, showError} from "../utils/modal-dialog";
 import tailwind from "../../css/tailwind";
 import "./config-scope-header";
@@ -36,53 +37,109 @@ export class ConfigDatasetsPage extends LitElement {
   @state()
   private busy = false;
 
+  @property({type: String})
+  datasetId = "";
+
+  @get(endpoints.datasets.list, {triggerKey: endpoints.keys.refresh.datasets})
+  @state()
+  datasetsPayload: ApiResult<ApiData<DatasetInfo[]>> | null = null;
+
+  @post(endpoints.datasets.create, endpoints.keys.submit.datasetCreate)
+  @state()
+  createPayload: ApiResult<ApiData<DatasetInfo>> | null = null;
+
+  @post(endpoints.datasets.activate, endpoints.keys.submit.datasetActivate, {
+    skipEmptyPlaceholder: true,
+    autoPostOnBodyMutation: false,
+    triggerKey: endpoints.keys.refresh.datasetActivate,
+  })
+  @state()
+  activatePayload: ApiResult<ApiData<DatasetInfo>> | null = null;
+
+  private pendingCreate = false;
+  private pendingActivate = false;
+
   connectedCallback() {
     super.connectedCallback();
-    void this.reloadDatasets();
+    dp(endpoints.keys.refresh.datasets).invalidate();
   }
 
-  private async reloadDatasets() {
-    try {
-      this.datasets = await fetchDatasets();
-    } catch {
-      this.datasets = [];
+  protected updated(changed: Map<string, unknown>) {
+    if (changed.has("datasetsPayload")) {
+      this.datasets = readApiData(this.datasetsPayload) ?? [];
+    }
+    if (changed.has("createPayload") && this.pendingCreate) {
+      void this.finishCreate();
+    }
+    if (changed.has("activatePayload") && this.pendingActivate) {
+      void this.finishActivate();
     }
   }
 
-  private onCreateDataset = async (source: "empty" | "seed" | "current") => {
+  private onFormKeyDown = (event: KeyboardEvent) => {
+    if (!isEnterSubmitEvent(event)) return;
+    event.preventDefault();
+    this.onCreateDataset("empty");
+  };
+
+  private onCreateDataset = (source: "empty" | "seed" | "current") => {
     if (this.busy) return;
     const form = read(appConfigKey.path) as AppConfigForm;
     const name = form.newDatasetName?.trim() || tx("datasets.new");
     this.busy = true;
-    try {
-      await createDataset({name, source});
-      set(appConfigKey.path, {...form, newDatasetName: ""});
-      await this.reloadDatasets();
-    } catch (error) {
-      await showError(error, tx("dialogs.error"));
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
+    this.pendingCreate = true;
+    const body: CreateDatasetInput = {name, source};
+    set(endpoints.keys.submit.datasetCreate.path, body);
   };
 
-  private onActivateDataset = async (event: CustomEvent<{dataset: DatasetInfo}>) => {
+  private async finishCreate() {
+    this.pendingCreate = false;
+    set(endpoints.keys.submit.datasetCreate.path, null);
+    const created = readApiData(this.createPayload);
+    if (!created) {
+      await showError(apiResultError(this.createPayload), tx("dialogs.error"));
+      this.busy = false;
+      return;
+    }
+    const form = read(appConfigKey.path) as AppConfigForm;
+    set(appConfigKey.path, {...form, newDatasetName: ""});
+    dp(endpoints.keys.refresh.datasets).invalidate();
+    this.busy = false;
+  }
+
+  private onActivateDataset = async (
+    event: CustomEvent<{dataset: DatasetInfo}>,
+  ) => {
     const dataset = event.detail.dataset;
     if (this.busy || dataset.active) return;
     this.busy = true;
-    try {
-      await activateDataset(dataset.id);
-      await refreshConfigAppData();
-      await this.reloadDatasets();
-    } catch (error) {
-      await showError(error, tx("dialogs.error"));
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
+    this.pendingActivate = true;
+    this.datasetId = dataset.id;
+    set(endpoints.keys.submit.datasetActivate.path, {});
+    await this.updateComplete;
+    dp(endpoints.keys.refresh.datasetActivate).invalidate();
   };
 
-  private onDeleteDataset = async (event: CustomEvent<{dataset: DatasetInfo}>) => {
+  private async finishActivate() {
+    this.pendingActivate = false;
+    set(endpoints.keys.submit.datasetActivate.path, null);
+    const activated = readApiData(this.activatePayload);
+    if (!activated) {
+      await showError(
+        apiResultError(this.activatePayload),
+        tx("dialogs.error"),
+      );
+      this.busy = false;
+      return;
+    }
+    await refreshConfigAppData();
+    dp(endpoints.keys.refresh.datasets).invalidate();
+    this.busy = false;
+  }
+
+  private onDeleteDataset = async (
+    event: CustomEvent<{dataset: DatasetInfo}>,
+  ) => {
     const dataset = event.detail.dataset;
     if (this.busy) return;
     const ok = await confirmDialog({
@@ -97,7 +154,7 @@ export class ConfigDatasetsPage extends LitElement {
     try {
       await deleteDataset(dataset.id);
       await refreshConfigAppData();
-      await this.reloadDatasets();
+      dp(endpoints.keys.refresh.datasets).invalidate();
     } catch (error) {
       await showError(error, tx("dialogs.error"));
       console.error(error);
@@ -121,7 +178,7 @@ export class ConfigDatasetsPage extends LitElement {
     this.busy = true;
     try {
       await renameDataset(dataset.id, nextName);
-      await this.reloadDatasets();
+      dp(endpoints.keys.refresh.datasets).invalidate();
     } catch (error) {
       await showError(error, tx("dialogs.error"));
       console.error(error);
@@ -176,7 +233,10 @@ export class ConfigDatasetsPage extends LitElement {
                 </ul>
               `}
 
-          <div class="flex flex-wrap items-end gap-2 pt-1">
+          <div
+            class="flex flex-wrap items-end gap-2 pt-1"
+            @keydown=${this.onFormKeyDown}
+          >
             <sonic-input
               name="newDatasetName"
               label=${tx("datasets.new")}

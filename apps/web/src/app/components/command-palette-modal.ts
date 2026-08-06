@@ -68,17 +68,7 @@ export class CommandPaletteModal extends LitElement {
   }
 
   private onKeyDown = (event: KeyboardEvent) => {
-    if (this.isOpen) {
-      this.onPaletteKeyDown(event);
-      return;
-    }
-    const isModifier = event.metaKey || event.ctrlKey;
-    if (!isModifier || !event.shiftKey || event.key.toLowerCase() !== "p") return;
-    event.preventDefault();
-    void this.open();
-  };
-
-  private onPaletteKeyDown(event: KeyboardEvent) {
+    if (!this.isOpen) return;
     const items = this.flatItems;
     if (items.length === 0) return;
 
@@ -102,7 +92,7 @@ export class CommandPaletteModal extends LitElement {
       const item = items[this.activeIndex] ?? items[0];
       if (item) this.runItem(item);
     }
-  }
+  };
 
   connectedCallback() {
     super.connectedCallback();

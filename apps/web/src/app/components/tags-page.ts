@@ -1,20 +1,22 @@
 import "@supersoniks/concorde/input";
 import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
+import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, state} from "lit/decorators.js";
 import {subscribe} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {deleteTag, fetchTags, fetchTodos} from "../api/client";
+import {deleteTag} from "../api/client";
 import {countTodosByTag} from "../api/store-logic";
 import type {Tag, Todo} from "../api/types";
-import {set} from "../../utils/dataprovider";
-import {tagsFilterKey, tagsListKey} from "../dp";
+import {tagsFilterKey, tagsListKey, todosCatalogKey} from "../dp";
+import {bumpTagsList, bumpTodosCatalog} from "../init";
 import {tf, tx} from "../i18n";
 import tailwind from "../../css/tailwind";
 import {confirmDialog, showError} from "../utils/modal-dialog";
 import {ICON_LIBRARY, ICON_PREFIX} from "../icons";
 import {tagsNewPath} from "../utils/tag-paths";
+import {shortcuts} from "../shortcuts";
 import "./tag-row";
 import "./tag-scope-header";
 
@@ -45,7 +47,7 @@ export class TagsPage extends LitElement {
         pointer-events: none;
         position: fixed;
         inset-inline: 0;
-        bottom: 0;
+        bottom: var(--app-shell-footer-offset, 0px);
         z-index: 20;
         padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
       }
@@ -71,11 +73,13 @@ export class TagsPage extends LitElement {
     `,
   ];
 
+  @subscribe(tagsListKey)
   @state()
-  private tags: Tag[] = [];
+  tags: Tag[] = [];
 
+  @subscribe(todosCatalogKey)
   @state()
-  private todos: Todo[] = [];
+  todos: Todo[] = [];
 
   @state()
   private busy = false;
@@ -86,23 +90,14 @@ export class TagsPage extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    void this.reload();
+    bumpTagsList();
+    bumpTodosCatalog();
   }
 
   private get filteredTags(): Tag[] {
     const needle = this.searchQuery?.trim().toLowerCase() ?? "";
     if (!needle) return this.tags;
     return this.tags.filter((tag) => tag.name.toLowerCase().includes(needle));
-  }
-
-  private async reload() {
-    const [tags, todosResponse] = await Promise.all([
-      fetchTags(),
-      fetchTodos({status: "all", limit: 500, recursive: true}),
-    ]);
-    this.tags = tags;
-    this.todos = todosResponse.data ?? [];
-    set(tagsListKey.path, tags);
   }
 
   private async onDeleteTag(event: CustomEvent<{tag: Tag}>) {
@@ -119,7 +114,6 @@ export class TagsPage extends LitElement {
     this.busy = true;
     try {
       await deleteTag(tag.id);
-      await this.reload();
     } catch (error) {
       await showError(error);
       console.error(error);
@@ -138,6 +132,8 @@ export class TagsPage extends LitElement {
   render() {
     const filtered = this.filteredTags;
     const filterProvider = tagsFilterKey.path;
+    const addLabel = tx("tags.new");
+    const addHint = shortcuts.withHint(addLabel, "newItem");
 
     return html`
       <div class="tags-layout">
@@ -192,20 +188,23 @@ export class TagsPage extends LitElement {
 
         <div class="tags-add">
           <div class="tags-add-inner">
-            <sonic-button
-              href=${tagsNewPath()}
-              pushstate
-              type="primary"
-              size="sm"
-            >
-              <sonic-icon
-                library=${ICON_LIBRARY}
-                prefix=${ICON_PREFIX}
-                name="plus"
+            <sonic-tooltip label=${addHint} placement="top">
+              <sonic-button
+                href=${tagsNewPath()}
+                pushstate
+                type="primary"
                 size="sm"
-              ></sonic-icon>
-              ${t("tags.new")}
-            </sonic-button>
+                data-aria-label=${addHint}
+              >
+                <sonic-icon
+                  library=${ICON_LIBRARY}
+                  prefix=${ICON_PREFIX}
+                  name="plus"
+                  size="sm"
+                ></sonic-icon>
+                ${addLabel}
+              </sonic-button>
+            </sonic-tooltip>
           </div>
         </div>
       </div>

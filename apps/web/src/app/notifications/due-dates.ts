@@ -1,5 +1,6 @@
-import {fetchTodos} from "../api/client";
 import type {Todo} from "../api/types";
+import {read} from "../../utils/dataprovider";
+import {todosCatalogKey} from "../dp";
 import {tf, tx} from "../i18n";
 import {
   addDays,
@@ -155,14 +156,12 @@ function showToast(body: string, href: string): void {
 
 export async function checkDueDates(): Promise<void> {
   try {
-    const list = await fetchTodos({
-      status: "all",
-      recursive: true,
-      parentId: "",
-      limit: 5000,
-    });
+    const catalog = read(todosCatalogKey.path) as Todo[] | null;
+    // Catalogue pas encore publié par le loader — le watcher réessaie.
+    if (!Array.isArray(catalog)) return;
+
     const today = todayDateOnly();
-    const hits = collectDueHits(list.data, today);
+    const hits = collectDueHits(catalog, today);
     if (hits.length === 0) return;
 
     const body = formatDueBatch(hits);
@@ -186,6 +185,8 @@ export function startDueDateWatcher(): void {
   if (started) return;
   started = true;
   void checkDueDates();
+  // Premier tick peut précéder le loader catalogue — recheck rapide.
+  setTimeout(() => void checkDueDates(), 2500);
   intervalId = setInterval(() => void checkDueDates(), INTERVAL_MS);
 
   const onForeground = () => {

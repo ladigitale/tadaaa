@@ -23,6 +23,7 @@ import {
 } from "../cloud-api/client";
 import {read, set} from "../../utils/dataprovider";
 import {appConfigKey, type AppConfigForm} from "../dp";
+import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {confirmDialog, showError} from "../utils/modal-dialog";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
@@ -134,6 +135,12 @@ export class ConfigMcpPage extends LitElement {
     );
   }
 
+  private onFormKeyDown = (event: KeyboardEvent) => {
+    if (!isEnterSubmitEvent(event)) return;
+    event.preventDefault();
+    void this.onCreateAccessToken();
+  };
+
   private onCreateAccessToken = async () => {
     if (this.busy || !isAccountConnected(this.account)) return;
     const form = read(appConfigKey.path) as AppConfigForm;
@@ -239,32 +246,34 @@ export class ConfigMcpPage extends LitElement {
                         ${t("account.mcp.after_create")}
                       </p>
                     `}
-                <sonic-form-layout>
-                  <sonic-input
-                    formDataProvider=${appConfigKey.path}
-                    name="newAccessTokenName"
-                    label=${tx("account.mcp.token_name")}
-                    placeholder=${tx("account.mcp.token_ph")}
-                  ></sonic-input>
-                </sonic-form-layout>
-                <sonic-form-actions>
-                  <sonic-button
-                    type="primary"
-                    size="sm"
-                    ?disabled=${this.busy}
-                    @click=${this.onCreateAccessToken}
-                  >
-                    ${t("account.mcp.create")}
-                  </sonic-button>
-                  <sonic-button
-                    size="sm"
-                    variant="outline"
-                    ?disabled=${!this.lastPlainToken}
-                    @click=${this.onCopyMcpConfig}
-                  >
-                    ${t("account.mcp.copy_json")}
-                  </sonic-button>
-                </sonic-form-actions>
+                <div @keydown=${this.onFormKeyDown}>
+                  <sonic-form-layout>
+                    <sonic-input
+                      formDataProvider=${appConfigKey.path}
+                      name="newAccessTokenName"
+                      label=${tx("account.mcp.token_name")}
+                      placeholder=${tx("account.mcp.token_ph")}
+                    ></sonic-input>
+                  </sonic-form-layout>
+                  <sonic-form-actions>
+                    <sonic-button
+                      type="primary"
+                      size="sm"
+                      ?disabled=${this.busy}
+                      @click=${this.onCreateAccessToken}
+                    >
+                      ${t("account.mcp.create")}
+                    </sonic-button>
+                    <sonic-button
+                      size="sm"
+                      variant="outline"
+                      ?disabled=${!this.lastPlainToken}
+                      @click=${this.onCopyMcpConfig}
+                    >
+                      ${t("account.mcp.copy_json")}
+                    </sonic-button>
+                  </sonic-form-actions>
+                </div>
                 ${this.accessTokens.length === 0
                   ? html`<p class="text-sm text-neutral-500">
                       ${t("account.mcp.none")}

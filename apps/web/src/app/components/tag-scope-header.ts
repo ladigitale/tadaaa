@@ -6,12 +6,14 @@ import "@supersoniks/concorde/menu-item";
 import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
+import {get, subscribe, type ApiResult} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {deleteTag, fetchTag, fetchTodos} from "../api/client";
+import {deleteTag} from "../api/client";
+import {endpoints, readApiData, type ApiData} from "../api/endpoints";
 import {countTodosByTag} from "../api/store-logic";
-import type {Tag} from "../api/types";
+import type {Tag, Todo} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
-import {todosFilterKey, type TodosFilter} from "../dp";
+import {todosCatalogKey, todosFilterKey, type TodosFilter} from "../dp";
 import {tf, tx} from "../i18n";
 import {
   TAGS_ROOT,
@@ -96,14 +98,21 @@ export class TagScopeHeader extends LitElement {
   @state()
   private busy = false;
 
-  connectedCallback() {
-    super.connectedCallback();
-    void this.syncScope();
-  }
+  @get(endpoints.tags.byScopeId, {skipEmptyPlaceholder: true})
+  @state()
+  tagPayload: ApiResult<ApiData<Tag>> | null = null;
+
+  @subscribe(todosCatalogKey)
+  @state()
+  catalogTodos: Todo[] = [];
 
   protected updated(changed: Map<string, unknown>) {
-    if (changed.has("scopeId")) {
-      void this.syncScope();
+    if (
+      changed.has("scopeId") ||
+      changed.has("tagPayload") ||
+      changed.has("catalogTodos")
+    ) {
+      this.hydrateScope();
     }
   }
 
@@ -118,6 +127,28 @@ export class TagScopeHeader extends LitElement {
 
   private get tasksLabel(): string {
     return tf("tags.task_count", {n: this.taskCount});
+  }
+
+  private hydrateScope() {
+    const scopeId = this.scopeId?.trim() || "";
+    if (!scopeId) {
+      this.scopeTag = null;
+      this.taskCount = 0;
+      return;
+    }
+
+    if (this.tagPayload == null) return;
+
+    const tag = readApiData(this.tagPayload);
+    if (!tag?.id) {
+      this.scopeTag = null;
+      this.taskCount = 0;
+      return;
+    }
+
+    this.scopeTag = tag;
+    const todos = Array.isArray(this.catalogTodos) ? this.catalogTodos : [];
+    this.taskCount = countTodosByTag(todos, tag.id);
   }
 
   private get actionChoices(): ActionChoice[] {
@@ -154,27 +185,6 @@ export class TagScopeHeader extends LitElement {
     const choices = this.actionChoices;
     if (choices.length === 0) return null;
     return choices.find((choice) => choice.id === this.action) ?? choices[0];
-  }
-
-  private async syncScope() {
-    const scopeId = this.scopeId?.trim() || "";
-    if (!scopeId) {
-      this.scopeTag = null;
-      this.taskCount = 0;
-      return;
-    }
-
-    try {
-      const [tag, todosResponse] = await Promise.all([
-        fetchTag(scopeId),
-        fetchTodos({status: "all", limit: 500, recursive: true}),
-      ]);
-      this.scopeTag = tag;
-      this.taskCount = countTodosByTag(todosResponse.data ?? [], tag.id);
-    } catch {
-      this.scopeTag = null;
-      this.taskCount = 0;
-    }
   }
 
   private renderMenuItemIcon(name: string) {

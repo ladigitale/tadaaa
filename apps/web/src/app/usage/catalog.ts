@@ -181,6 +181,8 @@ export type UsageFilterForm = {
   metrics: string[];
   /** Empty = all datasets */
   datasetId: string;
+  /** Admin only: empty = all users */
+  userId: string;
   /** Primary metric for heatmap / focus */
   focus: UsageMetricKey | "auto";
   /** Which viz layout to emphasize */
@@ -191,6 +193,7 @@ export const DEFAULT_USAGE_FILTER: UsageFilterForm = {
   range: "30d",
   metrics: [],
   datasetId: "",
+  userId: "",
   focus: "auto",
   view: "overview",
 };

@@ -6,10 +6,12 @@ import {html, LitElement, nothing} from "lit";
 import {customElement, state} from "lit/decorators.js";
 import {handle, subscribe} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {isAccountConnected} from "../account-settings";
+import {isAccountConnected, isCloudAdmin} from "../account-settings";
 import {
+  fetchAdminUsers,
   fetchCloudDatasets,
   fetchUsage,
+  type AdminUserInfo,
   type CloudDatasetInfo,
   type UsageReport,
 } from "../cloud-api/client";
@@ -39,9 +41,11 @@ export class ConfigUsagePage extends LitElement {
   static styles = [tailwind];
 
   @state() private connected = false;
+  @state() private isAdmin = false;
   @state() private loading = false;
   @state() private report: UsageReport | null = null;
   @state() private datasets: CloudDatasetInfo[] = [];
+  @state() private adminUsers: AdminUserInfo[] = [];
   @state() private normalized: NormalizedUsage | null = null;
   @state() private dayFocus: string | null = null;
   @state() private ecsOpen = false;
@@ -74,6 +78,11 @@ export class ConfigUsagePage extends LitElement {
     this.recompute();
   }
 
+  @handle(usageFilterKey.userId)
+  onUserIdChange(_userId: string) {
+    void this.reload();
+  }
+
   @handle(usageFilterKey.focus)
   onFocusChange(_focus: UsageFilterForm["focus"]) {
     this.recompute();
@@ -86,21 +95,30 @@ export class ConfigUsagePage extends LitElement {
 
   private async reload() {
     this.connected = isAccountConnected();
+    this.isAdmin = isCloudAdmin();
     if (!this.connected) {
       this.report = null;
       this.normalized = null;
+      this.adminUsers = [];
       return;
     }
     this.loading = true;
     try {
       const filter = (read(usageFilterKey.path) as UsageFilterForm) ?? this.filter;
       const {from, to} = rangeBounds(filter.range ?? "30d");
-      const [report, datasets] = await Promise.all([
-        fetchUsage(from, to),
+      const usageOpts = this.isAdmin
+        ? {userId: filter.userId ?? ""}
+        : {};
+      const [report, datasets, adminUsers] = await Promise.all([
+        fetchUsage(from, to, usageOpts),
         fetchCloudDatasets().catch(() => [] as CloudDatasetInfo[]),
+        this.isAdmin
+          ? fetchAdminUsers().catch(() => [] as AdminUserInfo[])
+          : Promise.resolve([] as AdminUserInfo[]),
       ]);
       this.report = report;
       this.datasets = datasets;
+      this.adminUsers = adminUsers;
       this.recompute();
     } catch (error) {
       await showError(error);
@@ -212,6 +230,15 @@ export class ConfigUsagePage extends LitElement {
     const selectedMetrics = Array.isArray(this.filter.metrics)
       ? this.filter.metrics
       : [];
+    const userOptions = [
+      {value: "", label: tx("usage.filter.user_all")},
+      ...this.adminUsers
+        .filter((u) => u.status === "active")
+        .map((u) => ({
+          value: u.id,
+          label: u.email,
+        })),
+    ];
 
     return html`
       <div
@@ -247,6 +274,21 @@ export class ConfigUsagePage extends LitElement {
         </div>
 
         <div class="flex flex-wrap gap-3 items-end">
+          ${this.isAdmin
+            ? html`
+                <pop-select
+                  showLabel
+                  label=${t("usage.filter.user")}
+                  name="userId"
+                  mode="radio"
+                  size="sm"
+                  variant="outline"
+                  minWidth="14rem"
+                  .value=${this.filter.userId ?? ""}
+                  .options=${userOptions}
+                ></pop-select>
+              `
+            : nothing}
           <pop-select
             showLabel
             label=${t("usage.filter.metrics")}
@@ -397,7 +439,9 @@ export class ConfigUsagePage extends LitElement {
               messageKey="usage.need_account"
             ></account-required-cta>`
           : html`
-              <p class="text-sm opacity-80 mb-4">${t("usage.intro")}</p>
+              <p class="text-sm opacity-80 mb-4">
+                ${t(this.isAdmin ? "usage.intro_admin" : "usage.intro")}
+              </p>
               ${this.renderFilters()}
               ${this.dayDetail()}
               ${this.loading && !this.report

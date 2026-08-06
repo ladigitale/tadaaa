@@ -26,9 +26,12 @@ import {
   hydrateAccountForm,
   persistAccountApiBaseUrl,
 } from "../utils/account-form";
-import {navigateTo} from "../utils/navigate";
-import {configSectionPath} from "../utils/config-paths";
-import {TACHE_ROOT} from "../utils/tache-paths";
+import {
+  captureInviteQueryParam,
+  inviteAuthPath,
+  navigateAfterAuth,
+} from "../utils/pending-invite";
+import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {showError} from "../utils/modal-dialog";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
@@ -67,12 +70,15 @@ export class ConfigAccountLoginPage extends LitElement {
   private onAccountChanged = () => {
     this.account = loadAccountSettings();
     if (isAccountConnected(this.account)) {
-      navigateTo(TACHE_ROOT, true);
+      void navigateAfterAuth(this.account).catch((error) => {
+        console.error(error);
+      });
     }
   };
 
   connectedCallback() {
     super.connectedCallback();
+    captureInviteQueryParam();
     window.addEventListener(ACCOUNT_CHANGED_EVENT, this.onAccountChanged);
     void this.bootstrap();
   }
@@ -88,7 +94,7 @@ export class ConfigAccountLoginPage extends LitElement {
       try {
         const next = await refreshAccountSession(account);
         if (isAccountConnected(next)) {
-          navigateTo(TACHE_ROOT, true);
+          await navigateAfterAuth(next);
           return;
         }
       } catch {
@@ -99,6 +105,12 @@ export class ConfigAccountLoginPage extends LitElement {
     this.account = loadAccountSettings();
     this.apiHealthy = await checkCloudApiHealth(this.account);
   }
+
+  private onFormKeyDown = (event: KeyboardEvent) => {
+    if (!isEnterSubmitEvent(event)) return;
+    event.preventDefault();
+    void this.onLogin();
+  };
 
   private onLogin = async () => {
     if (this.busy) return;
@@ -123,7 +135,7 @@ export class ConfigAccountLoginPage extends LitElement {
         form.accountApiBaseUrl,
       );
       clearAccountPasswordField();
-      navigateTo(TACHE_ROOT);
+      await navigateAfterAuth(this.account);
     } catch (error) {
       await showError(error, tx("dialogs.error"));
       console.error(error);
@@ -148,7 +160,7 @@ export class ConfigAccountLoginPage extends LitElement {
           <config-scope-header section="accountLogin"></config-scope-header>
         </div>
 
-        <div class="space-y-6 pt-8">
+        <div class="space-y-6 pt-8" @keydown=${this.onFormKeyDown}>
           <sonic-alert status="info">
             ${t("account.login_intro")}
             <div class="mt-1 text-sm opacity-80">${healthLabel}</div>
@@ -183,7 +195,7 @@ export class ConfigAccountLoginPage extends LitElement {
             </sonic-button>
             <sonic-button
               variant="outline"
-              href=${configSectionPath("accountRegister")}
+              href=${inviteAuthPath("accountRegister")}
               pushstate
             >
               ${t("account.go_register")}

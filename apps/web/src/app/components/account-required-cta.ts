@@ -3,7 +3,7 @@ import "@supersoniks/concorde/button";
 import {html, LitElement} from "lit";
 import {customElement, property} from "lit/decorators.js";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {configSectionPath} from "../utils/config-paths";
+import {inviteAuthPath} from "../utils/pending-invite";
 import tailwind from "../../css/tailwind";
 
 /**
@@ -17,13 +17,18 @@ export class AccountRequiredCta extends LitElement {
   @property()
   messageKey = "account.cta.need";
 
+  /** When set, login/register links carry `?invite=` for post-auth auto-accept. */
+  @property()
+  inviteToken = "";
+
   /** When true, only the action buttons are rendered (no alert wrapper). */
   @property({type: Boolean})
   bare = false;
 
   render() {
-    const loginHref = configSectionPath("accountLogin");
-    const registerHref = configSectionPath("accountRegister");
+    const token = this.inviteToken.trim() || undefined;
+    const loginHref = inviteAuthPath("accountLogin", token);
+    const registerHref = inviteAuthPath("accountRegister", token);
     const actions = html`
       <div class="flex flex-wrap gap-2">
         <sonic-button type="primary" size="sm" href=${loginHref} pushstate>

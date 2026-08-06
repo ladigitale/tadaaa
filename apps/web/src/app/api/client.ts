@@ -1,19 +1,7 @@
 import {getMockApiServiceUrl} from "./config";
-import {bumpTodosRev} from "../init";
-import {ensureCloudSynced} from "../sync/engine";
-import {assertCanEditActiveDataset} from "../sync/cloud-access";
-import type {CreateDatasetInput, DatasetInfo} from "./store";
+import {bumpTagsList, bumpTodosRev} from "../init";
+import type {DatasetInfo} from "./store";
 import type {TadaDataPackage} from "./data-package";
-import type {
-  CreateTagInput,
-  CreateTodoInput,
-  ListTodosParams,
-  Tag,
-  Todo,
-  TodosListResponse,
-  UpdateTagPatch,
-  UpdateTodoPatch,
-} from "./types";
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${getMockApiServiceUrl()}${path}`, {
@@ -29,153 +17,18 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-/** GET locaux : pull cloud stale avant lecture (léger, cooldown dans le moteur). */
-async function apiGet<T>(path: string): Promise<T> {
-  await ensureCloudSynced();
-  return apiFetch<T>(path);
-}
-
+/** Writes : ACL appliquée dans le router mock (aussi pour `@post`/`@patch`). */
 async function apiWrite<T>(path: string, init?: RequestInit): Promise<T> {
-  await assertCanEditActiveDataset();
   return apiFetch<T>(path, init);
 }
 
-export async function fetchTags(): Promise<Tag[]> {
-  const result = await apiGet<{data: Tag[]}>("/tags");
-  return result.data;
-}
-
-export async function fetchTag(id: string): Promise<Tag> {
-  const result = await apiGet<{data: Tag}>(`/tags/${id}`);
-  return result.data;
-}
-
-export async function createTag(input: CreateTagInput): Promise<Tag> {
-  const result = await apiWrite<{data: Tag}>("/tags", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-  bumpTodosRev();
-  return result.data;
-}
-
-export async function patchTag(id: string, patch: UpdateTagPatch): Promise<Tag> {
-  const result = await apiWrite<{data: Tag}>(`/tags/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(patch),
-  });
-  bumpTodosRev();
-  return result.data;
-}
-
+/** Pas de `@delete` Concorde. */
 export async function deleteTag(id: string): Promise<void> {
   await apiWrite<{ok: boolean}>(`/tags/${id}`, {
     method: "DELETE",
   });
   bumpTodosRev();
-}
-
-export async function fetchTodos(
-  params: ListTodosParams = {},
-): Promise<TodosListResponse> {
-  const query = new URLSearchParams();
-  query.set("status", params.status ?? "all");
-  query.set("offset", String(params.offset ?? 0));
-  query.set("limit", String(params.limit ?? 50));
-  if (params.q?.trim()) query.set("q", params.q.trim());
-  if (params.tagId?.trim()) query.set("tag", params.tagId.trim());
-  if (params.tagIds && params.tagIds.length > 0) {
-    query.set("tags", params.tagIds.join(","));
-  }
-  if (params.sortBy) query.set("sortBy", params.sortBy);
-  if (params.sortDir) query.set("sortDir", params.sortDir);
-  if (params.parentId) query.set("parentId", params.parentId);
-  query.set(
-    "recursive",
-    params.recursive === true || String(params.recursive) === "true"
-      ? "true"
-      : "false",
-  );
-  return apiGet<TodosListResponse>(`/todos?${query.toString()}`);
-}
-
-export async function fetchTodo(id: string): Promise<Todo> {
-  const result = await apiGet<{data: Todo}>(`/todos/${id}`);
-  return result.data;
-}
-
-export async function createTodo(input: CreateTodoInput): Promise<Todo> {
-  const result = await apiWrite<{data: Todo}>("/todos", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-  bumpTodosRev();
-  return result.data;
-}
-
-/** Duplique une tâche (non terminée / non archivée), même parent. */
-export async function copyTodo(source: Todo): Promise<Todo> {
-  return createTodo({
-    text: source.text,
-    description: source.description ?? null,
-    priority: source.priority,
-    tagIds: source.tagIds,
-    parentId: source.parentId,
-    startAt: source.startAt ?? null,
-    endAt: source.endAt ?? null,
-    recurrence: source.recurrence ?? null,
-  });
-}
-
-export async function patchTodo(
-  id: string,
-  patch: UpdateTodoPatch,
-  options?: {refreshList?: boolean},
-): Promise<Todo> {
-  const result = await apiWrite<{data: Todo}>(`/todos/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(patch),
-  });
-  if (options?.refreshList !== false) {
-    bumpTodosRev();
-  }
-  return result.data;
-}
-
-export async function moveTodo(
-  todoId: string,
-  parentId: string | null,
-): Promise<Todo> {
-  const result = await apiWrite<{data: Todo}>(`/todos/${todoId}/move`, {
-    method: "POST",
-    body: JSON.stringify({parentId}),
-  });
-  bumpTodosRev();
-  return result.data;
-}
-
-export async function bulkUpdateTodos(
-  filter: ListTodosParams,
-  patch: UpdateTodoPatch,
-): Promise<{updatedCount: number}> {
-  const result = await apiWrite<{data: {updatedCount: number}}>(
-    "/todos/bulk",
-    {
-      method: "POST",
-      body: JSON.stringify({filter, patch}),
-    },
-  );
-  bumpTodosRev();
-  return result.data;
-}
-
-export async function purgeArchivedTodos(): Promise<{purgedCount: number}> {
-  const result = await apiWrite<{data: {purgedCount: number}}>(
-    "/todos/purge-archived",
-    {method: "POST"},
-  );
-  bumpTodosRev();
-  return result.data;
+  bumpTagsList();
 }
 
 export async function exportTodosSnapshot(): Promise<TadaDataPackage> {
@@ -186,39 +39,16 @@ export async function exportTodosSnapshot(): Promise<TadaDataPackage> {
 export async function importTodosSnapshot(
   raw: unknown,
 ): Promise<TadaDataPackage> {
-  await assertCanEditActiveDataset();
   const result = await apiFetch<{data: TadaDataPackage}>("/import", {
     method: "PUT",
     body: JSON.stringify(raw),
   });
   bumpTodosRev();
+  bumpTagsList();
   return result.data;
 }
 
-export async function fetchDatasets(): Promise<DatasetInfo[]> {
-  const result = await apiGet<{data: DatasetInfo[]}>("/datasets");
-  return result.data;
-}
-
-export async function createDataset(
-  input: CreateDatasetInput,
-): Promise<DatasetInfo> {
-  const result = await apiFetch<{data: DatasetInfo}>("/datasets", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-  return result.data;
-}
-
-export async function activateDataset(id: string): Promise<DatasetInfo> {
-  const result = await apiFetch<{data: DatasetInfo}>(
-    `/datasets/${encodeURIComponent(id)}/activate`,
-    {method: "POST"},
-  );
-  bumpTodosRev();
-  return result.data;
-}
-
+/** Pas de `@delete` / rename dynamique simple — reste impératif. */
 export async function renameDataset(
   id: string,
   name: string,

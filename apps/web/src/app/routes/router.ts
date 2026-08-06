@@ -19,6 +19,10 @@ import dataMaintenancePage from "./data/maintenance/page";
 import dataP2pPage from "./data/p2p/page";
 import dataSyncPage from "./data/sync/page";
 import invitePage from "./invite/page";
+import legalCookiesPage from "./legal/cookies/page";
+import legalMentionsPage from "./legal/mentions/page";
+import legalPrivacyPage from "./legal/privacy/page";
+import legalTermsPage from "./legal/terms/page";
 import settingsAppearancePage from "./settings/appearance/page";
 import settingsInstallPage from "./settings/install/page";
 import settingsLinksPage from "./settings/links/page";
@@ -120,6 +124,29 @@ const inviteDefaultLayoutRoutes = {
     "/invite$": invitePage
 }        
 
+const legalCookiesDefaultLayoutRoutes = {
+    "/legal/cookies$": legalCookiesPage
+}        
+
+const legalMentionsDefaultLayoutRoutes = {
+    "/legal/mentions$": legalMentionsPage
+}        
+
+const legalPrivacyDefaultLayoutRoutes = {
+    "/legal/privacy$": legalPrivacyPage
+}        
+
+const legalTermsDefaultLayoutRoutes = {
+    "/legal/terms$": legalTermsPage
+}        
+
+const legalDefaultLayoutRoutes = {
+    "/legal/cookies\\b": () => html`<sonic-router .basePath=${basePath} .routes=${legalCookiesDefaultLayoutRoutes}></sonic-router>`,
+    "/legal/mentions\\b": () => html`<sonic-router .basePath=${basePath} .routes=${legalMentionsDefaultLayoutRoutes}></sonic-router>`,
+    "/legal/privacy\\b": () => html`<sonic-router .basePath=${basePath} .routes=${legalPrivacyDefaultLayoutRoutes}></sonic-router>`,
+    "/legal/terms\\b": () => html`<sonic-router .basePath=${basePath} .routes=${legalTermsDefaultLayoutRoutes}></sonic-router>`
+}        
+
 const settingsAppearanceDefaultLayoutRoutes = {
     "/settings/appearance$": settingsAppearancePage
 }        
@@ -204,6 +231,7 @@ const layoutRoutes = {
     "/connectivity\\b": () => html`<sonic-router .basePath=${basePath} .routes=${connectivityDefaultLayoutRoutes}></sonic-router>`,
     "/data\\b": () => html`<sonic-router .basePath=${basePath} .routes=${dataDefaultLayoutRoutes}></sonic-router>`,
     "/invite\\b": () => html`<sonic-router .basePath=${basePath} .routes=${inviteDefaultLayoutRoutes}></sonic-router>`,
+    "/legal\\b": () => html`<sonic-router .basePath=${basePath} .routes=${legalDefaultLayoutRoutes}></sonic-router>`,
     "/settings\\b": () => html`<sonic-router .basePath=${basePath} .routes=${settingsDefaultLayoutRoutes}></sonic-router>`,
     "/tache\\b": () => html`<sonic-router .basePath=${basePath} .routes=${tacheDefaultLayoutRoutes}></sonic-router>`,
     "/tags\\b": () => html`<sonic-router .basePath=${basePath} .routes=${tagsDefaultLayoutRoutes}></sonic-router>`,

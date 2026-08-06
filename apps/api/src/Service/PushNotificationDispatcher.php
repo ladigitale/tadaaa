@@ -159,6 +159,77 @@ final class PushNotificationDispatcher
     }
 
     /**
+     * Diagnostic push to every active subscription of this user (bypasses prefs).
+     *
+     * @return array{
+     *     ok: bool,
+     *     code: string,
+     *     sent: int,
+     *     failed: int,
+     *     results: list<array{endpointHost: string, success: bool, reason: string|null, statusCode: int|null}>
+     * }
+     */
+    public function sendTestToUser(User $user): array
+    {
+        if (!$this->push->isEnabled()) {
+            return [
+                'ok' => false,
+                'code' => 'server_disabled',
+                'sent' => 0,
+                'failed' => 0,
+                'results' => [],
+            ];
+        }
+
+        $subs = $this->subscriptions->findActiveForUser($user);
+        if ($subs === []) {
+            return [
+                'ok' => false,
+                'code' => 'no_subscriptions',
+                'sent' => 0,
+                'failed' => 0,
+                'results' => [],
+            ];
+        }
+
+        $reports = $this->deliver(
+            $subs,
+            [
+                'title' => 'Tadaaa',
+                'body' => 'Test notification — if you see this, server push works on this device.',
+                'tag' => 'tada-push-test',
+                'url' => '/settings/notifications',
+                'type' => 'push_test',
+            ],
+        );
+
+        $sent = 0;
+        $failed = 0;
+        $results = [];
+        foreach ($reports as $report) {
+            if ($report['success']) {
+                ++$sent;
+            } else {
+                ++$failed;
+            }
+            $results[] = [
+                'endpointHost' => $report['endpointHost'],
+                'success' => $report['success'],
+                'reason' => $report['reason'],
+                'statusCode' => $report['statusCode'],
+            ];
+        }
+
+        return [
+            'ok' => $sent > 0,
+            'code' => $sent > 0 ? ($failed > 0 ? 'partial' : 'sent') : 'send_failed',
+            'sent' => $sent,
+            'failed' => $failed,
+            'results' => $results,
+        ];
+    }
+
+    /**
      * @param list<User> $users
      * @param array<string, mixed> $payload
      */
@@ -183,6 +254,25 @@ final class PushNotificationDispatcher
             return;
         }
 
+        $this->deliver($subs, $payload);
+    }
+
+    /**
+     * @param list<\App\Entity\PushSubscription> $subs
+     * @param array<string, mixed> $payload
+     *
+     * @return list<array{
+     *     endpoint: string,
+     *     endpointHost: string,
+     *     success: bool,
+     *     reason: string|null,
+     *     statusCode: int|null
+     * }>
+     */
+    private function deliver(array $subs, array $payload): array
+    {
+        $reports = [];
+
         try {
             // urgency=high helps FCM wake Android from Doze; TTL keeps the message queued.
             $webPush = new WebPush(
@@ -203,7 +293,17 @@ final class PushNotificationDispatcher
                 'message' => $exception->getMessage(),
             ]);
 
-            return;
+            foreach ($subs as $sub) {
+                $reports[] = [
+                    'endpoint' => $sub->getEndpoint(),
+                    'endpointHost' => $this->endpointHost($sub->getEndpoint()),
+                    'success' => false,
+                    'reason' => $exception->getMessage(),
+                    'statusCode' => null,
+                ];
+            }
+
+            return $reports;
         }
 
         try {
@@ -213,20 +313,39 @@ final class PushNotificationDispatcher
                 'message' => $exception->getMessage(),
             ]);
 
-            return;
+            foreach ($subs as $sub) {
+                $reports[] = [
+                    'endpoint' => $sub->getEndpoint(),
+                    'endpointHost' => $this->endpointHost($sub->getEndpoint()),
+                    'success' => false,
+                    'reason' => $exception->getMessage(),
+                    'statusCode' => null,
+                ];
+            }
+
+            return $reports;
         }
 
         $dirty = false;
         foreach ($subs as $sub) {
+            $endpoint = $sub->getEndpoint();
+            $host = $this->endpointHost($endpoint);
             try {
                 try {
-                    $this->endpointValidator->assertValid($sub->getEndpoint());
-                } catch (\Throwable) {
+                    $this->endpointValidator->assertValid($endpoint);
+                } catch (\Throwable $exception) {
                     $sub->revoke();
                     $dirty = true;
                     $this->logger->warning('Web Push revoked unsafe endpoint for user {user}', [
                         'user' => $sub->getUser()->getId()->toRfc4122(),
                     ]);
+                    $reports[] = [
+                        'endpoint' => $endpoint,
+                        'endpointHost' => $host,
+                        'success' => false,
+                        'reason' => $exception->getMessage(),
+                        'statusCode' => null,
+                    ];
                     continue;
                 }
 
@@ -234,7 +353,7 @@ final class PushNotificationDispatcher
                 // library still defaults to legacy aesgcm, which FCM accepts but
                 // the browser cannot decrypt — silent drop, especially on Android.
                 $subscription = Subscription::create([
-                    'endpoint' => $sub->getEndpoint(),
+                    'endpoint' => $endpoint,
                     'keys' => [
                         'p256dh' => $sub->getP256dh(),
                         'auth' => $sub->getAuth(),
@@ -244,24 +363,46 @@ final class PushNotificationDispatcher
                 $report = $webPush->sendOneNotification($subscription, $json);
                 if (!$report->isSuccess()) {
                     $code = $report->getResponse()?->getStatusCode();
+                    $reason = $report->getReason();
                     if ($code === 404 || $code === 410) {
                         $sub->revoke();
                         $dirty = true;
                     } else {
                         $this->logger->warning('Web Push send failed for {endpoint}: {reason}', [
-                            'endpoint' => $sub->getEndpoint(),
-                            'reason' => $report->getReason(),
+                            'endpoint' => $endpoint,
+                            'reason' => $reason,
                         ]);
                     }
+                    $reports[] = [
+                        'endpoint' => $endpoint,
+                        'endpointHost' => $host,
+                        'success' => false,
+                        'reason' => $reason,
+                        'statusCode' => $code,
+                    ];
                 } else {
                     $sub->touch();
                     $dirty = true;
+                    $reports[] = [
+                        'endpoint' => $endpoint,
+                        'endpointHost' => $host,
+                        'success' => true,
+                        'reason' => null,
+                        'statusCode' => $report->getResponse()?->getStatusCode(),
+                    ];
                 }
             } catch (\Throwable $exception) {
                 $this->logger->warning('Web Push send exception for {endpoint}: {message}', [
-                    'endpoint' => $sub->getEndpoint(),
+                    'endpoint' => $endpoint,
                     'message' => $exception->getMessage(),
                 ]);
+                $reports[] = [
+                    'endpoint' => $endpoint,
+                    'endpointHost' => $host,
+                    'success' => false,
+                    'reason' => $exception->getMessage(),
+                    'statusCode' => null,
+                ];
             }
         }
 
@@ -274,6 +415,15 @@ final class PushNotificationDispatcher
                 ]);
             }
         }
+
+        return $reports;
+    }
+
+    private function endpointHost(string $endpoint): string
+    {
+        $host = parse_url($endpoint, \PHP_URL_HOST);
+
+        return is_string($host) && $host !== '' ? $host : 'unknown';
     }
 
     /**

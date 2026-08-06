@@ -3,14 +3,26 @@ import "@supersoniks/concorde/textarea";
 import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/form-layout";
 import "@supersoniks/concorde/form-actions";
+import "@supersoniks/concorde/tooltip";
 import {html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
-import {subscribe} from "@supersoniks/concorde/decorators";
+import {
+  get,
+  patch,
+  subscribe,
+  type ApiResult,
+} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {fetchTags, fetchTodo, patchTodo} from "../api/client";
-import type {Tag, TodoPriority, TodoRecurrence} from "../api/types";
+import {
+  apiResultError,
+  endpoints,
+  readApiData,
+  type ApiData,
+} from "../api/endpoints";
+import type {Tag, Todo, TodoPriority, TodoRecurrence} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
-import {todoEditKey, type TodoEditForm} from "../dp";
+import {tagsListKey, todoEditKey, type TodoEditForm} from "../dp";
+import {bumpTodosRev} from "../init";
 import {tx} from "../i18n";
 import {navigateTo} from "../utils/navigate";
 import {TACHE_ROOT, tacheItemPath} from "../utils/tache-paths";
@@ -18,6 +30,7 @@ import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {focusPrimaryInput} from "../utils/focus-primary-input";
 import {localInputFromWire, wireFromLocalInput} from "../utils/dates";
 import {parseRecurrence} from "../utils/recurrence";
+import {shortcuts} from "../shortcuts";
 import {formLabelStyles} from "../styles/form-label";
 import tailwind from "../../css/tailwind";
 import {showError} from "../utils/modal-dialog";
@@ -51,8 +64,9 @@ export class TodoEditPage extends LitElement {
   @property({type: String})
   todoId = "";
 
+  @subscribe(tagsListKey)
   @state()
-  private tags: Tag[] = [];
+  tags: Tag[] = [];
 
   /** Parent de la tâche éditée (retour liste après save). */
   @state()
@@ -93,53 +107,87 @@ export class TodoEditPage extends LitElement {
   @state()
   private busy = false;
 
-  connectedCallback() {
-    super.connectedCallback();
-    void this.load();
-  }
+  @get(endpoints.todos.byId, {skipEmptyPlaceholder: true})
+  @state()
+  todoPayload: ApiResult<ApiData<Todo>> | null = null;
+
+  @patch(endpoints.todos.patch, endpoints.keys.submit.todoEdit, {
+    skipEmptyPlaceholder: true,
+  })
+  @state()
+  savePayload: ApiResult<ApiData<Todo>> | null = null;
+
+  private lastHydratedTodoId = "";
+  private pendingSubmit = false;
 
   protected updated(changed: Map<string, unknown>) {
-    if (changed.has("todoId") && this.todoId) {
-      void this.load();
+    if (changed.has("todoId")) {
+      this.lastHydratedTodoId = "";
+      this.loading = Boolean(this.todoId);
+      this.notFound = false;
+    }
+    if (changed.has("todoPayload") || changed.has("todoId")) {
+      this.hydrateFromPayload();
+    }
+    if (changed.has("savePayload") && this.pendingSubmit) {
+      void this.finishSubmit();
     }
   }
 
-  private async load() {
+  private async finishSubmit() {
+    this.pendingSubmit = false;
+    set(endpoints.keys.submit.todoEdit.path, null);
+    const todo = readApiData(this.savePayload);
+    if (!todo) {
+      await showError(apiResultError(this.savePayload));
+      this.busy = false;
+      return;
+    }
+    bumpTodosRev();
+    navigateTo(this.backHref, true);
+  }
+
+  private hydrateFromPayload() {
     if (!this.todoId) return;
 
-    this.loading = true;
-    this.notFound = false;
-    try {
-      const [todo, tags] = await Promise.all([
-        fetchTodo(this.todoId),
-        fetchTags(),
-      ]);
-      this.tags = tags;
-      this.parentTodoId = todo.parentId?.trim() || "";
-      const tagIds = [...todo.tagIds];
-      const start = localInputFromWire(todo.startAt);
-      const end = localInputFromWire(todo.endAt);
-      // tagIds tout de suite : le tag-picker réhydrate FormCheckable au mount.
-      set(todoEditKey.path, {
-        text: todo.text,
-        description: todo.description ?? "",
-        priority: todo.priority ?? "medium",
-        tagIds,
-        startAt: start.date,
-        startTime: start.time,
-        endAt: end.date,
-        endTime: end.time,
-        recurrence: parseRecurrence(todo.recurrence),
-      });
-    } catch {
-      this.notFound = true;
-    } finally {
-      this.loading = false;
+    const payload = this.todoPayload;
+    if (payload == null) {
+      this.loading = true;
+      return;
     }
 
-    if (!this.notFound) {
-      void focusPrimaryInput(this);
+    const todo = payload.result?.data;
+    if (!todo?.id) {
+      this.notFound = true;
+      this.loading = false;
+      return;
     }
+
+    if (todo.id === this.lastHydratedTodoId) {
+      this.loading = false;
+      return;
+    }
+
+    this.lastHydratedTodoId = todo.id;
+    this.notFound = false;
+    this.parentTodoId = todo.parentId?.trim() || "";
+    const tagIds = [...todo.tagIds];
+    const start = localInputFromWire(todo.startAt);
+    const end = localInputFromWire(todo.endAt);
+    // tagIds tout de suite : le tag-picker réhydrate FormCheckable au mount.
+    set(todoEditKey.path, {
+      text: todo.text,
+      description: todo.description ?? "",
+      priority: todo.priority ?? "medium",
+      tagIds,
+      startAt: start.date,
+      startTime: start.time,
+      endAt: end.date,
+      endTime: end.time,
+      recurrence: parseRecurrence(todo.recurrence),
+    });
+    this.loading = false;
+    void focusPrimaryInput(this);
   }
 
   private get backHref(): string {
@@ -149,10 +197,10 @@ export class TodoEditPage extends LitElement {
   private onFormKeyDown = (event: KeyboardEvent) => {
     if (!isEnterSubmitEvent(event)) return;
     event.preventDefault();
-    void this.onSubmit();
+    this.onSubmit();
   };
 
-  private async onSubmit() {
+  private onSubmit() {
     const form = read(todoEditKey.path) as TodoEditForm;
     const text = form.text?.trim();
     if (!text || !this.todoId || this.busy) return;
@@ -163,23 +211,16 @@ export class TodoEditPage extends LitElement {
       .filter((id) => id && id !== "undefined");
 
     this.busy = true;
-    try {
-      await patchTodo(this.todoId, {
-        text,
-        description: form.description?.trim() || null,
-        priority: (form.priority ?? "medium") as TodoPriority,
-        tagIds,
-        startAt: wireFromLocalInput(form.startAt, form.startTime),
-        endAt: wireFromLocalInput(form.endAt, form.endTime),
-        recurrence: parseRecurrence(form.recurrence),
-      });
-      navigateTo(this.backHref, true);
-    } catch (error) {
-      await showError(error);
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
+    this.pendingSubmit = true;
+    set(endpoints.keys.submit.todoEdit.path, {
+      text,
+      description: form.description?.trim() || null,
+      priority: (form.priority ?? "medium") as TodoPriority,
+      tagIds,
+      startAt: wireFromLocalInput(form.startAt, form.startTime),
+      endAt: wireFromLocalInput(form.endAt, form.endTime),
+      recurrence: parseRecurrence(form.recurrence),
+    });
   }
 
   private renderScopeHeader() {
@@ -316,13 +357,22 @@ export class TodoEditPage extends LitElement {
               >
                 ${t("common.cancel")}
               </sonic-button>
-              <sonic-button
-                type="primary"
-                ?disabled=${this.busy}
-                @click=${this.onSubmit}
+              <sonic-tooltip
+                label=${shortcuts.withHint(tx("common.save"), "submitForm")}
+                placement="top"
               >
-                ${t("common.save")}
-              </sonic-button>
+                <sonic-button
+                  type="primary"
+                  ?disabled=${this.busy}
+                  data-aria-label=${shortcuts.withHint(
+                    tx("common.save"),
+                    "submitForm",
+                  )}
+                  @click=${this.onSubmit}
+                >
+                  ${t("common.save")}
+                </sonic-button>
+              </sonic-tooltip>
             </sonic-form-actions>
           </sonic-form-layout>
         </div>

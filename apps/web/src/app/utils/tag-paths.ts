@@ -8,3 +8,4 @@ export function tagsNewPath(): string {
 export function tagsItemEditPath(id: string): string {
   return `${TAGS_ROOT}/item/${encodeURIComponent(id)}/edit`;
 }
+

@@ -8,12 +8,24 @@ import "@supersoniks/concorde/menu-item";
 import "@supersoniks/concorde/tooltip";
 import {css, html, LitElement, nothing} from "lit";
 import {customElement, property, state} from "lit/decorators.js";
-import {subscribe} from "@supersoniks/concorde/decorators";
+import {
+  patch,
+  post,
+  subscribe,
+  type ApiResult,
+} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {copyTodo, patchTodo} from "../api/client";
-import type {Tag, Todo, TodoPriority} from "../api/types";
+import {
+  apiResultError,
+  endpoints,
+  readApiData,
+  type ApiData,
+} from "../api/endpoints";
+import {todoCopyInput} from "../api/todos-query";
+import type {Tag, Todo, TodoPriority, UpdateTodoPatch} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
 import {tagsListKey, todosDoneKey} from "../dp";
+import {bumpTodosRev} from "../init";
 import {tf, tx} from "../i18n";
 import {rmLinksLabelHtml, richTextTemplate} from "./rm-link-text";
 import tailwind from "../../css/tailwind";
@@ -108,6 +120,10 @@ export class TodoRow extends LitElement {
   @property({attribute: false})
   todo!: Todo;
 
+  /** Résolu pour `@patch` / DataProviderKey dynamique. */
+  @property({type: String})
+  todoId = "";
+
   @property({attribute: false})
   tags: Tag[] = [];
 
@@ -122,6 +138,22 @@ export class TodoRow extends LitElement {
 
   @state()
   private busy = false;
+
+  @patch(endpoints.todos.patch, endpoints.keys.submit.todoItemPatch, {
+    skipEmptyPlaceholder: true,
+  })
+  @state()
+  patchPayload: ApiResult<ApiData<Todo>> | null = null;
+
+  @post(endpoints.todos.collection, endpoints.keys.submit.todoCopy, {
+    skipEmptyPlaceholder: true,
+  })
+  @state()
+  copyPayload: ApiResult<ApiData<Todo>> | null = null;
+
+  private pendingSubmit: "done" | "archive" | null = null;
+  private pendingCopy = false;
+  private doneSnapshot: Todo | null = null;
 
   private get isDone(): boolean {
     return normalizeIds(this.doneIds).includes(this.todo?.id);
@@ -182,13 +214,66 @@ export class TodoRow extends LitElement {
     super.connectedCallback();
   }
 
-  protected updated(changed: Map<string, unknown>) {
-    if (!this.todo?.id || !changed.has("todo")) return;
+  protected willUpdate(_changed: Map<string, unknown>) {
+    if (this.todo?.id && this.todoId !== this.todo.id) {
+      this.todoId = this.todo.id;
+    }
+  }
 
-    // FormCheckable initPublisher tourne avec checked=null et retire sa value
-    // du tableau partagé. On ré-aligne *après* le mount de la checkbox.
-    this.hydrateDoneForm();
-    queueMicrotask(() => this.hydrateDoneForm());
+  protected updated(changed: Map<string, unknown>) {
+    if (this.todo?.id && changed.has("todo")) {
+      // FormCheckable initPublisher tourne avec checked=null et retire sa value
+      // du tableau partagé. On ré-aligne *après* le mount de la checkbox.
+      this.hydrateDoneForm();
+      queueMicrotask(() => this.hydrateDoneForm());
+    }
+
+    if (changed.has("patchPayload") && this.pendingSubmit) {
+      void this.finishPatch();
+    }
+    if (changed.has("copyPayload") && this.pendingCopy) {
+      void this.finishCopy();
+    }
+  }
+
+  private async finishPatch() {
+    const kind = this.pendingSubmit;
+    const todoId = this.todoId;
+    this.pendingSubmit = null;
+    if (todoId) set(endpoints.keys.paths.todoItemPatch(todoId), null);
+
+    const updated = readApiData(this.patchPayload);
+    if (!updated) {
+      if (kind === "done" && this.doneSnapshot) {
+        this.todo = this.doneSnapshot;
+        writeDoneIds(
+          this.doneSnapshot.done
+            ? [
+                ...readDoneIds().filter((id) => id !== this.doneSnapshot!.id),
+                this.doneSnapshot.id,
+              ]
+            : readDoneIds().filter((id) => id !== this.doneSnapshot!.id),
+        );
+      }
+      this.doneSnapshot = null;
+      await showError(apiResultError(this.patchPayload));
+      this.busy = false;
+      return;
+    }
+
+    this.doneSnapshot = null;
+    this.todo = {...this.todo, ...updated};
+    if (kind === "archive") {
+      bumpTodosRev();
+    }
+    this.busy = false;
+  }
+
+  private queuePatch(kind: "done" | "archive", patch: UpdateTodoPatch) {
+    if (!this.todoId || this.busy) return;
+    this.busy = true;
+    this.pendingSubmit = kind;
+    set(endpoints.keys.paths.todoItemPatch(this.todoId), patch);
   }
 
   /**
@@ -218,48 +303,36 @@ export class TodoRow extends LitElement {
     void this.persistDone(nextDone);
   };
 
-  private async persistDone(nextDone: boolean) {
-    const previous = this.todo;
-    this.busy = true;
-    this.todo = {...previous, done: nextDone};
-    try {
-      // Pas de refresh liste : évite de perdre le scroll (filtre inchangé).
-      await patchTodo(previous.id, {done: nextDone}, {refreshList: false});
-    } catch (error) {
-      this.todo = previous;
-      writeDoneIds(
-        previous.done
-          ? [...readDoneIds().filter((id) => id !== previous.id), previous.id]
-          : readDoneIds().filter((id) => id !== previous.id),
-      );
-      await showError(error);
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
-  }
-
-  private async runAction(action: () => Promise<void>) {
-    if (this.busy) return;
-    this.busy = true;
-    try {
-      await action();
-    } catch (error) {
-      await showError(error);
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
+  private persistDone(nextDone: boolean) {
+    if (!this.todoId) return;
+    this.doneSnapshot = this.todo;
+    this.todo = {...this.todo, done: nextDone};
+    // Pas de bump liste : évite de perdre le scroll (filtre inchangé).
+    this.queuePatch("done", {done: nextDone});
   }
 
   private onCopy = () => {
-    if (!this.todo || this.todo.archived) return;
-    void this.runAction(async () => {
-      await copyTodo(this.todo);
-    });
+    if (!this.todo || !this.todoId || this.todo.archived || this.busy) return;
+    this.busy = true;
+    this.pendingCopy = true;
+    set(endpoints.keys.paths.todoCopy(this.todoId), todoCopyInput(this.todo));
   };
 
+  private async finishCopy() {
+    this.pendingCopy = false;
+    if (this.todoId) set(endpoints.keys.paths.todoCopy(this.todoId), null);
+    const created = readApiData(this.copyPayload);
+    if (!created) {
+      await showError(apiResultError(this.copyPayload));
+      this.busy = false;
+      return;
+    }
+    bumpTodosRev();
+    this.busy = false;
+  }
+
   private onDeleteToggle = async () => {
+    if (!this.todo || this.busy) return;
     const deleting = !this.todo.archived;
     if (deleting) {
       const ok = await confirmDialog({
@@ -271,9 +344,7 @@ export class TodoRow extends LitElement {
       if (!ok) return;
     }
 
-    void this.runAction(async () => {
-      await patchTodo(this.todo.id, {archived: !this.todo.archived});
-    });
+    this.queuePatch("archive", {archived: !this.todo.archived});
   };
 
   private renderMenuItemIcon(name: string) {

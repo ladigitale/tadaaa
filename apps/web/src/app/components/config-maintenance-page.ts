@@ -2,8 +2,15 @@ import "@supersoniks/concorde/button";
 import "@supersoniks/concorde/icon";
 import {html, LitElement} from "lit";
 import {customElement, state} from "lit/decorators.js";
+import {post, type ApiResult} from "@supersoniks/concorde/decorators";
 import {t} from "@supersoniks/concorde/directives/Wording";
-import {purgeArchivedTodos} from "../api/client";
+import {
+  apiResultError,
+  endpoints,
+  readApiData,
+  type ApiData,
+} from "../api/endpoints";
+import {set} from "../../utils/dataprovider";
 import {tf, tx} from "../i18n";
 import {refreshConfigAppData} from "../utils/config-refresh";
 import {confirmDialog, showAlert, showError} from "../utils/modal-dialog";
@@ -19,6 +26,18 @@ export class ConfigMaintenancePage extends LitElement {
   @state()
   private busy = false;
 
+  @post(endpoints.todos.purgeArchived, endpoints.keys.submit.purgeArchived)
+  @state()
+  purgePayload: ApiResult<ApiData<{purgedCount: number}>> | null = null;
+
+  private pendingPurge = false;
+
+  protected updated(changed: Map<string, unknown>) {
+    if (changed.has("purgePayload") && this.pendingPurge) {
+      void this.finishPurge();
+    }
+  }
+
   private onPurgeArchived = async () => {
     if (this.busy) return;
 
@@ -31,24 +50,33 @@ export class ConfigMaintenancePage extends LitElement {
     if (!ok) return;
 
     this.busy = true;
-    try {
-      const {purgedCount} = await purgeArchivedTodos();
-      await refreshConfigAppData();
-      await showAlert(
-        purgedCount === 0
-          ? tx("maintenance.purge_none")
-          : tx("maintenance.purge_title"),
-        purgedCount === 0
-          ? tx("maintenance.purge_none")
-          : tf("maintenance.purge_done", {n: purgedCount}),
-      );
-    } catch (error) {
-      await showError(error, tx("dialogs.error"));
-      console.error(error);
-    } finally {
-      this.busy = false;
-    }
+    this.pendingPurge = true;
+    set(endpoints.keys.submit.purgeArchived.path, {});
   };
+
+  private async finishPurge() {
+    this.pendingPurge = false;
+    set(endpoints.keys.submit.purgeArchived.path, null);
+
+    const result = readApiData(this.purgePayload);
+    if (!result) {
+      await showError(apiResultError(this.purgePayload), tx("dialogs.error"));
+      this.busy = false;
+      return;
+    }
+
+    const {purgedCount} = result;
+    await refreshConfigAppData();
+    await showAlert(
+      purgedCount === 0
+        ? tx("maintenance.purge_none")
+        : tx("maintenance.purge_title"),
+      purgedCount === 0
+        ? tx("maintenance.purge_none")
+        : tf("maintenance.purge_done", {n: purgedCount}),
+    );
+    this.busy = false;
+  }
 
   render() {
     return html`

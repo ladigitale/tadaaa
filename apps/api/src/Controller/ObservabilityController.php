@@ -7,12 +7,15 @@ namespace App\Controller;
 use App\Entity\AuditLog;
 use App\Entity\User;
 use App\Repository\AuditLogRepository;
+use App\Repository\UserRepository;
 use App\Service\UsageMeter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Uid\Uuid;
 
 #[IsGranted('ROLE_USER')]
 final class ObservabilityController extends AbstractController
@@ -20,6 +23,7 @@ final class ObservabilityController extends AbstractController
     public function __construct(
         private readonly AuditLogRepository $auditLogs,
         private readonly UsageMeter $usage,
+        private readonly UserRepository $users,
     ) {
     }
 
@@ -78,6 +82,22 @@ final class ObservabilityController extends AbstractController
             [$from, $to] = [$to, $from];
         }
 
-        return $this->json($this->usage->report($user, $from, $to));
+        $owner = $user;
+        if ($this->isGranted('ROLE_ADMIN')) {
+            $userIdRaw = $request->query->get('userId');
+            $userId = is_string($userIdRaw) ? trim($userIdRaw) : '';
+            if ($userId === '' || $userId === 'all') {
+                $owner = null;
+            } elseif (Uuid::isValid($userId)) {
+                $owner = $this->users->find(Uuid::fromString($userId));
+                if ($owner === null) {
+                    return $this->json(['error' => 'Utilisateur introuvable.'], Response::HTTP_NOT_FOUND);
+                }
+            } else {
+                return $this->json(['error' => 'userId invalide.'], Response::HTTP_BAD_REQUEST);
+            }
+        }
+
+        return $this->json($this->usage->report($owner, $from, $to));
     }
 }

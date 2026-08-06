@@ -8,6 +8,7 @@ import {
 } from "../account-settings";
 import {applyCloudLinkDetectors, type LinkDetector} from "../settings";
 import {tx} from "../i18n";
+import type {LegalPublicConfig} from "../legal";
 import {
   resetMercureSubscription,
   teardownMercureSubscription,
@@ -107,6 +108,7 @@ export async function registerAccount(
   password: string,
   apiBaseUrl?: string,
   website = "",
+  acceptedTerms = false,
 ): Promise<{settings: AccountSettings; pending: boolean; message: string}> {
   const base = apiBaseUrl?.trim() || loadAccountSettings().apiBaseUrl;
   const settings: AccountSettings = {
@@ -124,7 +126,7 @@ export async function registerAccount(
     "/auth/register",
     {
       method: "POST",
-      body: JSON.stringify({email, password, website}),
+      body: JSON.stringify({email, password, website, acceptedTerms}),
     },
     settings,
   );
@@ -332,6 +334,36 @@ export async function checkCloudApiHealth(
   }
 }
 
+export async function fetchLegalConfig(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<LegalPublicConfig> {
+  const response = await fetch(`${getCloudApiRoot(settings)}/legal`);
+  if (!response.ok) {
+    throw new Error(`API legal ${response.status}`);
+  }
+  return response.json() as Promise<LegalPublicConfig>;
+}
+
+export async function exportMyAccountData(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<unknown> {
+  return cloudFetch<unknown>("/auth/me/export", {}, settings);
+}
+
+export async function deleteMyAccount(
+  confirmEmail: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<{deleted: boolean; email: string}> {
+  return cloudFetch<{deleted: boolean; email: string}>(
+    "/auth/me",
+    {
+      method: "DELETE",
+      body: JSON.stringify({confirmEmail}),
+    },
+    settings,
+  );
+}
+
 export type AccessTokenInfo = {
   id: string;
   name: string;
@@ -424,6 +456,8 @@ export type ActivityLogInfo = {
 export type UsageReport = {
   from: string;
   to: string;
+  scope?: "user" | "all";
+  userId?: string | null;
   totals: Record<string, number>;
   byDay: Array<{
     day: string;
@@ -530,11 +564,15 @@ export async function fetchActivity(
 export async function fetchUsage(
   from?: string,
   to?: string,
-  settings: AccountSettings = loadAccountSettings(),
+  options: {userId?: string; settings?: AccountSettings} = {},
 ): Promise<UsageReport> {
+  const settings = options.settings ?? loadAccountSettings();
   const params = new URLSearchParams();
   if (from) params.set("from", from);
   if (to) params.set("to", to);
+  if (options.userId !== undefined) {
+    params.set("userId", options.userId === "" ? "all" : options.userId);
+  }
   const q = params.toString();
   return cloudFetch<UsageReport>(`/usage${q ? `?${q}` : ""}`, {}, settings);
 }
@@ -846,6 +884,38 @@ export async function fetchVapidPublicKey(
   );
 }
 
+export type PushSubscriptionInfo = {
+  id: string;
+  endpoint: string;
+  endpointHost: string;
+  userAgent: string | null;
+  createdAt: string;
+  lastSeenAt: string | null;
+};
+
+export type PushTestResult = {
+  ok: boolean;
+  code: string;
+  sent: number;
+  failed: number;
+  results: Array<{
+    endpointHost: string;
+    success: boolean;
+    reason: string | null;
+    statusCode: number | null;
+  }>;
+};
+
+export async function fetchPushSubscriptions(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<{enabled: boolean; subscriptions: PushSubscriptionInfo[]}> {
+  return cloudFetch<{enabled: boolean; subscriptions: PushSubscriptionInfo[]}>(
+    `/push/subscriptions`,
+    {},
+    settings,
+  );
+}
+
 export async function registerPushSubscription(
   body: {
     endpoint: string;
@@ -868,6 +938,16 @@ export async function revokePushSubscription(
   await cloudFetch<void>(
     `/push/subscriptions`,
     {method: "DELETE", body: JSON.stringify({endpoint})},
+    settings,
+  );
+}
+
+export async function sendPushTest(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<PushTestResult> {
+  return cloudFetch<PushTestResult>(
+    `/push/test`,
+    {method: "POST", body: "{}"},
     settings,
   );
 }

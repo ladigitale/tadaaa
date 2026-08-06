@@ -11,6 +11,9 @@ import type {
   UpdateTodoPatch,
 } from "./types";
 import {getAppLocale, normalizeAppLocale, resolveWordings} from "../i18n";
+import {assertCanEditActiveDataset} from "../sync/cloud-access";
+
+const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 export const MOCK_API_PATH_PREFIX = "/mock-api";
 
@@ -96,6 +99,16 @@ export function createMockApiHandler(store: TodoStore) {
     const method = request.method.toUpperCase();
 
     try {
+      // ACL cloud reader : protège aussi les writes via `@post`/`@patch` Concorde.
+      if (
+        WRITE_METHODS.has(method) &&
+        (subPath === "/import" ||
+          subPath.startsWith("/todos") ||
+          subPath.startsWith("/tags"))
+      ) {
+        await assertCanEditActiveDataset();
+      }
+
       if (method === "GET" && subPath === "/health") {
         return json({ok: true, service: "tada-mock-api"});
       }
