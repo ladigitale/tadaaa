@@ -5,24 +5,24 @@
  * Fonts: sans / display / mono only (no serifs). Pairings are intentionally loud.
  */
 
-/* Coraline — button-eye teal, nail lacquer, storybook dark */
+/* Coraline — night-blue grounds, red ink, brown primary */
 html[data-theme="coraline"],
 html[data-theme="coraline"] sonic-theme {
   color-scheme: dark;
-  --sc-base: #120e0c;
-  --sc-base-content: #ff3d6e;
-  --sc-base-50: #1e1814;
-  --sc-base-100: #2a221c;
-  --sc-base-200: #3a3228;
-  --sc-base-300: #1e5a62;
-  --sc-base-400: #2a8a96;
-  --sc-base-500: #3ec8d8;
-  --sc-base-600: #7ae0ec;
-  --sc-base-700: #b0f0f8;
-  --sc-base-800: #d8f8fc;
-  --sc-base-900: #ffe0d8;
-  --sc-primary: #ff2a55;
-  --sc-primary-content: #12080c;
+  --sc-base: #0a1220;
+  --sc-base-content: #ff3d4a;
+  --sc-base-50: #121c30;
+  --sc-base-100: #1a2840;
+  --sc-base-200: #283858;
+  --sc-base-300: #3a5a78;
+  --sc-base-400: #5a88a8;
+  --sc-base-500: #7ab0c8;
+  --sc-base-600: #a0cce0;
+  --sc-base-700: #c4e4f0;
+  --sc-base-800: #e0f2f8;
+  --sc-base-900: #f4e8dc;
+  --sc-primary: #8b4a28;
+  --sc-primary-content: #fff4e8;
   --sc-info: #2ad4e8;
   --sc-info-content: #041418;
   --sc-success: #3eb888;

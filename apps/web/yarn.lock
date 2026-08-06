@@ -548,9 +548,9 @@
   integrity sha512-brySQQs7Jtn0joV8Xh9ZV/hZb9Ozb0pmazDIASBkYKCjXrXU3mpcFahmK/z4YDhGkQvP9mWJbVyahdtU5wQA+A==
 
 "@supersoniks/concorde@^4.6.0":
-  version "4.6.0"
-  resolved "https://registry.yarnpkg.com/@supersoniks/concorde/-/concorde-4.6.0.tgz#20c44d9fb98c84509235431fd5293a2d7ec046d0"
-  integrity sha512-exwYyz+Jm5C6o5fLUVO7+RJh9N7cCGDL/JChQc9DanG03x/NAHE76HMmTDH4KJ4n5gdKylezuPsTw5ONLOTZJg==
+  version "4.9.3"
+  resolved "https://registry.yarnpkg.com/@supersoniks/concorde/-/concorde-4.9.3.tgz#51fd2b14014e117456463b7df393b327d5ea3a55"
+  integrity sha512-wx5PNkCY1Nr4UN2UGHBekbuLD7eYzumtmKpCmj0qKitOSa62aUbYsF01PKqs9Yi0oyWlTDP3TsJB2+Dfoz9+YQ==
   dependencies:
     "@lit-labs/motion" "^1.0.7"
     "@lit-labs/observers" "^2.0.2"

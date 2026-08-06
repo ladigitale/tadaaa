@@ -78,20 +78,15 @@ import {
 import {confirmDialog, showError} from "../utils/modal-dialog";
 import {navigateTo} from "../utils/navigate";
 import {stashTodoCreateDraft} from "../utils/todo-create-draft";
+import {tasksUiPrefs} from "../tasks-ui-prefs";
 import tailwind from "../../css/tailwind";
 
 const DOUBLE_ACTIVATE_MS = 350;
 
 type SonicPop = HTMLElement & {show: () => void};
 
-const STORAGE_KEY = "tada-tasks-calendar-view";
 const MONTH_CHIP_LIMIT = 3;
 const DAY_HOURS = 24;
-
-type StoredState = {
-  mode: CalendarMode;
-  anchor: string;
-};
 
 type DragKind = "move" | "resize-start" | "resize-end";
 
@@ -112,26 +107,6 @@ type DragState = {
 };
 
 type DateSpan = {start: string; end: string};
-
-function loadState(): StoredState {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return {mode: "month", anchor: todayDateOnly()};
-    const parsed = JSON.parse(raw) as Partial<StoredState>;
-    return {
-      mode:
-        parsed.mode === "day" ||
-        parsed.mode === "week" ||
-        parsed.mode === "month" ||
-        parsed.mode === "year"
-          ? parsed.mode
-          : "month",
-      anchor: parsed.anchor || todayDateOnly(),
-    };
-  } catch {
-    return {mode: "month", anchor: todayDateOnly()};
-  }
-}
 
 function priorityTone(priority: TodoPriority): string {
   if (priority === "high") return "bg-danger-100 text-danger-900 border-danger-300";
@@ -531,6 +506,75 @@ export class TasksCalendar extends LitElement {
         background: currentColor;
       }
 
+      @media print {
+        :host {
+          color: #111 !important;
+        }
+
+        .cal-no-print,
+        .cal-handle,
+        .cal-grip,
+        .cal-day-handle {
+          display: none !important;
+        }
+
+        .cal-day-scroll {
+          overflow: visible !important;
+        }
+
+        h2 {
+          color: #111 !important;
+          font-weight: 600 !important;
+        }
+
+        .cal-cell {
+          break-inside: avoid;
+          border-color: #999 !important;
+          background: #fff !important;
+          opacity: 1 !important;
+        }
+
+        .cal-cell[data-muted="true"] {
+          opacity: 0.85 !important;
+        }
+
+        .cal-cell[data-today="true"],
+        .cal-cell[data-anchor="true"] {
+          outline: 1.5px solid #333 !important;
+          outline-offset: -1.5px;
+        }
+
+        .cal-day-num {
+          color: #111 !important;
+          font-weight: 600 !important;
+        }
+
+        .cal-chip,
+        .cal-day-event {
+          cursor: default;
+          opacity: 1 !important;
+          color: #111 !important;
+          border-color: #666 !important;
+          background: #fff !important;
+        }
+
+        .cal-chip[data-done="true"],
+        .cal-day-event[data-done="true"] {
+          opacity: 0.75 !important;
+        }
+
+        .cal-chip-label,
+        .cal-day-event-title,
+        .cal-day-event-time {
+          color: #111 !important;
+        }
+
+        .cal-day-hour,
+        .cal-day-line {
+          border-color: #bbb !important;
+          color: #333 !important;
+        }
+      }
     `,
   ];
 
@@ -600,7 +644,7 @@ export class TasksCalendar extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    const stored = loadState();
+    const stored = tasksUiPrefs.loadCalendarPrefs();
     this.mode = stored.mode;
     this.anchor = stored.anchor;
     void this.reload();
@@ -671,14 +715,7 @@ export class TasksCalendar extends LitElement {
   }
 
   private persist() {
-    try {
-      sessionStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({mode: this.mode, anchor: this.anchor} satisfies StoredState),
-      );
-    } catch {
-      /* ignore */
-    }
+    tasksUiPrefs.saveCalendarPrefs({mode: this.mode, anchor: this.anchor});
   }
 
   private async reload() {
@@ -1262,7 +1299,7 @@ export class TasksCalendar extends LitElement {
           <h2 class="min-w-0 text-left text-base font-semibold sm:text-lg">
             ${this.periodTitle}
           </h2>
-          <div class="flex flex-wrap items-center gap-2">
+          <div class="cal-no-print flex flex-wrap items-center gap-2">
             <div class="flex items-center gap-1">
               <sonic-tooltip label=${tx("calendar.prev")} placement="bottom">
                 <sonic-button

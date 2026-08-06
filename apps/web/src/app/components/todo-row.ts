@@ -114,6 +114,34 @@ export class TodoRow extends LitElement {
         text-decoration: underline;
         text-underline-offset: 2px;
       }
+
+      @media print {
+        :host {
+          color: #111 !important;
+          opacity: 1 !important;
+        }
+
+        article {
+          opacity: 1 !important;
+          border-bottom: 1px solid #ccc;
+          padding-block: 0.55rem !important;
+        }
+
+        .todo-row-actions {
+          display: none !important;
+        }
+
+        .todo-row-title {
+          color: #111 !important;
+          font-weight: 600;
+        }
+
+        .todo-row-description,
+        .todo-row-meta {
+          color: #333 !important;
+          opacity: 1 !important;
+        }
+      }
     `,
   ];
 
@@ -516,7 +544,7 @@ export class TodoRow extends LitElement {
     return html`
       <div class="min-w-0 flex-1" formDataProvider=${todosDoneKey.path}>
         <sonic-checkbox
-          class="mt-0.5 min-w-0 text-sm leading-snug sm:text-base ${struck
+          class="todo-row-title mt-0.5 min-w-0 text-sm leading-snug sm:text-base ${struck
             ? "text-neutral-400 line-through"
             : "text-neutral-900"}"
           name="ids"
@@ -528,13 +556,13 @@ export class TodoRow extends LitElement {
         ${this.description
           ? html`
               <div
-                class="rich-text mt-0.5 pl-7 text-xs leading-snug text-neutral-500 sm:text-sm"
+                class="todo-row-description rich-text mt-0.5 pl-7 text-xs leading-snug text-neutral-500 sm:text-sm"
               >
                 ${richTextTemplate(this.description)}
               </div>
             `
           : nothing}
-        <div class="mt-0.5 pl-7">${this.renderMeta()}</div>
+        <div class="todo-row-meta mt-0.5 pl-7">${this.renderMeta()}</div>
       </div>
     `;
   }
@@ -549,7 +577,7 @@ export class TodoRow extends LitElement {
         <div class="flex items-start gap-2 sm:gap-3">
           ${this.renderBody()}
 
-          <div class="flex shrink-0 items-center gap-0.5">
+          <div class="todo-row-actions flex shrink-0 items-center gap-0.5">
             ${this.renderSeeButton()} ${this.renderActionsMenu()}
           </div>
         </div>

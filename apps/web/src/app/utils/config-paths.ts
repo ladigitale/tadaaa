@@ -5,6 +5,7 @@ export type ConfigSection =
   | "notifications"
   | "install"
   | "links"
+  | "apps"
   | "account"
   | "accountLogin"
   | "accountRegister"
@@ -26,6 +27,7 @@ export const SECTION_PATHS: Record<ConfigSection, string> = {
   notifications: "/settings/notifications",
   install: "/settings/install",
   links: "/settings/links",
+  apps: "/settings/apps",
   account: "/account",
   accountLogin: "/account/login",
   accountRegister: "/account/register",

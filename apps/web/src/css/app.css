@@ -124,3 +124,41 @@ html[data-landing] .app-shell-main {
 .custom-scroll:hover::-webkit-scrollbar-thumb {
   box-shadow: inset 0 0 2rem 2rem var(--sc-base-800);
 }
+
+/* Impression : chrome masqué, page déroulée, texte lisible sans gros aplats. */
+@media print {
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  .app-shell {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  .app-shell-chrome {
+    display: none !important;
+  }
+
+  .app-shell-main {
+    max-width: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    color: #111 !important;
+  }
+
+  sonic-theme,
+  app-router-host,
+  sonic-scope,
+  sonic-router {
+    height: auto !important;
+    overflow: visible !important;
+    color: #111 !important;
+  }
+}

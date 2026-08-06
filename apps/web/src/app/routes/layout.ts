@@ -17,7 +17,9 @@ import "../components/main-nav-menu";
 import "../components/legal-footer-links";
 import type {CommandPaletteModal} from "../components/command-palette-modal";
 import {tadaaaBrand} from "../brand/tadaaa-logo";
+import {isAccountConnected} from "../account-settings";
 import {shortcuts} from "../shortcuts";
+import {TACHE_ROOT} from "../utils/tache-paths";
 
 function openCommandPalette() {
   const modal = document.querySelector("command-palette-modal") as
@@ -26,10 +28,12 @@ function openCommandPalette() {
   void modal?.open();
 }
 
+/** Logo home : tâches racines si connecté, landing invite sinon. */
 function goHome(event: Event) {
   event.preventDefault();
-  if (location.pathname === "/") return;
-  history.pushState(null, "", "/");
+  const target = isAccountConnected() ? TACHE_ROOT : "/";
+  if (location.pathname === target) return;
+  history.pushState(null, "", target);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
@@ -73,7 +77,7 @@ export default (children: DirectiveResult) => html`
 
         <div class="flex min-w-0 shrink-0 items-center gap-1.5">
           <a
-            href="/"
+            href=${isAccountConnected() ? TACHE_ROOT : "/"}
             class="flex items-center text-content no-underline"
             @click=${goHome}
           >

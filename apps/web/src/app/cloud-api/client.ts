@@ -209,6 +209,19 @@ function syncLinkDetectorsFromUser(user: CloudUser): void {
   }
 }
 
+/** Persist UI theme for sister apps (Belts). No-op if logged out. */
+export async function putAppearanceTheme(
+  themeId: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<void> {
+  if (!settings.token) return;
+  await cloudFetch(
+    "/appearance",
+    {method: "PUT", body: JSON.stringify({themeId})},
+    settings,
+  );
+}
+
 export async function fetchLinkDetectors(
   settings: AccountSettings = loadAccountSettings(),
 ): Promise<LinkDetector[]> {
@@ -249,6 +262,45 @@ export async function fetchCloudDatasets(
       : `base-${dataset.baseId}`,
     active: activeId !== null && dataset.id === activeId,
   }));
+}
+
+export async function createAuthHandoff(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<{code: string; expiresIn: number}> {
+  return cloudFetch<{code: string; expiresIn: number}>(
+    "/auth/handoff",
+    {method: "POST"},
+    settings,
+  );
+}
+
+export async function fetchDatasetApps(
+  datasetId: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<{appId: string; updatedAt: string}[]> {
+  const result = await cloudFetch<unknown>(
+    `/datasets/${encodeURIComponent(datasetId)}/apps`,
+    {},
+    settings,
+  );
+  return asMemberCollection<{appId: string; updatedAt: string}>(result);
+}
+
+export async function fetchAppDatasets(
+  appId: string,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<{id: string; name: string; baseId: string; updatedAt: string}[]> {
+  const result = await cloudFetch<unknown>(
+    `/apps/${encodeURIComponent(appId)}/datasets`,
+    {},
+    settings,
+  );
+  return asMemberCollection<{
+    id: string;
+    name: string;
+    baseId: string;
+    updatedAt: string;
+  }>(result);
 }
 
 export async function createCloudDataset(

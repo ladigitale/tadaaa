@@ -77,13 +77,15 @@ need_cmd docker
 need_cmd curl
 
 info "Building front (VITE_API_BASE_URL=https://${api_host})…"
-rm -rf "$ROOT/node_modules" "$ROOT/yarn.lock"
+# Use monorepo root yarn.lock (Concorde 4.9.x). Do not install from apps/web alone —
+# apps/web/yarn.lock can pin an older Concorde and break tsc (ApiResult, @post, …).
+rm -rf "$ROOT/node_modules" "$ROOT/apps/web/node_modules"
 docker run --rm \
-  -v "$ROOT/apps/web:/app" \
-  -w /app \
+  -v "$ROOT:/repo" \
+  -w /repo \
   -e VITE_API_BASE_URL="https://${api_host}" \
   node:22-bookworm \
-  bash -lc 'corepack enable && (yarn install --frozen-lockfile || yarn install) && yarn build'
+  bash -lc 'corepack enable && yarn install --frozen-lockfile && yarn --cwd apps/web build'
 [[ -f "$ROOT/apps/web/dist/index.html" ]] || die "Front build failed."
 ok "Front build ready."
 

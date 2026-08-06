@@ -63,6 +63,22 @@ function registerBuiltinProviders(): void {
           keywords: ["add", "create", "nouvelle", "ajouter", "tag", "etiquette"],
           run: () => navigateTo(tagsNewPath()),
         },
+        {
+          id: "action-print",
+          type: "action",
+          label: tx("tasks.print"),
+          icon: "printer",
+          keywords: [
+            "print",
+            "imprimer",
+            "impression",
+            "pdf",
+            "liste",
+            "calendrier",
+            "calendar",
+          ],
+          run: () => window.print(),
+        },
       ];
       return items;
     },

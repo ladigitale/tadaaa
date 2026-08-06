@@ -81,6 +81,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?\DateTimeImmutable $termsAcceptedAt = null;
 
     /**
+     * UI theme id shared with sister apps (Belts). Same ids as web `tada-theme`.
+     */
+    #[ORM\Column(length: 32, options: ['default' => 'default'])]
+    private string $themeId = 'default';
+
+    /**
      * null = env default; 0 = unlimited; >0 = custom byte cap.
      */
     #[ORM\Column(type: 'bigint', nullable: true)]
@@ -318,6 +324,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->bandwidthQuotaMonthBytes = $bandwidthQuotaMonthBytes === null
             ? null
             : (string) $bandwidthQuotaMonthBytes;
+
+        return $this;
+    }
+
+    public function getThemeId(): string
+    {
+        return $this->themeId !== '' ? $this->themeId : 'default';
+    }
+
+    public function setThemeId(string $themeId): static
+    {
+        $this->themeId = $themeId !== '' ? $themeId : 'default';
 
         return $this;
     }

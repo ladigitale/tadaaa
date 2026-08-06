@@ -10,6 +10,7 @@ import {
   type AppThemeId,
   type AppThemeMeta,
 } from "../theme";
+import {putAppearanceTheme} from "../cloud-api/client";
 import {
   APP_LOCALES,
   getAppLocale,
@@ -41,6 +42,9 @@ export class ConfigAppearancePage extends LitElement {
   private onSelect = (id: AppThemeId) => {
     this.themeId = id;
     setTheme(id);
+    void putAppearanceTheme(id).catch(() => {
+      /* offline / not logged in */
+    });
   };
 
   private onPreviewEnter = (id: AppThemeId) => {

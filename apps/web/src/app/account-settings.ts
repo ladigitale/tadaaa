@@ -7,6 +7,8 @@ export type CloudUser = {
   activeDatasetId: string | null;
   status?: "pending" | "active" | "rejected" | "disabled";
   roles?: string[];
+  /** Shared UI theme (Tadaaa ↔ Belts). */
+  themeId?: string;
   linkDetectors?: Array<{
     id: string;
     name: string;

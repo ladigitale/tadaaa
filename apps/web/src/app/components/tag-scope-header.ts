@@ -15,6 +15,7 @@ import type {Tag, Todo} from "../api/types";
 import {read, set} from "../../utils/dataprovider";
 import {todosCatalogKey, todosFilterKey, type TodosFilter} from "../dp";
 import {tf, tx} from "../i18n";
+import {tasksUiPrefs} from "../tasks-ui-prefs";
 import {
   TAGS_ROOT,
   tagsItemEditPath,
@@ -203,7 +204,7 @@ export class TagScopeHeader extends LitElement {
     const tag = this.scopeTag;
     if (!tag) return;
     const filter = read(todosFilterKey.path) as TodosFilter;
-    set(todosFilterKey.path, {
+    const next: TodosFilter = {
       ...filter,
       q: "",
       status: "all",
@@ -211,7 +212,9 @@ export class TagScopeHeader extends LitElement {
       parentId: "",
       recursive: true,
       _rev: (filter._rev ?? 0) + 1,
-    });
+    };
+    set(todosFilterKey.path, next);
+    tasksUiPrefs.saveFilterPrefs(next);
     navigateTo(TACHE_ROOT);
   };
 

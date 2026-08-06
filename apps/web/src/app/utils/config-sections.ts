@@ -76,6 +76,13 @@ export const CONFIG_SECTION_GROUPS: ConfigSectionGroup[] = [
         icon: "link",
         href: configSectionPath("links"),
       },
+      {
+        id: "apps",
+        labelKey: "config.section.apps",
+        descriptionKey: "config.section.apps.help",
+        icon: "apps",
+        href: configSectionPath("apps"),
+      },
     ],
   },
   {

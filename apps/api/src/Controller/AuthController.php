@@ -13,6 +13,7 @@ use App\Entity\User;
 use App\Entity\UserStatus;
 use App\Repository\UserRepository;
 use App\Service\AccountMailer;
+use App\Service\AuthHandoffService;
 use App\Service\BandwidthQuota;
 use App\Service\StorageQuota;
 use App\Service\UserAccountDeletion;
@@ -44,6 +45,7 @@ final class AuthController extends AbstractController
         private readonly BandwidthQuota $bandwidthQuota,
         private readonly UserDataExport $userDataExport,
         private readonly UserAccountDeletion $userAccountDeletion,
+        private readonly AuthHandoffService $authHandoff,
         #[Autowire(service: 'limiter.register')]
         private readonly RateLimiterFactoryInterface $registerLimiter,
         #[Autowire(service: 'limiter.account_gdpr')]
@@ -249,6 +251,44 @@ final class AuthController extends AbstractController
         ]);
     }
 
+    /** Create a short-lived one-time code for sister apps (Belts, …). */
+    #[Route('/handoff', name: 'api_auth_handoff_create', methods: ['POST'])]
+    #[IsGranted('ROLE_USER')]
+    public function createHandoff(): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $code = $this->authHandoff->issue($user);
+
+        return $this->json([
+            'code' => $code,
+            'expiresIn' => $this->authHandoff->ttlSeconds(),
+        ]);
+    }
+
+    /** Exchange a handoff code for a JWT (public). */
+    #[Route('/handoff/exchange', name: 'api_auth_handoff_exchange', methods: ['POST'])]
+    public function exchangeHandoff(\Symfony\Component\HttpFoundation\Request $request): JsonResponse
+    {
+        /** @var array<string, mixed> $body */
+        $body = json_decode($request->getContent(), true) ?? [];
+        $code = \is_string($body['code'] ?? null) ? $body['code'] : '';
+        $email = $this->authHandoff->consume($code);
+        if ($email === null) {
+            return $this->json(['error' => 'Code invalide ou expiré.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $user = $this->users->findOneBy(['email' => $email]);
+        if ($user === null || $user->getStatus() !== UserStatus::Active) {
+            return $this->json(['error' => 'Compte indisponible.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        return $this->json([
+            'token' => $this->jwtManager->create($user),
+            'user' => $this->serializeUser($user),
+        ]);
+    }
+
     private function issueEmailVerifyToken(User $user): string
     {
         $raw = bin2hex(random_bytes(32));
@@ -267,7 +307,8 @@ final class AuthController extends AbstractController
      *   status: string,
      *   roles: list<string>,
      *   linkDetectors: list<array{id: string, name: string, pattern: string, urlTemplate: string}>,
-     *   emailVerifiedAt: ?string
+     *   emailVerifiedAt: ?string,
+     *   themeId: string
      * }
      */
     private function serializeUser(User $user): array
@@ -281,6 +322,7 @@ final class AuthController extends AbstractController
             'roles' => $user->getRoles(),
             'linkDetectors' => $user->getLinkDetectors(),
             'emailVerifiedAt' => $user->getEmailVerifiedAt()?->format(\DateTimeInterface::ATOM),
+            'themeId' => $user->getThemeId(),
         ];
     }
 

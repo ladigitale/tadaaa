@@ -18,7 +18,8 @@ import {
   type TodosFilter,
 } from "./dp";
 import {loadAccountSettings, isAccountConnected} from "./account-settings";
-import {initTheme} from "./theme";
+import {initTheme, isAppThemeId, applyTheme, saveThemeId} from "./theme";
+import {refreshAccountSession} from "./cloud-api/client";
 import {initAppLocale} from "./i18n";
 import {registerSyncHandler} from "./sync/registry";
 import {enqueueMutationForDataset} from "./sync/notify";
@@ -33,10 +34,24 @@ import {startDueDateWatcher} from "./notifications/due-dates";
 import {areWebNotificationsEnabled} from "./settings";
 import {subscribeServerPush} from "./notifications/push-subscribe";
 import {shortcuts} from "./shortcuts";
+import {tasksUiPrefs} from "./tasks-ui-prefs";
 
 export function initApp(): void {
   initAppLocale();
   initTheme();
+  if (isAccountConnected()) {
+    void refreshAccountSession()
+      .then((s) => {
+        const tid = s.user?.themeId;
+        if (tid && isAppThemeId(tid)) {
+          saveThemeId(tid);
+          applyTheme(tid);
+        }
+      })
+      .catch(() => {
+        /* offline */
+      });
+  }
   initPwaInstallListeners();
   shortcuts.install();
   // Avant tout fetch : sous Apache, /mock-api sans SW = index.html (JSON parse fail).
@@ -44,13 +59,8 @@ export function initApp(): void {
   initApiConfiguration();
   set(todosFilterKey.path, {
     q: "",
-    status: "all",
-    tags: [],
-    sort: "createdAt:desc",
-    sortBy: "createdAt",
-    sortDir: "desc",
+    ...tasksUiPrefs.filterDefaults(),
     parentId: "",
-    recursive: false,
     _rev: 0,
   });
   set(todoCreateKey.path, {

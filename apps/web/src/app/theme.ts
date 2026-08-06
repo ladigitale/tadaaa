@@ -29,8 +29,8 @@ export const APP_THEMES: AppThemeMeta[] = [
   {
     id: "coraline",
     label: "Coraline",
-    description: "Button-eye teal & nail lacquer · Rowdies",
-    swatches: ["#120e0c", "#ff2a55", "#3ec8d8"],
+    description: "Night blue, red ink & brown primary · Rowdies",
+    swatches: ["#0a1220", "#8b4a28", "#ff3d4a"],
     dark: true,
   },
   {

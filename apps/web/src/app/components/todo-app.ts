@@ -39,38 +39,7 @@ import {
   tacheNewPath,
 } from "../utils/tache-paths";
 import {shortcuts} from "../shortcuts";
-
-type TasksViewMode = "list" | "calendar";
-
-const VIEW_STORAGE_KEY = "tada-tasks-view-mode";
-
-/** Préférence SPA : survit aux changements de route même si le storage échoue. */
-let rememberedViewMode: TasksViewMode | null = null;
-
-function loadViewMode(): TasksViewMode {
-  if (rememberedViewMode === "list" || rememberedViewMode === "calendar") {
-    return rememberedViewMode;
-  }
-  try {
-    const raw = localStorage.getItem(VIEW_STORAGE_KEY);
-    if (raw === "calendar" || raw === "list") {
-      rememberedViewMode = raw;
-      return raw;
-    }
-  } catch {
-    /* ignore */
-  }
-  return "list";
-}
-
-function saveViewMode(mode: TasksViewMode) {
-  rememberedViewMode = mode;
-  try {
-    localStorage.setItem(VIEW_STORAGE_KEY, mode);
-  } catch {
-    /* ignore */
-  }
-}
+import {tasksUiPrefs, type TasksViewMode} from "../tasks-ui-prefs";
 
 @customElement("todo-app")
 export class TodoApp extends LitElement {
@@ -135,6 +104,28 @@ export class TodoApp extends LitElement {
         outline: none;
         box-shadow: none;
       }
+
+      @media print {
+        :host {
+          color: #111 !important;
+        }
+
+        .todo-app-toolbar,
+        .todo-app-add {
+          display: none !important;
+        }
+
+        .todo-app-header {
+          border-bottom: 1px solid #999;
+          padding-bottom: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .todo-app-queue {
+          margin-inline: 0;
+          padding-inline: 0;
+        }
+      }
     `,
   ];
 
@@ -150,19 +141,14 @@ export class TodoApp extends LitElement {
   tags: Tag[] = [];
 
   @state()
-  private viewMode: TasksViewMode = loadViewMode();
+  private viewMode: TasksViewMode = tasksUiPrefs.loadViewMode();
 
   @subscribe(todosFilterKey)
   @state()
   filter: TodosFilter = {
     q: "",
-    status: "all",
-    tags: [],
-    sort: "createdAt:desc",
-    sortBy: "createdAt",
-    sortDir: "desc",
+    ...tasksUiPrefs.filterDefaults(),
     parentId: "",
-    recursive: false,
     _rev: 0,
   };
 
@@ -172,13 +158,16 @@ export class TodoApp extends LitElement {
     if (!Array.isArray(read(`${todosDoneKey.path}.ids`))) {
       set(todosDoneKey.path, {ids: []});
     }
-    this.viewMode = loadViewMode();
+    this.viewMode = tasksUiPrefs.loadViewMode();
     this.syncFilterParent();
   }
 
   protected updated(changed: Map<string, unknown>) {
     if (changed.has("parentId")) {
       this.syncFilterParent();
+    }
+    if (changed.has("filter")) {
+      tasksUiPrefs.saveFilterPrefs(this.filter);
     }
   }
 
@@ -296,7 +285,7 @@ export class TodoApp extends LitElement {
 
   private setViewMode(mode: TasksViewMode) {
     this.viewMode = mode;
-    saveViewMode(mode);
+    tasksUiPrefs.saveViewMode(mode);
   }
 
   private onViewChange = (e: CustomEvent<{mode: TasksViewMode}>) => {
@@ -416,14 +405,14 @@ export class TodoApp extends LitElement {
         dataFilterProvider=${filterProvider}
       >
         <div
-          class="shrink-0 space-y-3 border-b-[.18rem] border-current pb-3 sm:space-y-4 sm:pb-4"
+          class="todo-app-header shrink-0 space-y-3 border-b-[.18rem] border-current pb-3 sm:space-y-4 sm:pb-4"
         >
           <task-scope-header
             .scopeId=${this.parentId}
             action=${this.parentId?.trim() ? "children" : ""}
           ></task-scope-header>
 
-          <section>
+          <section class="todo-app-toolbar">
             <div class="flex flex-wrap items-end gap-1.5">
               <sonic-input
                 name="q"

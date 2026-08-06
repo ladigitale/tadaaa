@@ -6,6 +6,7 @@ export {
   isAppLocale,
   localeLabel,
   normalizeAppLocale,
+  resolveBrowserLocale,
   setAppLocale,
   type AppLocale,
 } from "./locale";

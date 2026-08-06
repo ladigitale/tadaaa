@@ -1,5 +1,5 @@
 import type {AccountSettings} from "../account-settings";
-import {acceptDatasetInvite} from "../cloud-api/client";
+import {acceptDatasetInvite, createAuthHandoff} from "../cloud-api/client";
 import {openCloudDatasetForEditing} from "../sync/engine";
 import {
   configSectionPath,
@@ -7,6 +7,11 @@ import {
 } from "./config-paths";
 import {navigateTo} from "./navigate";
 import {TACHE_ROOT} from "./tache-paths";
+import {
+  clearSisterReturnTo,
+  isAllowedSisterReturnUrl,
+  readSisterReturnTo,
+} from "./sister-return";
 
 const STORAGE_KEY = "tadaaa.pendingInviteToken";
 
@@ -80,10 +85,25 @@ export async function completePendingInvite(
   return true;
 }
 
-/** After auth: complete pending invite, or fall back to tasks. */
+/** After auth: sister-app handoff, pending invite, or tasks. */
 export async function navigateAfterAuth(
   account: AccountSettings,
 ): Promise<void> {
+  const returnTo = readSisterReturnTo();
+  if (returnTo && isAllowedSisterReturnUrl(returnTo)) {
+    clearSisterReturnTo();
+    try {
+      const {code} = await createAuthHandoff(account);
+      const target = new URL(returnTo);
+      target.searchParams.set("handoff", code);
+      window.location.assign(target.toString());
+      return;
+    } catch (error) {
+      console.error(error);
+      // fall through to normal navigation
+    }
+  }
+
   const handled = await completePendingInvite(account);
   if (!handled) navigateTo(TACHE_ROOT, true);
 }

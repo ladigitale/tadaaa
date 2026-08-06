@@ -31,6 +31,7 @@ import {
   inviteAuthPath,
   navigateAfterAuth,
 } from "../utils/pending-invite";
+import {captureSisterReturnParam} from "../utils/sister-return";
 import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {showError} from "../utils/modal-dialog";
 import {formLabelStyles} from "../styles/form-label";
@@ -79,6 +80,7 @@ export class ConfigAccountLoginPage extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     captureInviteQueryParam();
+    captureSisterReturnParam();
     window.addEventListener(ACCOUNT_CHANGED_EVENT, this.onAccountChanged);
     void this.bootstrap();
   }

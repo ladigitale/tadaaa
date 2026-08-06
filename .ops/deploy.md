@@ -32,7 +32,7 @@ This:
 
 1. `git pull --ff-only` (if `--pull`)
 2. **Merges missing `.env` keys** (mail, quotas, `APP_PUBLIC_URL`, …) without overwriting existing values
-3. Rebuilds the SPA
+3. Rebuilds the SPA via monorepo root `yarn.lock` (Concorde version must match local; do not install from `apps/web` alone)
 4. `docker compose -f compose.prod.yaml up -d --build`
 5. Runs Doctrine migrations
 

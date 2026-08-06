@@ -275,18 +275,21 @@ final class PushNotificationDispatcher
 
         try {
             // urgency=high helps FCM wake Android from Doze; TTL keeps the message queued.
+            // Pass PSR-3 logger so missing GMP/BCMath is a log notice, not trigger_error()
+            // (Symfony debug converts E_USER_NOTICE → ErrorException and aborts the send).
             $webPush = new WebPush(
-                [
+                auth: [
                     'VAPID' => [
                         'subject' => $this->push->getSubject(),
                         'publicKey' => $this->push->getPublicKey(),
                         'privateKey' => $this->push->getPrivateKey(),
                     ],
                 ],
-                [
+                defaultOptions: [
                     'TTL' => 86_400,
                     'urgency' => 'high',
                 ],
+                logger: $this->logger,
             );
         } catch (\Throwable $exception) {
             $this->logger->warning('Web Push init failed: {message}', [

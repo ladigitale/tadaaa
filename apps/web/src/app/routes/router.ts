@@ -24,6 +24,7 @@ import legalMentionsPage from "./legal/mentions/page";
 import legalPrivacyPage from "./legal/privacy/page";
 import legalTermsPage from "./legal/terms/page";
 import settingsAppearancePage from "./settings/appearance/page";
+import settingsAppsPage from "./settings/apps/page";
 import settingsInstallPage from "./settings/install/page";
 import settingsLinksPage from "./settings/links/page";
 import settingsNotificationsPage from "./settings/notifications/page";
@@ -151,6 +152,10 @@ const settingsAppearanceDefaultLayoutRoutes = {
     "/settings/appearance$": settingsAppearancePage
 }        
 
+const settingsAppsDefaultLayoutRoutes = {
+    "/settings/apps$": settingsAppsPage
+}        
+
 const settingsInstallDefaultLayoutRoutes = {
     "/settings/install$": settingsInstallPage
 }        
@@ -165,6 +170,7 @@ const settingsNotificationsDefaultLayoutRoutes = {
 
 const settingsDefaultLayoutRoutes = {
     "/settings/appearance\\b": () => html`<sonic-router .basePath=${basePath} .routes=${settingsAppearanceDefaultLayoutRoutes}></sonic-router>`,
+    "/settings/apps\\b": () => html`<sonic-router .basePath=${basePath} .routes=${settingsAppsDefaultLayoutRoutes}></sonic-router>`,
     "/settings/install\\b": () => html`<sonic-router .basePath=${basePath} .routes=${settingsInstallDefaultLayoutRoutes}></sonic-router>`,
     "/settings/links\\b": () => html`<sonic-router .basePath=${basePath} .routes=${settingsLinksDefaultLayoutRoutes}></sonic-router>`,
     "/settings/notifications\\b": () => html`<sonic-router .basePath=${basePath} .routes=${settingsNotificationsDefaultLayoutRoutes}></sonic-router>`,

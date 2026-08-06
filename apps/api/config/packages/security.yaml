@@ -53,10 +53,12 @@ security:
         - { path: ^/oauth/, roles: PUBLIC_ACCESS }
         - { path: ^/api/health$, roles: PUBLIC_ACCESS }
         - { path: ^/api/legal$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/appearance, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/register$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/verify-email$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/resend-verification$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/handoff/exchange$, roles: PUBLIC_ACCESS }
         - { path: ^/api/public/embeds/, roles: PUBLIC_ACCESS }
         - { path: ^/api/invites/[^/]+$, roles: PUBLIC_ACCESS }
         - { path: ^/api/docs, roles: ROLE_ADMIN }

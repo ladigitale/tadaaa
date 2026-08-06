@@ -28,9 +28,10 @@ import {
   showError,
 } from "../utils/modal-dialog";
 import {todosFilterToListParams} from "../utils/todos-filter-params";
+import type {TasksViewMode} from "../tasks-ui-prefs";
 import tailwind from "../../css/tailwind";
 
-export type TasksViewMode = "list" | "calendar";
+export type {TasksViewMode};
 
 type BulkActionId = "done" | "undone" | "archive" | "restore";
 
@@ -167,6 +168,10 @@ export class TodoBulkActions extends LitElement {
     );
   }
 
+  private printView() {
+    window.print();
+  }
+
   private countMatching(): Promise<number> {
     const params = {
       ...todosFilterToListParams(this.filter),
@@ -285,6 +290,14 @@ export class TodoBulkActions extends LitElement {
             @click=${() => this.setViewMode("calendar")}
           >
             ${this.renderMenuIcon("calendar")} ${tx("tasks.view.calendar")}
+          </sonic-menu-item>
+
+          <sonic-divider align="left" size="sm"></sonic-divider>
+          <sonic-menu-item @click=${() => this.printView()}>
+            ${this.renderMenuIcon("printer")}
+            ${this.viewMode === "calendar"
+              ? tx("tasks.print.calendar")
+              : tx("tasks.print.list")}
           </sonic-menu-item>
 
           <sonic-divider

@@ -126,6 +126,20 @@ export class TaskScopeHeader extends LitElement {
         text-decoration: underline;
         text-underline-offset: 2px;
       }
+
+      @media print {
+        .scope-action-menu {
+          display: none !important;
+        }
+
+        .scope-heading {
+          color: #111 !important;
+        }
+
+        .scope-description {
+          color: #333 !important;
+        }
+      }
     `,
   ];
 
@@ -369,7 +383,9 @@ export class TaskScopeHeader extends LitElement {
 
     if (choices.length === 1) {
       return html`
-        <p class="flex items-center gap-1 text-sm italic text-neutral-500">
+        <p
+          class="scope-action-menu flex items-center gap-1 text-sm italic text-neutral-500"
+        >
           <sonic-icon
             library=${ICON_LIBRARY}
             prefix=${ICON_PREFIX}
@@ -382,7 +398,10 @@ export class TaskScopeHeader extends LitElement {
     }
 
     return html`
-      <sonic-pop class="inline-block" placement="bottom-start">
+      <sonic-pop
+        class="scope-action-menu inline-block"
+        placement="bottom-start"
+      >
         <sonic-button
           size="xs"
           variant="ghost"
@@ -429,6 +448,12 @@ export class TaskScopeHeader extends LitElement {
               </sonic-menu-item>
             `,
           )}
+          <sonic-menu-item
+            ?disabled=${this.busy}
+            @click=${() => window.print()}
+          >
+            ${this.renderMenuItemIcon("printer")} ${tx("tasks.print")}
+          </sonic-menu-item>
           ${this.isArchived
             ? html`
                 <sonic-menu-item
