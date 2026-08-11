@@ -174,6 +174,26 @@ Free-tier quotas (override per user via admin API): **5 MiB** storage; bandwidth
 11. Quotas: Données → Sync shows storage + bandwidth gauges; over-quota sync → 413 / 429
 12. Claude.ai custom connector → `https://api.example.com/mcp` → Connect (OAuth); allowlist Anthropic egress `160.79.104.0/21` if you firewall inbound
 
+## Co-hosting Glane
+
+When Glane shares this VPS, Tadaaa keeps the only public edge (80/443).
+
+1. `deploy/Caddyfile.edge` imports `/etc/caddy/cohost/*.caddy`
+2. `compose.prod.yaml` mounts `./deploy/cohost` into the edge
+3. Apply Glane’s overlay (from the Glane clone):
+
+```bash
+docker network create web || true
+export GLANE_ROOT=/root/glane
+export GLANE_APP_SERVER_NAME=glane.tadaaa.space
+export GLANE_API_SERVER_NAME=glane-api.tadaaa.space
+docker compose -f compose.prod.yaml \
+  -f "$GLANE_ROOT/deploy/tadaaa-cohost/compose.prod.glane-cohost.yaml" \
+  up -d edge
+```
+
+Full runbook: Glane `.ops/deploy.md` § Co-hosting.
+
 ## Coolify (optional)
 
 Docker Compose resource → `compose.prod.yaml`, inject env vars, bind `app` / `api`.

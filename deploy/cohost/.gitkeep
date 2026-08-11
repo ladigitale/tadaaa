@@ -1,0 +1,2 @@
+# Optional Caddy site snippets for sister apps (imported by Caddyfile.edge).
+# Glane cohost mounts glane.caddy here via compose.prod.glane-cohost.yaml.

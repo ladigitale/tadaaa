@@ -17,6 +17,7 @@ services:
     volumes:
       - ./apps/web/dist:/srv:ro
       - ./deploy/Caddyfile.edge:/etc/caddy/Caddyfile:ro
+      - ./deploy/cohost:/etc/caddy/cohost:ro
       - edge_caddy_data:/data
       - edge_caddy_config:/config
     ports:
