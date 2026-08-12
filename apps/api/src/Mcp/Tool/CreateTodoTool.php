@@ -11,7 +11,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
 #[ApiResource(operations: [])]
 #[McpTool(
     name: 'create_todo',
-    description: 'Crée une tâche dans le jeu cloud actif MCP. description accepte du Markdown basique (**bold**, *italic*, `code`, [lien](url), listes) rendu dans l’UI web ; les jetons des détecteurs de liens du compte (voir describe_text_formatting / list_link_detectors) deviennent des liens cliquables. startAt/endAt : dates optionnelles YYYY-MM-DD (journée entière) ou ISO UTC (ex. 2026-08-03T14:30:00Z). recurrence : none|daily|weekly|monthly (à la complétion, crée la prochaine occurrence).',
+    description: 'Crée une tâche dans le jeu cloud actif MCP. description accepte du Markdown basique (**bold**, *italic*, `code`, [lien](url), listes) rendu dans l’UI web ; les jetons des détecteurs de liens du compte (voir describe_text_formatting / list_link_detectors) deviennent des liens cliquables. startAt/endAt : dates optionnelles YYYY-MM-DD (journée entière) ou ISO UTC (ex. 2026-08-03T14:30:00Z). recurrence : none|daily|weekly|monthly (reste cochée jusqu’à la prochaine unité, puis se décoche).',
     processor: CloudTodoMcpProcessor::class,
 )]
 final class CreateTodoTool

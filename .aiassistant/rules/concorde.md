@@ -2,12 +2,11 @@
 
 Référence doc : fichiers `.md` dans `node_modules/@supersoniks/concorde/src/`.
 
-## Imports (chemins courts)
+## Imports
 
-Préférer `@supersoniks/concorde/menu` plutôt que `ui/menu`, `@supersoniks/concorde/list` plutôt que `functional/list`, etc.
+**Apps externes** : chemins courts (`/menu`, `/list`, `/decorators`, `/dataProviderKey`, …).
 
-Composants : `/menu`, `/menu-item`, `/divider`, `/button`, `/input`, `/theme`, `/list`, `/queue`, `/router`  
-Utilitaires : `/decorators`, `/directives`, `/utils`, `/utils/endpoint`, `/utils/api`, `/dataProviderKey`
+**Dépôt Concorde (lib + doc)** : `core/components/functional/list/list`, `core/decorators/Subscriber`, `core/utils/dataProviderKey` — pas `@supersoniks/concorde/list` ici.
 
 ## Vocabulaire
 
@@ -26,6 +25,20 @@ Utilitaires : `/decorators`, `/directives`, `/utils`, `/utils/endpoint`, `/utils
 ## DataProviderKey dynamique
 
 Placeholder `${prop}` dans une chaîne normale : `"users.${userIndex}"`.
+
+## Scope vs theme
+
+- **Scope** (`sonic-scope`) : `serviceURL`, `formDataProvider`, icônes — skill `concorde-scope`
+- **Theme** (`sonic-theme`) : `--sc-*` tokens, dark mode — skill `concorde-theme`
+- `@get(endpoint)` sans clé config → hérite scope ; `@get(endpoint, apiConfigKey)` → DataProvider
+- Modale / portal : préférer `apiConfigKey` si pas de scope DOM fiable
+
+## Migration Subscriber / sonic-fetch
+
+- Ne pas retirer `Subscriber` sans `@subscribe` feuille par feuille sur chaque champ du `render()`.
+- `sonic-fetch` → `@get` + DP ; `@subscribe` ou hôte `Subscriber` avec `dataProvider`/`subDataProvider`.
+- Placeholders Endpoint = propriétés homonymes sur l'hôte (`checkCode` → copier vers `code` si besoin).
+- `@subscribe` + `@state()`, pas `@property` pour la lecture DP.
 
 ## Navigation
 

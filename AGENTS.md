@@ -58,31 +58,60 @@ Sources: `apps/web/node_modules/@supersoniks/concorde/ai/` + overlay `ai/starter
 
 # Agents — Concorde
 
-Guide for AI agents on a **Concorde** project (Lit + DataProvider).
+Guide pour les agents IA sur un projet **Concorde** (Lit + DataProvider).
 
-## Skills / rules (after install)
+## Skills / rules (après installation)
 
-| File | Role |
-|------|------|
-| `.cursor/skills/concorde/SKILL.md` | Framework patterns |
-| `.cursor/skills/concorde-menu/SKILL.md` | sonic-menu navigation |
-| `.cursor/rules/concorde.mdc` | Cursor rules (patterns) |
-| `.aiassistant/rules/concorde.md` | JetBrains AI Assistant rules |
+| Fichier | Rôle |
+|---------|------|
+| `.cursor/skills/concorde/SKILL.md` | Patterns framework |
+| `.cursor/skills/concorde-imports/SKILL.md` | Imports courts |
+| `.cursor/skills/concorde-scope/SKILL.md` | Scope + APIConfiguration |
+| `.cursor/skills/concorde-theme/SKILL.md` | Design tokens sonic-theme |
+| `.cursor/skills/concorde-menu/SKILL.md` | Navigation sonic-menu |
+| `.cursor/skills/concorde-get-set-dp/SKILL.md` | Migration get/set/dp + DataProviderKey statique |
+| `.cursor/rules/concorde.mdc` | Règles Cursor (patterns) |
+| `.aiassistant/rules/concorde.md` | Règles JetBrains AI Assistant |
 
-Install: `node node_modules/@supersoniks/concorde/scripts/ai-init.mjs`  
-Source: `@supersoniks/concorde/ai/`
+Installation :
 
-## Hard requirements
+```bash
+node node_modules/@supersoniks/concorde/scripts/ai-init.mjs
+```
 
-- Always **DataProvider**, access via **`get` / `set`**
-- No **`sonic-fetch`**, no **`PublisherManager`**
-- No `@onAssign` — **`@handle`** + `DataProviderKey`
-- Forms: **`formDataProvider`** + `name` on `sonic-input`
-- Lists: **Lit** templates (`.items`, `.separator`, `.noItems`, `.skeleton`) — do not promote HTML `<template>`s
+Source : `@supersoniks/concorde/ai/`
+
+## Imports dans ce dépôt (lib + doc)
+
+Les chemins courts (`@supersoniks/concorde/list`, `/menu`, `/queue`, …) sont des **exports npm** pour les apps **externes**. Dans le repo Concorde (`src/docs`, `src/core`, démos), utiliser les chemins **réels** :
+
+- Composants : `@supersoniks/concorde/core/components/…` ou import relatif (`../../core/components/functional/list/list`)
+- Décorateurs : `@supersoniks/concorde/core/decorators/Subscriber` (ou `src/decorators.ts` via `@supersoniks/concorde/decorators` si résolu par l’alias Vite racine)
+- `DataProviderKey` : `@supersoniks/concorde/core/utils/dataProviderKey`
+
+Skill **`concorde-imports`** : section « Dans le dépôt Concorde ».
+
+## Conventions impératives
+
+- Toujours **DataProvider**, accès via **`get` / `set`**
+- Pas de **`sonic-fetch`**, pas de **`PublisherManager`**
+- Pas de `@onAssign` — **`@handle`** + `DataProviderKey`
+- Pas de **`@bind`** sur les composants métier — **`@subscribe`** + `DataProviderKey<T, U>` (type + contraintes hôte `${…}`)
+- Formulaires : **`formDataProvider`** + `name` sur `sonic-input`
+- Listes : templates **Lit** (`.items`, `.separator`, `.noItems`, `.skeleton`) — pas de promotion des `<template>` HTML
+- **Scope** (API/forms) ≠ **theme** (couleurs) — skills `concorde-scope` / `concorde-theme`
+
+## Migration get / set / dp
+
+Skill **`concorde-get-set-dp`** : chemins sans placeholder **`${…}`** / **`{$…}`** pour `get` / `set` / `dp` ; chemins JS évalués OK ; clés dynamiques → décorateurs, `dp(idRésolu)`, ou **`sub(clé)`** dans les templates Lit.
+
+## Migration Subscriber / sonic-fetch
+
+Skill **`concorde`** — section **« Piège migration Subscriber → LitElement »** : ne pas laisser des `@property` orphelines après retrait du mixin ; `@get` + `@subscribe` feuille ; `apiConfigKey` en modale ; sync des noms de props pour les `Endpoint` dynamiques.
 
 ## Documentation
 
-`.md` files in the package: `node_modules/@supersoniks/concorde/src/` (components, decorators, getting-started).
+Fichiers `.md` dans le package : `node_modules/@supersoniks/concorde/src/` (composants, décorateurs, getting-started).
 
 ---
 
@@ -100,9 +129,9 @@ Starter layer (npm template). See base Concorde guidance in root `AGENTS.md`.
 
 ## Architecture
 
-- **`apps/web/src/starter/`** — removable learning kit
-- **`apps/web/src/app/`** — minimal app after kit removal
-- **`apps/web/src/app/routes/router.ts`** — generated (no hyphens in route folder names)
+- **`src/starter/`** — removable learning kit
+- **`src/app/`** — minimal app after kit removal
+- **`src/starter/routes/router.ts`** — generated (no hyphens in route folder names)
 
 ## Sync agent files
 
@@ -110,5 +139,5 @@ Starter layer (npm template). See base Concorde guidance in root `AGENTS.md`.
 yarn ai:sync
 ```
 
-Concorde source: `apps/web/node_modules/@supersoniks/concorde/ai/`  
+Concorde source: `node_modules/@supersoniks/concorde/ai/`  
 Starter overlay: `ai/starter/` (this repo).

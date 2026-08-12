@@ -66,6 +66,19 @@ final class CloudTodoService
     {
         $dataset = $this->requireActiveDataset($user);
         $rows = $this->todos->findChangedSince($dataset, null);
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $dirty = false;
+        foreach ($rows as $todo) {
+            if (!$todo->isDeleted() && TodoRecurrence::maybeReset($todo, $now)) {
+                $dirty = true;
+            }
+        }
+        if ($dirty) {
+            $dataset->touch();
+            $this->entityManager->flush();
+            $this->realtime->publishDatasetChanged($dataset);
+        }
+
         $result = [];
         foreach ($rows as $todo) {
             if ($todo->isDeleted()) {
@@ -96,6 +109,12 @@ final class CloudTodoService
     public function getTodo(User $user, string $id): array
     {
         $todo = $this->requireTodo($user, $id);
+        if (TodoRecurrence::maybeReset($todo)) {
+            $todo->getDataset()->touch();
+            $this->entityManager->flush();
+            $this->realtime->publishDatasetChanged($todo->getDataset());
+        }
+
         return $todo->toSyncArray();
     }
 
@@ -299,32 +318,6 @@ final class CloudTodoService
             );
         }
         $this->usage->increment($user, $dataset, UsageMeter::TODOS_UPDATED);
-
-        if (!$prevDone && $todo->isDone() && TodoRecurrence::isActive($todo->getRecurrence())) {
-            $dates = TodoRecurrence::nextDates(
-                $todo->getStartAt(),
-                $todo->getEndAt(),
-                $todo->getRecurrence(),
-            );
-            $recurrence = $todo->getRecurrence();
-            // Past occurrence keeps no recurrence (avoids re-spawn on toggle).
-            $todo->setRecurrence(TodoRecurrence::NONE);
-            $versions['recurrence'] = $now;
-            $todo->setFieldVersions($versions);
-            $this->entityManager->flush();
-
-            $this->createTodo(
-                $user,
-                $todo->getText(),
-                $todo->getDescription(),
-                $todo->getPriority(),
-                $todo->getTagIds(),
-                $todo->getParentId(),
-                $dates['startAt'],
-                $dates['endAt'],
-                $recurrence,
-            );
-        }
 
         return $sync;
     }

@@ -66,6 +66,8 @@ services:
       MAILER_DSN: ${MAILER_DSN:-null://null}
       MAIL_FROM: ${MAIL_FROM:-app@tadaaa.space}
       APP_PUBLIC_URL: ${APP_PUBLIC_URL:-https://app.example.com}
+      # Required when config/jwt/private.pem is encrypted (Lexik); image .env may be empty.
+      JWT_PASSPHRASE: ${JWT_PASSPHRASE:-}
       DEFAULT_STORAGE_QUOTA_BYTES: ${DEFAULT_STORAGE_QUOTA_BYTES:-5242880}
       GLOBAL_MONTHLY_TRANSFER_BYTES: ${GLOBAL_MONTHLY_TRANSFER_BYTES:-5368709120}
       FLOOR_PER_USER_MONTH_BYTES: ${FLOOR_PER_USER_MONTH_BYTES:-52428800}

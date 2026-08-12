@@ -99,11 +99,11 @@ export class TagBadge extends LitElement {
               </sonic-button>
             `
           : nothing}
-        ${this.tag.name}
+        <span>${this.tag.name}</span>
         ${showCount
           ? html`
               <sonic-badge slot="suffix" type="contrast" size="2xs">
-                ${this.count}
+                <span>${this.count}</span>
               </sonic-badge>
             `
           : nothing}

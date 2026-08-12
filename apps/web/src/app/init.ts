@@ -31,6 +31,7 @@ import {
 import {getIdbTodoStore} from "./api/store-idb";
 import {initPwaInstallListeners} from "./pwa-install";
 import {startDueDateWatcher} from "./notifications/due-dates";
+import {startRecurrenceResetWatcher} from "./notifications/recurrence-reset";
 import {areWebNotificationsEnabled} from "./settings";
 import {subscribeServerPush} from "./notifications/push-subscribe";
 import {shortcuts} from "./shortcuts";
@@ -169,6 +170,7 @@ export function initApp(): void {
   }
 
   startDueDateWatcher();
+  startRecurrenceResetWatcher();
 }
 
 export function bumpTodosRev(): void {

@@ -11,7 +11,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
 #[ApiResource(operations: [])]
 #[McpTool(
     name: 'update_todo',
-    description: 'Met à jour une tâche (done, archived, text, priority, tagIds, parentId, startAt, endAt, recurrence…). description : Markdown basique + jetons des détecteurs de liens du compte (describe_text_formatting). startAt/endAt : YYYY-MM-DD (journée entière) ou ISO UTC optionnels. recurrence : none|daily|weekly|monthly — marquer done=true sur une tâche récurrente crée la prochaine occurrence.',
+    description: 'Met à jour une tâche (done, archived, text, priority, tagIds, parentId, startAt, endAt, recurrence…). description : Markdown basique + jetons des détecteurs de liens du compte (describe_text_formatting). startAt/endAt : YYYY-MM-DD (journée entière) ou ISO UTC optionnels. recurrence : none|daily|weekly|monthly — une tâche récurrente cochée reste done jusqu’au début de la prochaine unité, puis se décoche.',
     processor: CloudTodoMcpProcessor::class,
 )]
 final class UpdateTodoTool

@@ -55,8 +55,39 @@ final class SyncService
         $dataset = $this->requireDataset($user, $baseIdRaw, write: false);
         $since = $this->parseSince($sinceRaw);
 
-        $todoRows = $this->todos->findChangedSince($dataset, $since);
+        $allTodos = $this->todos->findChangedSince($dataset, null);
         $tagRows = $this->tags->findChangedSince($dataset, $since);
+
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $dirty = false;
+        foreach ($allTodos as $todo) {
+            if (!$todo->isDeleted() && TodoRecurrence::maybeReset($todo, $now)) {
+                $dirty = true;
+            }
+        }
+        if ($dirty) {
+            $dataset->touch();
+            $this->entityManager->flush();
+            $this->realtime->publishDatasetChanged($dataset);
+        }
+
+        $todoRows = $since === null
+            ? $allTodos
+            : array_values(array_filter(
+                $allTodos,
+                static function (Todo $todo) use ($since): bool {
+                    if ($todo->getDeletedAt() !== null && $todo->getDeletedAt() > $since) {
+                        return true;
+                    }
+                    foreach ($todo->getFieldVersions() as $version) {
+                        if (new \DateTimeImmutable($version) > $since) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                },
+            ));
 
         return [
             'serverTime' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),

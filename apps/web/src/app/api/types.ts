@@ -9,7 +9,7 @@ export interface Tag {
 
 export type TodoPriority = "low" | "medium" | "high";
 
-/** Simple recurrence: on complete, spawn next occurrence (dates shifted). */
+/** Simple recurrence: stays checked until next unit, then unchecks (dates shifted). */
 export type TodoRecurrence = "none" | "daily" | "weekly" | "monthly";
 
 export interface TodoAncestor {

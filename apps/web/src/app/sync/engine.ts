@@ -84,7 +84,7 @@ export function isTodoCreateMutation(mutation: SyncMutation): boolean {
 }
 
 /**
- * Create / delete / spawn récurrence → la queue doit se recharger.
+ * Create / delete / reset récurrence → la queue doit se recharger.
  * Un upsert in-place (done, texte…) a déjà mis l’UI à jour localement.
  */
 export function mutationsChangeListShape(

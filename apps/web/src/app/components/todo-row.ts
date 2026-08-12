@@ -227,7 +227,7 @@ export class TodoRow extends LitElement {
           : "inline-block"}
       >
         <sonic-badge type="neutral" size="xs"
-          >${this.childCount}</sonic-badge
+          ><span>${this.childCount}</span></sonic-badge
         >
       </sonic-tooltip>
     `;
@@ -516,11 +516,11 @@ export class TodoRow extends LitElement {
     return html`
       <div class="flex flex-wrap items-center gap-1.5">
         <sonic-badge type=${priority.type} size="2xs">
-          ${priority.label}
+          <span>${priority.label}</span>
         </sonic-badge>
         ${recurrenceLabel
           ? html`<sonic-badge type="info" size="2xs"
-              >${recurrenceLabel}</sonic-badge
+              ><span>${recurrenceLabel}</span></sonic-badge
             >`
           : nothing}
         ${dateLabel

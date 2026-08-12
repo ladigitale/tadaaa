@@ -1,0 +1,47 @@
+diff --git a/node_modules/@supersoniks/concorde/src/core/components/functional/queue/queue.ts b/node_modules/@supersoniks/concorde/src/core/components/functional/queue/queue.ts
+index edd5a61..870a01c 100644
+--- a/node_modules/@supersoniks/concorde/src/core/components/functional/queue/queue.ts
++++ b/node_modules/@supersoniks/concorde/src/core/components/functional/queue/queue.ts
+@@ -35,6 +35,7 @@ export default class Queue extends Subscriber(LitElement, {} as QueueProps) {
+   @property({ type: Function, attribute: false }) items: ListItems | null = null;
+   @property({ type: Function, attribute: false }) noItems: ListItems | null = null;
+   @property({ type: Function, attribute: false }) skeleton: ListItems | null = null;
++  @property({ type: Function, attribute: false }) separator: (() => unknown) | null = null;
+   lastRequestTime = 0;
+   key = "";
+ 
+@@ -371,6 +372,7 @@ export default class Queue extends Subscriber(LitElement, {} as QueueProps) {
+             .items=${this.items}
+             .noItems=${index == 0 ? this.noItems : undefined}
+             .skeleton=${this.skeleton}
++            .separator=${this.separator}
+           >
+           </sonic-list>
+         `;
+diff --git a/node_modules/@supersoniks/concorde/src/core/components/ui/badge/badge.ts b/node_modules/@supersoniks/concorde/src/core/components/ui/badge/badge.ts
+index 0095e74..ebd342e 100755
+--- a/node_modules/@supersoniks/concorde/src/core/components/ui/badge/badge.ts
++++ b/node_modules/@supersoniks/concorde/src/core/components/ui/badge/badge.ts
+@@ -143,6 +143,12 @@ export class Badge extends LitElement {
+         max-width: 100%;
+       }
+ 
++      /* Avoid display:contents (slot default): WebKit drops slotted text nodes
++         when siblings change display (e.g. sonic-queue lazy batches on iOS). */
++      slot {
++        display: inline;
++      }
++
+       :host([ellipsis]) slot {
+         overflow: hidden;
+         display: block;
+@@ -153,7 +159,9 @@ export class Badge extends LitElement {
+ 
+       slot[name="suffix"],
+       slot[name="prefix"] {
++        display: inline-flex;
+         flex-shrink: 0;
++        align-items: center;
+       }
+     `,
+   ];

@@ -38,7 +38,7 @@ import {
 } from "./data-package";
 import {getDemoDatasetName} from "./seed";
 import {getAppLocale} from "../i18n/locale";
-import {buildNextOccurrenceInput} from "../utils/recurrence";
+import {buildRecurrenceResetPatch} from "../utils/recurrence";
 
 export type DatasetInfo = {
   id: string;
@@ -92,6 +92,11 @@ export interface TodoStore {
     params: ListTodosParams,
     patch: UpdateTodoPatch,
   ): Promise<{updatedCount: number}>;
+  /**
+   * Uncheck recurring todos whose next unit has started; persist + notify sync.
+   * @returns number of todos reset
+   */
+  applyRecurrenceResets(now?: Date): Promise<number>;
   exportSnapshot(): Promise<TadaDataPackage>;
   importSnapshot(raw: unknown): Promise<TadaDataPackage>;
   listDatasets(): Promise<DatasetInfo[]>;
@@ -113,42 +118,28 @@ export type TodoStoreOptions = {
   onMutation?: (event: SyncMutationEvent) => void;
 };
 
-function spawnRecurrence(
+/** Uncheck recurring todos past the start of their next unit; mutates `todos`. */
+function applyRecurrenceResetsToTodos(
   todos: Todo[],
-  completed: Todo,
   notify?: (event: SyncMutationEvent) => void,
-): Todo | null {
-  const input = buildNextOccurrenceInput(completed);
-  if (!input) return null;
-  const next = stampTodoCreate(createTodoRecord(input, todos));
-  todos.unshift(next);
-  void notify?.({
-    entity: "todo",
-    op: "upsert",
-    record: next,
-    entityId: next.id,
-    fieldVersions: next.fieldVersions ?? {},
-  });
-  return next;
-}
-
-/** Clear recurrence on the completed instance so undo+redo does not re-spawn. */
-function clearRecurrenceAfterSpawn(
-  todos: Todo[],
-  completedId: string,
-  notify?: (event: SyncMutationEvent) => void,
-): void {
-  const index = todos.findIndex((todo) => todo.id === completedId);
-  if (index < 0) return;
-  const stamped = stampTodoPatch(todos[index], {recurrence: "none"});
-  todos[index] = stamped.todo;
-  void notify?.({
-    entity: "todo",
-    op: "upsert",
-    record: stamped.todo,
-    entityId: stamped.todo.id,
-    fieldVersions: stamped.todo.fieldVersions ?? {},
-  });
+  now: Date = new Date(),
+): number {
+  let resetCount = 0;
+  for (let index = 0; index < todos.length; index++) {
+    const patch = buildRecurrenceResetPatch(todos[index], now);
+    if (!patch) continue;
+    const stamped = stampTodoPatch(todos[index], patch);
+    todos[index] = stamped.todo;
+    resetCount += 1;
+    void notify?.({
+      entity: "todo",
+      op: "upsert",
+      record: stamped.todo,
+      entityId: stamped.todo.id,
+      fieldVersions: stamped.todo.fieldVersions ?? {},
+    });
+  }
+  return resetCount;
 }
 
 export function createTodoStore(
@@ -161,7 +152,9 @@ export function createTodoStore(
     fn: (snapshot: DbSnapshot) => Promise<{snapshot: DbSnapshot; result: T}>,
   ): Promise<T> {
     const snapshot = normalizeSnapshot(await repo.readSnapshot());
-    const {snapshot: next, result} = await fn(snapshot);
+    const todos = [...snapshot.todos];
+    applyRecurrenceResetsToTodos(todos, notify);
+    const {snapshot: next, result} = await fn({...snapshot, todos});
     await repo.writeSnapshot(next);
     return result;
   }
@@ -179,24 +172,37 @@ export function createTodoStore(
 
     async listTodos(params) {
       const snapshot = normalizeSnapshot(await repo.readSnapshot());
+      const todos = [...snapshot.todos];
+      if (applyRecurrenceResetsToTodos(todos, notify) > 0) {
+        await repo.writeSnapshot({...snapshot, todos});
+      }
       const knownTagIds = snapshot.tags.map((tag) => tag.id);
-      const filtered = filterTodos(snapshot.todos, params, knownTagIds);
-      return paginateTodos(
-        filtered,
-        params.offset ?? 0,
-        params.limit ?? 20,
-        snapshot.todos,
-      );
+      const filtered = filterTodos(todos, params, knownTagIds);
+      return paginateTodos(filtered, params.offset ?? 0, params.limit ?? 20, todos);
     },
 
     async getTodo(id) {
       const snapshot = normalizeSnapshot(await repo.readSnapshot());
-      const todo = snapshot.todos.find((item) => item.id === id);
+      const todos = [...snapshot.todos];
+      if (applyRecurrenceResetsToTodos(todos, notify) > 0) {
+        await repo.writeSnapshot({...snapshot, todos});
+      }
+      const todo = todos.find((item) => item.id === id);
       if (!todo) throw new Error("Tâche introuvable");
       return {
-        ...withChildCount(todo, snapshot.todos),
-        ancestors: getAncestors(snapshot.todos, id),
+        ...withChildCount(todo, todos),
+        ancestors: getAncestors(todos, id),
       };
+    },
+
+    async applyRecurrenceResets(now = new Date()) {
+      const snapshot = normalizeSnapshot(await repo.readSnapshot());
+      const todos = [...snapshot.todos];
+      const resetCount = applyRecurrenceResetsToTodos(todos, notify, now);
+      if (resetCount > 0) {
+        await repo.writeSnapshot({...snapshot, todos});
+      }
+      return resetCount;
     },
 
     async createTodo(input) {
@@ -241,8 +247,7 @@ export function createTodoStore(
             validTagIds.has(tagId),
           );
         }
-        const before = todos[index];
-        const stamped = stampTodoPatch(before, nextPatch);
+        const stamped = stampTodoPatch(todos[index], nextPatch);
         todos[index] = stamped.todo;
         void notify?.({
           entity: "todo",
@@ -252,18 +257,9 @@ export function createTodoStore(
           fieldVersions: stamped.todo.fieldVersions ?? {},
         });
 
-        if (!before.done && stamped.todo.done) {
-          if (spawnRecurrence(todos, stamped.todo, notify)) {
-            clearRecurrenceAfterSpawn(todos, stamped.todo.id, notify);
-          }
-        }
-
         return {
           snapshot: {...snapshot, todos},
-          result: withChildCount(
-            todos.find((todo) => todo.id === id) ?? stamped.todo,
-            todos,
-          ),
+          result: withChildCount(stamped.todo, todos),
         };
       });
     },
@@ -415,17 +411,8 @@ export function createTodoStore(
           return stamped.todo;
         });
 
-        const nextTodos = [...todos];
-        for (const before of snapshot.todos) {
-          if (!ids.has(before.id) || before.done) continue;
-          const after = nextTodos.find((todo) => todo.id === before.id);
-          if (after?.done && spawnRecurrence(nextTodos, after, notify)) {
-            clearRecurrenceAfterSpawn(nextTodos, after.id, notify);
-          }
-        }
-
         return {
-          snapshot: {...snapshot, todos: nextTodos},
+          snapshot: {...snapshot, todos},
           result: {updatedCount: ids.size},
         };
       });
