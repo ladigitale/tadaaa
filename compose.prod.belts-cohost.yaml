@@ -1,0 +1,14 @@
+# Optional overlay when co-hosting Belts behind Tadaaa edge.
+# Requires BELTS_DIST (host path to built SPA) in the environment / .env.
+# Snippet: deploy/cohost/belts.caddy
+#
+#   export BELTS_DIST=/opt/belt/dist
+#   export BELTS_SERVER_NAME=belts.tadaaa.space
+#   docker compose -f compose.prod.yaml -f compose.prod.belts-cohost.yaml up -d edge
+
+services:
+  edge:
+    environment:
+      BELTS_SERVER_NAME: ${BELTS_SERVER_NAME:-belts.tadaaa.space}
+    volumes:
+      - ${BELTS_DIST:?Set BELTS_DIST to the Belts SPA dist directory}:/belts:ro

@@ -174,25 +174,41 @@ Free-tier quotas (override per user via admin API): **5 MiB** storage; bandwidth
 11. Quotas: Données → Sync shows storage + bandwidth gauges; over-quota sync → 413 / 429
 12. Claude.ai custom connector → `https://api.example.com/mcp` → Connect (OAuth); allowlist Anthropic egress `160.79.104.0/21` if you firewall inbound
 
-## Co-hosting Glane
+## Co-hosting Glane / Belts
 
-When Glane shares this VPS, Tadaaa keeps the only public edge (80/443).
+When sister apps share this VPS, Tadaaa keeps the only public edge (80/443).
 
 1. `deploy/Caddyfile.edge` imports `/etc/caddy/cohost/*.caddy`
 2. `compose.prod.yaml` mounts `./deploy/cohost` into the edge
-3. Apply Glane’s overlay (from the Glane clone):
+3. Put cohost keys in the **Tadaaa root `.env`** so `scripts/update-prod.sh` re-applies them after every stack recreate (plain `compose.prod.yaml` alone drops overlays):
+
+```bash
+# Glane
+GLANE_ROOT=/root/glane
+GLANE_APP_SERVER_NAME=glane.tadaaa.space
+GLANE_API_SERVER_NAME=glane-api.tadaaa.space
+WEB_NETWORK=web
+
+# Belts (optional)
+BELTS_DIST=/opt/belt/dist
+BELTS_SERVER_NAME=belts.tadaaa.space
+```
+
+One-shot without waiting for the next update:
 
 ```bash
 docker network create web || true
 export GLANE_ROOT=/root/glane
 export GLANE_APP_SERVER_NAME=glane.tadaaa.space
 export GLANE_API_SERVER_NAME=glane-api.tadaaa.space
+# optional: export BELTS_DIST=/opt/belt/dist BELTS_SERVER_NAME=belts.tadaaa.space
 docker compose -f compose.prod.yaml \
   -f "$GLANE_ROOT/deploy/tadaaa-cohost/compose.prod.glane-cohost.yaml" \
-  up -d edge
+  ${BELTS_DIST:+-f compose.prod.belts-cohost.yaml} \
+  up -d --force-recreate edge
 ```
 
-Full runbook: Glane `.ops/deploy.md` § Co-hosting.
+Snippets: `deploy/cohost/glane.caddy`, `deploy/cohost/belts.caddy`. Full Glane runbook: Glane `.ops/deploy.md` § Co-hosting.
 
 ## Coolify (optional)
 

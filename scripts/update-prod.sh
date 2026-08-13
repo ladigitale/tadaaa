@@ -6,6 +6,13 @@
 #
 # Merges missing .env keys (mail, quotas, …), rebuilds the SPA,
 # recreates containers, runs Doctrine migrations.
+#
+# Optional cohost (.env) — re-applied on edge after the main stack up:
+#   GLANE_ROOT=/root/glane
+#   GLANE_APP_SERVER_NAME=glane.tadaaa.space
+#   GLANE_API_SERVER_NAME=glane-api.tadaaa.space
+#   BELTS_DIST=/opt/belt/dist
+#   BELTS_SERVER_NAME=belts.tadaaa.space
 
 set -euo pipefail
 
@@ -19,6 +26,57 @@ source "$ROOT/scripts/lib/prod-env.sh"
 COMPOSE=(docker compose -f compose.prod.yaml)
 DO_PULL=0
 
+# Recreate edge with Glane / Belts overlays when configured in .env.
+recreate_cohost_edge() {
+  local edge_files=()
+  local need=0
+
+  if [[ -n "${GLANE_ROOT:-}" ]]; then
+    local glane_overlay="${GLANE_ROOT}/deploy/tadaaa-cohost/compose.prod.glane-cohost.yaml"
+    local glane_snippet="${GLANE_ROOT}/deploy/tadaaa-cohost/glane.caddy"
+    [[ -f "$glane_overlay" ]] || die "GLANE_ROOT set but missing overlay: $glane_overlay"
+    mkdir -p "$ROOT/deploy/cohost"
+    if [[ -f "$glane_snippet" ]]; then
+      cp "$glane_snippet" "$ROOT/deploy/cohost/glane.caddy"
+      ok "Synced deploy/cohost/glane.caddy from Glane"
+    elif [[ ! -f "$ROOT/deploy/cohost/glane.caddy" ]]; then
+      die "Missing deploy/cohost/glane.caddy (and no snippet under GLANE_ROOT)"
+    fi
+    docker network create "${WEB_NETWORK:-web}" >/dev/null 2>&1 || true
+    export GLANE_ROOT
+    export GLANE_APP_SERVER_NAME="${GLANE_APP_SERVER_NAME:-glane.tadaaa.space}"
+    export GLANE_API_SERVER_NAME="${GLANE_API_SERVER_NAME:-glane-api.tadaaa.space}"
+    export WEB_NETWORK="${WEB_NETWORK:-web}"
+    edge_files+=(-f "$glane_overlay")
+    need=1
+    info "Cohost Glane: ${GLANE_APP_SERVER_NAME} / ${GLANE_API_SERVER_NAME}"
+  fi
+
+  if [[ -n "${BELTS_DIST:-}" ]]; then
+    local belts_overlay="$ROOT/compose.prod.belts-cohost.yaml"
+    [[ -f "$belts_overlay" ]] || die "BELTS_DIST set but missing $belts_overlay"
+    [[ -d "$BELTS_DIST" ]] || die "BELTS_DIST is not a directory: $BELTS_DIST"
+    [[ -f "$BELTS_DIST/index.html" ]] || warn "No index.html in BELTS_DIST=$BELTS_DIST (expect 404 until built)"
+    mkdir -p "$ROOT/deploy/cohost"
+    if [[ ! -f "$ROOT/deploy/cohost/belts.caddy" ]]; then
+      die "Missing deploy/cohost/belts.caddy (needed for BELTS_DIST)"
+    fi
+    export BELTS_DIST
+    export BELTS_SERVER_NAME="${BELTS_SERVER_NAME:-belts.tadaaa.space}"
+    edge_files+=(-f "$belts_overlay")
+    need=1
+    info "Cohost Belts: ${BELTS_SERVER_NAME} → ${BELTS_DIST}"
+  fi
+
+  if [[ "$need" -eq 0 ]]; then
+    return 0
+  fi
+
+  info "Recreating edge with cohost overlay(s)…"
+  docker compose -f compose.prod.yaml "${edge_files[@]}" up -d --force-recreate edge
+  ok "Edge cohost ready."
+}
+
 for arg in "$@"; do
   case "$arg" in
     --pull) DO_PULL=1 ;;
@@ -27,6 +85,10 @@ for arg in "$@"; do
 Usage: bash scripts/update-prod.sh [--pull]
 
   --pull   git pull --ff-only before building (fails if dirty/non-ff)
+
+Optional .env cohost (re-applied on edge after stack up):
+  GLANE_ROOT=…  GLANE_APP_SERVER_NAME=…  GLANE_API_SERVER_NAME=…
+  BELTS_DIST=…  BELTS_SERVER_NAME=…
 EOF
       exit 0
       ;;
@@ -93,6 +155,8 @@ info "Recreating stack…"
 "${COMPOSE[@]}" up -d --build
 ok "Containers up."
 
+recreate_cohost_edge
+
 info "Migrations…"
 "${COMPOSE[@]}" exec -T php bin/console doctrine:migrations:migrate --no-interaction
 ok "Migrations done."
@@ -107,4 +171,6 @@ say ""
 say "${BLD}Update complete.${RST}"
 say "  Front: https://${app_host}"
 say "  API:   https://${api_host}/api"
+[[ -n "${GLANE_ROOT:-}" ]] && say "  Glane: https://${GLANE_APP_SERVER_NAME:-glane.tadaaa.space}"
+[[ -n "${BELTS_DIST:-}" ]] && say "  Belts: https://${BELTS_SERVER_NAME:-belts.tadaaa.space}"
 say ""
