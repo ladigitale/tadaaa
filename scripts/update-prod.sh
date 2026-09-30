@@ -13,6 +13,9 @@
 #   GLANE_API_SERVER_NAME=glane-api.tadaaa.space
 #   BELTS_DIST=/opt/belt/dist
 #   BELTS_SERVER_NAME=belts.tadaaa.space
+#   ARTIFACTS_DIST=/opt/artifacts/dist
+#   ARTIFACTS_SERVER_NAME=artifacts.tadaaa.space
+#   ARTIFACTS_PUBLIC_URL=https://artifacts.tadaaa.space
 
 set -euo pipefail
 
@@ -68,6 +71,22 @@ recreate_cohost_edge() {
     info "Cohost Belts: ${BELTS_SERVER_NAME} → ${BELTS_DIST}"
   fi
 
+  if [[ -n "${ARTIFACTS_DIST:-}" ]]; then
+    local artifacts_overlay="$ROOT/compose.prod.artifacts-cohost.yaml"
+    [[ -f "$artifacts_overlay" ]] || die "ARTIFACTS_DIST set but missing $artifacts_overlay"
+    [[ -d "$ARTIFACTS_DIST" ]] || die "ARTIFACTS_DIST is not a directory: $ARTIFACTS_DIST"
+    [[ -f "$ARTIFACTS_DIST/index.html" ]] || warn "No index.html in ARTIFACTS_DIST=$ARTIFACTS_DIST (expect 404 until built)"
+    mkdir -p "$ROOT/deploy/cohost"
+    if [[ ! -f "$ROOT/deploy/cohost/artifacts.caddy" ]]; then
+      die "Missing deploy/cohost/artifacts.caddy (needed for ARTIFACTS_DIST)"
+    fi
+    export ARTIFACTS_DIST
+    export ARTIFACTS_SERVER_NAME="${ARTIFACTS_SERVER_NAME:-artifacts.tadaaa.space}"
+    edge_files+=(-f "$artifacts_overlay")
+    need=1
+    info "Cohost Artefacts: ${ARTIFACTS_SERVER_NAME} → ${ARTIFACTS_DIST}"
+  fi
+
   if [[ "$need" -eq 0 ]]; then
     return 0
   fi
@@ -89,6 +108,7 @@ Usage: bash scripts/update-prod.sh [--pull]
 Optional .env cohost (re-applied on edge after stack up):
   GLANE_ROOT=…  GLANE_APP_SERVER_NAME=…  GLANE_API_SERVER_NAME=…
   BELTS_DIST=…  BELTS_SERVER_NAME=…
+  ARTIFACTS_DIST=…  ARTIFACTS_SERVER_NAME=…  ARTIFACTS_PUBLIC_URL=…
 EOF
       exit 0
       ;;
@@ -173,4 +193,5 @@ say "  Front: https://${app_host}"
 say "  API:   https://${api_host}/api"
 [[ -n "${GLANE_ROOT:-}" ]] && say "  Glane: https://${GLANE_APP_SERVER_NAME:-glane.tadaaa.space}"
 [[ -n "${BELTS_DIST:-}" ]] && say "  Belts: https://${BELTS_SERVER_NAME:-belts.tadaaa.space}"
+[[ -n "${ARTIFACTS_DIST:-}" ]] && say "  Artefacts: https://${ARTIFACTS_SERVER_NAME:-artifacts.tadaaa.space}"
 say ""
