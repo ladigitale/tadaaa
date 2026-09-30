@@ -101,4 +101,5 @@ build/Release/
 
 # Local-only app (not published with this repo)
 apps/morseattack/
-apps/belts/
+apps/belts
+apps/artifacts/

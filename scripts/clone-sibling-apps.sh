@@ -31,3 +31,14 @@ fi
 clone_one "apps/belts" "$BELTS_URL" "belts" "BELTS_GIT_URL"
 
 echo "Done. Workspaces: use yarn belts:dev / yarn morse:dev when the folder exists."
+
+# Artefacts viewer — GitHub by default, local atelier if present
+ARTIFACTS_URL="${ARTIFACTS_GIT_URL:-}"
+if [[ -z "$ARTIFACTS_URL" && -d "/usr2/sites/atelier/artifacts/.git" ]]; then
+  ARTIFACTS_URL="/usr2/sites/atelier/artifacts"
+elif [[ -z "$ARTIFACTS_URL" && -d "/home/julien/sites/atelier/artifacts/.git" ]]; then
+  ARTIFACTS_URL="/home/julien/sites/atelier/artifacts"
+elif [[ -z "$ARTIFACTS_URL" ]]; then
+  ARTIFACTS_URL="https://github.com/ladigitale/artifacts.git"
+fi
+clone_one "apps/artifacts" "$ARTIFACTS_URL" "artifacts" "ARTIFACTS_GIT_URL"

@@ -7,6 +7,7 @@
 | `apps/web/` | Concorde SPA (front) — `src/app/` paths relative to this package |
 | `apps/api/` | Symfony 8 + API Platform |
 | `apps/morseattack/` | MorseAttack PWA (offline light/sound) — part of this monorepo; see package `AGENTS.md` |
+| `apps/artifacts/` | Artefacts viewer (sibling SPA, gitignored) — Concorde SDUI published via API/MCP |
 | `ai/starter/` | Agent overlay (repo root) |
 | `.cursor/skills/` | Concorde / starter skills |
 

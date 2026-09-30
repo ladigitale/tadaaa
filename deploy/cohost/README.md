@@ -26,3 +26,18 @@ Use `belts.caddy` (hostname from `BELTS_SERVER_NAME`) and mount the built SPA vi
 BELTS_DIST=/opt/belt/dist
 BELTS_SERVER_NAME=belts.tadaaa.space
 ```
+
+
+## Artefacts
+
+Use `artifacts.caddy` (hostname from `ARTIFACTS_SERVER_NAME`) and mount the built SPA via
+`compose.prod.artifacts-cohost.yaml`.
+
+```bash
+ARTIFACTS_DIST=/opt/artifacts/dist
+ARTIFACTS_SERVER_NAME=artifacts.tadaaa.space
+ARTIFACTS_PUBLIC_URL=https://artifacts.tadaaa.space
+```
+
+CSP is strict (no `unsafe-eval`). Concorde 4.9.3 has no `sonic-jsonata` package export;
+transforms in the artefact envelope are applied client-side with a bounded approach in the viewer.

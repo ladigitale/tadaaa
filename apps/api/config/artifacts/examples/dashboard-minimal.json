@@ -1,0 +1,49 @@
+{
+  "schema": "artifacts/1",
+  "title": "Tableau de bord minimal",
+  "defaultView": "home",
+  "views": [
+    {
+      "id": "home",
+      "title": "Accueil",
+      "root": {
+        "nodes": [
+          {
+            "tagName": "div",
+            "attributes": { "class": "flex flex-col gap-4 p-4" },
+            "nodes": [
+              {
+                "tagName": "sonic-caption",
+                "attributes": { "size": "2xl" },
+                "nodes": [{ "tagName": "span", "attributes": { "slot": "" } }]
+              },
+              {
+                "tagName": "p",
+                "nodes": [{ "tagName": "span" }]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "stats",
+      "title": "Stats",
+      "root": {
+        "nodes": [
+          {
+            "tagName": "div",
+            "attributes": { "class": "p-4" },
+            "nodes": [
+              { "tagName": "sonic-badge", "attributes": { "status": "success" } }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "data": {
+    "sources": { "votes": { "collection": "votes" } },
+    "transforms": { "total": { "jsonata": "$count(votes)" } }
+  }
+}

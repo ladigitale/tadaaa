@@ -1,0 +1,9446 @@
+{
+  "concordeVersion": "4.9.3",
+  "generatedFrom": "@supersoniks/concorde src customElements",
+  "components": [
+    {
+      "name": "sonic-alert",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-alert",
+      "example": {
+        "tagName": "sonic-alert",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-alert-messages",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-alert-messages",
+      "example": {
+        "tagName": "sonic-alert-messages",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-badge",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-badge",
+      "example": {
+        "tagName": "sonic-badge",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-button",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-button",
+      "example": {
+        "tagName": "sonic-button",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-captcha",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-captcha",
+      "example": {
+        "tagName": "sonic-captcha",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-caption",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-caption",
+      "example": {
+        "tagName": "sonic-caption",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-card",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-card",
+      "example": {
+        "tagName": "sonic-card",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-card-footer",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-card-footer",
+      "example": {
+        "tagName": "sonic-card-footer",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-card-header",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-card-header",
+      "example": {
+        "tagName": "sonic-card-header",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-card-header-description",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-card-header-description",
+      "example": {
+        "tagName": "sonic-card-header-description",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-card-main",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-card-main",
+      "example": {
+        "tagName": "sonic-card-main",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-checkbox",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-checkbox",
+      "example": {
+        "tagName": "sonic-checkbox",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-code",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-code",
+      "example": {
+        "tagName": "sonic-code",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-date",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-date",
+      "example": {
+        "tagName": "sonic-date",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-divider",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-divider",
+      "example": {
+        "tagName": "sonic-divider",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-fetch",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-fetch",
+      "example": {
+        "tagName": "sonic-fetch",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-fieldset",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-fieldset",
+      "example": {
+        "tagName": "sonic-fieldset",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-form-actions",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-form-actions",
+      "example": {
+        "tagName": "sonic-form-actions",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-form-layout",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-form-layout",
+      "example": {
+        "tagName": "sonic-form-layout",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-group",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-group",
+      "example": {
+        "tagName": "sonic-group",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-icon",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-icon",
+      "example": {
+        "tagName": "sonic-icon",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-if",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-if",
+      "example": {
+        "tagName": "sonic-if",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-image",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-image",
+      "example": {
+        "tagName": "sonic-image",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-input",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-input",
+      "example": {
+        "tagName": "sonic-input",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-legend",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-legend",
+      "example": {
+        "tagName": "sonic-legend",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-link",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-link",
+      "example": {
+        "tagName": "sonic-link",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-list",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-list",
+      "example": {
+        "tagName": "sonic-list",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-loader",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-loader",
+      "example": {
+        "tagName": "sonic-loader",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-menu",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-menu",
+      "example": {
+        "tagName": "sonic-menu",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-menu-item",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-menu-item",
+      "example": {
+        "tagName": "sonic-menu-item",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-modal",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-modal",
+      "example": {
+        "tagName": "sonic-modal",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-modal-actions",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-modal-actions",
+      "example": {
+        "tagName": "sonic-modal-actions",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-modal-close",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-modal-close",
+      "example": {
+        "tagName": "sonic-modal-close",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-modal-content",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-modal-content",
+      "example": {
+        "tagName": "sonic-modal-content",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-modal-subtitle",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-modal-subtitle",
+      "example": {
+        "tagName": "sonic-modal-subtitle",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-modal-title",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-modal-title",
+      "example": {
+        "tagName": "sonic-modal-title",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-password-helper",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-password-helper",
+      "example": {
+        "tagName": "sonic-password-helper",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-pop",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-pop",
+      "example": {
+        "tagName": "sonic-pop",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-progress",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-progress",
+      "example": {
+        "tagName": "sonic-progress",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-queue",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-queue",
+      "example": {
+        "tagName": "sonic-queue",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-queue-demo",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-queue-demo",
+      "example": {
+        "tagName": "sonic-queue-demo",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-radio",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-radio",
+      "example": {
+        "tagName": "sonic-radio",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-redirect",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-redirect",
+      "example": {
+        "tagName": "sonic-redirect",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-router",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-router",
+      "example": {
+        "tagName": "sonic-router",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-router-demo",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-router-demo",
+      "example": {
+        "tagName": "sonic-router-demo",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-same-value-helper",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-same-value-helper",
+      "example": {
+        "tagName": "sonic-same-value-helper",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-scope",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-scope",
+      "example": {
+        "tagName": "sonic-scope",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-sdui",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-sdui",
+      "example": {
+        "tagName": "sonic-sdui",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-select",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-select",
+      "example": {
+        "tagName": "sonic-select",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-states",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-states",
+      "example": {
+        "tagName": "sonic-states",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-states-demo",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-states-demo",
+      "example": {
+        "tagName": "sonic-states-demo",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-submit",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-submit",
+      "example": {
+        "tagName": "sonic-submit",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-subscriber",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-subscriber",
+      "example": {
+        "tagName": "sonic-subscriber",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-switch",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-switch",
+      "example": {
+        "tagName": "sonic-switch",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-t",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-t",
+      "example": {
+        "tagName": "sonic-t",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-table",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-table",
+      "example": {
+        "tagName": "sonic-table",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-tbody",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-tbody",
+      "example": {
+        "tagName": "sonic-tbody",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-td",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-td",
+      "example": {
+        "tagName": "sonic-td",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-textarea",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-textarea",
+      "example": {
+        "tagName": "sonic-textarea",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-tfoot",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-tfoot",
+      "example": {
+        "tagName": "sonic-tfoot",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-th",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-th",
+      "example": {
+        "tagName": "sonic-th",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-thead",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-thead",
+      "example": {
+        "tagName": "sonic-thead",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-theme",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-theme",
+      "example": {
+        "tagName": "sonic-theme",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-toast",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-toast",
+      "example": {
+        "tagName": "sonic-toast",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-toast-item",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-toast-item",
+      "example": {
+        "tagName": "sonic-toast-item",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-toast-message-subscriber",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-toast-message-subscriber",
+      "example": {
+        "tagName": "sonic-toast-message-subscriber",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-tooltip",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-tooltip",
+      "example": {
+        "tagName": "sonic-tooltip",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-tr",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-tr",
+      "example": {
+        "tagName": "sonic-tr",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-value",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "href": {
+          "type": "url"
+        },
+        "src": {
+          "type": "url"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "rel": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "dataProvider": {
+          "type": "string"
+        },
+        "formDataProvider": {
+          "type": "string"
+        },
+        "formResultProvider": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "library": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "libraryIcon": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "checked": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "rows": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "step": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "aria-label": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "align": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-value",
+      "example": {
+        "tagName": "sonic-value",
+        "attributes": {}
+      }
+    }
+  ],
+  "safeHtmlTags": [
+    "div",
+    "span",
+    "p",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "ul",
+    "ol",
+    "li",
+    "a",
+    "img",
+    "table",
+    "thead",
+    "tbody",
+    "tfoot",
+    "tr",
+    "th",
+    "td",
+    "strong",
+    "em",
+    "br",
+    "hr",
+    "section",
+    "article",
+    "header",
+    "footer",
+    "nav",
+    "main",
+    "label",
+    "figure",
+    "figcaption",
+    "pre",
+    "code",
+    "blockquote",
+    "small",
+    "b",
+    "i",
+    "u"
+  ],
+  "forbiddenNodeKeys": [
+    "markup",
+    "innerHTML",
+    "prefix",
+    "suffix",
+    "js",
+    "css"
+  ],
+  "forbiddenDescriptorKeys": [
+    "js",
+    "css"
+  ],
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS."
+}

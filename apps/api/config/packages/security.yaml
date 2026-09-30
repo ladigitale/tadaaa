@@ -60,6 +60,7 @@ security:
         - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/handoff/exchange$, roles: PUBLIC_ACCESS }
         - { path: ^/api/public/embeds/, roles: PUBLIC_ACCESS }
+        - { path: ^/api/public/artifacts/, roles: PUBLIC_ACCESS }
         - { path: ^/api/invites/[^/]+$, roles: PUBLIC_ACCESS }
         - { path: ^/api/docs, roles: ROLE_ADMIN }
         - { path: ^/api/contexts, roles: PUBLIC_ACCESS }

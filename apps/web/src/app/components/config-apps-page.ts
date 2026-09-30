@@ -35,6 +35,14 @@ const DEFAULT_APPS: SisterApp[] = [
     url: "http://localhost:3200",
     enabled: false,
   },
+  {
+    id: "artifacts",
+    name: "Artefacts",
+    description:
+      "Viewer SDUI Concorde pour artefacts publiés par agents MCP (JSON sûr, SSO Tadaaa).",
+    url: "http://localhost:3300",
+    enabled: false,
+  },
 ];
 
 function loadApps(): SisterApp[] {

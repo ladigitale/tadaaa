@@ -1,0 +1,17 @@
+{$ARTIFACTS_SERVER_NAME:artifacts.example.com} {
+	encode zstd gzip
+	root * /artifacts
+	try_files {path} /index.html
+	file_server
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "browsing-topics=()"
+		X-Frame-Options DENY
+		# Strict CSP: SDUI JSON only — no inline scripts, no eval.
+		# sonic-jsonata n’est pas dans Concorde 4.9.3 ; si une future
+		# dépendance jsonata exige unsafe-eval, documenter l’exception ici.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net data:; img-src 'self' https: data:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	}
+}

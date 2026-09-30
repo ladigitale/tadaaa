@@ -33,7 +33,7 @@ final class StorageQuota
 
     public function usedBytes(User $user): int
     {
-        $sql = <<<'SQL'
+        $sqlTodos = <<<'SQL'
             SELECT COALESCE(SUM(
                 COALESCE(octet_length(t.text), 0)
                 + COALESCE(octet_length(t.description), 0)
@@ -46,11 +46,29 @@ final class StorageQuota
               AND t.deleted_at IS NULL
         SQL;
 
-        $value = $this->connection->fetchOne($sql, [
-            'owner' => $user->getId()->toRfc4122(),
-        ]);
+        $sqlArtifacts = <<<'SQL'
+            SELECT COALESCE(SUM(
+                COALESCE(octet_length(v.document::text), 0)
+                + COALESCE(octet_length(r.data::text), 0)
+                + 256
+            ), 0)::bigint AS bytes
+            FROM artifacts a
+            INNER JOIN datasets d ON d.id = a.dataset_id
+            LEFT JOIN artifact_versions v ON v.artifact_id = a.id
+            LEFT JOIN artifact_collections c ON c.artifact_id = a.id
+            LEFT JOIN artifact_records r ON r.collection_id = c.id
+            WHERE d.owner_id = :owner
+        SQL;
 
-        return (int) $value;
+        $owner = $user->getId()->toRfc4122();
+        $todos = (int) $this->connection->fetchOne($sqlTodos, ['owner' => $owner]);
+        try {
+            $artifacts = (int) $this->connection->fetchOne($sqlArtifacts, ['owner' => $owner]);
+        } catch (\Throwable) {
+            $artifacts = 0;
+        }
+
+        return $todos + $artifacts;
     }
 
     /**

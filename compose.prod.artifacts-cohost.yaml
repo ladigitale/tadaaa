@@ -1,0 +1,15 @@
+# Optional overlay when co-hosting Artefacts behind Tadaaa edge.
+# Requires ARTIFACTS_DIST (host path to built SPA) in the environment / .env.
+# Snippet: deploy/cohost/artifacts.caddy
+#
+#   export ARTIFACTS_DIST=/opt/artifacts/dist
+#   export ARTIFACTS_SERVER_NAME=artifacts.tadaaa.space
+#   export ARTIFACTS_PUBLIC_URL=https://artifacts.tadaaa.space
+#   docker compose -f compose.prod.yaml -f compose.prod.artifacts-cohost.yaml up -d edge
+
+services:
+  edge:
+    environment:
+      ARTIFACTS_SERVER_NAME: ${ARTIFACTS_SERVER_NAME:-artifacts.tadaaa.space}
+    volumes:
+      - ${ARTIFACTS_DIST:?Set ARTIFACTS_DIST to the Artefacts SPA dist directory}:/artifacts:ro

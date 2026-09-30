@@ -12,5 +12,6 @@ Configured siblings (edit the script to add remotes):
 |------|--------------|----------------|
 | `apps/morseattack` | `MORSEATTACK_GIT_URL` | (see script) |
 | `apps/belts` | `BELTS_GIT_URL` | (see script) |
+| `apps/artifacts` | `ARTIFACTS_GIT_URL` | (see script) |
 
 These directories are **gitignored** in the tadaaa repo.

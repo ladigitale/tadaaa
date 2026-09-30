@@ -20,6 +20,7 @@ class AuditLog
     public const CATEGORY_OAUTH = 'oauth';
     public const CATEGORY_USAGE = 'usage';
     public const CATEGORY_EMBED = 'embed';
+    public const CATEGORY_ARTIFACT = 'artifact';
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]

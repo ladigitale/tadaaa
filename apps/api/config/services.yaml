@@ -30,6 +30,7 @@ parameters:
     env(LEGAL_HOST_ADDRESS): ''
     env(LEGAL_HOST_CONTACT): ''
     env(LEGAL_PRIVACY_EMAIL): ''
+    env(ARTIFACTS_PUBLIC_URL): 'http://localhost:3300'
 
 services:
     # default configuration for services in *this* file

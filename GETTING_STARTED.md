@@ -34,3 +34,15 @@ yarn ai:sync
 ```
 
 See `AGENTS.md`.
+
+
+## Sister app — Artefacts
+
+```bash
+./scripts/clone-sibling-apps.sh   # apps/artifacts from ARTIFACTS_GIT_URL or atelier
+yarn artifacts:dev                # http://localhost:3300
+```
+
+API env: `ARTIFACTS_PUBLIC_URL=http://localhost:3300` in `apps/api/.env`.
+Migrate: `yarn api:migrate` (includes artefacts tables).
+Seed: `docker compose exec php bin/console app:artifacts:seed-demo --email=you@example.com`

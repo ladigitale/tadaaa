@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "artifacts/sdui.schema.json",
+  "title": "Artefacts Concorde SDUI envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "title", "views", "defaultView"],
+  "properties": {
+    "schema": { "const": "artifacts/1" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "theme": { "type": "string", "maxLength": 64 },
+    "defaultView": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
+    "views": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "root"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "root": { "$ref": "#/$defs/sduiDescriptor" }
+        }
+      }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["collection"],
+            "properties": {
+              "collection": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" }
+            }
+          }
+        },
+        "transforms": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["jsonata"],
+            "properties": {
+              "jsonata": { "type": "string", "minLength": 1, "maxLength": 2048 }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sduiDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "library": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/sduiNode" }
+        },
+        "nodes": {
+          "type": "array",
+          "maxItems": 5000,
+          "items": { "$ref": "#/$defs/sduiNode" }
+        }
+      }
+    },
+    "sduiNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tagName": { "type": "string", "maxLength": 64 },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "number", "boolean"]
+          }
+        },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sduiNode" }
+        },
+        "libraryKey": { "type": "string", "maxLength": 64 },
+        "contentElementSelector": { "type": "string", "maxLength": 200 },
+        "parentElementSelector": { "type": "string", "maxLength": 200 }
+      }
+    }
+  }
+}

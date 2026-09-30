@@ -15,4 +15,11 @@ nelmio_cors:
             allow_headers: ['Content-Type', 'If-None-Match']
             expose_headers: ['X-Tadaaa-Embed-Bytes', 'ETag']
             max_age: 3600
+        '^/api/public/artifacts':
+            origin_regex: true
+            allow_origin: ['%env(CORS_ALLOW_ORIGIN)%']
+            allow_methods: ['GET', 'OPTIONS']
+            allow_headers: ['Content-Type', 'Authorization', 'If-None-Match']
+            expose_headers: ['ETag', 'Cache-Control']
+            max_age: 3600
         '^/': null
