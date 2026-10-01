@@ -58,6 +58,7 @@ final class ArtifactDataService
                 continue;
             }
             $collection = new ArtifactCollection($artifact, $name);
+            $collection->setPublicRead(true);
             $this->em->persist($collection);
         }
         $this->em->flush();
