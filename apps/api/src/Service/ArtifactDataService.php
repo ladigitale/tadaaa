@@ -35,6 +35,7 @@ final class ArtifactDataService
 
     /**
      * Crée les collections déclarées dans document.data.sources (idempotent).
+     * `writeMode` optionnel par source : none | members | authenticated.
      *
      * @param array<string, mixed> $document
      */
@@ -53,12 +54,23 @@ final class ArtifactDataService
             if (!\is_string($name) || !preg_match('/^[a-z][a-z0-9_]{0,63}$/', $name)) {
                 continue;
             }
+            $writeMode = \is_string($src['writeMode'] ?? null)
+                ? ArtifactWriteMode::tryFrom($src['writeMode'])
+                : null;
+
             $existing = $this->collections->findOneByArtifactName($artifact, $name);
             if ($existing !== null) {
+                // Le document fait foi : republier permet d'ouvrir/fermer l'écriture.
+                if ($writeMode !== null && $existing->getWriteMode() !== $writeMode) {
+                    $existing->setWriteMode($writeMode);
+                }
                 continue;
             }
             $collection = new ArtifactCollection($artifact, $name);
             $collection->setPublicRead(true);
+            if ($writeMode !== null) {
+                $collection->setWriteMode($writeMode);
+            }
             $this->em->persist($collection);
         }
         $this->em->flush();
