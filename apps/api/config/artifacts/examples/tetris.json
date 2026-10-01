@@ -1,0 +1,246 @@
+{
+  "schema": "artifacts/1",
+  "title": "Tetris (SDUI interactive)",
+  "theme": "default",
+  "defaultView": "play",
+  "views": [
+    {
+      "id": "play",
+      "title": "Play",
+      "root": {
+        "nodes": [
+          {
+            "tagName": "div",
+            "attributes": {
+              "class": "flex flex-col md:flex-row gap-4 p-2 items-start"
+            },
+            "nodes": [
+              {
+                "tagName": "div",
+                "attributes": {
+                  "class": "flex flex-col gap-2",
+                  "style": "max-width: 280px"
+                },
+                "nodes": [
+                  {
+                    "tagName": "sonic-store",
+                    "attributes": {
+                      "id": "tetris",
+                      "dataProvider": "tetris",
+                      "initial": "{\"w\":10,\"h\":20,\"board\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],\"piece\":0,\"rot\":0,\"x\":3,\"y\":0,\"next\":2,\"seed\":42,\"score\":0,\"lines\":0,\"level\":0,\"speed\":800,\"running\":true,\"over\":false,\"pieces\":[[[[0,1],[1,1],[2,1],[3,1]],[[2,0],[2,1],[2,2],[2,3]],[[0,2],[1,2],[2,2],[3,2]],[[1,0],[1,1],[1,2],[1,3]]],[[[1,0],[2,0],[1,1],[2,1]],[[1,0],[2,0],[1,1],[2,1]],[[1,0],[2,0],[1,1],[2,1]],[[1,0],[2,0],[1,1],[2,1]]],[[[0,1],[1,1],[2,1],[1,0]],[[1,0],[1,1],[1,2],[2,1]],[[0,1],[1,1],[2,1],[1,2]],[[1,0],[1,1],[1,2],[0,1]]],[[[1,0],[2,0],[0,1],[1,1]],[[1,0],[1,1],[2,1],[2,2]],[[1,1],[2,1],[0,2],[1,2]],[[0,0],[0,1],[1,1],[1,2]]],[[[0,0],[1,0],[1,1],[2,1]],[[2,0],[1,1],[2,1],[1,2]],[[0,1],[1,1],[1,2],[2,2]],[[1,0],[0,1],[1,1],[0,2]]],[[[0,0],[0,1],[1,1],[2,1]],[[1,0],[2,0],[1,1],[1,2]],[[0,1],[1,1],[2,1],[2,2]],[[1,0],[1,1],[0,2],[1,2]]],[[[2,0],[0,1],[1,1],[2,1]],[[1,0],[1,1],[1,2],[2,2]],[[0,1],[1,1],[2,1],[0,2]],[[0,0],[1,0],[1,1],[1,2]]]],\"grid\":[[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0]],\"ghost\":[[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0]],\"label\":\"Tetris\"}",
+                      "reducer": "(\n  $type := $action.type;\n  $s := $state;\n  $w := $s.w;\n  $h := $s.h;\n  $cells := function($piece, $rot){ $s.pieces[$piece][$rot] };\n  $occupied := function($board, $x, $y, $piece, $rot){(\n    $cs := $cells($piece, $rot);\n    $count($cs[\n      $.[0]+$x < 0 or $.[0]+$x >= $w or $.[1]+$y >= $h or\n      ($.[1]+$y >= 0 and $board[($.[1]+$y)*$w + ($.[0]+$x)] > 0)\n    ]) > 0\n  )};\n  $paint := function($board, $x, $y, $piece, $rot, $color){(\n    $cs := $cells($piece, $rot);\n    $idxs := $cs[$.[1]+$y >= 0].(($.[1]+$y)*$w + ($.[0]+$x));\n    $map([0..$count($board)-1], function($i){ $count($idxs[$=$i])>0 ? $color : $board[$i] })\n  )};\n  $toGrid := function($flat){ $map([0..$h-1], function($y){ $map([0..$w-1], function($x){ $flat[$y*$w+$x] }) }) };\n  $ghostY := function($board, $x, $y, $piece, $rot){(\n    $yy := $y;\n    $loop := function($yy){ $occupied($board, $x, $yy+1, $piece, $rot) ? $yy : $loop($yy+1) };\n    $loop($yy)\n  )};\n  $clearLines := function($board){(\n    $rows := $map([0..$h-1], function($y){ $map([0..$w-1], function($x){ $board[$y*$w+$x] }) });\n    $kept := $rows[$count($[$>0]) < $w];\n    $cleared := $h - $count($kept);\n    $pad := $map([0..$cleared-1], function($i){ $map([0..$w-1], function($x){0}) });\n    $newRows := $append($pad, $kept);\n    $flat := $reduce($newRows, function($acc, $row){ $append($acc, $row) }, []);\n    { \"board\": $flat, \"cleared\": $cleared }\n  )};\n  $spawn := function($s, $piece, $seed){(\n    $nx := 3; $ny := 0; $rot := 0;\n    $over := $occupied($s.board, $nx, $ny, $piece, $rot);\n    $r := $randInt($seed, 7);\n    $merge([$s, {\n      \"piece\": $piece,\n      \"rot\": $rot,\n      \"x\": $nx,\n      \"y\": $ny,\n      \"next\": $r.value,\n      \"seed\": $r.seed,\n      \"over\": $over,\n      \"running\": $over ? false : $s.running\n    }])\n  )};\n  $lock := function($s){(\n    $color := $s.piece + 1;\n    $board1 := $paint($s.board, $s.x, $s.y, $s.piece, $s.rot, $color);\n    $cl := $clearLines($board1);\n    $lines := $s.lines + $cl.cleared;\n    $score := $s.score + ($cl.cleared=1?100:$cl.cleared=2?300:$cl.cleared=3?500:$cl.cleared>=4?800:0) * ($s.level+1);\n    $level := $floor($lines / 10);\n    $speed := (800 - $level * 70) < 50 ? 50 : (800 - $level * 70);\n    $s2 := $merge([$s, {\n      \"board\": $cl.board,\n      \"lines\": $lines,\n      \"score\": $score,\n      \"level\": $level,\n      \"speed\": $speed\n    }]);\n    $spawn($s2, $s.next, $s.seed)\n  )};\n  $tryMove := function($s, $dx, $dy, $drot){(\n    $nr := ($s.rot + $drot) % 4;\n    $nr := $nr < 0 ? $nr + 4 : $nr;\n    $nx := $s.x + $dx;\n    $ny := $s.y + $dy;\n    $occupied($s.board, $nx, $ny, $s.piece, $nr) ? $s : $merge([$s, {\"x\":$nx,\"y\":$ny,\"rot\":$nr}])\n  )};\n  $withView := function($s){(\n    $gy := $ghostY($s.board, $s.x, $s.y, $s.piece, $s.rot);\n    $color := $s.piece + 1;\n    $ghostBoard := $paint($s.board, $s.x, $gy, $s.piece, $s.rot, $color);\n    $live := $paint($s.board, $s.x, $s.y, $s.piece, $s.rot, $color);\n    $merge([$s, {\n      \"grid\": $toGrid($live),\n      \"ghost\": $toGrid($ghostBoard),\n      \"label\": $s.over ? \"Game over\" : ($s.running ? \"Tetris\" : \"Paused\")\n    }])\n  )};\n  $base := (\n    $type := $type = \"swipe-left\" ? \"left\" : ($type = \"swipe-right\" ? \"right\" : ($type = \"swipe-up\" ? \"rotate\" : ($type = \"swipe-down\" ? \"soft-drop\" : ($type = \"tap\" ? \"rotate\" : ($type = \"double-tap\" ? \"drop\" : $type)))));\n    $s.over and $type != \"restart\" ? $s :\n    $type = \"restart\" ? $withView($spawn($merge([$s, {\n      \"board\": $map([0..$w*$h-1], function($i){0}),\n      \"score\": 0, \"lines\": 0, \"level\": 0, \"speed\": 800,\n      \"running\": true, \"over\": false\n    }]), $s.next, $s.seed)) :\n    $type = \"pause\" ? $withView($merge([$s, {\"running\": $not($s.running)}])) :\n    $not($s.running) and $type != \"pause\" and $type != \"restart\" ? $s :\n    $type = \"left\" ? $withView($tryMove($s, -1, 0, 0)) :\n    $type = \"right\" ? $withView($tryMove($s, 1, 0, 0)) :\n    $type = \"rotate\" ? $withView($tryMove($s, 0, 0, 1)) :\n    $type = \"soft-drop\" ? (\n      $m := $tryMove($s, 0, 1, 0);\n      $m.y = $s.y ? $withView($lock($s)) : $withView($merge([$m, {\"score\": $s.score+1}]))\n    ) :\n    $type = \"drop\" ? (\n      $gy := $ghostY($s.board, $s.x, $s.y, $s.piece, $s.rot);\n      $withView($lock($merge([$s, {\"y\": $gy, \"score\": $s.score + 2*($gy-$s.y)}])))\n    ) :\n    $type = \"tick\" ? (\n      $m := $tryMove($s, 0, 1, 0);\n      $m.y = $s.y ? $withView($lock($s)) : $withView($m)\n    ) :\n    $s\n  );\n  $base\n)",
+                      "budget-ms": "16"
+                    }
+                  },
+                  {
+                    "tagName": "sonic-keyboard",
+                    "attributes": {
+                      "target": "tetris",
+                      "scope": "focus",
+                      "keymap": "{\"ArrowLeft\": \"left\", \"ArrowRight\": \"right\", \"ArrowUp\": \"rotate\", \"ArrowDown\": \"soft-drop\", \"Space\": \"drop\", \"KeyP\": \"pause\", \"KeyR\": \"restart\"}",
+                      "repeat": "{\"left\": [170, 50], \"right\": [170, 50], \"soft-drop\": [50, 40]}",
+                      "tabindex": "0",
+                      "class": "outline-none"
+                    },
+                    "nodes": [
+                      {
+                        "tagName": "sonic-gesture",
+                        "attributes": {
+                          "target": "tetris",
+                          "class": "rounded border border-neutral-700 bg-neutral-950 p-1",
+                          "style": "touch-action: none"
+                        },
+                        "nodes": [
+                          {
+                            "tagName": "sonic-matrix",
+                            "attributes": {
+                              "dataProvider": "tetris",
+                              "key": "grid",
+                              "ghost-key": "ghost",
+                              "cell": "auto",
+                              "gap": "1",
+                              "radius": "2",
+                              "label-key": "label",
+                              "palette": "{\"0\": \"transparent\", \"1\": \"#00f0f0\", \"2\": \"#f0f000\", \"3\": \"#a000f0\", \"4\": \"#00f000\", \"5\": \"#f00000\", \"6\": \"#0000f0\", \"7\": \"#f0a000\"}"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "tagName": "sonic-ticker",
+                    "attributes": {
+                      "target": "tetris",
+                      "interval": "800",
+                      "interval-key": "speed",
+                      "running-key": "running"
+                    }
+                  },
+                  {
+                    "tagName": "sonic-gamepad",
+                    "attributes": {
+                      "target": "tetris",
+                      "keymap": "{\"dpad-left\": \"left\", \"dpad-right\": \"right\", \"dpad-up\": \"rotate\", \"dpad-down\": \"soft-drop\", \"a\": \"rotate\", \"b\": \"drop\", \"start\": \"pause\"}",
+                      "repeat": "{\"left\": [170, 50], \"right\": [170, 50], \"soft-drop\": [50, 40]}"
+                    }
+                  }
+                ]
+              },
+              {
+                "tagName": "div",
+                "attributes": {
+                  "class": "flex flex-col gap-3 text-sm p-2",
+                  "dataProvider": "tetris"
+                },
+                "nodes": [
+                  {
+                    "tagName": "sonic-value",
+                    "attributes": {
+                      "key": "label",
+                      "class": "font-semibold text-lg"
+                    }
+                  },
+                  {
+                    "tagName": "sonic-value",
+                    "attributes": {
+                      "key": "score",
+                      "format": "000000",
+                      "class": "tabular-nums"
+                    }
+                  },
+                  {
+                    "tagName": "sonic-value",
+                    "attributes": {
+                      "key": "lines",
+                      "class": "tabular-nums"
+                    }
+                  },
+                  {
+                    "tagName": "sonic-value",
+                    "attributes": {
+                      "key": "level",
+                      "class": "tabular-nums"
+                    }
+                  },
+                  {
+                    "tagName": "div",
+                    "attributes": {
+                      "class": "flex flex-wrap gap-2"
+                    },
+                    "nodes": [
+                      {
+                        "tagName": "sonic-action",
+                        "attributes": {
+                          "target": "tetris",
+                          "type": "left",
+                          "hold-repeat": "170,50"
+                        },
+                        "nodes": [
+                          {
+                            "tagName": "sonic-button",
+                            "attributes": {
+                              "size": "sm",
+                              "variant": "outline",
+                              "title": "Left"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "tagName": "sonic-action",
+                        "attributes": {
+                          "target": "tetris",
+                          "type": "right",
+                          "hold-repeat": "170,50"
+                        },
+                        "nodes": [
+                          {
+                            "tagName": "sonic-button",
+                            "attributes": {
+                              "size": "sm",
+                              "variant": "outline",
+                              "title": "Right"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "tagName": "sonic-action",
+                        "attributes": {
+                          "target": "tetris",
+                          "type": "rotate",
+                          "hold-repeat": "200,120"
+                        },
+                        "nodes": [
+                          {
+                            "tagName": "sonic-button",
+                            "attributes": {
+                              "size": "sm",
+                              "variant": "outline",
+                              "title": "Rotate"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "tagName": "sonic-action",
+                        "attributes": {
+                          "target": "tetris",
+                          "type": "drop"
+                        },
+                        "nodes": [
+                          {
+                            "tagName": "sonic-button",
+                            "attributes": {
+                              "size": "sm",
+                              "variant": "outline",
+                              "title": "Drop"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "tagName": "sonic-action",
+                        "attributes": {
+                          "target": "tetris",
+                          "type": "pause"
+                        },
+                        "nodes": [
+                          {
+                            "tagName": "sonic-button",
+                            "attributes": {
+                              "size": "sm",
+                              "variant": "outline",
+                              "title": "Pause"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "tagName": "sonic-action",
+                        "attributes": {
+                          "target": "tetris",
+                          "type": "restart"
+                        },
+                        "nodes": [
+                          {
+                            "tagName": "sonic-button",
+                            "attributes": {
+                              "size": "sm",
+                              "title": "Restart"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -15,7 +15,7 @@ final class ArtifactDocumentValidator
     public const MAX_BYTES = 512 * 1024;
     public const MAX_DEPTH = 32;
     public const MAX_NODES = 5000;
-    public const MAX_JSONATA = 2048;
+    public const MAX_JSONATA = 4096;
     public const MAX_REDUCER = 32 * 1024;
     public const MAX_SHADER_SOURCE = 32 * 1024;
     public const MAX_HF_TEXT = 8 * 1024;
@@ -449,7 +449,27 @@ final class ArtifactDocumentValidator
                         continue;
                     }
                     if (\strlen($tr['jsonata']) > self::MAX_JSONATA) {
-                        $errors[] = ['path' => $path.'/transforms/'.$name.'/jsonata', 'message' => 'Expression jsonata trop longue (max 2 Ko).'];
+                        $errors[] = ['path' => $path.'/transforms/'.$name.'/jsonata', 'message' => 'Expression jsonata trop longue (max 4 Ko).'];
+                    }
+                }
+            }
+        }
+        if (isset($data['stores'])) {
+            if (!\is_array($data['stores'])) {
+                $errors[] = ['path' => $path.'/stores', 'message' => 'stores doit être un objet.'];
+            } elseif (\count($data['stores']) > 8) {
+                $errors[] = ['path' => $path.'/stores', 'message' => 'Trop de stores (max 8).'];
+            } else {
+                foreach ($data['stores'] as $name => $store) {
+                    if (!\is_array($store)) {
+                        $errors[] = ['path' => $path.'/stores/'.$name, 'message' => 'store invalide.'];
+                        continue;
+                    }
+                    $reducer = $store['reducer'] ?? null;
+                    if (!\is_string($reducer) || $reducer === '') {
+                        $errors[] = ['path' => $path.'/stores/'.$name.'/reducer', 'message' => 'reducer requis.'];
+                    } elseif (\strlen($reducer) > self::MAX_REDUCER) {
+                        $errors[] = ['path' => $path.'/stores/'.$name.'/reducer', 'message' => 'reducer trop long (max 32 Ko).'];
                     }
                 }
             }
