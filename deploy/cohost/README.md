@@ -37,7 +37,12 @@ Use `artifacts.caddy` (hostname from `ARTIFACTS_SERVER_NAME`) and mount the buil
 ARTIFACTS_DIST=/opt/artifacts/dist
 ARTIFACTS_SERVER_NAME=artifacts.tadaaa.space
 ARTIFACTS_PUBLIC_URL=https://artifacts.tadaaa.space
+# optional: ARTIFACTS_SRC=/path/to/checkout  ARTIFACTS_GIT_URL=https://github.com/ladigitale/artifacts.git
 ```
+
+`scripts/update-prod.sh` builds Artefacts automatically when `ARTIFACTS_DIST` is set
+(ephemeral `node:22` image, same as `apps/web`) and syncs into `ARTIFACTS_DIST`.
+On the VPS: `bash scripts/update-prod.sh --pull` is enough — no host yarn / rsync from laptop.
 
 CSP is strict (no `unsafe-eval`). Concorde 4.9.3 has no `sonic-jsonata` package export;
 transforms in the artefact envelope are applied client-side with a bounded approach in the viewer.

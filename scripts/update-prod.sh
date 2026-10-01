@@ -4,8 +4,8 @@
 #   bash scripts/update-prod.sh
 #   bash scripts/update-prod.sh --pull   # git pull --ff-only first
 #
-# Merges missing .env keys (mail, quotas, …), rebuilds the SPA,
-# recreates containers, runs Doctrine migrations.
+# Merges missing .env keys (mail, quotas, …), rebuilds SPAs via ephemeral
+# node:22 (no host yarn), recreates containers, Doctrine migrate.
 #
 # Optional cohost (.env) — re-applied on edge after the main stack up:
 #   GLANE_ROOT=/root/glane
@@ -13,9 +13,11 @@
 #   GLANE_API_SERVER_NAME=glane-api.tadaaa.space
 #   BELTS_DIST=/opt/belt/dist
 #   BELTS_SERVER_NAME=belts.tadaaa.space
+#   BELTS_SRC=… / BELTS_GIT_URL=…   # optional: build Belts like Artefacts
 #   ARTIFACTS_DIST=/opt/artifacts/dist
 #   ARTIFACTS_SERVER_NAME=artifacts.tadaaa.space
 #   ARTIFACTS_PUBLIC_URL=https://artifacts.tadaaa.space
+#   ARTIFACTS_SRC=… / ARTIFACTS_GIT_URL=…  # default: apps/artifacts + GitHub
 
 set -euo pipefail
 
@@ -107,8 +109,12 @@ Usage: bash scripts/update-prod.sh [--pull]
 
 Optional .env cohost (re-applied on edge after stack up):
   GLANE_ROOT=…  GLANE_APP_SERVER_NAME=…  GLANE_API_SERVER_NAME=…
-  BELTS_DIST=…  BELTS_SERVER_NAME=…
+  BELTS_DIST=…  BELTS_SERVER_NAME=…  [BELTS_SRC|BELTS_GIT_URL]
   ARTIFACTS_DIST=…  ARTIFACTS_SERVER_NAME=…  ARTIFACTS_PUBLIC_URL=…
+  ARTIFACTS_SRC=… (défaut apps/artifacts)  ARTIFACTS_GIT_URL=…
+
+With ARTIFACTS_DIST set, update-prod clones/pulls + builds Artefacts
+(docker run node:22) then syncs into ARTIFACTS_DIST — no host yarn.
 EOF
       exit 0
       ;;
@@ -170,6 +176,64 @@ docker run --rm \
   bash -lc 'corepack enable && yarn install --frozen-lockfile && yarn --cwd apps/web build'
 [[ -f "$ROOT/apps/web/dist/index.html" ]] || die "Front build failed."
 ok "Front build ready."
+
+# Sibling SPAs (Artefacts / Belts) — même pattern node:22 éphémère, pas de yarn hôte.
+ensure_sibling_git() {
+  local dir="$1" url="$2" name="$3"
+  if [[ -d "$dir/.git" ]]; then
+    if [[ "$DO_PULL" -eq 1 ]]; then
+      info "git pull $name…"
+      git -C "$dir" pull --ff-only
+    fi
+    return 0
+  fi
+  if [[ -z "$url" ]]; then
+    die "Missing source for $name (set $4 or clone into $dir)"
+  fi
+  info "Cloning $name → $dir"
+  mkdir -p "$(dirname "$dir")"
+  git clone "$url" "$dir"
+}
+
+# Build SPA in $src → sync to $dist (souvent le volume Caddy).
+build_sibling_spa() {
+  local name="$1" src="$2" dist="$3" api_base="$4"
+  [[ -d "$src" ]] || die "$name source missing: $src"
+  info "Building $name (VITE_API_BASE_URL=${api_base})…"
+  rm -rf "$src/node_modules"
+  docker run --rm \
+    -v "$src:/repo" \
+    -w /repo \
+    -e VITE_API_BASE_URL="$api_base" \
+    node:22-bookworm \
+    bash -lc 'corepack enable && yarn install --frozen-lockfile && yarn build'
+  [[ -f "$src/dist/index.html" ]] || die "$name build failed ($src/dist/index.html missing)."
+  mkdir -p "$dist"
+  if [[ "$(cd "$src/dist" && pwd -P)" != "$(cd "$dist" && pwd -P)" ]]; then
+    if command -v rsync >/dev/null 2>&1; then
+      rsync -a --delete "$src/dist/" "$dist/"
+    else
+      rm -rf "${dist:?}/"*
+      cp -a "$src/dist/." "$dist/"
+    fi
+  fi
+  ok "$name → $dist"
+}
+
+if [[ -n "${ARTIFACTS_DIST:-}" ]]; then
+  ARTIFACTS_SRC="${ARTIFACTS_SRC:-$ROOT/apps/artifacts}"
+  ARTIFACTS_GIT_URL="${ARTIFACTS_GIT_URL:-https://github.com/ladigitale/artifacts.git}"
+  ensure_sibling_git "$ARTIFACTS_SRC" "$ARTIFACTS_GIT_URL" "artifacts" "ARTIFACTS_GIT_URL / ARTIFACTS_SRC"
+  build_sibling_spa "Artefacts" "$ARTIFACTS_SRC" "$ARTIFACTS_DIST" "https://${api_host}"
+fi
+
+if [[ -n "${BELTS_DIST:-}" && -n "${BELTS_SRC:-${BELTS_GIT_URL:-}}" ]]; then
+  BELTS_SRC="${BELTS_SRC:-$ROOT/apps/belts}"
+  ensure_sibling_git "$BELTS_SRC" "${BELTS_GIT_URL:-}" "belts" "BELTS_GIT_URL / BELTS_SRC"
+  build_sibling_spa "Belts" "$BELTS_SRC" "$BELTS_DIST" "https://${api_host}"
+elif [[ -n "${BELTS_DIST:-}" ]]; then
+  warn "BELTS_DIST set but no BELTS_SRC/BELTS_GIT_URL — skip Belts build (using existing dist)."
+fi
 
 info "Recreating stack…"
 "${COMPOSE[@]}" up -d --build
