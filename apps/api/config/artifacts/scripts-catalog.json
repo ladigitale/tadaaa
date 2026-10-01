@@ -1,0 +1,261 @@
+{
+  "version": 1,
+  "cdnAllowlist": ["https://cdn.jsdelivr.net/"],
+  "maxScriptsPerDocument": 16,
+  "notes": "Document.scripts = list of IDs only. Viewer loads pinned CDN URLs. No arbitrary URLs, no inline JS, no eval in SDUI.",
+  "categories": {
+    "charts": "Graphiques & viz",
+    "maps": "Cartes",
+    "markdown": "Markdown / HTML safe",
+    "dates": "Dates",
+    "animation": "Animation",
+    "ui": "UI helpers",
+    "audio": "Audio",
+    "video": "Vidéo / streaming",
+    "media": "Caméra / capture",
+    "webgl": "WebGL / 3D",
+    "gaming": "Jeux / physique",
+    "ai": "ML / IA navigateur",
+    "math": "Math",
+    "data": "Data / fichiers",
+    "qr": "QR / barcode",
+    "color": "Couleur"
+  },
+  "libraries": {
+    "chartjs": {
+      "category": "charts",
+      "label": "Chart.js",
+      "src": "https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js",
+      "global": "Chart"
+    },
+    "echarts": {
+      "category": "charts",
+      "label": "Apache ECharts",
+      "src": "https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js",
+      "global": "echarts"
+    },
+    "plotly": {
+      "category": "charts",
+      "label": "Plotly.js",
+      "src": "https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.3/plotly.min.js",
+      "global": "Plotly"
+    },
+    "d3": {
+      "category": "charts",
+      "label": "D3.js",
+      "src": "https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js",
+      "global": "d3"
+    },
+    "apexcharts": {
+      "category": "charts",
+      "label": "ApexCharts",
+      "src": "https://cdn.jsdelivr.net/npm/apexcharts@4.5.0/dist/apexcharts.min.js",
+      "global": "ApexCharts"
+    },
+    "leaflet": {
+      "category": "maps",
+      "label": "Leaflet",
+      "src": "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js",
+      "css": ["https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"],
+      "global": "L"
+    },
+    "maplibre": {
+      "category": "maps",
+      "label": "MapLibre GL",
+      "src": "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js",
+      "css": ["https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css"],
+      "global": "maplibregl"
+    },
+    "marked": {
+      "category": "markdown",
+      "label": "marked",
+      "src": "https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js",
+      "global": "marked"
+    },
+    "dompurify": {
+      "category": "markdown",
+      "label": "DOMPurify",
+      "src": "https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js",
+      "global": "DOMPurify"
+    },
+    "dayjs": {
+      "category": "dates",
+      "label": "Day.js",
+      "src": "https://cdn.jsdelivr.net/npm/dayjs@1.11.13/dayjs.min.js",
+      "global": "dayjs"
+    },
+    "luxon": {
+      "category": "dates",
+      "label": "Luxon",
+      "src": "https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js",
+      "global": "luxon"
+    },
+    "gsap": {
+      "category": "animation",
+      "label": "GSAP",
+      "src": "https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js",
+      "global": "gsap"
+    },
+    "animejs": {
+      "category": "animation",
+      "label": "Anime.js",
+      "src": "https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js",
+      "global": "anime"
+    },
+    "lottie": {
+      "category": "animation",
+      "label": "lottie-web",
+      "src": "https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie.min.js",
+      "global": "lottie"
+    },
+    "sortablejs": {
+      "category": "ui",
+      "label": "SortableJS",
+      "src": "https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js",
+      "global": "Sortable"
+    },
+    "htmx": {
+      "category": "ui",
+      "label": "htmx",
+      "src": "https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js",
+      "global": "htmx"
+    },
+    "tippy": {
+      "category": "ui",
+      "label": "Tippy.js",
+      "src": "https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy.umd.min.js",
+      "css": ["https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy.css"],
+      "global": "tippy",
+      "depends": ["popper"]
+    },
+    "popper": {
+      "category": "ui",
+      "label": "@popperjs/core",
+      "src": "https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js",
+      "global": "Popper"
+    },
+    "howler": {
+      "category": "audio",
+      "label": "Howler.js",
+      "src": "https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js",
+      "global": "Howl"
+    },
+    "tone": {
+      "category": "audio",
+      "label": "Tone.js",
+      "src": "https://cdn.jsdelivr.net/npm/tone@15.0.4/build/Tone.js",
+      "global": "Tone"
+    },
+    "hlsjs": {
+      "category": "video",
+      "label": "hls.js",
+      "src": "https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js",
+      "global": "Hls"
+    },
+    "videojs": {
+      "category": "video",
+      "label": "Video.js",
+      "src": "https://cdn.jsdelivr.net/npm/video.js@8.21.0/dist/video.min.js",
+      "css": ["https://cdn.jsdelivr.net/npm/video.js@8.21.0/dist/video-js.min.css"],
+      "global": "videojs"
+    },
+    "plyr": {
+      "category": "video",
+      "label": "Plyr",
+      "src": "https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.min.js",
+      "css": ["https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css"],
+      "global": "Plyr"
+    },
+    "recordrtc": {
+      "category": "media",
+      "label": "RecordRTC",
+      "src": "https://cdn.jsdelivr.net/npm/recordrtc@5.6.2/RecordRTC.min.js",
+      "global": "RecordRTC"
+    },
+    "three": {
+      "category": "webgl",
+      "label": "Three.js",
+      "src": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js",
+      "global": "THREE"
+    },
+    "pixi": {
+      "category": "webgl",
+      "label": "PixiJS",
+      "src": "https://cdn.jsdelivr.net/npm/pixi.js@7.4.2/dist/pixi.min.js",
+      "global": "PIXI"
+    },
+    "babylon": {
+      "category": "webgl",
+      "label": "Babylon.js",
+      "src": "https://cdn.jsdelivr.net/npm/babylonjs@7.49.0/babylon.js",
+      "global": "BABYLON"
+    },
+    "phaser": {
+      "category": "gaming",
+      "label": "Phaser",
+      "src": "https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js",
+      "global": "Phaser"
+    },
+    "matterjs": {
+      "category": "gaming",
+      "label": "Matter.js",
+      "src": "https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js",
+      "global": "Matter"
+    },
+    "cannon": {
+      "category": "gaming",
+      "label": "cannon-es",
+      "src": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js",
+      "global": "CANNON"
+    },
+    "tensorflow": {
+      "category": "ai",
+      "label": "TensorFlow.js",
+      "src": "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js",
+      "global": "tf",
+      "notes": "Peut requérir wasm / workers — CSP worker-src blob: + jsdelivr."
+    },
+    "onnxruntime": {
+      "category": "ai",
+      "label": "ONNX Runtime Web",
+      "src": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.min.js",
+      "global": "ort"
+    },
+    "mathjs": {
+      "category": "math",
+      "label": "math.js",
+      "src": "https://cdn.jsdelivr.net/npm/mathjs@14.2.1/lib/browser/math.js",
+      "global": "math"
+    },
+    "papaparse": {
+      "category": "data",
+      "label": "Papa Parse",
+      "src": "https://cdn.jsdelivr.net/npm/papaparse@5.5.2/papaparse.min.js",
+      "global": "Papa"
+    },
+    "xlsx": {
+      "category": "data",
+      "label": "SheetJS (xlsx)",
+      "src": "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js",
+      "global": "XLSX"
+    },
+    "qrcode": {
+      "category": "qr",
+      "label": "QRCode",
+      "src": "https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js",
+      "global": "QRCode"
+    },
+    "jsbarcode": {
+      "category": "qr",
+      "label": "JsBarcode",
+      "src": "https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js",
+      "global": "JsBarcode"
+    },
+    "chroma": {
+      "category": "color",
+      "label": "chroma.js",
+      "src": "https://cdn.jsdelivr.net/npm/chroma-js@3.1.2/chroma.min.js",
+      "global": "chroma"
+    }
+  }
+}

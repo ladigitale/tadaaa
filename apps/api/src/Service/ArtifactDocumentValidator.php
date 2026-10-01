@@ -34,6 +34,7 @@ final class ArtifactDocumentValidator
         private readonly string $catalogPath,
         #[Autowire('%kernel.project_dir%/config/artifacts/sdui.schema.json')]
         private readonly string $schemaPath,
+        private readonly ArtifactScriptsCatalog $scriptsCatalog,
         ?array $catalog = null,
     ) {
         $data = $catalog ?? $this->loadJson($this->catalogPath);
@@ -103,10 +104,12 @@ final class ArtifactDocumentValidator
                 ],
             ],
             'rules' => [
-                'interdit' => ['markup', 'innerHTML', 'js', 'css', 'prefix', 'suffix', 'javascript:'],
+                'interdit' => ['markup', 'innerHTML', 'js', 'css', 'prefix', 'suffix', 'javascript:', 'URL libre de script'],
+                'scripts' => 'Optionnel: tableau d’IDs du catalogue scripts (voir scripts.libraries[].id). Ex: ["chartjs","leaflet"]. Pas d’URL, pas de balise <script>.',
                 'tagName' => 'Uniquement composants Concorde (sonic-*) ou balises HTML sûres du catalogue.',
                 'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent.',
             ],
+            'scripts' => $this->scriptsCatalog->mcpSummary(),
             'examples' => array_slice($examples, 0, 3),
         ];
     }
@@ -186,8 +189,23 @@ final class ArtifactDocumentValidator
             $this->validateDataSection($document['data'], '/data', $errors);
         }
 
+        if (\array_key_exists('scripts', $document)) {
+            $resolved = $this->scriptsCatalog->resolve($document['scripts']);
+            foreach ($resolved['errors'] as $err) {
+                $errors[] = $err;
+            }
+        }
+
         // Reject unknown top-level keys beyond envelope
-        $allowedTop = ['schema' => true, 'title' => true, 'theme' => true, 'views' => true, 'defaultView' => true, 'data' => true];
+        $allowedTop = [
+            'schema' => true,
+            'title' => true,
+            'theme' => true,
+            'scripts' => true,
+            'views' => true,
+            'defaultView' => true,
+            'data' => true,
+        ];
         foreach (array_keys($document) as $key) {
             if (!isset($allowedTop[$key])) {
                 $errors[] = ['path' => '/'.$key, 'message' => 'Clé non autorisée.'];

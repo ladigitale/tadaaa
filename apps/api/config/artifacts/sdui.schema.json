@@ -9,6 +9,16 @@
     "schema": { "const": "artifacts/1" },
     "title": { "type": "string", "minLength": 1, "maxLength": 200 },
     "theme": { "type": "string", "maxLength": 64 },
+    "scripts": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+      },
+      "uniqueItems": true,
+      "description": "IDs du scripts-catalog (chartjs, three, leaflet…). Jamais d’URL."
+    },
     "defaultView": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
     "views": {
       "type": "array",

@@ -34,6 +34,7 @@ final class ArtifactService
         private readonly AuditLogger $audit,
         private readonly EntityManagerInterface $em,
         private readonly ArtifactDataService $artifactData,
+        private readonly ArtifactScriptsCatalog $scriptsCatalog,
         #[Autowire('%env(ARTIFACTS_PUBLIC_URL)%')]
         private readonly string $publicBaseUrl,
     ) {
@@ -306,13 +307,18 @@ final class ArtifactService
             }
         }
 
+        $document = $version->getDocument();
+        $scriptIds = \is_array($document) ? ($document['scripts'] ?? null) : null;
+        $scriptAssets = $this->scriptsCatalog->resolve($scriptIds)['assets'];
+
         $body = [
             'id' => $artifact->getId()->toRfc4122(),
             'slug' => $artifact->getSlug(),
             'title' => $artifact->getTitle(),
             'description' => $artifact->getDescription(),
             'visibility' => $artifact->getVisibility()->value,
-            'document' => $version->getDocument(),
+            'document' => $document,
+            'scriptAssets' => $scriptAssets,
             'concordeVersion' => $artifact->getConcordeVersion(),
             'version' => $artifact->getCurrentVersion(),
             'updatedAt' => $artifact->getUpdatedAt()->format(\DateTimeInterface::ATOM),

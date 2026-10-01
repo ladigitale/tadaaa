@@ -11,7 +11,9 @@
 		X-Frame-Options DENY
 		# CSP: pas d'inline script / pas d'eval.
 		# fonts.googleapis.com : thèmes Tadaaa (appearance).
+		# cdn.jsdelivr.net : libs whitelist scripts-catalog + CSS associées.
 		# connect-src https : API Tadaaa publique.
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; img-src 'self' https: data:; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		# worker-src / wasm : three, tensorflow, onnx…
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; media-src 'self' https: blob: data:; connect-src 'self' https: blob:; worker-src 'self' blob: https://cdn.jsdelivr.net; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 	}
 }
