@@ -43,7 +43,7 @@ class Artifact
     private int $currentVersion = 0;
 
     #[ORM\Column(length: 32)]
-    private string $concordeVersion = '4.9.3';
+    private string $concordeVersion = '5.0.4-visual-stack.1';
 
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]

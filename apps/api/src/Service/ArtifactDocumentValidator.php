@@ -16,9 +16,30 @@ final class ArtifactDocumentValidator
     public const MAX_DEPTH = 32;
     public const MAX_NODES = 5000;
     public const MAX_JSONATA = 2048;
+    public const MAX_REDUCER = 32 * 1024;
+    public const MAX_SHADER_SOURCE = 32 * 1024;
+    public const MAX_HF_TEXT = 8 * 1024;
 
     private const FORBIDDEN_NODE_KEYS = ['markup', 'innerHTML', 'prefix', 'suffix', 'js', 'css'];
     private const FORBIDDEN_DESCRIPTOR_KEYS = ['js', 'css'];
+
+    private const SHADER_SOURCE_ATTRS = [
+        'image', 'buffer-a', 'buffer-b', 'buffer-c', 'buffer-d', 'common', 'shader',
+        'post-image', 'post-buffer-a', 'post-buffer-b', 'post-buffer-c', 'post-buffer-d', 'post-common',
+        'reducer', 'initial', 'keymap', 'palette',
+    ];
+
+    private const JSON_ATTRS = ['initial', 'keymap', 'palette', 'payload', 'repeat', 'options'];
+
+    /** @var list<string> */
+    private const MODEL_HOST_ALLOWLIST = [
+        'huggingface.co',
+        'cdn.jsdelivr.net',
+        'raw.githubusercontent.com',
+        'github.com',
+        'threejs.org',
+        'modelviewer.dev',
+    ];
 
     /** @var list<string> */
     private array $allowedTags;
@@ -71,7 +92,7 @@ final class ArtifactDocumentValidator
      *
      * @return array<string, mixed>
      */
-    public function mcpCatalogPayload(): array
+    public function mcpCatalogPayload(bool $compact = true, ?array $components = null): array
     {
         $examplesDir = \dirname($this->catalogPath).'/examples';
         $examples = [];
@@ -84,8 +105,20 @@ final class ArtifactDocumentValidator
             }
         }
 
+        $catalog = $this->catalog();
+        if ($components !== null && $components !== []) {
+            $want = array_fill_keys($components, true);
+            $catalog['components'] = array_values(array_filter(
+                $catalog['components'] ?? [],
+                static fn (mixed $c): bool => \is_array($c) && isset($want[$c['name'] ?? '']),
+            ));
+        }
+        if ($compact) {
+            $catalog = $this->compactCatalog($catalog);
+        }
+
         return [
-            'catalog' => $this->catalog(),
+            'catalog' => $catalog,
             'envelope' => [
                 'schema' => 'artifacts/1',
                 'title' => 'Titre affiché',
@@ -108,9 +141,57 @@ final class ArtifactDocumentValidator
                 'scripts' => 'Optionnel: tableau d’IDs du catalogue scripts (voir scripts.libraries[].id). Ex: ["chartjs","leaflet"]. Pas d’URL, pas de balise <script>.',
                 'tagName' => 'Uniquement composants Concorde (sonic-*) ou balises HTML sûres du catalogue.',
                 'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent.',
+                'interactive' => 'sonic-store + keyboard/gamepad/gesture/action/ticker + sonic-matrix.',
             ],
             'scripts' => $this->scriptsCatalog->mcpSummary(),
-            'examples' => array_slice($examples, 0, 3),
+            'examples' => array_slice($examples, 0, 5),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $catalog
+     *
+     * @return array<string, mixed>
+     */
+    private function compactCatalog(array $catalog): array
+    {
+        $common = [
+            'class' => ['type' => 'string'],
+            'id' => ['type' => 'string'],
+            'style' => ['type' => 'string'],
+            'slot' => ['type' => 'string'],
+            'dataProvider' => ['type' => 'string'],
+        ];
+        $components = [];
+        foreach ($catalog['components'] ?? [] as $component) {
+            if (!\is_array($component) || !isset($component['name'])) {
+                continue;
+            }
+            $props = \is_array($component['props'] ?? null) ? $component['props'] : [];
+            $specific = [];
+            foreach ($props as $prop => $meta) {
+                if (isset($common[$prop])) {
+                    continue;
+                }
+                $specific[$prop] = $meta;
+            }
+            $entry = [
+                'name' => $component['name'],
+                'props' => $specific,
+            ];
+            if (isset($component['description']) && \is_string($component['description'])) {
+                $entry['description'] = $component['description'];
+            }
+            $components[] = $entry;
+        }
+
+        return [
+            'concordeVersion' => $catalog['concordeVersion'] ?? null,
+            'generatedFrom' => $catalog['generatedFrom'] ?? null,
+            'commonProps' => $common,
+            'components' => $components,
+            'safeHtmlTags' => $catalog['safeHtmlTags'] ?? [],
+            'notes' => $catalog['notes'] ?? null,
         ];
     }
 
@@ -303,8 +384,11 @@ final class ArtifactDocumentValidator
                         $errors[] = ['path' => $path.'/attributes/'.$attr, 'message' => 'Attribut événement / srcdoc interdit.'];
                         continue;
                     }
-                    if (\is_string($value) && $this->isUnsafeUrl($attr, $value)) {
-                        $errors[] = ['path' => $path.'/attributes/'.$attr, 'message' => 'URL non autorisée (https uniquement ; pas de javascript:/data: hors image).'];
+                    if (\is_string($value)) {
+                        $msg = $this->validateAttributeValue(\is_string($tagName) ? $tagName : 'div', $attr, $value);
+                        if ($msg !== null) {
+                            $errors[] = ['path' => $path.'/attributes/'.$attr, 'message' => $msg];
+                        }
                     }
                 }
             }
@@ -370,6 +454,68 @@ final class ArtifactDocumentValidator
                 }
             }
         }
+    }
+
+    private function validateAttributeValue(string $tagName, string $attr, string $value): ?string
+    {
+        $attrLower = strtolower($attr);
+        if (str_contains(strtolower($value), 'javascript:')) {
+            return 'Valeur javascript: interdite.';
+        }
+        if (\in_array($attrLower, self::SHADER_SOURCE_ATTRS, true) || $attrLower === 'reducer') {
+            $max = $attrLower === 'reducer' ? self::MAX_REDUCER : self::MAX_SHADER_SOURCE;
+            if (\strlen($value) > $max) {
+                return sprintf('Valeur trop longue (max %d octets).', $max);
+            }
+        }
+        if (\in_array($attrLower, self::JSON_ATTRS, true)) {
+            $trim = trim($value);
+            if ($trim !== '' && ($trim[0] === '{' || $trim[0] === '[')) {
+                json_decode($trim);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    return 'JSON invalide pour '.$attr.'.';
+                }
+            }
+            if ($attrLower === 'initial' && \strlen($value) > self::MAX_REDUCER) {
+                return 'initial trop volumineux.';
+            }
+        }
+        if ($tagName === 'sonic-hugging-face-infer' && $attrLower === 'model') {
+            $ok = (bool) preg_match('#^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$#', $value)
+                || (bool) preg_match('#^https://(www\.)?huggingface\.co/#i', $value);
+            if (!$ok) {
+                return 'model HF : org/nom ou URL https huggingface.co.';
+            }
+        }
+        if ($tagName === 'sonic-3d' && $attrLower === 'src') {
+            $trim = trim($value);
+            if ($trim === '' || str_starts_with($trim, '/')) {
+                return null;
+            }
+            if (!str_starts_with(strtolower($trim), 'https://')) {
+                return 'src 3D : https uniquement.';
+            }
+            $host = parse_url($trim, PHP_URL_HOST);
+            if (!\is_string($host)) {
+                return 'src 3D invalide.';
+            }
+            $host = strtolower($host);
+            $allowed = false;
+            foreach (self::MODEL_HOST_ALLOWLIST as $domain) {
+                if ($host === $domain || str_ends_with($host, '.'.$domain)) {
+                    $allowed = true;
+                    break;
+                }
+            }
+            if (!$allowed) {
+                return 'Domaine modele 3D hors liste blanche.';
+            }
+        }
+        if ($this->isUnsafeUrl($attr, $value)) {
+            return 'URL non autorisee (https uniquement ; pas de javascript:/data: hors image).';
+        }
+
+        return null;
     }
 
     private function isUnsafeUrl(string $attr, string $value): bool

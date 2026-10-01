@@ -20,6 +20,12 @@ final class ArtifactDocumentValidatorTest extends TestCase
                 ['name' => 'sonic-button'],
                 ['name' => 'sonic-badge'],
                 ['name' => 'sonic-caption'],
+                ['name' => 'sonic-shader'],
+                ['name' => 'sonic-3d'],
+                ['name' => 'sonic-jsonata'],
+                ['name' => 'sonic-hugging-face-infer'],
+                ['name' => 'sonic-store'],
+                ['name' => 'sonic-matrix'],
             ],
         ];
         $scripts = [
@@ -134,6 +140,120 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertTrue(
             (bool) array_filter($result['errors'], static fn (array $e): bool => str_contains($e['message'], 'hors catalogue')),
         );
+    }
+
+    public function testAcceptsSonicShader(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'][0] = [
+            'tagName' => 'sonic-shader',
+            'attributes' => [
+                'image' => 'void mainImage(out vec4 o, in vec2 p){o=vec4(0.2,0.4,0.8,1.0);}',
+                'class' => 'w-full h-64',
+            ],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testRejectsJavascriptInShaderAttr(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'][0] = [
+            'tagName' => 'sonic-shader',
+            'attributes' => ['image' => 'javascript:alert(1)'],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+    }
+
+    public function testRejectsOversizedShader(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'][0] = [
+            'tagName' => 'sonic-shader',
+            'attributes' => ['image' => str_repeat('x', 33 * 1024)],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+    }
+
+    public function testAcceptsSonic3dHttpsAllowlisted(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'][0] = [
+            'tagName' => 'sonic-3d',
+            'attributes' => ['src' => 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r180/examples/models/gltf/Duck/glTF/Duck.gltf'],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testRejectsSonic3dHttp(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'][0] = [
+            'tagName' => 'sonic-3d',
+            'attributes' => ['src' => 'http://example.com/model.glb'],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+    }
+
+    public function testAcceptsHuggingFaceModelId(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'][0] = [
+            'tagName' => 'sonic-hugging-face-infer',
+            'attributes' => [
+                'model' => 'Xenova/distilbert-base-uncased-finetuned-sst-2-english',
+                'inputProvider' => 'text',
+                'outputProvider' => 'out',
+            ],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testRejectsBadHuggingFaceModel(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'][0] = [
+            'tagName' => 'sonic-hugging-face-infer',
+            'attributes' => ['model' => 'https://evil.example/model'],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+    }
+
+    public function testAcceptsSonicStoreAndMatrix(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [
+            [
+                'tagName' => 'sonic-store',
+                'attributes' => [
+                    'id' => 'game',
+                    'initial' => '{"score":0}',
+                    'reducer' => '$merge([$state, {score: $state.score + 1}])',
+                ],
+            ],
+            [
+                'tagName' => 'sonic-matrix',
+                'attributes' => ['dataProvider' => 'game', 'key' => 'grid'],
+            ],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testCompactCatalogPayloadIsSmall(): void
+    {
+        $payload = $this->validator->mcpCatalogPayload(true);
+        $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE);
+        self::assertNotFalse($encoded);
+        self::assertLessThan(20_000, strlen($encoded));
+        self::assertArrayHasKey('commonProps', $payload['catalog']);
     }
 
     /** @return array<string, mixed> */

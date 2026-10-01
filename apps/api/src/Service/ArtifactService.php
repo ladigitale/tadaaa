@@ -22,7 +22,7 @@ use Symfony\Component\Uid\Uuid;
 final class ArtifactService
 {
     private const SLUG_PATTERN = '/^[a-z0-9][a-z0-9-]{2,63}$/';
-    private const CONCORDE_VERSION = '4.9.3';
+    private const CONCORDE_VERSION = '5.0.4-visual-stack.1';
 
     public function __construct(
         private readonly ArtifactRepository $artifacts,

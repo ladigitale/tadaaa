@@ -61,7 +61,10 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         }
 
         $payload = match (true) {
-            $data instanceof GetArtifactCatalogTool => $this->validator->mcpCatalogPayload(),
+            $data instanceof GetArtifactCatalogTool => $this->validator->mcpCatalogPayload(
+                $data->compact,
+                $data->components,
+            ),
             $data instanceof ValidateArtifactTool => $this->validator->validate($data->document ?? []),
             $data instanceof PublishArtifactTool => $this->publish($user, $data),
             $data instanceof UpdateArtifactTool => $this->update($user, $data),

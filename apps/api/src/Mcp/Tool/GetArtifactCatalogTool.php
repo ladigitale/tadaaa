@@ -12,12 +12,23 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
 #[McpTool(
     name: 'get_artifact_catalog',
     description: <<<'DESC'
-Retourne le catalogue Concorde autorisé, le squelette d’enveloppe `artifacts/1` et 2–3 exemples valides.
+Retourne le catalogue Concorde autorisé, le squelette d’enveloppe `artifacts/1` et des exemples valides.
 
-À appeler avant de composer un artefact SDUI. Les champs interdits (markup, innerHTML, js, javascript:) sont rejetés à la validation.
+Par défaut `compact=true` (props communes une fois + props spécifiques, < 8k tokens).
+`compact=false` pour le catalogue complet.
+`components` : filtre optionnel (ex. ["sonic-store","sonic-shader"]).
+À appeler avant de composer un artefact SDUI.
 DESC,
     processor: ArtifactMcpProcessor::class,
 )]
 final class GetArtifactCatalogTool
 {
+    /**
+     * @param list<string>|null $components
+     */
+    public function __construct(
+        public bool $compact = true,
+        public ?array $components = null,
+    ) {
+    }
 }
