@@ -1,7 +1,8 @@
 {$ARTIFACTS_SERVER_NAME:artifacts.example.com} {
 	encode zstd gzip
 	root * /artifacts
-	try_files {path} /index.html
+	# SPA : /slug et /slug/ → index.html (évite 404 / dossier fantôme)
+	try_files {path} {path}/index.html /index.html
 	file_server
 
 	header {

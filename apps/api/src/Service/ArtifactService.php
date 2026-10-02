@@ -347,7 +347,8 @@ final class ArtifactService
     public function publicUrl(string $slug, ?string $linkToken = null): string
     {
         $base = rtrim($this->publicBaseUrl, '/');
-        $url = $base.'/'.$slug.'/';
+        // Pas de "/" final : sinon SPA / Caddy + query `?k=` cassent le match router.
+        $url = $base.'/'.rawurlencode(ltrim($slug, '/'));
         if ($linkToken !== null && $linkToken !== '') {
             $url .= '?k='.rawurlencode($linkToken);
         }
