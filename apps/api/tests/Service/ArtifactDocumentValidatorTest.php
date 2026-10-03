@@ -256,6 +256,42 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertArrayHasKey('commonProps', $payload['catalog']);
     }
 
+    public function testAcceptsIntakeSourceAndSink(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['data'] = [
+            'sources' => ['scores' => ['collection' => 'scores', 'publicRead' => false, 'refresh' => 15, 'intake' => [
+                'fields' => [
+                    'name' => ['type' => 'string', 'max' => 20, 'required' => true],
+                    'score' => ['type' => 'integer', 'min' => 0, 'max' => 9999, 'required' => true],
+                ],
+                'maxRecords' => 40,
+            ]]],
+            'sinks' => ['scores' => ['collection' => 'scores', 'from' => 'game.outbox', 'merge' => ['name' => 'eleve.name'], 'ack' => 'game']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testRejectsSinkWithoutIntakeAndBadIntake(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['data'] = [
+            'sources' => [
+                'votes' => ['collection' => 'votes'],
+                'open' => ['collection' => 'open', 'writeMode' => 'intake', 'intake' => ['fields' => ['msg' => ['type' => 'string']]]],
+            ],
+            'sinks' => ['s' => ['collection' => 'votes', 'from' => 'nope']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        $paths = array_column($result['errors'], 'path');
+        self::assertContains('/data/sources/open/writeMode', $paths);
+        self::assertContains('/data/sources/open/intake', $paths);
+        self::assertContains('/data/sinks/s/collection', $paths);
+        self::assertContains('/data/sinks/s/from', $paths);
+    }
+
     /** @return array<string, mixed> */
     private function minimalDoc(): array
     {

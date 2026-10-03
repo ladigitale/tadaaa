@@ -35,4 +35,33 @@ class ArtifactRecordRepository extends ServiceEntityRepository
 
         return $rows;
     }
+
+    /** Records anonymes (collecte) créés depuis l'ouverture de la session. */
+    public function countAnonymousSince(ArtifactCollection $collection, \DateTimeImmutable $since): int
+    {
+        return (int) $this->createQueryBuilder('r')
+            ->select('COUNT(r.id)')
+            ->andWhere('r.collection = :c')
+            ->andWhere('r.createdBy IS NULL')
+            ->andWhere('r.createdAt >= :since')
+            ->setParameter('c', $collection)
+            ->setParameter('since', $since)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function countForCollection(ArtifactCollection $collection): int
+    {
+        return $this->count(['collection' => $collection]);
+    }
+
+    public function deleteForCollection(ArtifactCollection $collection): int
+    {
+        return (int) $this->createQueryBuilder('r')
+            ->delete()
+            ->andWhere('r.collection = :c')
+            ->setParameter('c', $collection)
+            ->getQuery()
+            ->execute();
+    }
 }

@@ -516,6 +516,8 @@ final class ArtifactService
     {
         $summary = $this->serializeSummary($artifact);
         $summary['document'] = $document;
+        // Appelé uniquement pour des lecteurs authentifiés du jeu (getForUser / publish / update).
+        $summary['collections'] = $this->artifactData->describeCollections($artifact, true);
         $summary['version'] = $artifact->getCurrentVersion();
         if ($artifact->getVisibility() === ArtifactVisibility::Link) {
             $summary['linkToken'] = $artifact->getLinkToken();

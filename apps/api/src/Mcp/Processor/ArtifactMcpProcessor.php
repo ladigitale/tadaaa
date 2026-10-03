@@ -8,10 +8,12 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\AuditLog;
 use App\Entity\User;
+use App\Mcp\Tool\CloseArtifactIntakeTool;
 use App\Mcp\Tool\DeleteArtifactTool;
 use App\Mcp\Tool\GetArtifactCatalogTool;
 use App\Mcp\Tool\GetArtifactTool;
 use App\Mcp\Tool\ListArtifactsTool;
+use App\Mcp\Tool\OpenArtifactIntakeTool;
 use App\Mcp\Tool\PublishArtifactTool;
 use App\Mcp\Tool\ReadArtifactDataTool;
 use App\Mcp\Tool\UpdateArtifactTool;
@@ -77,6 +79,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 'records' => $this->data->readForUser($user, $data->slug, $data->collection),
             ],
             $data instanceof WriteArtifactDataTool => $this->writeData($user, $data),
+            $data instanceof OpenArtifactIntakeTool => $this->openIntake($user, $data),
+            $data instanceof CloseArtifactIntakeTool => $this->closeIntake($user, $data),
             default => throw new \InvalidArgumentException(sprintf(
                 'Payload MCP artefact non supporté : %s',
                 get_debug_type($data),
@@ -214,6 +218,30 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         return ['action' => 'created', 'record' => $created];
     }
 
+    /** @return array<string, mixed> */
+    private function openIntake(User $user, OpenArtifactIntakeTool $tool): array
+    {
+        if ($tool->slug === '' || $tool->collection === '') {
+            throw new BadRequestHttpException('slug et collection requis.');
+        }
+
+        return ['collection' => $this->data->openIntake($user, $tool->slug, $tool->collection, $tool->minutes ?? 60, $tool->maxRecords)];
+    }
+
+    /** @return array<string, mixed> */
+    private function closeIntake(User $user, CloseArtifactIntakeTool $tool): array
+    {
+        if ($tool->slug === '' || $tool->collection === '') {
+            throw new BadRequestHttpException('slug et collection requis.');
+        }
+        $state = $this->data->closeIntake($user, $tool->slug, $tool->collection, $tool->purge);
+        if ($tool->rotateReadToken) {
+            $state = $this->data->rotateReadToken($user, $tool->slug, $tool->collection);
+        }
+
+        return ['collection' => $state];
+    }
+
     private function resolveIdOrSlug(?string $id, ?string $slug): ?string
     {
         $id = $this->emptyToNull($id);
@@ -257,6 +285,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof DeleteArtifactTool => 'delete_artifact',
             $data instanceof ReadArtifactDataTool => 'read_artifact_data',
             $data instanceof WriteArtifactDataTool => 'write_artifact_data',
+            $data instanceof OpenArtifactIntakeTool => 'open_artifact_intake',
+            $data instanceof CloseArtifactIntakeTool => 'close_artifact_intake',
             default => get_debug_type($data),
         };
     }
