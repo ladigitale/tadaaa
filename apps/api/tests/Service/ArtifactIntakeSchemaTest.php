@@ -70,4 +70,11 @@ final class ArtifactIntakeSchemaTest extends TestCase
         self::assertNotSame([], ArtifactIntakeSchema::validateRecord($fields, ['name' => str_repeat('x', 5000), 'score' => 1])['errors']);
         self::assertNotSame([], ArtifactIntakeSchema::validateRecord($fields, ['name' => 'Léa', 'score' => '12'])['errors']);
     }
+
+    public function testRecordRejectsMarkup(): void
+    {
+        $fields = ArtifactIntakeSchema::normalize($this->decl())['fields'];
+        $r = ArtifactIntakeSchema::validateRecord($fields, ['name' => '<img src=x>', 'score' => 1]);
+        self::assertSame(['name : caractères < et > non autorisés.'], $r['errors']);
+    }
 }

@@ -177,6 +177,11 @@ final class ArtifactIntakeSchema
                         $errors[] = 'Champ requis : '.$name.'.';
                         break;
                     }
+                    // Pas de balisage : certains composants d'affichage rendent du HTML.
+                    if (preg_match('/[<>]/', $v)) {
+                        $errors[] = $name.' : caractères < et > non autorisés.';
+                        break;
+                    }
                     if (mb_strlen($v) > $def['max']) {
                         $errors[] = $name.' : '.$def['max'].' caractères maximum.';
                         break;
