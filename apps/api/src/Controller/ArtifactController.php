@@ -142,6 +142,39 @@ final class ArtifactController extends AbstractController
         return $this->json($this->artifacts->rotateLink($user, $id, $request->getClientIp()));
     }
 
+    /** Ouvre / prolonge une collecte contrôlée. Corps : {"minutes": 60, "maxRecords": 40?} */
+    #[Route('/{id}/collections/{name}/intake', name: 'api_artifacts_intake_open', methods: ['POST'], requirements: ['name' => '[a-z][a-z0-9_]{0,63}'])]
+    public function openIntake(string $id, string $name, Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $body = $request->getContent() === '' ? [] : $this->jsonBody($request);
+        $minutes = \is_int($body['minutes'] ?? null) ? $body['minutes'] : 60;
+        $max = \is_int($body['maxRecords'] ?? null) ? $body['maxRecords'] : null;
+
+        return $this->json($this->artifactData->openIntake($user, $id, $name, $minutes, $max));
+    }
+
+    /** Ferme la collecte (`?purge=1` supprime aussi tous les records). */
+    #[Route('/{id}/collections/{name}/intake', name: 'api_artifacts_intake_close', methods: ['DELETE'], requirements: ['name' => '[a-z][a-z0-9_]{0,63}'])]
+    public function closeIntake(string $id, string $name, Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        return $this->json($this->artifactData->closeIntake($user, $id, $name, $request->query->getBoolean('purge')));
+    }
+
+    /** Régénère le lien secret de lecture d'une collection non publique. */
+    #[Route('/{id}/collections/{name}/rotate-read-token', name: 'api_artifacts_rotate_read_token', methods: ['POST'], requirements: ['name' => '[a-z][a-z0-9_]{0,63}'])]
+    public function rotateReadToken(string $id, string $name): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        return $this->json($this->artifactData->rotateReadToken($user, $id, $name));
+    }
+
     #[Route('/{id}/collections/{name}/records', name: 'api_artifacts_records_list', methods: ['GET'], requirements: ['name' => '[a-z][a-z0-9_]{0,63}'])]
     public function listRecords(string $id, string $name): JsonResponse
     {

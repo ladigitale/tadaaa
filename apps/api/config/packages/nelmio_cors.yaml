@@ -18,7 +18,8 @@ nelmio_cors:
         '^/api/public/artifacts':
             origin_regex: true
             allow_origin: ['%env(CORS_ALLOW_ORIGIN)%']
-            allow_methods: ['GET', 'OPTIONS']
+            # POST : uniquement l'envoi en collecte contrôlée (…/collections/{name}/records).
+            allow_methods: ['GET', 'OPTIONS', 'POST']
             allow_headers: ['Content-Type', 'Authorization', 'If-None-Match']
             expose_headers: ['ETag', 'Cache-Control']
             max_age: 3600

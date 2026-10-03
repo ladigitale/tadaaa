@@ -142,6 +142,7 @@ final class ArtifactDocumentValidator
                 'tagName' => 'Uniquement composants Concorde (sonic-*) ou balises HTML sûres du catalogue.',
                 'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent.',
                 'interactive' => 'sonic-store + keyboard/gamepad/gesture/action/ticker + sonic-matrix.',
+                'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
             ],
             'scripts' => $this->scriptsCatalog->mcpSummary(),
             'examples' => array_slice($examples, 0, 5),
@@ -435,6 +436,21 @@ final class ArtifactDocumentValidator
                     if (!\is_array($src) || !isset($src['collection']) || !\is_string($src['collection'])
                         || !preg_match('/^[a-z][a-z0-9_]{0,63}$/', $src['collection'])) {
                         $errors[] = ['path' => $path.'/sources/'.$name, 'message' => 'source.collection invalide.'];
+                        continue;
+                    }
+                    if (isset($src['writeMode']) && !\in_array($src['writeMode'], ['none', 'members', 'authenticated'], true)) {
+                        $errors[] = ['path' => $path.'/sources/'.$name.'/writeMode', 'message' => 'writeMode : none | members | authenticated (collecte anonyme : déclarer `intake`).'];
+                    }
+                    if (isset($src['publicRead']) && !\is_bool($src['publicRead'])) {
+                        $errors[] = ['path' => $path.'/sources/'.$name.'/publicRead', 'message' => 'publicRead doit être un booléen.'];
+                    }
+                    if (isset($src['refresh']) && (!\is_int($src['refresh']) || $src['refresh'] < 5 || $src['refresh'] > 3600)) {
+                        $errors[] = ['path' => $path.'/sources/'.$name.'/refresh', 'message' => 'refresh : 5…3600 secondes.'];
+                    }
+                    if (isset($src['intake'])) {
+                        foreach (ArtifactIntakeSchema::validateDeclaration($src['intake']) as $msg) {
+                            $errors[] = ['path' => $path.'/sources/'.$name.'/intake', 'message' => $msg];
+                        }
                     }
                 }
             }
@@ -472,6 +488,65 @@ final class ArtifactDocumentValidator
                         $errors[] = ['path' => $path.'/stores/'.$name.'/reducer', 'message' => 'reducer trop long (max 32 Ko).'];
                     }
                 }
+            }
+        }
+        if (isset($data['sinks'])) {
+            $this->validateSinks($data['sinks'], \is_array($data['sources'] ?? null) ? $data['sources'] : [], $path.'/sinks', $errors);
+        }
+    }
+
+    /**
+     * `data.sinks` : le viewer poste vers une collecte les éléments d'une boîte d'envoi du store.
+     *   "sinks": {"scores": {"collection": "scores", "from": "game.outbox", "merge": {"name": "eleve.name"}}}
+     *
+     * @param array<string, mixed> $sources
+     * @param list<array{path: string, message: string}> $errors
+     */
+    private function validateSinks(mixed $sinks, array $sources, string $path, array &$errors): void
+    {
+        if (!\is_array($sinks) || ($sinks !== [] && array_is_list($sinks))) {
+            $errors[] = ['path' => $path, 'message' => 'sinks doit être un objet.'];
+
+            return;
+        }
+        if (\count($sinks) > 4) {
+            $errors[] = ['path' => $path, 'message' => 'Trop de sinks (max 4).'];
+        }
+        $intakeCollections = [];
+        foreach ($sources as $src) {
+            if (\is_array($src) && isset($src['intake'], $src['collection']) && \is_string($src['collection'])) {
+                $intakeCollections[] = $src['collection'];
+            }
+        }
+        $dpPath = '/^[a-zA-Z][a-zA-Z0-9_-]{0,63}(\.[a-zA-Z0-9_]{1,64}){1,4}$/';
+        foreach ($sinks as $name => $sink) {
+            $p = $path.'/'.$name;
+            if (!\is_array($sink)) {
+                $errors[] = ['path' => $p, 'message' => 'sink invalide.'];
+                continue;
+            }
+            if (!\is_string($sink['collection'] ?? null) || !\in_array($sink['collection'], $intakeCollections, true)) {
+                $errors[] = ['path' => $p.'/collection', 'message' => 'collection doit être une source déclarée avec `intake`.'];
+            }
+            if (!\is_string($sink['from'] ?? null) || !preg_match($dpPath, $sink['from'])) {
+                $errors[] = ['path' => $p.'/from', 'message' => 'from : chemin DataProvider « store.cle ».'];
+            }
+            if (isset($sink['merge'])) {
+                if (!\is_array($sink['merge']) || \count($sink['merge']) > 8) {
+                    $errors[] = ['path' => $p.'/merge', 'message' => 'merge : objet (max 8 champs).'];
+                } else {
+                    foreach ($sink['merge'] as $field => $src) {
+                        if (!\is_string($field) || !\is_string($src) || !preg_match($dpPath, $src)) {
+                            $errors[] = ['path' => $p.'/merge/'.$field, 'message' => 'merge : champ → chemin DataProvider.'];
+                        }
+                    }
+                }
+            }
+            if (isset($sink['code']) && (!\is_string($sink['code']) || !preg_match($dpPath, $sink['code']))) {
+                $errors[] = ['path' => $p.'/code', 'message' => 'code : chemin DataProvider du code de session.'];
+            }
+            if (isset($sink['ack']) && (!\is_string($sink['ack']) || !preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/', $sink['ack']))) {
+                $errors[] = ['path' => $p.'/ack', 'message' => 'ack : id du sonic-store à notifier.'];
             }
         }
     }

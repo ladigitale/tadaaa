@@ -35,6 +35,30 @@ class ArtifactCollection
     #[ORM\Column(length: 16, enumType: ArtifactCollectionScope::class)]
     private ArtifactCollectionScope $scope = ArtifactCollectionScope::Shared;
 
+    /**
+     * Collecte contrôlée (writeMode = intake) : schéma normalisé, voir ArtifactIntakeSchema.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $intakeSchema = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $intakeOpenedAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $intakeOpenUntil = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $intakeMaxRecords = null;
+
+    #[ORM\Column(length: 8, nullable: true)]
+    private ?string $intakeCode = null;
+
+    /** Jeton de lecture « lien secret » (collections non publiques). */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $readToken = null;
+
     /** @var Collection<int, ArtifactRecord> */
     #[ORM\OneToMany(mappedBy: 'collection', targetEntity: ArtifactRecord::class, orphanRemoval: true)]
     private Collection $records;
@@ -102,5 +126,77 @@ class ArtifactCollection
     public function getRecords(): Collection
     {
         return $this->records;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function getIntakeSchema(): ?array
+    {
+        return $this->intakeSchema;
+    }
+
+    /** @param array<string, mixed>|null $schema */
+    public function setIntakeSchema(?array $schema): static
+    {
+        $this->intakeSchema = $schema;
+
+        return $this;
+    }
+
+    public function getIntakeOpenedAt(): ?\DateTimeImmutable
+    {
+        return $this->intakeOpenedAt;
+    }
+
+    public function getIntakeOpenUntil(): ?\DateTimeImmutable
+    {
+        return $this->intakeOpenUntil;
+    }
+
+    public function getIntakeMaxRecords(): ?int
+    {
+        return $this->intakeMaxRecords;
+    }
+
+    public function getIntakeCode(): ?string
+    {
+        return $this->intakeCode;
+    }
+
+    public function isIntakeOpen(\DateTimeImmutable $now): bool
+    {
+        return $this->writeMode === ArtifactWriteMode::Intake
+            && $this->intakeSchema !== null
+            && $this->intakeOpenUntil !== null
+            && $now < $this->intakeOpenUntil;
+    }
+
+    public function openIntake(\DateTimeImmutable $now, \DateTimeImmutable $until, int $maxRecords, ?string $code): static
+    {
+        $this->intakeOpenedAt = $now;
+        $this->intakeOpenUntil = $until;
+        $this->intakeMaxRecords = $maxRecords;
+        $this->intakeCode = $code;
+
+        return $this;
+    }
+
+    public function closeIntake(): static
+    {
+        $this->intakeOpenUntil = null;
+        $this->intakeCode = null;
+
+        return $this;
+    }
+
+    public function getReadToken(): ?string
+    {
+        return $this->readToken;
+    }
+
+    public function setReadToken(?string $token): static
+    {
+        $this->readToken = $token;
+
+        return $this;
     }
 }
