@@ -16,7 +16,7 @@ namespace App\Service;
  *       "level": {"type": "enum",    "values": ["facile", "moyen", "difficile"]}
  *     },
  *     "maxRecords": 40,       // par session ouverte (plafond dur HARD_MAX_RECORDS)
- *     "minInterval": 10,      // secondes entre deux envois d'une même IP
+ *     "minInterval": 0,       // s entre deux envois d’une même IP (0 = off ; éviter en classe : IP partagée)
  *     "requireCode": false    // code à 4 chiffres généré à l'ouverture
  *   }
  */
@@ -26,7 +26,7 @@ final class ArtifactIntakeSchema
     public const MAX_STRING = 200;
     public const HARD_MAX_RECORDS = 500;
     public const DEFAULT_MAX_RECORDS = 50;
-    public const DEFAULT_MIN_INTERVAL = 10;
+    public const DEFAULT_MIN_INTERVAL = 0;
     public const MAX_SESSION_MINUTES = 1440;
     public const MAX_PAYLOAD_BYTES = 2048;
 
@@ -98,8 +98,8 @@ final class ArtifactIntakeSchema
         if (isset($intake['maxRecords']) && (!\is_int($intake['maxRecords']) || $intake['maxRecords'] < 1 || $intake['maxRecords'] > self::HARD_MAX_RECORDS)) {
             $errors[] = 'intake.maxRecords : 1…'.self::HARD_MAX_RECORDS.'.';
         }
-        if (isset($intake['minInterval']) && (!\is_int($intake['minInterval']) || $intake['minInterval'] < 1 || $intake['minInterval'] > 3600)) {
-            $errors[] = 'intake.minInterval : 1…3600 secondes.';
+        if (isset($intake['minInterval']) && (!\is_int($intake['minInterval']) || $intake['minInterval'] < 0 || $intake['minInterval'] > 3600)) {
+            $errors[] = 'intake.minInterval : 0…3600 secondes.';
         }
         if (isset($intake['requireCode']) && !\is_bool($intake['requireCode'])) {
             $errors[] = 'intake.requireCode doit être un booléen.';

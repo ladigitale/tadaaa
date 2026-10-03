@@ -29,7 +29,7 @@ framework:
         # Envois anonymes (collecte contrôlée) : en plus du quota / intervalle par collection.
         artifacts_intake:
             policy: sliding_window
-            limit: 20
+            limit: 60
             interval: '1 minute'
             lock_factory: null
 

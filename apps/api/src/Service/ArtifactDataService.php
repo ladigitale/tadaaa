@@ -19,6 +19,7 @@ use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -184,12 +185,16 @@ final class ArtifactDataService
             throw new AccessDeniedHttpException('Quota de la collecte atteint.');
         }
 
-        $item = $this->cache->getItem('intake_'.$collection->getId()->toBase32().'_'.hash('xxh128', $clientIp));
-        if ($item->isHit()) {
-            throw new AccessDeniedHttpException('Patientez quelques secondes avant un nouvel envoi.');
+        // Intervalle par IP : désactivé par défaut (une classe partage souvent une seule IP publique).
+        $interval = (int) ($schema['minInterval'] ?? ArtifactIntakeSchema::DEFAULT_MIN_INTERVAL);
+        if ($interval > 0) {
+            $item = $this->cache->getItem('intake_'.$collection->getId()->toBase32().'_'.hash('xxh128', $clientIp));
+            if ($item->isHit()) {
+                throw new TooManyRequestsHttpException($interval, 'Patientez quelques secondes avant un nouvel envoi.');
+            }
+            $item->set(1)->expiresAfter($interval);
+            $this->cache->save($item);
         }
-        $item->set(1)->expiresAfter(max(1, (int) ($schema['minInterval'] ?? ArtifactIntakeSchema::DEFAULT_MIN_INTERVAL)));
-        $this->cache->save($item);
 
         $record = new ArtifactRecord($collection, $result['data'], null);
         $this->em->persist($record);

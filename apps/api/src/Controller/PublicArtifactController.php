@@ -12,6 +12,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -54,9 +55,10 @@ final class PublicArtifactController extends AbstractController
     #[Route('/{slug}/collections/{name}/records', name: 'api_public_artifact_intake', methods: ['POST'], requirements: ['slug' => '[a-z0-9][a-z0-9-]{2,63}', 'name' => '[a-z][a-z0-9_]{0,63}'])]
     public function intake(string $slug, string $name, Request $request): JsonResponse
     {
-        $limiter = $this->artifactsIntakeLimiter->create($request->getClientIp() ?: 'anon');
-        if (!$limiter->consume(1)->isAccepted()) {
-            throw $this->createAccessDeniedException('Trop d’envois.');
+        $limit = $this->artifactsIntakeLimiter->create($request->getClientIp() ?: 'anon')->consume(1);
+        if (!$limit->isAccepted()) {
+            $retry = max(1, $limit->getRetryAfter()->getTimestamp() - time());
+            throw new TooManyRequestsHttpException($retry, 'Trop d’envois, réessayez dans quelques secondes.');
         }
         if (\strlen($request->getContent()) > 4096) {
             return $this->json(['error' => 'Envoi trop volumineux.'], Response::HTTP_REQUEST_ENTITY_TOO_LARGE);
