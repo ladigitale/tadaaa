@@ -312,4 +312,23 @@ final class ArtifactDocumentValidatorTest extends TestCase
             ],
         ];
     }
+
+    public function testAcceptsGoogleFonts(): void
+    {
+        $doc = ['schema' => 'artifacts/1', 'title' => 'F', 'defaultView' => 'home',
+            'fonts' => ['Patrick Hand', 'Fredoka:wght@400;700', 'Lora:ital,wght@0,400;1,400'],
+            'views' => [['id' => 'home', 'title' => 'H', 'root' => ['nodes' => [['tagName' => 'div']]]]]];
+        self::assertTrue($this->validator->validate($doc)['valid']);
+    }
+
+    public function testRejectsBadFonts(): void
+    {
+        $doc = ['schema' => 'artifacts/1', 'title' => 'F', 'defaultView' => 'home',
+            'fonts' => ['https://evil.example/x.css', 'Roboto&family=X', 'a', 'B', 'C'],
+            'views' => [['id' => 'home', 'title' => 'H', 'root' => ['nodes' => [['tagName' => 'div']]]]]];
+        $r = $this->validator->validate($doc);
+        self::assertFalse($r['valid']);
+        self::assertCount(4, $r['errors']); // trop de polices + URL + injection + minuscule
+    }
+
 }
