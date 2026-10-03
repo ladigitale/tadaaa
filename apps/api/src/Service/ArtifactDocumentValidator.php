@@ -142,6 +142,7 @@ final class ArtifactDocumentValidator
                 'tagName' => 'Uniquement composants Concorde (sonic-*) ou balises HTML sûres du catalogue.',
                 'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent. views[].hidden = true : vue absente des onglets (accessible par son #id).',
                 'interactive' => 'sonic-store + keyboard/gamepad/gesture/action/ticker + sonic-matrix.',
+                'polices' => 'Optionnel : "fonts": ["Patrick Hand", "Fredoka:wght@400;700"] (4 max, noms Google Fonts, pas d’URL). Le viewer les charge ; utiliser ensuite font-family:\'Patrick Hand\',cursive dans les styles. Toujours prévoir une police de repli.',
                 'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
             ],
             'scripts' => $this->scriptsCatalog->mcpSummary(),
@@ -281,6 +282,10 @@ final class ArtifactDocumentValidator
             }
         }
 
+        if (\array_key_exists('fonts', $document)) {
+            $this->validateFonts($document['fonts'], $errors);
+        }
+
         // Reject unknown top-level keys beyond envelope
         $allowedTop = [
             'schema' => true,
@@ -290,6 +295,7 @@ final class ArtifactDocumentValidator
             'views' => true,
             'defaultView' => true,
             'data' => true,
+            'fonts' => true,
         ];
         foreach (array_keys($document) as $key) {
             if (!isset($allowedTop[$key])) {
@@ -659,4 +665,32 @@ final class ArtifactDocumentValidator
 
         return \is_array($decoded) ? $decoded : [];
     }
+
+    public const MAX_FONTS = 4;
+    /** Famille Google Fonts + axes optionnels (ex. "Fredoka:wght@400;700", "Lora:ital,wght@0,400;1,400"). */
+    public const FONT_SPEC = '/^[A-Z][A-Za-z0-9]*( [A-Z0-9][A-Za-z0-9]*){0,4}(:(ital,)?wght@[0-9;,]{1,40}|:ital@[01;,]{1,10})?$/';
+
+    /**
+     * `fonts` : familles Google Fonts chargées par le viewer (fonts.googleapis.com, déjà autorisé par la CSP).
+     * Uniquement des noms de famille : jamais d'URL.
+     *
+     * @param list<array{path: string, message: string}> $errors
+     */
+    private function validateFonts(mixed $fonts, array &$errors): void
+    {
+        if (!\is_array($fonts) || !array_is_list($fonts)) {
+            $errors[] = ['path' => '/fonts', 'message' => 'fonts doit être une liste de familles Google Fonts.'];
+
+            return;
+        }
+        if (\count($fonts) > self::MAX_FONTS) {
+            $errors[] = ['path' => '/fonts', 'message' => sprintf('%d polices maximum.', self::MAX_FONTS)];
+        }
+        foreach ($fonts as $i => $font) {
+            if (!\is_string($font) || \strlen($font) > 80 || !preg_match(self::FONT_SPEC, $font)) {
+                $errors[] = ['path' => '/fonts/'.$i, 'message' => 'Famille invalide (ex. "Patrick Hand" ou "Fredoka:wght@400;700").'];
+            }
+        }
+    }
+
 }
