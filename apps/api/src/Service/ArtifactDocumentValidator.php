@@ -140,7 +140,7 @@ final class ArtifactDocumentValidator
                 'interdit' => ['markup', 'innerHTML', 'js', 'css', 'prefix', 'suffix', 'javascript:', 'URL libre de script'],
                 'scripts' => 'Optionnel: tableau d’IDs du catalogue scripts (voir scripts.libraries[].id). Ex: ["chartjs","leaflet"]. Pas d’URL, pas de balise <script>.',
                 'tagName' => 'Uniquement composants Concorde (sonic-*) ou balises HTML sûres du catalogue.',
-                'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent.',
+                'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent. views[].hidden = true : vue absente des onglets (accessible par son #id).',
                 'interactive' => 'sonic-store + keyboard/gamepad/gesture/action/ticker + sonic-matrix.',
                 'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
             ],
@@ -248,6 +248,9 @@ final class ArtifactDocumentValidator
                 $vTitle = $view['title'] ?? null;
                 if (!\is_string($vTitle) || trim($vTitle) === '') {
                     $errors[] = ['path' => $base.'/title', 'message' => 'title de vue requis.'];
+                }
+                if (isset($view['hidden']) && !\is_bool($view['hidden'])) {
+                    $errors[] = ['path' => $base.'/hidden', 'message' => 'hidden doit être un booléen (vue hors navigation).'];
                 }
                 $root = $view['root'] ?? null;
                 if (!\is_array($root)) {
