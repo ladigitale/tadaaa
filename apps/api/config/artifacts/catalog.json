@@ -1437,6 +1437,37 @@
       }
     },
     {
+      "name": "sonic-sfx",
+      "props": {
+        "sound": {
+          "type": "string"
+        },
+        "on": {
+          "type": "string"
+        },
+        "hover": {
+          "type": "string"
+        },
+        "engine": {
+          "type": "string"
+        },
+        "pitch": {
+          "type": "number"
+        },
+        "vol": {
+          "type": "number"
+        }
+      },
+      "description": "Son au clic / survol des enfants (creative-stack)",
+      "example": {
+        "tagName": "sonic-sfx",
+        "attributes": {
+          "sound": "click",
+          "hover": "hover"
+        }
+      }
+    },
+    {
       "name": "sonic-shader",
       "props": {
         "image": {
@@ -1510,6 +1541,38 @@
       "example": {
         "tagName": "sonic-shader",
         "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-sound",
+      "props": {
+        "id": {
+          "type": "string"
+        },
+        "bank": {
+          "type": "object"
+        },
+        "bank-provider": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        },
+        "max-voices": {
+          "type": "number"
+        }
+      },
+      "description": "Son WebAudio (creative-stack) : banque JSON bank, pilotage DP control, état out-data-provider",
+      "example": {
+        "tagName": "sonic-sound",
+        "attributes": {
+          "control": "game.sound",
+          "out-data-provider": "sfx",
+          "bank": "{\"sfx\":{\"coin\":\"coin\"}}"
+        }
       }
     },
     {
@@ -2123,5 +2186,5 @@
     "i",
     "u"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded. Sound addon (@supersoniks/creative-stack): sonic-sound/sonic-sfx."
 }
