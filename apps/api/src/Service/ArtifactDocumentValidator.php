@@ -20,6 +20,9 @@ final class ArtifactDocumentValidator
     public const MAX_SHADER_SOURCE = 32 * 1024;
     public const MAX_HF_TEXT = 8 * 1024;
     public const MAX_SOUND_BANK = 64 * 1024;
+    public const MAX_AUDIO_PATTERN = 16 * 1024;
+    public const MAX_AUDIO_SAMPLES = 16 * 1024;
+    public const MAX_AUDIO_PARAMS = 4 * 1024;
 
     private const FORBIDDEN_NODE_KEYS = ['markup', 'innerHTML', 'prefix', 'suffix', 'js', 'css'];
     private const FORBIDDEN_DESCRIPTOR_KEYS = ['js', 'css'];
@@ -30,7 +33,7 @@ final class ArtifactDocumentValidator
         'reducer', 'initial', 'keymap', 'palette',
     ];
 
-    private const JSON_ATTRS = ['initial', 'keymap', 'palette', 'payload', 'repeat', 'options', 'bank'];
+    private const JSON_ATTRS = ['initial', 'keymap', 'palette', 'payload', 'repeat', 'options', 'bank', 'pattern', 'samples', 'params', 'notes-map', 'choke'];
 
     /** Mémo du format son pour l'agent (addon `sound` de @supersoniks/creative-stack). */
     private const SOUND_RULE = 'sonic-sound (1 par page) : tout est synthétisé, aucun fichier. '
@@ -43,6 +46,18 @@ final class ArtifactDocumentValidator
         .'out-data-provider (défaut soundState) : {unlocked, muted, paused, music:{id, playing, ended, bpm, bar, beat, pattern, loops}, lastSfx, lastUi, played:{nom:n}, errors:[…]}. '
         .'Le son ne démarre qu’après un geste : afficher une invite tant que unlocked = false. '
         .'sonic-sfx sound="click" hover="hover" enveloppe des boutons (sons d’interface sans store).';
+
+    /** Mémo de l'addon `audio` (synthèse modulaire, séquenceur, sampler, analyseur). */
+    private const AUDIO_RULE = 'Un seul moteur audio par page, démarré au premier geste (sonic-audio-unlock = bouton d’invite). '
+        .'INSTRUMENT : sonic-patch preset="synth/lead|bass|pad|pluck|fm-bell|chip|drums/kick|snare|hat|kit" params=\'{"cutoff":900}\' (cutoff/reso, pad : attack, pluck : decay, chip : pw) events="dp.notes" trigger="dp.tick" (trigger = valeur qui change → rejoue events ; sans trigger : joué quand la liste change). '
+        .'Événement : {note:"C4"|60, vel, durS, sample:"kick", type:note|noteOn|noteOff|param, when, id}. drums/kit : samples kick snare clap hat openhat. '
+        .'PATCH MAIN : <sonic-patch><sonic-voice> modules joués par note </sonic-voice> modules globaux </sonic-patch>. Modules : sonic-osc (wave sine|square|sawtooth|triangle|pulse, freq-hz=voice.pitch, detune, octave, semi, level, fm, fm-amount), sonic-noise (color), sonic-mixer (in, levels), sonic-filter (type, freq-hz, q), sonic-vca (gain), sonic-env (a d s r), sonic-lfo (rate-hz | sync="1/8"), sonic-shaper, sonic-pan, sonic-delay (time s|"3/16", feedback, mix), sonic-reverb (size-s, mix), sonic-chorus, sonic-comp. '
+        .'Câblage : name + in="o1 o2" (sinon module précédent ; global : la somme des voix). Modulation : sonic-mod from="env|lfo|voice.vel|voice.pitch|voice.rand" to="flt.freq-hz" amount (curve="exp" : demi-tons) ; raccourci gain="aenv". sonic-param to="flt.freq-hz" source="dp.cutoff" ramp-s min max | expose="cutoff". Boucle audio seulement via sonic-delay. Kit : plusieurs sonic-voice sample="kick" note="C2". '
+        .'SÉQUENCEUR : sonic-sequencer bpm swing seed control="dp.transport" ({playing,bpm,swing,pattern}) pattern=\'{"kit":{"kick":"x...x...x...x...","hat":"[..x.]*4"},"bass":{"notes":"0 ~ 2 [4 7]","scale":"a2:minor-pentatonic"},"lead":"<c5 e5 g5>"}\' (clé = id d’instrument ; ligne = 1 mesure : grille x/X/., [ ] sous-division, ~ silence, - tenue, <a b> alternance, *n, !n, @n, ?p, x(3,8,r) euclide, c4+e4 accord, degrés avec scale). '
+        .'store="idStore" : le reducer reçoit {type:"step", payload:{step,beat,bar,phase,when,bpm}} en avance et écrit des notes avec when (augmenter budget-ms / lookahead-ms si le reducer est lourd). État <id>State : {playing, step, beat, bar, phase}. '
+        .'SAMPLER : sonic-sampler samples=\'{"kick":"https://…/kick.wav","voix":{"ref":"rec.last","root":"C4"}}\' (https uniquement ; gain pan pitch root start end loop reverse gate) choke=\'[["hat","openhat"]]\'. '
+        .'ANALYSEUR : sonic-audio-analyser id="spectre" source="master|#id" → DP spectreState {rms, peak, db, bands[], centroidHz, onset, onsetCount, pitchHz(attr pitch)} ; sonic-shader channel0="#spectre" : texture(iChannel0, vec2(x,0.25)).r spectre, vec2(x,0.75) onde. '
+        .'États : <id>State de chaque composant (status idle tant que le son n’est pas actif, errors lisibles). Volumes : garder gain ≤ 0.6 par instrument, le master est limité.';
 
     /** @var list<string> */
     private const MODEL_HOST_ALLOWLIST = [
@@ -156,6 +171,7 @@ final class ArtifactDocumentValidator
                 'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent. views[].hidden = true : vue absente des onglets (accessible par son #id).',
                 'interactive' => 'sonic-store + keyboard/gamepad/gesture/action/ticker + sonic-matrix.',
                 'son' => self::SOUND_RULE,
+                'audio' => self::AUDIO_RULE,
                 'polices' => 'Optionnel : "fonts": ["Patrick Hand", "Fredoka:wght@400;700"] (4 max, noms Google Fonts, pas d’URL). Le viewer les charge ; utiliser ensuite font-family:\'Patrick Hand\',cursive dans les styles. Toujours prévoir une police de repli.',
                 'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
             ],
@@ -600,6 +616,16 @@ final class ArtifactDocumentValidator
             if ($attrLower === 'bank' && \strlen($value) > self::MAX_SOUND_BANK) {
                 return sprintf('bank trop volumineuse (max %d Ko).', self::MAX_SOUND_BANK / 1024);
             }
+            $audioMax = ['pattern' => self::MAX_AUDIO_PATTERN, 'samples' => self::MAX_AUDIO_SAMPLES, 'params' => self::MAX_AUDIO_PARAMS];
+            if (isset($audioMax[$attrLower]) && \strlen($value) > $audioMax[$attrLower]) {
+                return sprintf('%s trop volumineux (max %d Ko).', $attr, $audioMax[$attrLower] / 1024);
+            }
+            if ($tagName === 'sonic-sampler' && $attrLower === 'samples') {
+                $msg = $this->validateSampleUrls($value);
+                if ($msg !== null) {
+                    return $msg;
+                }
+            }
         }
         if ($tagName === 'sonic-hugging-face-infer' && $attrLower === 'model') {
             $ok = (bool) preg_match('#^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$#', $value)
@@ -634,6 +660,30 @@ final class ArtifactDocumentValidator
         }
         if ($this->isUnsafeUrl($attr, $value)) {
             return 'URL non autorisee (https uniquement ; pas de javascript:/data: hors image).';
+        }
+
+        return null;
+    }
+
+    /** URLs des samples : https ou relatives (pas de http, data:, blob:, javascript:). */
+    private function validateSampleUrls(string $json): ?string
+    {
+        $samples = json_decode($json, true);
+        if (!\is_array($samples)) {
+            return null;
+        }
+        foreach ($samples as $name => $spec) {
+            $url = \is_string($spec) ? $spec : (\is_array($spec) ? ($spec['url'] ?? null) : null);
+            if ($url === null) {
+                continue;
+            }
+            if (!\is_string($url) || $url === '') {
+                return sprintf('samples.%s : url invalide.', $name);
+            }
+            $u = trim($url);
+            if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $u) === 1 && stripos($u, 'https://') !== 0) {
+                return sprintf('samples.%s : URL https uniquement (ou relative ; enregistrement : "ref").', $name);
+            }
         }
 
         return null;

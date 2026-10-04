@@ -28,6 +28,14 @@ final class ArtifactDocumentValidatorTest extends TestCase
                 ['name' => 'sonic-matrix'],
                 ['name' => 'sonic-sound'],
                 ['name' => 'sonic-sfx'],
+                ['name' => 'sonic-patch'],
+                ['name' => 'sonic-voice'],
+                ['name' => 'sonic-osc'],
+                ['name' => 'sonic-env'],
+                ['name' => 'sonic-vca'],
+                ['name' => 'sonic-sequencer'],
+                ['name' => 'sonic-sampler'],
+                ['name' => 'sonic-audio-analyser'],
             ],
         ];
         $scripts = [
@@ -286,11 +294,50 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('bank trop volumineuse', $result['errors'][0]['message']);
     }
 
+    public function testAcceptsAudioStack(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'sonic-patch', 'attributes' => ['id' => 'lead', 'preset' => 'synth/lead', 'params' => '{"cutoff":900}', 'events' => 'g.notes', 'trigger' => 'g.tick']],
+            ['tagName' => 'sonic-patch', 'attributes' => ['id' => 'warm'], 'nodes' => [
+                ['tagName' => 'sonic-voice', 'nodes' => [
+                    ['tagName' => 'sonic-osc', 'attributes' => ['name' => 'o', 'wave' => 'sawtooth']],
+                    ['tagName' => 'sonic-env', 'attributes' => ['name' => 'e']],
+                    ['tagName' => 'sonic-vca', 'attributes' => ['gain' => 'e']],
+                ]],
+            ]],
+            ['tagName' => 'sonic-sequencer', 'attributes' => ['id' => 'seq', 'pattern' => '{"lead":"c4 [e4 g4]","kit":{"kick":"x...x..."}}', 'store' => 'g']],
+            ['tagName' => 'sonic-sampler', 'attributes' => ['id' => 'smp', 'samples' => '{"kick":"https://cdn.example.org/kick.wav","voix":{"ref":"rec.last"},"rel":"sons/a.wav"}']],
+            ['tagName' => 'sonic-audio-analyser', 'attributes' => ['id' => 'spectre', 'source' => 'master']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testRejectsUnsafeSamplesAndOversizedPattern(): void
+    {
+        foreach (['http://insecure.org/a.wav', 'data:audio/wav;base64,AAAA', 'javascript:alert(1)', 'blob:https://x/1'] as $url) {
+            $doc = $this->minimalDoc();
+            $doc['views'][0]['root']['nodes'] = [['tagName' => 'sonic-sampler', 'attributes' => ['samples' => json_encode(['a' => ['url' => $url]])]]];
+            $result = $this->validator->validate($doc);
+            self::assertFalse($result['valid'], $url);
+        }
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [['tagName' => 'sonic-sequencer', 'attributes' => ['pattern' => json_encode(['a' => str_repeat('x', 20000)])]]];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('pattern trop volumineux', $result['errors'][0]['message']);
+        $doc['views'][0]['root']['nodes'] = [['tagName' => 'sonic-sequencer', 'attributes' => ['pattern' => '{"a":']]];
+        self::assertFalse($this->validator->validate($doc)['valid']);
+    }
+
     public function testCatalogPayloadExplainsSound(): void
     {
         $payload = $this->validator->mcpCatalogPayload(true);
         self::assertArrayHasKey('son', $payload['rules']);
         self::assertStringContainsString('play:{nom: compteur', $payload['rules']['son']);
+        self::assertArrayHasKey('audio', $payload['rules']);
+        self::assertStringContainsString('sonic-sequencer', $payload['rules']['audio']);
     }
 
     public function testCompactCatalogPayloadIsSmall(): void
