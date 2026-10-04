@@ -26,6 +26,8 @@ final class ArtifactDocumentValidatorTest extends TestCase
                 ['name' => 'sonic-hugging-face-infer'],
                 ['name' => 'sonic-store'],
                 ['name' => 'sonic-matrix'],
+                ['name' => 'sonic-sound'],
+                ['name' => 'sonic-sfx'],
             ],
         ];
         $scripts = [
@@ -245,6 +247,50 @@ final class ArtifactDocumentValidatorTest extends TestCase
         ];
         $result = $this->validator->validate($doc);
         self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testAcceptsSonicSoundAndSfx(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [
+            [
+                'tagName' => 'sonic-sound',
+                'attributes' => [
+                    'control' => 'game.sound',
+                    'out-data-provider' => 'sfx',
+                    'bank' => '{"sfx":{"coin":"coin"},"songs":{"theme":{"bpm":120,"instruments":{"kick":"kick"},"patterns":{"A":{"kick":"x . . ."}}}}}',
+                ],
+            ],
+            [
+                'tagName' => 'sonic-sfx',
+                'attributes' => ['sound' => 'click', 'hover' => 'hover'],
+                'nodes' => [['tagName' => 'sonic-button']],
+            ],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testRejectsInvalidOrOversizedSoundBank(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [['tagName' => 'sonic-sound', 'attributes' => ['bank' => '{"sfx":{"coin":']]];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('JSON invalide', $result['errors'][0]['message']);
+
+        $big = json_encode(['sfx' => ['x' => ['wave' => 'sine', 'arp' => array_fill(0, 40000, 7)]]]);
+        $doc['views'][0]['root']['nodes'] = [['tagName' => 'sonic-sound', 'attributes' => ['bank' => $big]]];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('bank trop volumineuse', $result['errors'][0]['message']);
+    }
+
+    public function testCatalogPayloadExplainsSound(): void
+    {
+        $payload = $this->validator->mcpCatalogPayload(true);
+        self::assertArrayHasKey('son', $payload['rules']);
+        self::assertStringContainsString('play:{nom: compteur', $payload['rules']['son']);
     }
 
     public function testCompactCatalogPayloadIsSmall(): void

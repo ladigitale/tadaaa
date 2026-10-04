@@ -19,6 +19,7 @@ final class ArtifactDocumentValidator
     public const MAX_REDUCER = 32 * 1024;
     public const MAX_SHADER_SOURCE = 32 * 1024;
     public const MAX_HF_TEXT = 8 * 1024;
+    public const MAX_SOUND_BANK = 64 * 1024;
 
     private const FORBIDDEN_NODE_KEYS = ['markup', 'innerHTML', 'prefix', 'suffix', 'js', 'css'];
     private const FORBIDDEN_DESCRIPTOR_KEYS = ['js', 'css'];
@@ -29,7 +30,19 @@ final class ArtifactDocumentValidator
         'reducer', 'initial', 'keymap', 'palette',
     ];
 
-    private const JSON_ATTRS = ['initial', 'keymap', 'palette', 'payload', 'repeat', 'options'];
+    private const JSON_ATTRS = ['initial', 'keymap', 'palette', 'payload', 'repeat', 'options', 'bank'];
+
+    /** Mémo du format son pour l'agent (addon `sound` de @supersoniks/creative-stack). */
+    private const SOUND_RULE = 'sonic-sound (1 par page) : tout est synthétisé, aucun fichier. '
+        .'bank = JSON {"sfx":{nom: preset | {preset?, wave:sine|square|triangle|sawtooth|noise, freq, slide(demi-tons), dur, attack, decay, sustain, release, vol, arp:[0,4,7], arpRate, vibrato:{rate,depth}, filter:{type,freq,q,to}, repeat, jitter, layers:[…], bus:sfx|ui, cooldown}}, '
+        .'"songs":{nom:{bpm, steps(4), loop(true), loopFrom, swing, vol, instruments:{nom: preset | SynthDef}, patterns:{A:{instrument:"C4 - . E4+G4 x X G4! |"}}, sequence:["A","B"]}}}. '
+        .'Pistes : 1 jeton par pas ; note C4/F#3/Bb2, accord C4+E4, "-" tenue, "." silence, x/X frappe, "!" accent ; une piste courte qui divise la longueur du motif se répète. '
+        .'Presets jouables sans déclaration : click hover select back toggle error success notify type coin pickup jump land shoot laser hit hurt explosion powerup levelup gameover whoosh bounce teleport alarm step. '
+        .'Instruments : kick snare hat openhat clap tom shaker lead chip bass sub pad pluck bell organ flute strings (instrument nommé comme un preset = preset implicite). '
+        .'control = DP (ex. sous-clé du store "game.sound") : {music: nom|null, fade, paused, muted, volume:{master,music,sfx,ui}, play:{nom: compteur | {n, pitch, vol}}} ; toute hausse d’un compteur joue le son (la 1re valeur sert de référence) ; un morceau dans play = jingle par-dessus la musique. '
+        .'out-data-provider (défaut soundState) : {unlocked, muted, paused, music:{id, playing, ended, bpm, bar, beat, pattern, loops}, lastSfx, lastUi, played:{nom:n}, errors:[…]}. '
+        .'Le son ne démarre qu’après un geste : afficher une invite tant que unlocked = false. '
+        .'sonic-sfx sound="click" hover="hover" enveloppe des boutons (sons d’interface sans store).';
 
     /** @var list<string> */
     private const MODEL_HOST_ALLOWLIST = [
@@ -142,6 +155,7 @@ final class ArtifactDocumentValidator
                 'tagName' => 'Uniquement composants Concorde (sonic-*) ou balises HTML sûres du catalogue.',
                 'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent. views[].hidden = true : vue absente des onglets (accessible par son #id).',
                 'interactive' => 'sonic-store + keyboard/gamepad/gesture/action/ticker + sonic-matrix.',
+                'son' => self::SOUND_RULE,
                 'polices' => 'Optionnel : "fonts": ["Patrick Hand", "Fredoka:wght@400;700"] (4 max, noms Google Fonts, pas d’URL). Le viewer les charge ; utiliser ensuite font-family:\'Patrick Hand\',cursive dans les styles. Toujours prévoir une police de repli.',
                 'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
             ],
@@ -582,6 +596,9 @@ final class ArtifactDocumentValidator
             }
             if ($attrLower === 'initial' && \strlen($value) > self::MAX_REDUCER) {
                 return 'initial trop volumineux.';
+            }
+            if ($attrLower === 'bank' && \strlen($value) > self::MAX_SOUND_BANK) {
+                return sprintf('bank trop volumineuse (max %d Ko).', self::MAX_SOUND_BANK / 1024);
             }
         }
         if ($tagName === 'sonic-hugging-face-infer' && $attrLower === 'model') {
