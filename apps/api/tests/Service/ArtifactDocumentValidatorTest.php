@@ -36,6 +36,10 @@ final class ArtifactDocumentValidatorTest extends TestCase
                 ['name' => 'sonic-sequencer'],
                 ['name' => 'sonic-sampler'],
                 ['name' => 'sonic-audio-analyser'],
+                ['name' => 'sonic-mic'],
+                ['name' => 'sonic-camera'],
+                ['name' => 'sonic-video'],
+                ['name' => 'sonic-media-start'],
             ],
         ];
         $scripts = [
@@ -331,6 +335,48 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertFalse($this->validator->validate($doc)['valid']);
     }
 
+    public function testAcceptsMediaWithCapabilities(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['capabilities'] = ['camera', 'microphone'];
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'sonic-camera', 'attributes' => ['id' => 'cam', 'hidden-preview' => '', 'control' => 'g.cam', 'snapshot-provider' => 'gallery.channel0']],
+            ['tagName' => 'sonic-mic', 'attributes' => ['id' => 'mic']],
+            ['tagName' => 'sonic-video', 'attributes' => ['id' => 'clip', 'src' => 'https://cdn.jsdelivr.net/gh/a/b@1/clip.webm', 'audio-out' => 'master', 'control' => 'g.player']],
+            ['tagName' => 'sonic-media-start', 'attributes' => ['for' => 'cam mic', 'label' => 'Activer']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testRejectsMediaWithoutCapabilitiesOrUnsafeVideo(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [['tagName' => 'sonic-camera', 'attributes' => ['id' => 'cam']]];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('"camera"', $result['errors'][0]['message']);
+
+        $doc['capabilities'] = ['camera', 'gps'];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('Capacité inconnue', $result['errors'][0]['message']);
+
+        $doc['capabilities'] = 'camera';
+        self::assertFalse($this->validator->validate($doc)['valid']);
+
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [['tagName' => 'sonic-video', 'attributes' => ['src' => 'http://insecure.org/a.webm']]];
+        self::assertFalse($this->validator->validate($doc)['valid']);
+
+        $doc = $this->minimalDoc();
+        $doc['capabilities'] = ['microphone'];
+        $doc['views'][0]['root']['nodes'] = array_fill(0, 3, ['tagName' => 'sonic-mic']);
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('Trop de sonic-mic', $result['errors'][0]['message']);
+    }
+
     public function testCatalogPayloadExplainsSound(): void
     {
         $payload = $this->validator->mcpCatalogPayload(true);
@@ -338,6 +384,8 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('play:{nom: compteur', $payload['rules']['son']);
         self::assertArrayHasKey('audio', $payload['rules']);
         self::assertStringContainsString('sonic-sequencer', $payload['rules']['audio']);
+        self::assertArrayHasKey('media', $payload['rules']);
+        self::assertStringContainsString('capabilities', $payload['rules']['media']);
     }
 
     public function testCompactCatalogPayloadIsSmall(): void

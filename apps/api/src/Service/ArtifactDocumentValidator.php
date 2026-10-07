@@ -24,6 +24,13 @@ final class ArtifactDocumentValidator
     public const MAX_AUDIO_SAMPLES = 16 * 1024;
     public const MAX_AUDIO_PARAMS = 4 * 1024;
 
+    /** Accès sensibles déclarés par le document (`capabilities`) et composants qui les exigent. */
+    public const CAPABILITIES = ['camera', 'microphone'];
+    private const CAPABILITY_TAGS = ['sonic-camera' => 'camera', 'sonic-mic' => 'microphone'];
+
+    /** @var array<string, int> balises rencontrées pendant la validation courante */
+    private array $seenTags = [];
+
     private const FORBIDDEN_NODE_KEYS = ['markup', 'innerHTML', 'prefix', 'suffix', 'js', 'css'];
     private const FORBIDDEN_DESCRIPTOR_KEYS = ['js', 'css'];
 
@@ -46,6 +53,15 @@ final class ArtifactDocumentValidator
         .'out-data-provider (défaut soundState) : {unlocked, muted, paused, music:{id, playing, ended, bpm, bar, beat, pattern, loops}, lastSfx, lastUi, played:{nom:n}, errors:[…]}. '
         .'Le son ne démarre qu’après un geste : afficher une invite tant que unlocked = false. '
         .'sonic-sfx sound="click" hover="hover" enveloppe des boutons (sons d’interface sans store).';
+
+    /** Mémo de l'addon `media` (caméra, vidéo) et du micro. */
+    private const MEDIA_RULE = 'Caméra / micro : déclarer "capabilities": ["camera"] / ["microphone"] à la racine du document (sinon refusé ; le viewer prévient l’utilisateur). Aucun accès au chargement : démarrer par un clic. '
+        .'BOUTON : sonic-media-start for="cam mic" label="Activer la caméra" (caché une fois prêt, affiche un refus) ; ou sonic-audio-unlock start="mic" (son + micro en un clic). '
+        .'CAMÉRA : sonic-camera id="cam" (hidden-preview si elle ne sert que de source, facing user|environment, mirror auto|true|false, fit, width/height/fps) control="dp.cam" ({active, facing, deviceId, snapshot: compteur}) snapshot-provider="gallery.channel0" (photo SonicMediaRef écrite là) ; état camState {status: idle|requesting|ready|paused|denied|error|unsupported, error, width, height, snapshot, snapshots}. Dans un shader : channel0="#cam". '
+        .'Photo : incrémenter control.snapshot dans le reducer ; l’afficher avec un sonic-shader dataProvider="gallery" (texture(iChannel0, uv)). '
+        .'MICRO : sonic-mic id="mic" (monitor pour l’entendre, sinon muet) control="dp.mic" ({active, monitor, gain}) ; état micState {status, error, rms, db} ; sonic-audio-analyser source="#mic" (pitch pour la hauteur, onsetCount pour les attaques). '
+        .'VIDÉO : sonic-video id="clip" src="https://…webm|mp4" (https ou relative) loop muted autoplay hidden-preview preload="blob" audio-out="master" (son → moteur audio, analysable par sonic-audio-analyser source="#clip") control="dp.player" ({playing, seek: {t, n}, rate, volume, muted, loopStart, loopEnd}) ; état clipState {status: loading|ready|playing|paused|ended|needs-gesture|error, timeS, durationS, progress}. Shader : channel0="#clip". Autoplay avec son refusé par le navigateur → démarre muette (needs-gesture) : prévoir sonic-media-start for="clip". '
+        .'Compteurs (snapshot, seek.n) : la première valeur sert de référence, chaque hausse déclenche.';
 
     /** Mémo de l'addon `audio` (synthèse modulaire, séquenceur, sampler, analyseur). */
     private const AUDIO_RULE = 'Un seul moteur audio par page, démarré au premier geste (sonic-audio-unlock = bouton d’invite). '
@@ -172,6 +188,7 @@ final class ArtifactDocumentValidator
                 'interactive' => 'sonic-store + keyboard/gamepad/gesture/action/ticker + sonic-matrix.',
                 'son' => self::SOUND_RULE,
                 'audio' => self::AUDIO_RULE,
+                'media' => self::MEDIA_RULE,
                 'polices' => 'Optionnel : "fonts": ["Patrick Hand", "Fredoka:wght@400;700"] (4 max, noms Google Fonts, pas d’URL). Le viewer les charge ; utiliser ensuite font-family:\'Patrick Hand\',cursive dans les styles. Toujours prévoir une police de repli.',
                 'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
             ],
@@ -247,6 +264,8 @@ final class ArtifactDocumentValidator
             $errors[] = ['path' => '', 'message' => sprintf('Document trop volumineux (max %d Ko).', self::MAX_BYTES / 1024)];
         }
 
+        $this->seenTags = [];
+
         if (($document['schema'] ?? null) !== 'artifacts/1') {
             $errors[] = ['path' => '/schema', 'message' => 'schema doit être "artifacts/1".'];
         }
@@ -316,6 +335,8 @@ final class ArtifactDocumentValidator
             $this->validateFonts($document['fonts'], $errors);
         }
 
+        $this->validateCapabilities($document['capabilities'] ?? null, \array_key_exists('capabilities', $document), $errors);
+
         // Reject unknown top-level keys beyond envelope
         $allowedTop = [
             'schema' => true,
@@ -326,6 +347,7 @@ final class ArtifactDocumentValidator
             'defaultView' => true,
             'data' => true,
             'fonts' => true,
+            'capabilities' => true,
         ];
         foreach (array_keys($document) as $key) {
             if (!isset($allowedTop[$key])) {
@@ -403,6 +425,9 @@ final class ArtifactDocumentValidator
         }
 
         $tagName = $node['tagName'] ?? 'div';
+        if (\is_string($tagName)) {
+            $this->seenTags[$tagName] = ($this->seenTags[$tagName] ?? 0) + 1;
+        }
         if (!\is_string($tagName) || $tagName === '') {
             $errors[] = ['path' => $path.'/tagName', 'message' => 'tagName invalide.'];
         } elseif (!isset($this->allowedTagSet[$tagName])) {
@@ -663,6 +688,41 @@ final class ArtifactDocumentValidator
         }
 
         return null;
+    }
+
+    /**
+     * `capabilities` : accès sensibles que le document peut demander (le viewer l'affiche
+     * avant tout clic). Un sonic-camera / sonic-mic exige la capacité correspondante.
+     *
+     * @param list<array{path: string, message: string}> $errors
+     */
+    private function validateCapabilities(mixed $caps, bool $present, array &$errors): void
+    {
+        $declared = [];
+        if ($present) {
+            if (!\is_array($caps) || !array_is_list($caps)) {
+                $errors[] = ['path' => '/capabilities', 'message' => 'capabilities : liste attendue (ex. ["camera"]).'];
+            } else {
+                foreach ($caps as $i => $cap) {
+                    if (!\is_string($cap) || !\in_array($cap, self::CAPABILITIES, true)) {
+                        $errors[] = ['path' => '/capabilities/'.$i, 'message' => sprintf('Capacité inconnue (valeurs : %s).', implode(', ', self::CAPABILITIES))];
+                        continue;
+                    }
+                    $declared[$cap] = true;
+                }
+            }
+        }
+        foreach (self::CAPABILITY_TAGS as $tag => $cap) {
+            if (isset($this->seenTags[$tag]) && !isset($declared[$cap])) {
+                $errors[] = ['path' => '/capabilities', 'message' => sprintf('%s utilisé : ajouter "%s" à capabilities.', $tag, $cap)];
+            }
+        }
+        $limits = ['sonic-camera' => 2, 'sonic-mic' => 2, 'sonic-video' => 6];
+        foreach ($limits as $tag => $max) {
+            if (($this->seenTags[$tag] ?? 0) > $max) {
+                $errors[] = ['path' => '/views', 'message' => sprintf('Trop de %s (max %d).', $tag, $max)];
+            }
+        }
     }
 
     /** URLs des samples : https ou relatives (pas de http, data:, blob:, javascript:). */

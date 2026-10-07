@@ -179,9 +179,12 @@
         },
         "persist": {
           "type": "boolean"
+        },
+        "start": {
+          "type": "string"
         }
       },
-      "description": "Bouton « Activer le son » (caché une fois le son actif)"
+      "description": "Bouton « Activer le son » ; start=\"mic\" démarre aussi le micro dans le même geste"
     },
     {
       "name": "sonic-badge",
@@ -238,6 +241,63 @@
         "tagName": "sonic-button",
         "attributes": {}
       }
+    },
+    {
+      "name": "sonic-camera",
+      "props": {
+        "active": {
+          "type": "boolean"
+        },
+        "autostart": {
+          "type": "boolean"
+        },
+        "facing": {
+          "type": "string"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "device-id": {
+          "type": "string"
+        },
+        "mirror": {
+          "type": "string"
+        },
+        "fit": {
+          "type": "string"
+        },
+        "hidden-preview": {
+          "type": "boolean"
+        },
+        "keep-running": {
+          "type": "boolean"
+        },
+        "max-width": {
+          "type": "number"
+        },
+        "snapshot-type": {
+          "type": "string"
+        },
+        "max-snapshots": {
+          "type": "number"
+        },
+        "snapshot-provider": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "description": "Caméra : aperçu, source d'images (#id) pour sonic-shader, photos (control.snapshot compteur → snapshot-provider) ; démarrage sur geste ; état {status, error, width, height, snapshot, snapshots}"
     },
     {
       "name": "sonic-captcha",
@@ -1171,6 +1231,21 @@
       }
     },
     {
+      "name": "sonic-media-start",
+      "props": {
+        "for": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "persist": {
+          "type": "boolean"
+        }
+      },
+      "description": "Bouton d'invite : démarre caméra / micro / vidéo listés dans for (clic = geste) ; caché une fois prêts ; affiche un refus"
+    },
+    {
       "name": "sonic-menu",
       "props": {
         "class": {
@@ -1216,6 +1291,45 @@
         "tagName": "sonic-menu-item",
         "attributes": {}
       }
+    },
+    {
+      "name": "sonic-mic",
+      "props": {
+        "active": {
+          "type": "boolean"
+        },
+        "autostart": {
+          "type": "boolean"
+        },
+        "monitor": {
+          "type": "boolean"
+        },
+        "gain": {
+          "type": "number"
+        },
+        "device-id": {
+          "type": "string"
+        },
+        "echo-cancellation": {
+          "type": "boolean"
+        },
+        "noise-suppression": {
+          "type": "boolean"
+        },
+        "auto-gain": {
+          "type": "boolean"
+        },
+        "rate": {
+          "type": "number"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "description": "Micro : source audio (#id) pour analyseur / patch ; jamais vers le master sauf monitor ; démarrage sur geste ; DP control {active, monitor, gain, deviceId} ; état {status, error, rms, db, devices}"
     },
     {
       "name": "sonic-mix",
@@ -2580,6 +2694,66 @@
       "description": "Ampli ; gain=\"<env>\" pour une enveloppe"
     },
     {
+      "name": "sonic-video",
+      "props": {
+        "src": {
+          "type": "url"
+        },
+        "src-provider": {
+          "type": "string"
+        },
+        "autoplay": {
+          "type": "boolean"
+        },
+        "loop": {
+          "type": "boolean"
+        },
+        "muted": {
+          "type": "boolean"
+        },
+        "controls": {
+          "type": "boolean"
+        },
+        "preload": {
+          "type": "string"
+        },
+        "crossorigin": {
+          "type": "string"
+        },
+        "fit": {
+          "type": "string"
+        },
+        "hidden-preview": {
+          "type": "boolean"
+        },
+        "rate": {
+          "type": "number"
+        },
+        "volume": {
+          "type": "number"
+        },
+        "loop-start": {
+          "type": "number"
+        },
+        "loop-end": {
+          "type": "number"
+        },
+        "audio-out": {
+          "type": "string"
+        },
+        "update-rate": {
+          "type": "number"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "description": "Lecteur vidéo (https, relatif, blob:) : DP control {playing, seek, rate, volume, muted, loop, loopStart, loopEnd} ; état {status, timeS, durationS, progress, playing} ; source d'images (#id) ; audio-out=master|#id|none pour l'analyse"
+    },
+    {
       "name": "sonic-voice",
       "props": {
         "sample": {
@@ -2705,5 +2879,5 @@
     "i",
     "u"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded. creative-stack : sound (sonic-sound/sonic-sfx), audio (sonic-patch + modules, sonic-sequencer, sonic-sampler, sonic-audio-analyser)."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded. creative-stack : sound (sonic-sound/sonic-sfx), audio (sonic-patch + modules, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic), media (sonic-camera, sonic-video, sonic-media-start ; capabilities requis pour caméra / micro)."
 }
