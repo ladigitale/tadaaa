@@ -23,6 +23,7 @@ use App\Mcp\Tool\WriteArtifactDataTool;
 use App\Service\ArtifactDataService;
 use App\Service\ArtifactDocumentValidator;
 use App\Service\ArtifactService;
+use App\Service\ArtifactStyleExpander;
 use App\Service\AuditLogger;
 use App\Service\DatasetAccessService;
 use App\Service\UsageMeter;
@@ -68,7 +69,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 $data->compact,
                 $data->components,
             ),
-            $data instanceof ValidateArtifactTool => $this->validator->validate($data->document ?? []),
+            $data instanceof ValidateArtifactTool => $this->validateDocument($data->document ?? []),
             $data instanceof PublishArtifactTool => $this->publish($user, $data),
             $data instanceof UpdateArtifactTool => $this->update($user, $data),
             $data instanceof GetArtifactTool => $this->get($user, $data),
@@ -96,6 +97,22 @@ final class ArtifactMcpProcessor implements ProcessorInterface
     }
 
     /** @return array<string, mixed> */
+    /**
+     * @param array<string, mixed> $document
+     *
+     * @return array<string, mixed>
+     */
+    private function validateDocument(array $document): array
+    {
+        try {
+            $document = ArtifactStyleExpander::expand($document);
+        } catch (\Symfony\Component\HttpKernel\Exception\BadRequestHttpException $e) {
+            return ['valid' => false, 'errors' => [['path' => '/styles', 'message' => $e->getMessage()]]];
+        }
+
+        return $this->validator->validate($document);
+    }
+
     private function publish(User $user, PublishArtifactTool $tool): array
     {
         $document = $tool->document;
@@ -186,7 +203,17 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             throw new BadRequestHttpException('id ou slug requis.');
         }
 
-        return $this->artifacts->getForUser($user, $idOrSlug, $tool->version);
+        $full = $this->artifacts->getForUser($user, $idOrSlug, $tool->version);
+        if ($tool->path === null || $tool->path === '') {
+            return $full;
+        }
+
+        $document = \is_array($full['document'] ?? null) ? $full['document'] : [];
+        unset($full['document'], $full['collections']);
+        $full['path'] = $tool->path;
+        $full['value'] = ArtifactDocumentPatcher::read($document, $tool->path, $tool->outline);
+
+        return $full;
     }
 
     /** @return array<string, mixed> */

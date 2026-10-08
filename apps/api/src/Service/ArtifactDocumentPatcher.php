@@ -48,6 +48,39 @@ final class ArtifactDocumentPatcher
     }
 
     /**
+     * Lecture ciblée : renvoie la valeur au chemin JSON Pointer donné.
+     * Pour les objets/listes volumineux, ne retourne que la forme (clés, longueurs) si $shapeOnly.
+     *
+     * @param array<string, mixed> $document
+     */
+    public static function read(array $document, string $path, bool $shapeOnly = false): mixed
+    {
+        if ($path !== '' && $path[0] !== '/') {
+            throw new BadRequestHttpException('path doit être un JSON Pointer commençant par « / ».');
+        }
+        $node = $document;
+        if ($path !== '') {
+            foreach (explode('/', substr($path, 1)) as $raw) {
+                $t = str_replace(['~1', '~0'], ['/', '~'], $raw);
+                if (!\is_array($node) || !\array_key_exists(self::normalizeKey($node, $t), $node)) {
+                    throw new BadRequestHttpException(sprintf('chemin introuvable : %s.', $path));
+                }
+                $node = $node[self::normalizeKey($node, $t)];
+            }
+        }
+        if (!$shapeOnly) {
+            return $node;
+        }
+        if (\is_array($node)) {
+            return array_is_list($node)
+                ? ['type' => 'list', 'length' => \count($node), 'itemTags' => array_map(static fn (mixed $n): mixed => \is_array($n) ? ($n['tagName'] ?? $n['id'] ?? 'object') : \gettype($n), \array_slice($node, 0, 50))]
+                : ['type' => 'object', 'keys' => array_map(static fn (mixed $v): string => \is_array($v) ? (array_is_list($v) ? 'list['.\count($v).']' : 'object') : (\is_string($v) ? 'string('.\strlen($v).')' : \gettype($v)), $node)];
+        }
+
+        return \is_string($node) ? ['type' => 'string', 'length' => \strlen($node)] : ['type' => \gettype($node), 'value' => $node];
+    }
+
+    /**
      * @param array<string, mixed> $document
      * @param array<string, mixed> $op
      *

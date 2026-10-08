@@ -70,4 +70,20 @@ final class ArtifactDocumentPatcherTest extends TestCase
             }
         }
     }
+
+    public function testReadReturnsSubtreeOrShape(): void
+    {
+        self::assertSame(['tagName' => 'p'], ArtifactDocumentPatcher::read($this->doc(), '/views/0/root/nodes/1'));
+        self::assertSame(
+            ['type' => 'list', 'length' => 2, 'itemTags' => ['div', 'p']],
+            ArtifactDocumentPatcher::read($this->doc(), '/views/0/root/nodes', true),
+        );
+        self::assertSame(
+            ['type' => 'string', 'length' => 14],
+            ArtifactDocumentPatcher::read($this->doc(), '/data/t/jsonata', true),
+        );
+
+        $this->expectException(BadRequestHttpException::class);
+        ArtifactDocumentPatcher::read($this->doc(), '/x');
+    }
 }
