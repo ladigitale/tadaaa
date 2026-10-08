@@ -51,7 +51,7 @@ final class PreviewArtifactTool implements AgentTool
         if (!$result['valid']) {
             return ToolResult::json($result, true);
         }
-        $context->sink->emit(['type' => 'CUSTOM', 'name' => self::EVENT, 'value' => ['document' => $document]]);
+        $context->sink->emit(['type' => 'CUSTOM', 'name' => self::EVENT, 'value' => ['document' => $context->withEmptyObjects($document, 'document')]]);
 
         return ToolResult::json(['valid' => true, 'previewed' => true]);
     }

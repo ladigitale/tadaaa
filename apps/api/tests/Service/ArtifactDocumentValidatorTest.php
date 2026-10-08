@@ -508,6 +508,30 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertArrayHasKey('commonProps', $payload['catalog']);
     }
 
+    public function testShippedCatalogMatchesTheViewer(): void
+    {
+        $dir = \dirname(__DIR__, 2).'/config/artifacts';
+        $validator = new ArtifactDocumentValidator(
+            $dir.'/catalog.json',
+            $dir.'/sdui.schema.json',
+            new \App\Service\ArtifactScriptsCatalog($dir.'/scripts-catalog.json'),
+        );
+        self::assertStringStartsWith('5.', $validator->concordeVersion());
+        foreach (['sonic-button', 'sonic-alert', 'sonic-radio', 'sonic-switch', 'sonic-store', 'sonic-sound', 'sonic-physics', 'div'] as $tag) {
+            self::assertContains($tag, $validator->allowedTags(), $tag);
+        }
+        self::assertFalse(\in_array('sonic-example', $validator->allowedTags(), true));
+
+        $full = $validator->mcpCatalogPayload(false, ['sonic-alert']);
+        $alert = $full['catalog']['components'][0]['props']['status'];
+        self::assertSame(['default', 'info', 'success', 'warning', 'error'], $alert['values']);
+        self::assertArrayHasKey('default', $alert);
+
+        $compact = $validator->mcpCatalogPayload(true, ['sonic-alert']);
+        self::assertSame(['type' => 'string', 'values' => ['default', 'info', 'success', 'warning', 'error']], $compact['catalog']['components'][0]['props']['status']);
+        self::assertSame($validator->concordeVersion(), $compact['catalog']['concordeVersion']);
+    }
+
     public function testAcceptsIntakeSourceAndSink(): void
     {
         $doc = $this->minimalDoc();

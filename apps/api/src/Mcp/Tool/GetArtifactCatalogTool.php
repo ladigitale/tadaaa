@@ -14,8 +14,8 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
     description: <<<'DESC'
 Retourne le catalogue Concorde autorisé, le squelette d’enveloppe `artifacts/1` et des exemples valides.
 
-Par défaut `compact=true` (props communes une fois + props spécifiques, < 8k tokens).
-`compact=false` pour le catalogue complet.
+Par défaut `compact=true` (props communes une fois, puis props spécifiques avec type et valeurs permises ; descriptions et défauts dans le catalogue complet).
+`compact=false` pour le catalogue complet (avec descriptions des props et valeurs par défaut).
 `components` : filtre optionnel (ex. ["sonic-store","sonic-shader"]).
 À appeler avant de composer un artefact SDUI.
 DESC,

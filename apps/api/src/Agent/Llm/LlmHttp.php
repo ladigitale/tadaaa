@@ -13,10 +13,11 @@ final class LlmHttp
     /**
      * @param array<string, string> $headers
      * @param array<string, mixed>  $body
+     * @param string|null           $raw  reçoit le corps brut de la réponse
      *
      * @return array<string, mixed>
      */
-    public static function postJson(HttpClientInterface $http, string $url, array $headers, array $body): array
+    public static function postJson(HttpClientInterface $http, string $url, array $headers, array $body, ?string &$raw = null): array
     {
         try {
             $response = $http->request('POST', $url, [
@@ -27,6 +28,7 @@ final class LlmHttp
             ]);
             $status = $response->getStatusCode();
             $data = $response->toArray(false);
+            $raw = $response->getContent(false);
         } catch (ExceptionInterface $e) {
             throw new LlmUnavailable('Fournisseur injoignable : '.self::short($e->getMessage()), 0, $e);
         }

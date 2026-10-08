@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Repository\DatasetRepository;
 use App\Repository\UserRepository;
 use App\Service\ArtifactService;
+use App\Service\JsonShape;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -69,7 +70,8 @@ final class ArtifactsSeedDemoCommand extends Command
             return Command::FAILURE;
         }
         /** @var mixed $raw */
-        $raw = json_decode((string) file_get_contents($path), true);
+        $json = (string) file_get_contents($path);
+        $raw = json_decode($json, true);
         if (!\is_array($raw)) {
             $io->error('JSON exemple invalide.');
 
@@ -85,6 +87,8 @@ final class ArtifactsSeedDemoCommand extends Command
             $slug,
             'public',
             'Seed app:artifacts:seed-demo',
+            null,
+            JsonShape::emptyObjectPathsInJson($json),
         );
 
         $io->success(sprintf('Artefact démo publié : %s', $created['url'] ?? $slug));

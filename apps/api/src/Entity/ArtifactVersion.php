@@ -28,6 +28,15 @@ class ArtifactVersion
     #[ORM\Column(type: 'json')]
     private array $document = [];
 
+    /**
+     * Pointeurs JSON des objets vides du document d'origine (`{}`), que le décodage
+     * en tableaux PHP confond avec `[]`. Voir {@see \App\Service\JsonShape}.
+     *
+     * @var list<string>|null
+     */
+    #[ORM\Column(name: 'empty_objects', type: 'json', nullable: true)]
+    private ?array $emptyObjects = null;
+
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private User $createdBy;
@@ -38,9 +47,13 @@ class ArtifactVersion
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $note = null;
 
-    /** @param array<string, mixed> $document */
-    public function __construct(Artifact $artifact, int $version, array $document, User $createdBy, ?string $note = null)
+    /**
+     * @param array<string, mixed> $document
+     * @param list<string>         $emptyObjects
+     */
+    public function __construct(Artifact $artifact, int $version, array $document, User $createdBy, ?string $note = null, array $emptyObjects = [])
     {
+        $this->emptyObjects = $emptyObjects === [] ? null : array_values($emptyObjects);
         $this->id = Uuid::v7();
         $this->artifact = $artifact;
         $this->version = $version;
@@ -69,6 +82,18 @@ class ArtifactVersion
     public function getDocument(): array
     {
         return $this->document;
+    }
+
+    /** @return list<string> */
+    public function getEmptyObjects(): array
+    {
+        return $this->emptyObjects ?? [];
+    }
+
+    /** Document tel qu'il a été envoyé, objets vides compris (à passer à json_encode). */
+    public function getWireDocument(): mixed
+    {
+        return \App\Service\JsonShape::restore($this->document, $this->getEmptyObjects());
     }
 
     public function getCreatedBy(): User

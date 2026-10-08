@@ -1,6 +1,7 @@
 {
-  "concordeVersion": "4.9.98-visual-stack.3",
-  "generatedFrom": "@supersoniks/concorde src customElements",
+  "concordeVersion": "5.1.0",
+  "creativeStackVersion": "0.1.0",
+  "generatedFrom": "@supersoniks/concorde 5.1.0 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (3d, audio, controller, hugging-face-infer, interactive, media, physics, shader, sound, webgpu)",
   "components": [
     {
       "name": "sonic-3d",
@@ -29,9 +30,6 @@
         "play-on-hover": {
           "type": "boolean"
         },
-        "dataProvider": {
-          "type": "string"
-        },
         "out-data-provider": {
           "type": "string"
         },
@@ -40,19 +38,10 @@
         },
         "aspect-ratio": {
           "type": "string"
-        },
-        "class": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
         }
       },
-      "description": "Composant Concorde sonic-3d",
-      "example": {
-        "tagName": "sonic-3d",
-        "attributes": {}
-      }
+      "addon": "3d",
+      "description": "Scène 3D glTF"
     },
     {
       "name": "sonic-action",
@@ -70,60 +59,94 @@
           "type": "string"
         }
       },
-      "description": "Clic / hold -> action",
-      "example": {
-        "tagName": "sonic-action",
-        "attributes": {
-          "target": "game",
-          "type": "rotate"
-        }
-      }
+      "addon": "interactive",
+      "description": "Clic / hold -> action"
     },
     {
       "name": "sonic-alert",
       "props": {
-        "class": {
-          "type": "string"
+        "label": {
+          "type": "string",
+          "description": "Titre du message (texte brut, utiliser le slot pour du contenu riche)"
         },
-        "id": {
-          "type": "string"
+        "noIcon": {
+          "type": "boolean",
+          "default": "false"
         },
-        "style": {
-          "type": "string"
+        "text": {
+          "type": "string",
+          "description": "Peut être renseigné dans le slot pour créer des messages plus complexes"
         },
-        "slot": {
-          "type": "string"
+        "size": {
+          "type": "string",
+          "values": [
+            "2xs",
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "2xl",
+            "inherit"
+          ]
+        },
+        "dismissible": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "background": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "status": {
+          "type": "string",
+          "values": [
+            "default",
+            "info",
+            "success",
+            "warning",
+            "error"
+          ],
+          "default": "default"
+        },
+        "dismissForever": {
+          "type": "boolean",
+          "default": "false",
+          "description": "Mémorise la fermeture dans le localStorage. Nécessite un `id`."
+        },
+        "announce": {
+          "type": "boolean",
+          "default": "false",
+          "description": "Annonce le message aux lecteurs d'écran (role alert/status). À activer pour les messages injectés dynamiquement, pas pour une alerte déjà dans la page."
         }
       },
-      "description": "Composant Concorde sonic-alert",
-      "example": {
-        "tagName": "sonic-alert",
-        "attributes": {}
-      }
+      "description": "Affiche un message en ligne. Soit par ses simples attributs \"label\" et \"text\", soit par son slot pour des messages plus complexes."
     },
     {
       "name": "sonic-alert-messages",
       "props": {
-        "class": {
-          "type": "string"
+        "size": {
+          "type": "string",
+          "values": [
+            "2xs",
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "2xl",
+            "inherit"
+          ],
+          "default": "md"
         },
-        "id": {
-          "type": "string"
+        "background": {
+          "type": "boolean",
+          "default": "false"
         },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "messages": {
-          "type": "string"
+        "noIcon": {
+          "type": "boolean",
+          "default": "false"
         }
-      },
-      "description": "Composant Concorde sonic-alert-messages",
-      "example": {
-        "tagName": "sonic-alert-messages",
-        "attributes": {}
       }
     },
     {
@@ -154,7 +177,25 @@
           "type": "string"
         }
       },
+      "addon": "audio",
       "description": "Analyse master ou #id : DP {rms, peak, db, bands[], centroidHz, onset, onsetCount, pitchHz} + texture lisible par sonic-shader channel0='#id' (ligne 0 spectre, ligne 1 onde)"
+    },
+    {
+      "name": "sonic-audio-input",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "description": "#mic (défaut), #id d'une source audio, in (reçoit ce qui est routé vers le patch)"
+        },
+        "level": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Entrée externe d'un patch (hors sonic-voice) : source=\"#mic\" (défaut) ou #id d'une source audio (vidéo, sampler, autre patch) ; un patch sans sonic-voice devient une chaîne d'effets ; master interdit"
     },
     {
       "name": "sonic-audio-master",
@@ -169,1344 +210,8 @@
           "type": "string"
         }
       },
+      "addon": "audio",
       "description": "Volume / muet du master partagé (attributs ou DP control)"
-    },
-    {
-      "name": "sonic-audio-unlock",
-      "props": {
-        "label": {
-          "type": "string"
-        },
-        "persist": {
-          "type": "boolean"
-        },
-        "start": {
-          "type": "string"
-        }
-      },
-      "description": "Bouton « Activer le son » ; start=\"mic\" démarre aussi le micro dans le même geste"
-    },
-    {
-      "name": "sonic-badge",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-badge",
-      "example": {
-        "tagName": "sonic-badge",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-button",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "hasPrefix": {
-          "type": "string"
-        },
-        "data-aria-controls": {
-          "type": "string"
-        },
-        "data-aria-expanded": {
-          "type": "boolean"
-        }
-      },
-      "description": "Composant Concorde sonic-button",
-      "example": {
-        "tagName": "sonic-button",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-camera",
-      "props": {
-        "active": {
-          "type": "boolean"
-        },
-        "autostart": {
-          "type": "boolean"
-        },
-        "facing": {
-          "type": "string"
-        },
-        "width": {
-          "type": "number"
-        },
-        "height": {
-          "type": "number"
-        },
-        "fps": {
-          "type": "number"
-        },
-        "device-id": {
-          "type": "string"
-        },
-        "mirror": {
-          "type": "string"
-        },
-        "fit": {
-          "type": "string"
-        },
-        "hidden-preview": {
-          "type": "boolean"
-        },
-        "keep-running": {
-          "type": "boolean"
-        },
-        "max-width": {
-          "type": "number"
-        },
-        "snapshot-type": {
-          "type": "string"
-        },
-        "max-snapshots": {
-          "type": "number"
-        },
-        "snapshot-provider": {
-          "type": "string"
-        },
-        "control": {
-          "type": "string"
-        },
-        "out-data-provider": {
-          "type": "string"
-        }
-      },
-      "description": "Caméra : aperçu, source d'images (#id) pour sonic-shader, photos (control.snapshot compteur → snapshot-provider) ; démarrage sur geste ; état {status, error, width, height, snapshot, snapshots}"
-    },
-    {
-      "name": "sonic-captcha",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-captcha",
-      "example": {
-        "tagName": "sonic-captcha",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-caption",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-caption",
-      "example": {
-        "tagName": "sonic-caption",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-card",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-card",
-      "example": {
-        "tagName": "sonic-card",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-card-footer",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-card-footer",
-      "example": {
-        "tagName": "sonic-card-footer",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-card-header",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-card-header",
-      "example": {
-        "tagName": "sonic-card-header",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-card-header-description",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-card-header-description",
-      "example": {
-        "tagName": "sonic-card-header-description",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-card-main",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-card-main",
-      "example": {
-        "tagName": "sonic-card-main",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-checkbox",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "slotLabelNodes": {
-          "type": "boolean"
-        }
-      },
-      "description": "Composant Concorde sonic-checkbox",
-      "example": {
-        "tagName": "sonic-checkbox",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-chorus",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "in": {
-          "type": "string"
-        },
-        "rate-hz": {
-          "type": "number"
-        },
-        "depth": {
-          "type": "number"
-        },
-        "delay": {
-          "type": "number"
-        },
-        "mix": {
-          "type": "number"
-        }
-      },
-      "description": "Chorus"
-    },
-    {
-      "name": "sonic-ladder",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "in": {
-          "type": "string"
-        },
-        "freq-hz": {
-          "type": "number"
-        },
-        "res": {
-          "type": "number"
-        },
-        "drive": {
-          "type": "number"
-        },
-        "detune": {
-          "type": "number"
-        }
-      },
-      "description": "Filtre ladder 24 dB/oct non linéaire (AudioWorklet ; repli : 2 passe-bas natifs) : freq-hz, res 0..1.2 (auto-oscillation vers 1), drive, detune — tous modulables"
-    },
-    {
-      "name": "sonic-fold",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "in": {
-          "type": "string"
-        },
-        "amount": {
-          "type": "number"
-        },
-        "bias": {
-          "type": "number"
-        },
-        "mix": {
-          "type": "number"
-        }
-      },
-      "description": "Wavefolder sinusoïdal ×2 (AudioWorklet ; repli : waveshaper fixe) : amount 0..12 et bias modulables, mix"
-    },
-    {
-      "name": "sonic-karplus",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "freq-hz": {
-          "type": "string"
-        },
-        "detune": {
-          "type": "number"
-        },
-        "decay": {
-          "type": "number"
-        },
-        "damp": {
-          "type": "number"
-        },
-        "level": {
-          "type": "number"
-        }
-      },
-      "description": "Corde pincée Karplus-Strong (AudioWorklet ; repli : filtre résonant), source de voix : freq-hz = voice.pitch, decay (s), damp 0..1, level ; suit le bend MPE"
-    },
-    {
-      "name": "sonic-resonator",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "in": {
-          "type": "string"
-        },
-        "freq-hz": {
-          "type": "string"
-        },
-        "detune": {
-          "type": "number"
-        },
-        "q": {
-          "type": "number"
-        },
-        "partials": {
-          "type": "string"
-        },
-        "level": {
-          "type": "number"
-        }
-      },
-      "description": "Résonateur (banque de passe-bandes natifs) : excité par l'entrée (bruit, micro…), freq-hz = voice.pitch, q, partials \"1 2 3 4.2\", level"
-    },
-    {
-      "name": "sonic-grain",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "sample": {
-          "type": "string"
-        },
-        "position": {
-          "type": "number"
-        },
-        "spread": {
-          "type": "number"
-        },
-        "size-s": {
-          "type": "number"
-        },
-        "density": {
-          "type": "number"
-        },
-        "pitch": {
-          "type": "number"
-        },
-        "jitter": {
-          "type": "number"
-        },
-        "level": {
-          "type": "number"
-        }
-      },
-      "description": "Granulaire (natif) : sample = URL https/blob ou chemin DP d'un SonicMediaRef (prise de sonic-audio-recorder) ; position, spread, size-s, density (grains/s), pitch, jitter réglables en direct (sonic-param) ; dans une voix, la hauteur suit la note (C4 = original)"
-    },
-    {
-      "name": "sonic-comp",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "in": {
-          "type": "string"
-        },
-        "threshold-db": {
-          "type": "number"
-        },
-        "ratio": {
-          "type": "number"
-        },
-        "knee": {
-          "type": "number"
-        },
-        "attack": {
-          "type": "number"
-        },
-        "release": {
-          "type": "number"
-        }
-      },
-      "description": "Compresseur"
-    },
-    {
-      "name": "sonic-date",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "this": {
-          "type": "boolean"
-        }
-      },
-      "description": "Composant Concorde sonic-date",
-      "example": {
-        "tagName": "sonic-date",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-delay",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "in": {
-          "type": "string"
-        },
-        "time": {
-          "type": "number"
-        },
-        "feedback": {
-          "type": "number"
-        },
-        "mix": {
-          "type": "number"
-        },
-        "tone": {
-          "type": "number"
-        }
-      },
-      "description": "Délai (time en s ou 3/16), seul module qui autorise une boucle"
-    },
-    {
-      "name": "sonic-divider",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-divider",
-      "example": {
-        "tagName": "sonic-divider",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-env",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "a": {
-          "type": "number"
-        },
-        "d": {
-          "type": "number"
-        },
-        "s": {
-          "type": "number"
-        },
-        "r": {
-          "type": "number"
-        }
-      },
-      "description": "Enveloppe ADSR déclenchée par la note (sortie 0..1)"
-    },
-    {
-      "name": "sonic-fetch",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-fetch",
-      "example": {
-        "tagName": "sonic-fetch",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-fieldset",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-fieldset",
-      "example": {
-        "tagName": "sonic-fieldset",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-filter",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "in": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string"
-        },
-        "freq-hz": {
-          "type": "number"
-        },
-        "q": {
-          "type": "number"
-        },
-        "gain-db": {
-          "type": "number"
-        }
-      },
-      "description": "Filtre biquad"
-    },
-    {
-      "name": "sonic-form-actions",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-form-actions",
-      "example": {
-        "tagName": "sonic-form-actions",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-form-layout",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-form-layout",
-      "example": {
-        "tagName": "sonic-form-layout",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-gamepad",
-      "props": {
-        "target": {
-          "type": "string"
-        },
-        "keymap": {
-          "type": "object"
-        },
-        "deadzone": {
-          "type": "number"
-        },
-        "repeat": {
-          "type": "object"
-        },
-        "dataProvider": {
-          "type": "string"
-        }
-      },
-      "description": "Manette -> actions store",
-      "example": {
-        "tagName": "sonic-gamepad",
-        "attributes": {
-          "target": "game"
-        }
-      }
-    },
-    {
-      "name": "sonic-gesture",
-      "props": {
-        "target": {
-          "type": "string"
-        },
-        "swipe-threshold": {
-          "type": "number"
-        },
-        "long-press-ms": {
-          "type": "number"
-        },
-        "drag": {
-          "type": "boolean"
-        }
-      },
-      "description": "Gestes tactiles -> actions",
-      "example": {
-        "tagName": "sonic-gesture",
-        "attributes": {
-          "target": "game"
-        }
-      }
-    },
-    {
-      "name": "sonic-group",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "slotLabelNodes": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-group",
-      "example": {
-        "tagName": "sonic-group",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-hugging-face-infer",
-      "props": {
-        "model": {
-          "type": "string"
-        },
-        "inputProvider": {
-          "type": "string"
-        },
-        "outputProvider": {
-          "type": "string"
-        },
-        "statusProvider": {
-          "type": "string"
-        },
-        "triggerProvider": {
-          "type": "string"
-        },
-        "consentProvider": {
-          "type": "string"
-        },
-        "load": {
-          "type": "string"
-        },
-        "trigger": {
-          "type": "string"
-        },
-        "debounce": {
-          "type": "number"
-        },
-        "maxItems": {
-          "type": "number"
-        },
-        "maxChars": {
-          "type": "number"
-        },
-        "timeoutMs": {
-          "type": "number"
-        },
-        "class": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-hugging-face-infer",
-      "example": {
-        "tagName": "sonic-hugging-face-infer",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-icon",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "customIconLibraryPath": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-icon",
-      "example": {
-        "tagName": "sonic-icon",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-if",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-if",
-      "example": {
-        "tagName": "sonic-if",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-image",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-image",
-      "example": {
-        "tagName": "sonic-image",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-input",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "slotLabelNodes": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-input",
-      "example": {
-        "tagName": "sonic-input",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-input-autocomplete",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "size": {
-          "type": "string"
-        },
-        "placeholder": {
-          "type": "string"
-        },
-        "filteredFields": {
-          "type": "string"
-        },
-        "readonly": {
-          "type": "boolean"
-        },
-        "dataProviderExpression": {
-          "type": "string"
-        },
-        "minSearchLength": {
-          "type": "number"
-        },
-        "select": {
-          "type": "boolean"
-        },
-        "key": {
-          "type": "string"
-        },
-        "searchParameter": {
-          "type": "string"
-        },
-        "propertyName": {
-          "type": "string"
-        },
-        "formDataProvider": {
-          "type": "string"
-        },
-        "dataProvider": {
-          "type": "string"
-        },
-        "class": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-input-autocomplete",
-      "example": {
-        "tagName": "sonic-input-autocomplete",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-jsonata",
-      "props": {
-        "inputProvider": {
-          "type": "string"
-        },
-        "outputProvider": {
-          "type": "string"
-        },
-        "formDataProvider": {
-          "type": "string"
-        },
-        "expression": {
-          "type": "string"
-        },
-        "class": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-jsonata",
-      "example": {
-        "tagName": "sonic-jsonata",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-keyboard",
-      "props": {
-        "target": {
-          "type": "string"
-        },
-        "keymap": {
-          "type": "object"
-        },
-        "scope": {
-          "type": "string"
-        },
-        "repeat": {
-          "type": "object"
-        },
-        "keyup": {
-          "type": "boolean"
-        }
-      },
-      "description": "Clavier -> actions store",
-      "example": {
-        "tagName": "sonic-keyboard",
-        "attributes": {
-          "target": "game"
-        }
-      }
-    },
-    {
-      "name": "sonic-legend",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-legend",
-      "example": {
-        "tagName": "sonic-legend",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-legend-description",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-legend-description",
-      "example": {
-        "tagName": "sonic-legend-description",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-lfo",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "wave": {
-          "type": "string"
-        },
-        "rate-hz": {
-          "type": "number"
-        },
-        "sync": {
-          "type": "string"
-        }
-      },
-      "description": "LFO (sortie -1..1), rate-hz ou sync=\"1/8\""
-    },
-    {
-      "name": "sonic-link",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-link",
-      "example": {
-        "tagName": "sonic-link",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-list",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "props": {
-          "type": "object"
-        }
-      },
-      "description": "Composant Concorde sonic-list",
-      "example": {
-        "tagName": "sonic-list",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-loader",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-loader",
-      "example": {
-        "tagName": "sonic-loader",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-matrix",
-      "props": {
-        "dataProvider": {
-          "type": "string"
-        },
-        "key": {
-          "type": "string"
-        },
-        "cols": {
-          "type": "number"
-        },
-        "palette": {
-          "type": "object"
-        },
-        "cell": {
-          "type": "string"
-        },
-        "gap": {
-          "type": "number"
-        },
-        "ghost-key": {
-          "type": "string"
-        },
-        "label-key": {
-          "type": "string"
-        }
-      },
-      "description": "Grille 2D canvas",
-      "example": {
-        "tagName": "sonic-matrix",
-        "attributes": {
-          "dataProvider": "game",
-          "key": "grid"
-        }
-      }
-    },
-    {
-      "name": "sonic-media-start",
-      "props": {
-        "for": {
-          "type": "string"
-        },
-        "label": {
-          "type": "string"
-        },
-        "persist": {
-          "type": "boolean"
-        }
-      },
-      "description": "Bouton d'invite : démarre caméra / micro / vidéo listés dans for (clic = geste) ; caché une fois prêts ; affiche un refus"
-    },
-    {
-      "name": "sonic-media-recorder",
-      "props": {
-        "video-source": {
-          "type": "string"
-        },
-        "audio-source": {
-          "type": "string"
-        },
-        "fps": {
-          "type": "number"
-        },
-        "bits-per-second": {
-          "type": "number"
-        },
-        "max-s": {
-          "type": "number"
-        },
-        "max-takes": {
-          "type": "number"
-        },
-        "take-provider": {
-          "type": "string"
-        },
-        "control": {
-          "type": "string"
-        },
-        "out-data-provider": {
-          "type": "string"
-        }
-      },
-      "description": "Export vidéo (webm/mp4) : video-source #id (shader, caméra, vidéo) + audio-source master|#id|none ; DP control {recording} ; prise SonicMediaRef {url, mime, durS, size, width, height} dans take-provider et l'état last"
-    },
-    {
-      "name": "sonic-media-download",
-      "props": {
-        "source": {
-          "type": "string"
-        },
-        "filename": {
-          "type": "string"
-        },
-        "label": {
-          "type": "string"
-        }
-      },
-      "description": "Lien de téléchargement d'une prise (blob: uniquement) : source = chemin DP d'un SonicMediaRef (ex. exportState.last) ; caché tant qu'il n'y a rien ; contenu libre en slot"
-    },
-    {
-      "name": "sonic-menu",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "menuChildren": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-menu",
-      "example": {
-        "tagName": "sonic-menu",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-menu-item",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-menu-item",
-      "example": {
-        "tagName": "sonic-menu-item",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-mic",
-      "props": {
-        "active": {
-          "type": "boolean"
-        },
-        "autostart": {
-          "type": "boolean"
-        },
-        "monitor": {
-          "type": "boolean"
-        },
-        "gain": {
-          "type": "number"
-        },
-        "device-id": {
-          "type": "string"
-        },
-        "echo-cancellation": {
-          "type": "boolean"
-        },
-        "noise-suppression": {
-          "type": "boolean"
-        },
-        "auto-gain": {
-          "type": "boolean"
-        },
-        "rate": {
-          "type": "number"
-        },
-        "control": {
-          "type": "string"
-        },
-        "out-data-provider": {
-          "type": "string"
-        }
-      },
-      "description": "Micro : source audio (#id) pour analyseur / patch ; jamais vers le master sauf monitor ; démarrage sur geste ; DP control {active, monitor, gain, deviceId} ; état {status, error, rms, db, devices}"
     },
     {
       "name": "sonic-audio-recorder",
@@ -1531,1739 +236,73 @@
           "type": "string"
         }
       },
+      "addon": "audio",
       "description": "Enregistreur audio : source #mic (défaut), #id ou master ; DP control {recording, target} ; chaque prise (SonicMediaRef {url, mime, durS, size}) écrite dans control.target ou take-provider, rejouable par sonic-sampler {\"ref\": \"chemin\"} ; état {status, recording, elapsedS, last, takes}"
     },
     {
-      "name": "sonic-midi",
+      "name": "sonic-audio-unlock",
       "props": {
-        "active": {
+        "label": {
+          "type": "string"
+        },
+        "persist": {
           "type": "boolean"
         },
-        "autostart": {
-          "type": "boolean"
-        },
-        "input": {
+        "start": {
           "type": "string",
-          "description": "all (défaut), none, first ou morceau de nom"
-        },
-        "output": {
-          "type": "string",
-          "description": "vide = aucune, first, all ou morceau de nom"
-        },
-        "channel": {
-          "type": "string",
-          "description": "all ou 1..16"
-        },
-        "out-channel": {
-          "type": "number"
-        },
-        "mpe": {
-          "type": "boolean"
-        },
-        "mpe-master": {
-          "type": "number"
-        },
-        "bend-range": {
-          "type": "number"
-        },
-        "transpose": {
-          "type": "number"
-        },
-        "target": {
-          "type": "string",
-          "description": "#id d'instruments séparés par des espaces"
-        },
-        "store": {
-          "type": "string"
-        },
-        "action-type": {
-          "type": "string"
-        },
-        "events": {
-          "type": "string"
-        },
-        "trigger": {
-          "type": "string"
-        },
-        "cc-out": {
-          "type": "string"
-        },
-        "clock-out": {
-          "type": "string"
-        },
-        "offset-ms": {
-          "type": "number"
-        },
-        "notes-map": {
-          "type": "object"
-        },
-        "dur-s": {
-          "type": "number"
-        },
-        "rate": {
-          "type": "number"
-        },
-        "control": {
-          "type": "string",
-          "description": "DP {active, input, output, channel, outChannel, program, panic: compteur}"
-        },
-        "out-data-provider": {
-          "type": "string"
+          "description": "Ids à démarrer avec le son (ex. mic)"
         }
       },
-      "description": "Web MIDI (accès sur geste, sans SysEx). Entrée : target=\"#synth\" joue les notes (MPE : bend / pression / timbre par note → voice.bend|pressure|timbre du patch), store=id reçoit {type:\"midi\", payload:{kind, note, name, vel, ch, cc, value}} ; état {status, inputs, held, last, notes, cc, bend, pressure, clock{running,bpm,beat}}. Sortie : instrument (cible d'un sonic-sequencer ou events/trigger) vers output=\"nom\", cc-out (DP {\"74\":0.5}), clock-out=\"#seq\" (horloge 24 ppq + Start/Stop)"
+      "addon": "audio",
+      "description": "Bouton « Activer le son » ; start=\"mic\" démarre aussi le micro dans le même geste"
     },
     {
-      "name": "sonic-mix",
+      "name": "sonic-badge",
       "props": {
-        "composition": {
-          "type": "object"
-        },
-        "class": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-mix",
-      "example": {
-        "tagName": "sonic-mix",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-mixer",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "in": {
-          "type": "string"
-        },
-        "levels": {
-          "type": "string"
-        }
-      },
-      "description": "Somme pondérée de ses entrées (in, levels) ; sans in : toutes les sources précédentes"
-    },
-    {
-      "name": "sonic-mod",
-      "props": {
-        "from": {
-          "type": "string"
-        },
-        "to": {
-          "type": "string"
-        },
-        "amount": {
-          "type": "number"
-        },
-        "curve": {
-          "type": "string"
-        }
-      },
-      "description": "Câble de modulation : from (module ou voice.pitch|gate|vel|note|rand) → to (module.param), amount, curve=exp"
-    },
-    {
-      "name": "sonic-modal",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "modal": {
-          "type": "boolean"
-        }
-      },
-      "description": "Composant Concorde sonic-modal",
-      "example": {
-        "tagName": "sonic-modal",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-modal-actions",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-modal-actions",
-      "example": {
-        "tagName": "sonic-modal-actions",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-modal-close",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-modal-close",
-      "example": {
-        "tagName": "sonic-modal-close",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-modal-content",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-modal-content",
-      "example": {
-        "tagName": "sonic-modal-content",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-modal-subtitle",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-modal-subtitle",
-      "example": {
-        "tagName": "sonic-modal-subtitle",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-modal-title",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-modal-title",
-      "example": {
-        "tagName": "sonic-modal-title",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-noise",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "color": {
-          "type": "string"
-        },
-        "level": {
-          "type": "number"
-        }
-      },
-      "description": "Bruit blanc / rose / brun"
-    },
-    {
-      "name": "sonic-audio-input",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "source": {
-          "type": "string",
-          "description": "#mic (défaut), #id d'une source audio, in (reçoit ce qui est routé vers le patch)"
-        },
-        "level": {
-          "type": "number"
-        }
-      },
-      "description": "Entrée externe d'un patch (hors sonic-voice) : source=\"#mic\" (défaut) ou #id d'une source audio (vidéo, sampler, autre patch) ; un patch sans sonic-voice devient une chaîne d'effets ; master interdit"
-    },
-    {
-      "name": "sonic-osc",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "wave": {
-          "type": "string"
-        },
-        "freq-hz": {
-          "type": "string"
-        },
-        "detune": {
-          "type": "number"
-        },
-        "octave": {
-          "type": "number"
-        },
-        "semi": {
-          "type": "number"
-        },
-        "pw": {
-          "type": "number"
-        },
-        "harmonics": {
-          "type": "string"
-        },
-        "level": {
-          "type": "number"
-        },
-        "fm": {
-          "type": "string"
-        },
-        "fm-amount": {
-          "type": "number"
-        },
-        "sync": {
-          "type": "string",
-          "description": "nom d'un autre sonic-osc de la même voix"
-        }
-      },
-      "description": "Oscillateur (sine square sawtooth triangle pulse, harmonics) ; freq-hz = voice.pitch par défaut ; sync=\"m\" : synchro dure sur l'oscillateur m (PolyBLEP, AudioWorklet)"
-    },
-    {
-      "name": "sonic-pan",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "in": {
-          "type": "string"
-        },
-        "pan": {
-          "type": "number"
-        }
-      },
-      "description": "Panoramique"
-    },
-    {
-      "name": "sonic-param",
-      "props": {
-        "to": {
-          "type": "string"
-        },
-        "source": {
-          "type": "string"
-        },
-        "expose": {
-          "type": "string"
-        },
-        "value": {
-          "type": "number"
-        },
-        "ramp-s": {
-          "type": "number"
-        },
-        "min": {
-          "type": "number"
-        },
-        "max": {
-          "type": "number"
-        }
-      },
-      "description": "Paramètre piloté : to (module.param), source (DP), expose, value, ramp-s, min, max"
-    },
-    {
-      "name": "sonic-password-helper",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-password-helper",
-      "example": {
-        "tagName": "sonic-password-helper",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-patch",
-      "props": {
-        "preset": {
-          "type": "string",
-          "description": "synth/lead, synth/bass, synth/pad, synth/pluck, synth/fm-bell, synth/chip, synth/string, synth/sync-lead, synth/acid, drums/kick, drums/snare, drums/hat, drums/kit"
-        },
-        "params": {
-          "type": "object",
-          "description": "Valeurs des paramètres exposés du preset"
-        },
-        "events": {
-          "type": "string",
-          "description": "DP : liste d'événements {note|sample, vel, durS, type}"
-        },
-        "trigger": {
-          "type": "string",
-          "description": "DP : chaque changement rejoue events"
-        },
-        "poly": {
-          "type": "number"
-        },
-        "steal": {
-          "type": "string"
-        },
-        "vel-sense": {
-          "type": "number"
-        },
-        "gain": {
-          "type": "number"
-        },
-        "bpm": {
-          "type": "number"
-        },
-        "dur-s": {
-          "type": "number"
-        },
-        "out": {
-          "type": "string"
-        },
-        "output": {
-          "type": "string",
-          "description": "master (défaut), #id ou none"
-        },
-        "notes-map": {
-          "type": "object"
-        },
-        "out-data-provider": {
-          "type": "string"
-        }
-      },
-      "description": "Instrument modulaire : enfants sonic-voice (+ modules) ou preset (synth/lead synth/bass synth/pad synth/pluck synth/fm-bell synth/chip synth/string synth/sync-lead synth/acid drums/kick drums/snare drums/hat drums/kit). events (DP liste) + trigger (DP), état dans out-data-provider"
-    },
-    {
-      "name": "sonic-pop",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "return": {
-          "type": "boolean"
-        }
-      },
-      "description": "Composant Concorde sonic-pop",
-      "example": {
-        "tagName": "sonic-pop",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-progress",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
         "type": {
-          "type": "number"
-        }
-      },
-      "description": "Composant Concorde sonic-progress",
-      "example": {
-        "tagName": "sonic-progress",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-queue",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "this": {
-          "type": "array"
-        },
-        "continue": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-queue",
-      "example": {
-        "tagName": "sonic-queue",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-radio",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-radio",
-      "example": {
-        "tagName": "sonic-radio",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-redirect",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-redirect",
-      "example": {
-        "tagName": "sonic-redirect",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-reverb",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "in": {
-          "type": "string"
-        },
-        "size-s": {
-          "type": "number"
-        },
-        "damp": {
-          "type": "number"
-        },
-        "mix": {
-          "type": "number"
-        }
-      },
-      "description": "Réverbération générée"
-    },
-    {
-      "name": "sonic-router",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-router",
-      "example": {
-        "tagName": "sonic-router",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-same-value-helper",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-same-value-helper",
-      "example": {
-        "tagName": "sonic-same-value-helper",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-sampler",
-      "props": {
-        "samples": {
-          "type": "object"
-        },
-        "samples-provider": {
-          "type": "string"
-        },
-        "choke": {
-          "type": "array"
-        },
-        "notes-map": {
-          "type": "object"
-        },
-        "chromatic": {
-          "type": "string"
-        },
-        "gain": {
-          "type": "number"
-        },
-        "output": {
-          "type": "string"
-        },
-        "events": {
-          "type": "string"
-        },
-        "trigger": {
-          "type": "string"
-        },
-        "out-data-provider": {
-          "type": "string"
-        }
-      },
-      "description": "Sampler : samples {nom: url https/blob | {url|ref(DP SonicMediaRef), gain, pan, pitch, root, start, end, loop, reverse, gate}} ; événements {sample} ou {note} chromatique ; choke [[a,b]]"
-    },
-    {
-      "name": "sonic-scope",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-scope",
-      "example": {
-        "tagName": "sonic-scope",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-sdui",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "contentElement": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-sdui",
-      "example": {
-        "tagName": "sonic-sdui",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-select",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "options": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-select",
-      "example": {
-        "tagName": "sonic-select",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-sequencer",
-      "props": {
-        "pattern": {
-          "type": "object"
-        },
-        "bpm": {
-          "type": "number"
-        },
-        "swing": {
-          "type": "number"
-        },
-        "seed": {
-          "type": "number"
-        },
-        "beats": {
-          "type": "number"
-        },
-        "steps-per-beat": {
-          "type": "number"
-        },
-        "playing": {
-          "type": "boolean"
-        },
-        "control": {
-          "type": "string"
-        },
-        "store": {
-          "type": "string"
-        },
-        "lookahead-ms": {
-          "type": "number"
-        },
-        "out-data-provider": {
-          "type": "string"
-        },
-        "sync": {
           "type": "string",
-          "description": "#id d'un sonic-midi : horloge externe"
-        }
-      },
-      "description": "Horloge musicale : pattern {idInstrument: 'mini-notation' | {notes, scale, pad: 'x..x'}} joué sur des instruments par id ; store=id reçoit {type:step, payload:{step,beat,bar,phase,when,bpm}} ; control DP {playing,bpm,swing,seed,pattern} ; sync=\"#midi\" : suit l'horloge MIDI d'un appareil (Start/Stop, tempo, phase) ; état sync {locked, driftMs}"
-    },
-    {
-      "name": "sonic-sfx",
-      "props": {
-        "sound": {
-          "type": "string"
-        },
-        "on": {
-          "type": "string"
-        },
-        "hover": {
-          "type": "string"
-        },
-        "engine": {
-          "type": "string"
-        },
-        "pitch": {
-          "type": "number"
-        },
-        "vol": {
-          "type": "number"
-        }
-      },
-      "description": "Son au clic / survol des enfants (creative-stack)",
-      "example": {
-        "tagName": "sonic-sfx",
-        "attributes": {
-          "sound": "click",
-          "hover": "hover"
-        }
-      }
-    },
-    {
-      "name": "sonic-shader",
-      "props": {
-        "image": {
-          "type": "string"
-        },
-        "buffer-a": {
-          "type": "string"
-        },
-        "buffer-b": {
-          "type": "string"
-        },
-        "buffer-c": {
-          "type": "string"
-        },
-        "buffer-d": {
-          "type": "string"
-        },
-        "common": {
-          "type": "string"
-        },
-        "channel0": {
-          "type": "string"
-        },
-        "channel1": {
-          "type": "string"
-        },
-        "channel2": {
-          "type": "string"
-        },
-        "channel3": {
-          "type": "string"
-        },
-        "play": {
-          "type": "boolean"
-        },
-        "play-on-hover": {
-          "type": "boolean"
-        },
-        "mouse": {
-          "type": "boolean"
-        },
-        "mouse-mode": {
-          "type": "string"
-        },
-        "param0": {
-          "type": "number"
-        },
-        "param1": {
-          "type": "number"
-        },
-        "param2": {
-          "type": "number"
-        },
-        "param3": {
-          "type": "number"
-        },
-        "dataProvider": {
-          "type": "string"
-        },
-        "out-data-provider": {
-          "type": "string"
-        },
-        "class": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-shader",
-      "example": {
-        "tagName": "sonic-shader",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-shaper",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "in": {
-          "type": "string"
-        },
-        "curve": {
-          "type": "string"
-        },
-        "drive": {
-          "type": "number"
-        },
-        "oversample": {
-          "type": "string"
-        }
-      },
-      "description": "Saturation / wavefold"
-    },
-    {
-      "name": "sonic-sound",
-      "props": {
-        "id": {
-          "type": "string"
-        },
-        "bank": {
-          "type": "object"
-        },
-        "bank-provider": {
-          "type": "string"
-        },
-        "control": {
-          "type": "string"
-        },
-        "out-data-provider": {
-          "type": "string"
-        },
-        "max-voices": {
-          "type": "number"
-        }
-      },
-      "description": "Son WebAudio (creative-stack) : banque JSON bank, pilotage DP control, état out-data-provider",
-      "example": {
-        "tagName": "sonic-sound",
-        "attributes": {
-          "control": "game.sound",
-          "out-data-provider": "sfx",
-          "bank": "{\"sfx\":{\"coin\":\"coin\"}}"
-        }
-      }
-    },
-    {
-      "name": "sonic-states",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-states",
-      "example": {
-        "tagName": "sonic-states",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-store",
-      "props": {
-        "id": {
-          "type": "string"
-        },
-        "dataProvider": {
-          "type": "string"
-        },
-        "initial": {
-          "type": "object"
-        },
-        "reducer": {
-          "type": "string"
-        },
-        "max-state-bytes": {
-          "type": "number"
-        },
-        "budget-ms": {
-          "type": "number"
-        },
-        "history": {
-          "type": "number"
-        }
-      },
-      "description": "Store declaratif + reducer JSONata",
-      "example": {
-        "tagName": "sonic-store",
-        "attributes": {
-          "id": "game"
-        }
-      }
-    },
-    {
-      "name": "sonic-submit",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "result": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-submit",
-      "example": {
-        "tagName": "sonic-submit",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-subscriber",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-subscriber",
-      "example": {
-        "tagName": "sonic-subscriber",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-switch",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-switch",
-      "example": {
-        "tagName": "sonic-switch",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-t",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-t",
-      "example": {
-        "tagName": "sonic-t",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-table",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-table",
-      "example": {
-        "tagName": "sonic-table",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-tbody",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-tbody",
-      "example": {
-        "tagName": "sonic-tbody",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-td",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-td",
-      "example": {
-        "tagName": "sonic-td",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-textarea",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "slotLabelNodes": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-textarea",
-      "example": {
-        "tagName": "sonic-textarea",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-tfoot",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-tfoot",
-      "example": {
-        "tagName": "sonic-tfoot",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-th",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-th",
-      "example": {
-        "tagName": "sonic-th",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-thead",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-thead",
-      "example": {
-        "tagName": "sonic-thead",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-theme",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "theme": {
-          "type": "string"
-        },
-        "fontUrls": {
-          "type": "boolean"
-        }
-      },
-      "description": "Composant Concorde sonic-theme",
-      "example": {
-        "tagName": "sonic-theme",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-ticker",
-      "props": {
-        "target": {
-          "type": "string"
-        },
-        "interval": {
-          "type": "number"
-        },
-        "interval-key": {
-          "type": "string"
-        },
-        "running-key": {
-          "type": "string"
-        },
-        "mode": {
-          "type": "string"
-        }
-      },
-      "description": "Horloge tick -> store",
-      "example": {
-        "tagName": "sonic-ticker",
-        "attributes": {
-          "target": "game",
-          "interval": "500"
-        }
-      }
-    },
-    {
-      "name": "sonic-toast",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "const": {
-          "type": "array"
-        }
-      },
-      "description": "Composant Concorde sonic-toast",
-      "example": {
-        "tagName": "sonic-toast",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-toast-item",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-toast-item",
-      "example": {
-        "tagName": "sonic-toast-item",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-toast-message-subscriber",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "SonicToast": {
-          "type": "array"
-        }
-      },
-      "description": "Composant Concorde sonic-toast-message-subscriber",
-      "example": {
-        "tagName": "sonic-toast-message-subscriber",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-tooltip",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        },
-        "this": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-tooltip",
-      "example": {
-        "tagName": "sonic-tooltip",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-tr",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-tr",
-      "example": {
-        "tagName": "sonic-tr",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-value",
-      "props": {
-        "class": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        },
-        "slot": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-value",
-      "example": {
-        "tagName": "sonic-value",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-vca",
-      "props": {
-        "name": {
-          "type": "string"
-        },
-        "in": {
-          "type": "string"
-        },
-        "gain": {
-          "type": "number"
-        }
-      },
-      "description": "Ampli ; gain=\"<env>\" pour une enveloppe"
-    },
-    {
-      "name": "sonic-video",
-      "props": {
-        "src": {
-          "type": "url"
-        },
-        "src-provider": {
-          "type": "string"
-        },
-        "autoplay": {
-          "type": "boolean"
-        },
-        "loop": {
-          "type": "boolean"
-        },
-        "muted": {
-          "type": "boolean"
-        },
-        "controls": {
-          "type": "boolean"
-        },
-        "preload": {
-          "type": "string"
-        },
-        "crossorigin": {
-          "type": "string"
-        },
-        "fit": {
-          "type": "string"
-        },
-        "hidden-preview": {
-          "type": "boolean"
-        },
-        "rate": {
-          "type": "number"
-        },
-        "volume": {
-          "type": "number"
-        },
-        "loop-start": {
-          "type": "number"
-        },
-        "loop-end": {
-          "type": "number"
-        },
-        "audio-out": {
-          "type": "string"
-        },
-        "update-rate": {
-          "type": "number"
-        },
-        "control": {
-          "type": "string"
-        },
-        "out-data-provider": {
-          "type": "string"
-        }
-      },
-      "description": "Lecteur vidéo (https, relatif, blob:) : DP control {playing, seek, rate, volume, muted, loop, loopStart, loopEnd} ; état {status, timeS, durationS, progress, playing} ; source d'images (#id) ; audio-out=master|#id|none pour l'analyse"
-    },
-    {
-      "name": "sonic-screen",
-      "props": {
-        "active": {
-          "type": "boolean"
-        },
-        "audio": {
-          "type": "boolean"
-        },
-        "surface": {
+          "values": [
+            "default",
+            "primary",
+            "warning",
+            "danger",
+            "success",
+            "info",
+            "neutral"
+          ],
+          "default": "default",
+          "description": "Le type change surtout la couleur composant"
+        },
+        "variant": {
           "type": "string",
-          "description": "monitor, window, browser"
+          "values": [
+            "default",
+            "outline",
+            "ghost"
+          ],
+          "default": "default",
+          "description": "Le composant par defaut sans se paramètre à forte afordance * ghost : composant super léger visuellement * outline : composant légé avec une bordure"
         },
-        "cursor": {
-          "type": "string"
-        },
-        "allow-self": {
-          "type": "boolean"
-        },
-        "fps": {
-          "type": "number"
-        },
-        "max-width": {
-          "type": "number"
-        },
-        "fit": {
-          "type": "string"
-        },
-        "hidden-preview": {
-          "type": "boolean"
-        },
-        "snapshot-type": {
-          "type": "string"
-        },
-        "max-snapshots": {
-          "type": "number"
-        },
-        "snapshot-provider": {
-          "type": "string"
-        },
-        "control": {
+        "size": {
           "type": "string",
-          "description": "DP {active, snapshot: compteur}"
+          "values": [
+            "2xs",
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "2xl",
+            "inherit"
+          ],
+          "description": "Taille du composant, implique notamment des modifications de typo et de marge interne"
         },
-        "out-data-provider": {
-          "type": "string"
+        "ellipsis": {
+          "type": "boolean",
+          "default": "false"
         }
       },
-      "description": "Capture d'écran (getDisplayMedia, clic direct requis : sonic-media-start for=\"screen\") : source d'images (#id) pour sonic-shader, photos (control.snapshot), son du partage (audio) pour l'analyseur / l'enregistreur, export par sonic-media-recorder ; état {status, error, surface, width, height, audio, snapshot}"
-    },
-    {
-      "name": "sonic-voice",
-      "props": {
-        "sample": {
-          "type": "string"
-        },
-        "note": {
-          "type": "string"
-        },
-        "out": {
-          "type": "string"
-        }
-      },
-      "description": "Portée « par note » d'un patch ; sample=\"kick\" / note=\"C2\" pour un kit"
-    },
-    {
-      "name": "sonic-webgpu",
-      "props": {
-        "shader": {
-          "type": "string"
-        },
-        "kernel": {
-          "type": "string"
-        },
-        "backend": {
-          "type": "string"
-        },
-        "channel0": {
-          "type": "string"
-        },
-        "channel1": {
-          "type": "string"
-        },
-        "channel2": {
-          "type": "string"
-        },
-        "channel3": {
-          "type": "string"
-        },
-        "play": {
-          "type": "boolean"
-        },
-        "mouse": {
-          "type": "boolean"
-        },
-        "param0": {
-          "type": "number"
-        },
-        "param1": {
-          "type": "number"
-        },
-        "param2": {
-          "type": "number"
-        },
-        "param3": {
-          "type": "number"
-        },
-        "dataProvider": {
-          "type": "string"
-        },
-        "out-data-provider": {
-          "type": "string"
-        },
-        "frame-out": {
-          "type": "boolean"
-        },
-        "aspect-ratio": {
-          "type": "string"
-        },
-        "class": {
-          "type": "string"
-        },
-        "style": {
-          "type": "string"
-        }
-      },
-      "description": "Composant Concorde sonic-webgpu",
-      "example": {
-        "tagName": "sonic-webgpu",
-        "attributes": {}
-      }
-    },
-    {
-      "name": "sonic-physics",
-      "props": {
-        "width": {
-          "type": "number"
-        },
-        "height": {
-          "type": "number"
-        },
-        "scale": {
-          "type": "number"
-        },
-        "gravity": {
-          "type": "string",
-          "description": "\"0 9.8\" (m/s², défaut), \"0 0\" vue de dessus"
-        },
-        "bounds": {
-          "type": "string",
-          "description": "walls (défaut), box (sans sol), floor, none"
-        },
-        "paused": {
-          "type": "boolean"
-        },
-        "time-scale": {
-          "type": "number"
-        },
-        "bodies": {
-          "type": "string"
-        },
-        "input": {
-          "type": "string"
-        },
-        "control": {
-          "type": "string"
-        },
-        "store": {
-          "type": "string"
-        },
-        "action-prefix": {
-          "type": "string"
-        },
-        "collide-min": {
-          "type": "number"
-        },
-        "drag": {
-          "type": "boolean"
-        },
-        "publish": {
-          "type": "string",
-          "description": "noms des corps publiés (défaut : tous)"
-        },
-        "rate": {
-          "type": "number"
-        },
-        "background": {
-          "type": "string"
-        },
-        "debug": {
-          "type": "boolean"
-        },
-        "hidden-preview": {
-          "type": "boolean"
-        },
-        "out-data-provider": {
-          "type": "string"
-        }
-      },
-      "description": "Monde 2D (px, y vers le bas) : enfants sonic-body / sonic-joint, bodies=DP liste de corps (ajout / retrait suivis), input=DP {nom: {vx, vy, fx, fy, spin, torque, impulse:{n,x,y}, set:{n,x,y,vx,vy,angle}}} (n = compteur), control=DP {running, reset: compteur, gravity:[x,y], timeScale}, store=id reçoit collide {a,b,tagsA,tagsB,impulse,x,y} / enter / leave {sensor, body, tags} / out {body, side} / tap {x,y,body} ; état <id>State {bodies:{nom:{x,y,angle,vx,vy}}, collisions, time} ; source d'images #id pour sonic-shader"
+      "description": "Un badge simple avec deux slots, un nommé prefix et un nomé suffix de manière à pouvoir mettre (par exemple) une icone avant ou après le contenu."
     },
     {
       "name": "sonic-body",
@@ -3368,7 +407,1185 @@
           "type": "boolean"
         }
       },
+      "addon": "physics",
       "description": "Corps : type dynamic|static|kinematic, shape circle (r) | box (w h) | polygon / edge / chain (points \"x,y x,y\" relatifs au centre), x y angle vx vy spin, density friction restitution, sensor, bullet, fixed-rotation, damping, gravity-scale, group / collides (filtres), tags (repris dans les événements), clamp-x / clamp-y \"min max\", rendu fill stroke line label hidden"
+    },
+    {
+      "name": "sonic-button",
+      "props": {
+        "type": {
+          "type": "string",
+          "values": [
+            "default",
+            "primary",
+            "neutral",
+            "warning",
+            "danger",
+            "success",
+            "info"
+          ],
+          "default": "default",
+          "description": "Le type change surtout la couleur composant"
+        },
+        "variant": {
+          "type": "string",
+          "values": [
+            "default",
+            "ghost",
+            "outline",
+            "unstyled",
+            "link"
+          ],
+          "default": "default",
+          "description": "Le composant par defaut sans se paramètre à forte affordance * gost : composant super léger visuellement * outline : composant légé avec une bordure"
+        },
+        "size": {
+          "type": "string",
+          "values": [
+            "2xs",
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "2xl",
+            "inherit"
+          ],
+          "description": "Taille du composant, implique notamment des modifications de typo et de marge interne"
+        },
+        "shape": {
+          "type": "string",
+          "values": [
+            "default",
+            "circle",
+            "square",
+            "block"
+          ],
+          "default": "default",
+          "description": "Forme du bouton, permet de le forcer en carré ou cercle"
+        },
+        "direction": {
+          "type": "string",
+          "default": "row",
+          "description": "Propriété de direction *flex* appliquée à l'élément contenant les *slots*"
+        },
+        "alignItems": {
+          "type": "string",
+          "default": "center",
+          "description": "Propriété align-items de *flex* appliquée à l'élément contenant les *slots*"
+        },
+        "justify": {
+          "type": "string",
+          "default": "center",
+          "description": "Propriété justify-content de *flex* appliquée à l'élément contenant les *slots*"
+        },
+        "align": {
+          "type": "string",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ],
+          "description": "Propriété text-align du bouton"
+        },
+        "minWidth": {
+          "type": "string",
+          "default": "0",
+          "description": "Propriété min-width du bouton"
+        },
+        "icon": {
+          "type": "boolean",
+          "default": "false",
+          "description": "Si un bouton n'a qu'une icone pour contenu, agrandi l'icone pour des raisons d'équilibre"
+        },
+        "download": {
+          "type": "string",
+          "default": "null"
+        },
+        "autoActive": {
+          "type": "string",
+          "values": [
+            "strict",
+            "partial",
+            "disabled",
+            "strict-path-only"
+          ],
+          "default": "partial",
+          "description": "mode d'activation du bouton : - strict : l'url courante match exactement avec le href du bouton - partial : l'url courante match à gauche avec le href du…"
+        },
+        "loading": {
+          "type": "boolean",
+          "default": "false",
+          "description": "Laisse apparaitre un loader en remplacement du contenu du bouton. Désactive également le clic sur le bouton"
+        },
+        "hasPrefix": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasSuffix": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "target": {
+          "type": "string",
+          "values": [
+            "_self",
+            "_blank",
+            "_parent",
+            "_top"
+          ],
+          "description": "target"
+        },
+        "href": {
+          "type": "string"
+        },
+        "goBack": {
+          "type": "string",
+          "default": "null"
+        },
+        "pushState": {
+          "type": "boolean",
+          "default": "false",
+          "description": "Si présent on passe en mode pushstate"
+        },
+        "active": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "autoRepeat": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "data-aria-controls": {
+          "type": "string"
+        },
+        "data-aria-expanded": {
+          "type": "boolean"
+        },
+        "pointerDownTime": {
+          "type": "number",
+          "default": "0"
+        },
+        "lastRepeatTime": {
+          "type": "number",
+          "default": "0"
+        },
+        "isRepeating": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "location": {
+          "type": "string"
+        }
+      },
+      "description": "Un bouton simple avec deux slots, un nommé préfix et un nomé suffix de manière à pouvoir mettre (par exemple) une icone avant ou après le contenu."
+    },
+    {
+      "name": "sonic-camera",
+      "props": {
+        "active": {
+          "type": "boolean"
+        },
+        "autostart": {
+          "type": "boolean"
+        },
+        "facing": {
+          "type": "string"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "device-id": {
+          "type": "string"
+        },
+        "mirror": {
+          "type": "string"
+        },
+        "fit": {
+          "type": "string"
+        },
+        "hidden-preview": {
+          "type": "boolean"
+        },
+        "keep-running": {
+          "type": "boolean"
+        },
+        "max-width": {
+          "type": "number"
+        },
+        "snapshot-type": {
+          "type": "string"
+        },
+        "max-snapshots": {
+          "type": "number"
+        },
+        "snapshot-provider": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "media",
+      "description": "Caméra : aperçu, source d'images (#id) pour sonic-shader, photos (control.snapshot compteur → snapshot-provider) ; démarrage sur geste ; état {status, error, width, height, snapshot, snapshots}"
+    },
+    {
+      "name": "sonic-captcha",
+      "props": {
+        "key": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string",
+          "default": "null"
+        },
+        "zIndex": {
+          "type": "number",
+          "default": "9999"
+        },
+        "maxNumber": {
+          "type": "number",
+          "default": "50000"
+        },
+        "chalengeUrl": {
+          "type": "string",
+          "default": "https://altcha.supersoniks.org/get-challenge"
+        }
+      },
+      "description": "Un bouton simple avec deux slots, un nommé préfix et un nomé suffix de manière à pouvoir mettre (par exemple) une icone avant ou après le contenu."
+    },
+    {
+      "name": "sonic-caption",
+      "props": {}
+    },
+    {
+      "name": "sonic-card",
+      "props": {
+        "shadow": {
+          "type": "string",
+          "values": [
+            "none",
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "lg",
+          "description": "Ombre"
+        },
+        "type": {
+          "type": "string",
+          "values": [
+            "default",
+            "primary",
+            "warning",
+            "danger",
+            "success",
+            "info",
+            "neutral",
+            "base",
+            "light",
+            "invert"
+          ],
+          "default": "base",
+          "description": "Le type change surtout la couleur composant"
+        }
+      }
+    },
+    {
+      "name": "sonic-card-footer",
+      "props": {}
+    },
+    {
+      "name": "sonic-card-header",
+      "props": {
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "sonic-card-header-description",
+      "props": {}
+    },
+    {
+      "name": "sonic-card-main",
+      "props": {}
+    },
+    {
+      "name": "sonic-checkbox",
+      "props": {
+        "touched": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "iconName": {
+          "type": "string",
+          "default": "check"
+        },
+        "indeterminateIconName": {
+          "type": "string",
+          "default": "minus-small"
+        },
+        "showAsIndeterminate": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasDescription": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasLabel": {
+          "type": "boolean",
+          "default": "false"
+        }
+      },
+      "description": "### sonic-checkbox — FormCheckable + FormInput + FormElement Synchronise l'état coché via `formDataProvider` + `name`. Modes : multiple (défaut), `unique`, `radio`."
+    },
+    {
+      "name": "sonic-chorus",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "rate-hz": {
+          "type": "number"
+        },
+        "depth": {
+          "type": "number"
+        },
+        "delay": {
+          "type": "number"
+        },
+        "mix": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Chorus"
+    },
+    {
+      "name": "sonic-comp",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "threshold-db": {
+          "type": "number"
+        },
+        "ratio": {
+          "type": "number"
+        },
+        "knee": {
+          "type": "number"
+        },
+        "attack": {
+          "type": "number"
+        },
+        "release": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Compresseur"
+    },
+    {
+      "name": "sonic-controller",
+      "props": {
+        "store": {
+          "type": "string"
+        },
+        "keymap": {
+          "type": "object"
+        },
+        "release": {
+          "type": "boolean"
+        },
+        "analog-action": {
+          "type": "string"
+        },
+        "deadzone": {
+          "type": "number"
+        },
+        "player": {
+          "type": "string",
+          "description": "all ou 0..3"
+        },
+        "rate": {
+          "type": "number"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "controller",
+      "description": "Manettes : keymap {\"a\":\"jump\",\"start\":\"pause\",\"ls-left\":\"left\"} → actions au store (release : aussi <type>:up), analog-action=\"stick\" → {type:\"stick\", payload:{pad, lx, ly, rx, ry, lt, rt}} quand un axe bouge ; état <id>State {status, count, pads:[{index, id, lx, ly, rx, ry, lt, rt, pressed}]} ; control DP {rumble:{n: compteur, ms, strong, weak}}. Boutons : a b x y lb rb lt rt select start ls rs up down left right home, ls-left/right/up/down"
+    },
+    {
+      "name": "sonic-date",
+      "props": {
+        "pageLanguage": {
+          "type": "string",
+          "default": "fr"
+        },
+        "wording_billet_periode_validite": {
+          "type": "string"
+        },
+        "designMode": {
+          "type": "boolean",
+          "default": "null"
+        },
+        "time_zone": {
+          "type": "string",
+          "default": "null"
+        },
+        "date": {
+          "type": "number",
+          "default": "null"
+        },
+        "date_string": {
+          "type": "string",
+          "default": "null"
+        },
+        "start_date_string": {
+          "type": "string",
+          "default": "null"
+        },
+        "end_date_string": {
+          "type": "string",
+          "default": "null"
+        },
+        "start_date": {
+          "type": "number",
+          "default": "0"
+        },
+        "computedStartDate": {
+          "type": "number",
+          "default": "0"
+        },
+        "end_date": {
+          "type": "number",
+          "default": "0"
+        },
+        "computedEndDate": {
+          "type": "number",
+          "default": "0"
+        },
+        "hide_hours": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "era": {
+          "type": "string",
+          "values": [
+            "narrow",
+            "short",
+            "long"
+          ]
+        },
+        "year": {
+          "type": "string",
+          "values": [
+            "numeric",
+            "2-digit"
+          ],
+          "default": "numeric"
+        },
+        "month": {
+          "type": "string",
+          "values": [
+            "numeric",
+            "2-digit",
+            "narrow",
+            "short",
+            "long"
+          ],
+          "default": "short"
+        },
+        "day": {
+          "type": "string",
+          "values": [
+            "numeric",
+            "2-digit"
+          ],
+          "default": "2-digit"
+        },
+        "weekday": {
+          "type": "string",
+          "values": [
+            "narrow",
+            "short",
+            "long",
+            "hidden"
+          ],
+          "default": "short"
+        },
+        "hour": {
+          "type": "string",
+          "values": [
+            "numeric",
+            "2-digit",
+            "hidden"
+          ],
+          "default": "2-digit"
+        },
+        "hour12": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "minute": {
+          "type": "string",
+          "values": [
+            "numeric",
+            "2-digit",
+            "hidden"
+          ],
+          "default": "2-digit"
+        },
+        "language": {
+          "type": "string"
+        },
+        "renderIf": {
+          "type": "boolean",
+          "default": "true"
+        },
+        "now": {
+          "type": "boolean",
+          "default": "false"
+        }
+      }
+    },
+    {
+      "name": "sonic-delay",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "time": {
+          "type": "number"
+        },
+        "feedback": {
+          "type": "number"
+        },
+        "mix": {
+          "type": "number"
+        },
+        "tone": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Délai (time en s ou 3/16), seul module qui autorise une boucle"
+    },
+    {
+      "name": "sonic-divider",
+      "props": {
+        "hasText": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "label": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "values": [
+            "2xs",
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "2xl",
+            "inherit"
+          ]
+        },
+        "align": {
+          "type": "string",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ],
+          "default": "center"
+        },
+        "vertical": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "noMargin": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "lineStyle": {
+          "type": "string",
+          "values": [
+            "solid",
+            "dashed",
+            "dotted"
+          ],
+          "default": "solid"
+        }
+      }
+    },
+    {
+      "name": "sonic-env",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "a": {
+          "type": "number"
+        },
+        "d": {
+          "type": "number"
+        },
+        "s": {
+          "type": "number"
+        },
+        "r": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Enveloppe ADSR déclenchée par la note (sortie 0..1)"
+    },
+    {
+      "name": "sonic-fetch",
+      "props": {
+        "loader": {
+          "type": "string"
+        }
+      },
+      "description": "###Fetch charge un contenu via un appel d'api web. Extends mixins : Fetcher, [Subscriber](./?path=/docs/miscallenous-🔔-subscriber--page) #### Configuration via les attributs | nom | sur quelle balise | Description | Exemple de valeur |…"
+    },
+    {
+      "name": "sonic-fieldset",
+      "props": {
+        "disabled": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "form": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "iconName": {
+          "type": "string"
+        },
+        "iconLibrary": {
+          "type": "string"
+        },
+        "iconPrefix": {
+          "type": "string"
+        },
+        "tight": {
+          "type": "boolean"
+        },
+        "variant": {
+          "type": "string",
+          "values": [
+            "default",
+            "ghost",
+            "shadow"
+          ],
+          "default": "default"
+        }
+      }
+    },
+    {
+      "name": "sonic-filter",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "freq-hz": {
+          "type": "number"
+        },
+        "q": {
+          "type": "number"
+        },
+        "gain-db": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Filtre biquad"
+    },
+    {
+      "name": "sonic-fold",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "bias": {
+          "type": "number"
+        },
+        "mix": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Wavefolder sinusoïdal ×2 (AudioWorklet ; repli : waveshaper fixe) : amount 0..12 et bias modulables, mix"
+    },
+    {
+      "name": "sonic-form-actions",
+      "props": {
+        "direction": {
+          "type": "string",
+          "default": "row"
+        },
+        "justify": {
+          "type": "string",
+          "default": "flex-start"
+        },
+        "alignItems": {
+          "type": "string",
+          "default": "center"
+        }
+      }
+    },
+    {
+      "name": "sonic-form-layout",
+      "props": {
+        "_oneFormElement": {
+          "type": "boolean",
+          "default": "false"
+        }
+      }
+    },
+    {
+      "name": "sonic-gamepad",
+      "props": {
+        "target": {
+          "type": "string"
+        },
+        "keymap": {
+          "type": "object"
+        },
+        "deadzone": {
+          "type": "number"
+        },
+        "repeat": {
+          "type": "object"
+        }
+      },
+      "addon": "interactive",
+      "description": "Manette -> actions store"
+    },
+    {
+      "name": "sonic-gesture",
+      "props": {
+        "target": {
+          "type": "string"
+        },
+        "swipe-threshold": {
+          "type": "number"
+        },
+        "long-press-ms": {
+          "type": "number"
+        },
+        "drag": {
+          "type": "boolean"
+        }
+      },
+      "addon": "interactive",
+      "description": "Gestes tactiles -> actions"
+    },
+    {
+      "name": "sonic-grain",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "sample": {
+          "type": "string"
+        },
+        "position": {
+          "type": "number"
+        },
+        "spread": {
+          "type": "number"
+        },
+        "size-s": {
+          "type": "number"
+        },
+        "density": {
+          "type": "number"
+        },
+        "pitch": {
+          "type": "number"
+        },
+        "jitter": {
+          "type": "number"
+        },
+        "level": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Granulaire (natif) : sample = URL https/blob ou chemin DP d'un SonicMediaRef (prise de sonic-audio-recorder) ; position, spread, size-s, density (grains/s), pitch, jitter réglables en direct (sonic-param) ; dans une voix, la hauteur suit la note (C4 = original)"
+    },
+    {
+      "name": "sonic-group",
+      "props": {
+        "alignItems": {
+          "type": "string",
+          "default": "center"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "hasDescription": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasLabel": {
+          "type": "boolean",
+          "default": "false"
+        }
+      }
+    },
+    {
+      "name": "sonic-hugging-face-infer",
+      "props": {
+        "model": {
+          "type": "string"
+        },
+        "inputProvider": {
+          "type": "string"
+        },
+        "outputProvider": {
+          "type": "string"
+        },
+        "statusProvider": {
+          "type": "string"
+        },
+        "triggerProvider": {
+          "type": "string"
+        },
+        "consentProvider": {
+          "type": "string"
+        },
+        "load": {
+          "type": "string"
+        },
+        "trigger": {
+          "type": "string"
+        },
+        "debounce": {
+          "type": "number"
+        },
+        "maxItems": {
+          "type": "number"
+        },
+        "maxChars": {
+          "type": "number"
+        },
+        "timeoutMs": {
+          "type": "number"
+        }
+      },
+      "addon": "hugging-face-infer",
+      "description": "Inférence ML navigateur"
+    },
+    {
+      "name": "sonic-icon",
+      "props": {
+        "name": {
+          "type": "string",
+          "description": "Nom identifiant l'icone ex : *info*"
+        },
+        "prefix": {
+          "type": "string",
+          "description": "prefix de l'icone si nécessaire ex: *solid*. La valeur par défaut est \"\" qui est mappée sur *regular*"
+        },
+        "library": {
+          "type": "string",
+          "description": "library de l'icone url vers un dossier en lign conenant des icônes"
+        },
+        "customIconLibraryPath": {
+          "type": "string",
+          "default": "null"
+        },
+        "customIconDefaultPrefix": {
+          "type": "string",
+          "default": "null"
+        }
+      },
+      "description": "Afficher l'icone choisie parmis une liste prédéfinie dans icons.json les tailles suivantes sont disponible via l'attribut *size* : 2xs,xs,sm,\"\",lg,xl,2xl"
+    },
+    {
+      "name": "sonic-if",
+      "props": {
+        "condition": {
+          "type": "boolean",
+          "default": "false",
+          "description": "Le contenu s'affiche si la condition est évaluée à true."
+        }
+      },
+      "description": "Le composant *sonic-if* affiche son contenu dans le slot principal si sa propriété .condition est évaluée à true"
+    },
+    {
+      "name": "sonic-image",
+      "props": {
+        "rounded": {
+          "type": "string",
+          "values": [
+            "base",
+            "none",
+            "full",
+            "sm",
+            "md",
+            "lg",
+            "xl"
+          ],
+          "default": "none"
+        },
+        "src": {
+          "type": "string"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "loading": {
+          "type": "string",
+          "values": [
+            "eager",
+            "lazy"
+          ],
+          "default": "lazy"
+        },
+        "transition": {
+          "type": "string",
+          "values": [
+            "fade",
+            "fade-scale-out"
+          ]
+        },
+        "ratio": {
+          "type": "string",
+          "default": "auto"
+        },
+        "objectPosition": {
+          "type": "string",
+          "default": "center center"
+        },
+        "imageRendering": {
+          "type": "string",
+          "default": "auto"
+        },
+        "cover": {
+          "type": "boolean",
+          "default": "false"
+        }
+      }
+    },
+    {
+      "name": "sonic-input",
+      "props": {
+        "size": {
+          "type": "string",
+          "values": [
+            "2xs",
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "2xl",
+            "inherit"
+          ],
+          "description": "Taille du composant, implique notamment des modifications de typo et de marge interne"
+        },
+        "inputmode": {
+          "type": "string"
+        },
+        "list": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "min": {
+          "type": "string"
+        },
+        "max": {
+          "type": "string"
+        },
+        "readonly": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "step": {
+          "type": "number"
+        },
+        "minlength": {
+          "type": "number"
+        },
+        "maxlength": {
+          "type": "number"
+        },
+        "src": {
+          "type": "string"
+        },
+        "inlineContent": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "disableInlineContentFocus": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "showPasswordToggle": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "autoActive": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "active": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasDescription": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasLabel": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasSuffix": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasPrefix": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "isPassword": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "sameValueAsName": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "sonic-input-autocomplete",
+      "props": {
+        "size": {
+          "type": "string",
+          "values": [
+            "2xs",
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "2xl",
+            "inherit"
+          ],
+          "default": "md"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "filteredFields": {
+          "type": "string"
+        },
+        "readonly": {
+          "type": "boolean",
+          "default": "null"
+        },
+        "dataProviderExpression": {
+          "type": "string"
+        },
+        "serviceURL": {
+          "type": "string"
+        },
+        "minSearchLength": {
+          "type": "number",
+          "default": "3"
+        },
+        "select": {
+          "type": "boolean"
+        },
+        "key": {
+          "type": "string"
+        },
+        "searchParameter": {
+          "type": "string"
+        },
+        "propertyName": {
+          "type": "string"
+        },
+        "items": {
+          "type": "string",
+          "default": "null"
+        },
+        "hasInputPrefix": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "popElement": {
+          "type": "string"
+        },
+        "lastValidSearch": {
+          "type": "string",
+          "description": "Public — cptypeahead."
+        }
+      },
+      "description": "Input avec suggestions (queue). Valeur formulaire via formDataProvider + name ; texte de recherche sur un store interne dédié."
     },
     {
       "name": "sonic-joint",
@@ -3418,29 +1635,472 @@
           "type": "boolean"
         }
       },
+      "addon": "physics",
       "description": "Joint entre deux corps (a, b ; ground = le décor) : revolute (pivot at, motor °/s, max-torque, lower / upper °), distance (ressort : frequency, damping, length), rope (length), weld, prismatic (axis, limites, moteur)"
     },
     {
-      "name": "sonic-controller",
+      "name": "sonic-jsonata",
       "props": {
-        "store": {
+        "inputProvider": {
+          "type": "string",
+          "description": "DataProvider d’entrée (source)."
+        },
+        "outputProvider": {
+          "type": "string",
+          "description": "DataProvider de sortie (agrégat, readonly)."
+        },
+        "formDataProvider": {
+          "type": "string",
+          "description": "Form / variables optionnelles (`$top`, `$roast`, …). Même id que le `formDataProvider` du formulaire — recalcule sans refetch."
+        },
+        "expression": {
+          "type": "string"
+        },
+        "outputSchema": {
+          "type": "object",
+          "default": "null"
+        }
+      },
+      "description": "Adaptateur JSONata de `derive` : 1 entrée → expression → 1 sortie (readonly). Contexte d’évaluation : - `$input` = contenu de `inputProvider` - champs du `formDataProvider` optionnel = `$top`, `$roast`, …"
+    },
+    {
+      "name": "sonic-karplus",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "freq-hz": {
+          "type": "string"
+        },
+        "detune": {
+          "type": "number"
+        },
+        "decay": {
+          "type": "number"
+        },
+        "damp": {
+          "type": "number"
+        },
+        "level": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Corde pincée Karplus-Strong (AudioWorklet ; repli : filtre résonant), source de voix : freq-hz = voice.pitch, decay (s), damp 0..1, level ; suit le bend MPE"
+    },
+    {
+      "name": "sonic-keyboard",
+      "props": {
+        "target": {
           "type": "string"
         },
         "keymap": {
           "type": "object"
         },
-        "release": {
-          "type": "boolean"
-        },
-        "analog-action": {
+        "scope": {
           "type": "string"
         },
-        "deadzone": {
+        "repeat": {
+          "type": "object"
+        },
+        "keyup": {
+          "type": "boolean"
+        }
+      },
+      "addon": "interactive",
+      "description": "Clavier -> actions store"
+    },
+    {
+      "name": "sonic-ladder",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "freq-hz": {
           "type": "number"
         },
-        "player": {
+        "res": {
+          "type": "number"
+        },
+        "drive": {
+          "type": "number"
+        },
+        "detune": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Filtre ladder 24 dB/oct non linéaire (AudioWorklet ; repli : 2 passe-bas natifs) : freq-hz, res 0..1.2 (auto-oscillation vers 1), drive, detune — tous modulables"
+    },
+    {
+      "name": "sonic-legend",
+      "props": {
+        "forceAutoFill": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "_description": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "_label": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "iconName": {
+          "type": "string"
+        },
+        "iconLibrary": {
+          "type": "string"
+        },
+        "iconPrefix": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "sonic-legend-description",
+      "props": {}
+    },
+    {
+      "name": "sonic-lfo",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "wave": {
+          "type": "string"
+        },
+        "rate-hz": {
+          "type": "number"
+        },
+        "sync": {
+          "type": "string"
+        }
+      },
+      "addon": "audio",
+      "description": "LFO (sortie -1..1), rate-hz ou sync=\"1/8\""
+    },
+    {
+      "name": "sonic-link",
+      "props": {
+        "href": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "data-aria-label": {
           "type": "string",
-          "description": "all ou 0..3"
+          "default": "null"
+        },
+        "autoActive": {
+          "type": "string",
+          "values": [
+            "strict",
+            "partial",
+            "disabled",
+            "strict-path-only"
+          ],
+          "default": "partial",
+          "description": "Active state for in-app navigation: - strict — pathname, search, and hash must match - strict-path-only — pathname and hash must match (ignore search) -…"
+        },
+        "target": {
+          "type": "string"
+        },
+        "pushState": {
+          "type": "boolean",
+          "default": "null",
+          "description": "Si présent on passe en mode pushstate"
+        }
+      }
+    },
+    {
+      "name": "sonic-list",
+      "props": {
+        "itemPropertyMap": {
+          "type": "object"
+        },
+        "templateKey": {
+          "type": "string",
+          "default": "template",
+          "description": "La propriété templateKey contient le nom de la propriété qui sera utilisé pour identifier le template à utiliser dans la donnée de la ligne."
+        },
+        "idKey": {
+          "type": "string",
+          "default": "id",
+          "description": "La propriété idKey est utilisé repérer les lignes de manière unique si pour les item de la liste item[this.idKey] n'existe pas, alors l'index est utilisé"
+        },
+        "loader": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "string"
+        },
+        "offset": {
+          "type": "number",
+          "default": "0"
+        },
+        "_items": {
+          "type": "string"
+        },
+        "items": {
+          "type": "string"
+        },
+        "loadingSize": {
+          "type": "object",
+          "default": "{ width: 0, height: 0 }",
+          "description": "loadingsize is computed after rendering a loading / doesnt require one but will be used on other renderings"
+        }
+      }
+    },
+    {
+      "name": "sonic-loader",
+      "props": {
+        "mode": {
+          "type": "string",
+          "values": [
+            "inline",
+            "fixed"
+          ],
+          "default": "fixed",
+          "description": "Display mode: inline (in content) or fixed (viewport overlay)."
+        },
+        "noDelay": {
+          "type": "boolean",
+          "default": "false",
+          "description": "Skip the initial fade-in delay before the loader appears."
+        },
+        "announce": {
+          "type": "boolean",
+          "default": "false",
+          "description": "When true, exposes `role=\"status\"` and `aria-live=\"polite\"` on the host (like `sonic-alert`)."
+        }
+      }
+    },
+    {
+      "name": "sonic-matrix",
+      "props": {
+        "key": {
+          "type": "string"
+        },
+        "cols": {
+          "type": "number"
+        },
+        "palette": {
+          "type": "object"
+        },
+        "cell": {
+          "type": "string"
+        },
+        "gap": {
+          "type": "number"
+        },
+        "ghost-key": {
+          "type": "string"
+        },
+        "label-key": {
+          "type": "string"
+        }
+      },
+      "addon": "interactive",
+      "description": "Grille 2D canvas"
+    },
+    {
+      "name": "sonic-media-download",
+      "props": {
+        "source": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "addon": "media",
+      "description": "Lien de téléchargement d'une prise (blob: uniquement) : source = chemin DP d'un SonicMediaRef (ex. exportState.last) ; caché tant qu'il n'y a rien ; contenu libre en slot"
+    },
+    {
+      "name": "sonic-media-recorder",
+      "props": {
+        "video-source": {
+          "type": "string"
+        },
+        "audio-source": {
+          "type": "string"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "bits-per-second": {
+          "type": "number"
+        },
+        "max-s": {
+          "type": "number"
+        },
+        "max-takes": {
+          "type": "number"
+        },
+        "take-provider": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "media",
+      "description": "Export vidéo (webm/mp4) : video-source #id (shader, caméra, vidéo) + audio-source master|#id|none ; DP control {recording} ; prise SonicMediaRef {url, mime, durS, size, width, height} dans take-provider et l'état last"
+    },
+    {
+      "name": "sonic-media-start",
+      "props": {
+        "for": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "persist": {
+          "type": "boolean"
+        }
+      },
+      "addon": "media",
+      "description": "Bouton d'invite : démarre caméra / micro / vidéo listés dans for (clic = geste) ; caché une fois prêts ; affiche un refus"
+    },
+    {
+      "name": "sonic-menu",
+      "props": {
+        "size": {
+          "type": "string",
+          "values": [
+            "2xs",
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "2xl",
+            "inherit"
+          ],
+          "description": "Taille du composant, peut avoir un effet sur ses composants enfants tels que les dividers / boutons,... qui n'auraient pas d'attribut size précisés."
+        },
+        "direction": {
+          "type": "string",
+          "values": [
+            "row",
+            "column"
+          ],
+          "default": "column"
+        },
+        "align": {
+          "type": "string",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ],
+          "default": "left"
+        },
+        "shadow": {
+          "type": "string",
+          "values": [
+            "none",
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "null"
+        },
+        "moreShape": {
+          "type": "string",
+          "values": [
+            "square",
+            "circle"
+          ],
+          "default": "circle"
+        },
+        "scrollable": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "observer": {
+          "type": "string",
+          "default": "null"
+        },
+        "attributeObserver": {
+          "type": "string",
+          "default": "null"
+        },
+        "minWidth": {
+          "type": "string",
+          "default": "0"
+        },
+        "hasMoreElements": {
+          "type": "boolean",
+          "default": "false"
+        }
+      }
+    },
+    {
+      "name": "sonic-menu-item",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-menu-item",
+      "example": {
+        "tagName": "sonic-menu-item",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-mic",
+      "props": {
+        "active": {
+          "type": "boolean"
+        },
+        "autostart": {
+          "type": "boolean"
+        },
+        "monitor": {
+          "type": "boolean"
+        },
+        "gain": {
+          "type": "number"
+        },
+        "device-id": {
+          "type": "string"
+        },
+        "echo-cancellation": {
+          "type": "boolean"
+        },
+        "noise-suppression": {
+          "type": "boolean"
+        },
+        "auto-gain": {
+          "type": "boolean"
         },
         "rate": {
           "type": "number"
@@ -3452,7 +2112,1869 @@
           "type": "string"
         }
       },
-      "description": "Manettes : keymap {\"a\":\"jump\",\"start\":\"pause\",\"ls-left\":\"left\"} → actions au store (release : aussi <type>:up), analog-action=\"stick\" → {type:\"stick\", payload:{pad, lx, ly, rx, ry, lt, rt}} quand un axe bouge ; état <id>State {status, count, pads:[{index, id, lx, ly, rx, ry, lt, rt, pressed}]} ; control DP {rumble:{n: compteur, ms, strong, weak}}. Boutons : a b x y lb rb lt rt select start ls rs up down left right home, ls-left/right/up/down"
+      "addon": "audio",
+      "description": "Micro : source audio (#id) pour analyseur / patch ; jamais vers le master sauf monitor ; démarrage sur geste ; DP control {active, monitor, gain, deviceId} ; état {status, error, rms, db, devices}"
+    },
+    {
+      "name": "sonic-midi",
+      "props": {
+        "active": {
+          "type": "boolean"
+        },
+        "autostart": {
+          "type": "boolean"
+        },
+        "input": {
+          "type": "string",
+          "description": "all (défaut), none, first ou morceau de nom"
+        },
+        "output": {
+          "type": "string",
+          "description": "vide = aucune, first, all ou morceau de nom"
+        },
+        "channel": {
+          "type": "string",
+          "description": "all ou 1..16"
+        },
+        "out-channel": {
+          "type": "number"
+        },
+        "mpe": {
+          "type": "boolean"
+        },
+        "mpe-master": {
+          "type": "number"
+        },
+        "bend-range": {
+          "type": "number"
+        },
+        "transpose": {
+          "type": "number"
+        },
+        "target": {
+          "type": "string",
+          "description": "#id d'instruments séparés par des espaces"
+        },
+        "store": {
+          "type": "string"
+        },
+        "action-type": {
+          "type": "string"
+        },
+        "events": {
+          "type": "string"
+        },
+        "trigger": {
+          "type": "string"
+        },
+        "cc-out": {
+          "type": "string"
+        },
+        "clock-out": {
+          "type": "string"
+        },
+        "offset-ms": {
+          "type": "number"
+        },
+        "notes-map": {
+          "type": "object"
+        },
+        "dur-s": {
+          "type": "number"
+        },
+        "rate": {
+          "type": "number"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP {active, input, output, channel, outChannel, program, panic: compteur}"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "audio",
+      "description": "Web MIDI (accès sur geste, sans SysEx). Entrée : target=\"#synth\" joue les notes (MPE : bend / pression / timbre par note → voice.bend|pressure|timbre du patch), store=id reçoit {type:\"midi\", payload:{kind, note, name, vel, ch, cc, value}} ; état {status, inputs, held, last, notes, cc, bend, pressure, clock{running,bpm,beat}}. Sortie : instrument (cible d'un sonic-sequencer ou events/trigger) vers output=\"nom\", cc-out (DP {\"74\":0.5}), clock-out=\"#seq\" (horloge 24 ppq + Start/Stop)"
+    },
+    {
+      "name": "sonic-mix",
+      "props": {
+        "composition": {
+          "type": "string"
+        },
+        "listeners": {
+          "type": "array",
+          "default": "[]"
+        }
+      }
+    },
+    {
+      "name": "sonic-mixer",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "levels": {
+          "type": "string"
+        }
+      },
+      "addon": "audio",
+      "description": "Somme pondérée de ses entrées (in, levels) ; sans in : toutes les sources précédentes"
+    },
+    {
+      "name": "sonic-mod",
+      "props": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "curve": {
+          "type": "string"
+        }
+      },
+      "addon": "audio",
+      "description": "Câble de modulation : from (module ou voice.pitch|gate|vel|note|rand) → to (module.param), amount, curve=exp"
+    },
+    {
+      "name": "sonic-modal",
+      "props": {
+        "forceAction": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "noCloseButton": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "removeOnHide": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "removeHashOnHide": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "align": {
+          "type": "string",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ],
+          "default": "left"
+        },
+        "paddingX": {
+          "type": "string"
+        },
+        "paddingY": {
+          "type": "string"
+        },
+        "maxWidth": {
+          "type": "string",
+          "default": "min(100vw, 40rem)"
+        },
+        "maxHeight": {
+          "type": "string",
+          "default": "90vh"
+        },
+        "zIndex": {
+          "type": "string"
+        },
+        "width": {
+          "type": "string",
+          "default": "100%"
+        },
+        "height": {
+          "type": "string",
+          "default": "fit-content"
+        },
+        "effect": {
+          "type": "string",
+          "default": "slide"
+        },
+        "styleSheet": {
+          "type": "string"
+        },
+        "options": {
+          "type": "string"
+        },
+        "fullScreen": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "visible": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "closeButtonType": {
+          "type": "string",
+          "values": [
+            "default",
+            "primary",
+            "neutral",
+            "warning",
+            "danger",
+            "success",
+            "info"
+          ]
+        },
+        "_modalElement": {
+          "type": "string"
+        },
+        "closeOnLocationChange": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "location": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "sonic-modal-actions",
+      "props": {
+        "buttons": {
+          "type": "array"
+        }
+      }
+    },
+    {
+      "name": "sonic-modal-close",
+      "props": {
+        "translation": {
+          "type": "string",
+          "default": "{ ...uiAriaLabels.closeWindow }"
+        },
+        "reset": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "values": [
+            "default",
+            "primary",
+            "neutral",
+            "warning",
+            "danger",
+            "success",
+            "info"
+          ]
+        }
+      }
+    },
+    {
+      "name": "sonic-modal-content",
+      "props": {}
+    },
+    {
+      "name": "sonic-modal-subtitle",
+      "props": {}
+    },
+    {
+      "name": "sonic-modal-title",
+      "props": {}
+    },
+    {
+      "name": "sonic-noise",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "level": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Bruit blanc / rose / brun"
+    },
+    {
+      "name": "sonic-osc",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "wave": {
+          "type": "string"
+        },
+        "freq-hz": {
+          "type": "string"
+        },
+        "detune": {
+          "type": "number"
+        },
+        "octave": {
+          "type": "number"
+        },
+        "semi": {
+          "type": "number"
+        },
+        "pw": {
+          "type": "number"
+        },
+        "harmonics": {
+          "type": "string"
+        },
+        "level": {
+          "type": "number"
+        },
+        "fm": {
+          "type": "string"
+        },
+        "fm-amount": {
+          "type": "number"
+        },
+        "sync": {
+          "type": "string",
+          "description": "nom d'un autre sonic-osc de la même voix"
+        }
+      },
+      "addon": "audio",
+      "description": "Oscillateur (sine square sawtooth triangle pulse, harmonics) ; freq-hz = voice.pitch par défaut ; sync=\"m\" : synchro dure sur l'oscillateur m (PolyBLEP, AudioWorklet)"
+    },
+    {
+      "name": "sonic-pan",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "pan": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Panoramique"
+    },
+    {
+      "name": "sonic-param",
+      "props": {
+        "to": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "expose": {
+          "type": "string"
+        },
+        "value": {
+          "type": "number"
+        },
+        "ramp-s": {
+          "type": "number"
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Paramètre piloté : to (module.param), source (DP), expose, value, ramp-s, min, max"
+    },
+    {
+      "name": "sonic-password-helper",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "minChars": {
+          "type": "number",
+          "default": "8"
+        },
+        "hasNoChar": {
+          "type": "boolean",
+          "default": "true"
+        },
+        "hasEnoughChars": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasMinuscule": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasMajuscule": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasNumber": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasSpecialChar": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "wording_password_helper_decription": {
+          "type": "string",
+          "default": "Le mot de passe doit contenir au moins :"
+        },
+        "wording_password_helper_min_length": {
+          "type": "string",
+          "default": "8 caractères"
+        },
+        "wording_password_helper_lower_case": {
+          "type": "string",
+          "default": "1 minuscule"
+        },
+        "wording_password_helper_upper_case": {
+          "type": "string",
+          "default": "1 majuscule"
+        },
+        "wording_password_helper_number": {
+          "type": "string",
+          "default": "1 chiffre"
+        },
+        "wording_password_helper_special_char": {
+          "type": "string",
+          "default": "1 caractère spécial"
+        }
+      }
+    },
+    {
+      "name": "sonic-patch",
+      "props": {
+        "preset": {
+          "type": "string",
+          "description": "synth/lead, synth/bass, synth/pad, synth/pluck, synth/fm-bell, synth/chip, synth/string, synth/sync-lead, synth/acid, drums/kick, drums/snare, drums/hat, drums/kit"
+        },
+        "params": {
+          "type": "object",
+          "description": "Valeurs des paramètres exposés du preset"
+        },
+        "events": {
+          "type": "string",
+          "description": "DP : liste d'événements {note|sample, vel, durS, type}"
+        },
+        "trigger": {
+          "type": "string",
+          "description": "DP : chaque changement rejoue events"
+        },
+        "poly": {
+          "type": "number"
+        },
+        "steal": {
+          "type": "string"
+        },
+        "vel-sense": {
+          "type": "number"
+        },
+        "gain": {
+          "type": "number"
+        },
+        "bpm": {
+          "type": "number"
+        },
+        "dur-s": {
+          "type": "number"
+        },
+        "out": {
+          "type": "string"
+        },
+        "output": {
+          "type": "string",
+          "description": "master (défaut), #id ou none"
+        },
+        "notes-map": {
+          "type": "object"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "audio",
+      "description": "Instrument modulaire : enfants sonic-voice (+ modules) ou preset (synth/lead synth/bass synth/pad synth/pluck synth/fm-bell synth/chip synth/string synth/sync-lead synth/acid drums/kick drums/snare drums/hat drums/kit). events (DP liste) + trigger (DP), état dans out-data-provider"
+    },
+    {
+      "name": "sonic-physics",
+      "props": {
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "scale": {
+          "type": "number"
+        },
+        "gravity": {
+          "type": "string",
+          "description": "\"0 9.8\" (m/s², défaut), \"0 0\" vue de dessus"
+        },
+        "bounds": {
+          "type": "string",
+          "description": "walls (défaut), box (sans sol), floor, none"
+        },
+        "paused": {
+          "type": "boolean"
+        },
+        "time-scale": {
+          "type": "number"
+        },
+        "bodies": {
+          "type": "string"
+        },
+        "input": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "store": {
+          "type": "string"
+        },
+        "action-prefix": {
+          "type": "string"
+        },
+        "collide-min": {
+          "type": "number"
+        },
+        "drag": {
+          "type": "boolean"
+        },
+        "publish": {
+          "type": "string",
+          "description": "noms des corps publiés (défaut : tous)"
+        },
+        "rate": {
+          "type": "number"
+        },
+        "background": {
+          "type": "string"
+        },
+        "debug": {
+          "type": "boolean"
+        },
+        "hidden-preview": {
+          "type": "boolean"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "physics",
+      "description": "Monde 2D (px, y vers le bas) : enfants sonic-body / sonic-joint, bodies=DP liste de corps (ajout / retrait suivis), input=DP {nom: {vx, vy, fx, fy, spin, torque, impulse:{n,x,y}, set:{n,x,y,vx,vy,angle}}} (n = compteur), control=DP {running, reset: compteur, gravity:[x,y], timeScale}, store=id reçoit collide {a,b,tagsA,tagsB,impulse,x,y} / enter / leave {sensor, body, tags} / out {body, side} / tap {x,y,body} ; état <id>State {bodies:{nom:{x,y,angle,vx,vy}}, collisions, time} ; source d'images #id pour sonic-shader"
+    },
+    {
+      "name": "sonic-pop",
+      "props": {
+        "open": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "noToggle": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "inline": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "manual": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "shadow": {
+          "type": "string",
+          "values": [
+            "none",
+            "sm",
+            "md",
+            "lg"
+          ],
+          "default": "lg",
+          "description": "Ombre"
+        },
+        "placement": {
+          "type": "string",
+          "default": "bottom"
+        },
+        "lastContentX": {
+          "type": "number",
+          "default": "0"
+        },
+        "lastContentY": {
+          "type": "number",
+          "default": "0"
+        },
+        "resizeObserver": {
+          "type": "string",
+          "default": "new ResizeObserver(() => this.computePosition(this.placement), )"
+        }
+      }
+    },
+    {
+      "name": "sonic-progress",
+      "props": {
+        "value": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number",
+          "default": "100"
+        },
+        "invert": {
+          "type": "boolean",
+          "default": "false",
+          "description": "Barre et libellés adaptés à un fond coloré (ex. `sonic-card`)."
+        },
+        "type": {
+          "type": "string",
+          "values": [
+            "default",
+            "primary",
+            "warning",
+            "danger",
+            "success",
+            "info",
+            "neutral"
+          ],
+          "default": "default"
+        },
+        "size": {
+          "type": "string",
+          "values": [
+            "2xs",
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "2xl",
+            "inherit"
+          ]
+        }
+      }
+    },
+    {
+      "name": "sonic-queue",
+      "props": {
+        "templates": {
+          "type": "array",
+          "default": "null"
+        },
+        "items": {
+          "type": "string",
+          "default": "null"
+        },
+        "noItems": {
+          "type": "string",
+          "default": "null"
+        },
+        "skeleton": {
+          "type": "string",
+          "default": "null"
+        },
+        "lastRequestTime": {
+          "type": "number",
+          "default": "0"
+        },
+        "key": {
+          "type": "string"
+        },
+        "itemPropertyMap": {
+          "type": "object",
+          "default": "null"
+        },
+        "cache": {
+          "type": "string",
+          "default": "default",
+          "description": "Durée cible en ms d'une requête pour afficher 1 lot."
+        },
+        "targetRequestDuration": {
+          "type": "number",
+          "default": "500"
+        },
+        "limit": {
+          "type": "number",
+          "default": "5"
+        },
+        "lazyBoundsRatio": {
+          "type": "number",
+          "default": "1"
+        },
+        "offset": {
+          "type": "number",
+          "default": "0"
+        },
+        "resultCount": {
+          "type": "number",
+          "default": "0"
+        },
+        "noLazyload": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "loader": {
+          "type": "string",
+          "default": "inline"
+        },
+        "filteredFields": {
+          "type": "string"
+        },
+        "instanceId": {
+          "type": "number",
+          "default": "0"
+        },
+        "localStorage": {
+          "type": "string",
+          "default": "disabled"
+        },
+        "filterTimeoutMs": {
+          "type": "number",
+          "default": "400"
+        },
+        "searchHash": {
+          "type": "string"
+        },
+        "requestId": {
+          "type": "number",
+          "default": "0"
+        },
+        "isFirstRequest": {
+          "type": "boolean",
+          "default": "true"
+        },
+        "scrollRoot": {
+          "type": "string",
+          "default": "null",
+          "description": "Conteneur scrollé — Safari : stock/restore via SafariScrollGuard (capture intent user globale). Ici : sync root + restore après Lit."
+        },
+        "dataProviderExpression": {
+          "type": "string",
+          "description": "Cette expression est utilisée comme modèle par le composant Queue pour renseigngner le dataProvider de la…"
+        },
+        "invalidateOnPageShow": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "idKey": {
+          "type": "string",
+          "default": "id"
+        },
+        "listDataProviders": {
+          "type": "array",
+          "default": "[]"
+        },
+        "nextHadEvent": {
+          "type": "boolean",
+          "default": "false"
+        }
+      },
+      "description": "### Une Queue charge du contenu par lot selon l'expression renseignée dans l'attribut *dataProviderExpression*. * Chaque lot est chargé par un composant [List](./?path=/docs/core-components-functional-list-list--basic) dont le dataProvider…"
+    },
+    {
+      "name": "sonic-radio",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-radio",
+      "example": {
+        "tagName": "sonic-radio",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-redirect",
+      "props": {
+        "udpateCallBack": {
+          "type": "string"
+        }
+      },
+      "description": "sonic-redirect permet d'effectuer une redirection. * L'URL de redirection fournie dans l'attribut *to*. * La redirection est effectuée en fonction de la disponibilité d'une donnée issue du publisher à l'adresse fournie par l'attribut…"
+    },
+    {
+      "name": "sonic-resonator",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "freq-hz": {
+          "type": "string"
+        },
+        "detune": {
+          "type": "number"
+        },
+        "q": {
+          "type": "number"
+        },
+        "partials": {
+          "type": "string"
+        },
+        "level": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Résonateur (banque de passe-bandes natifs) : excité par l'entrée (bruit, micro…), freq-hz = voice.pitch, q, partials \"1 2 3 4.2\", level"
+    },
+    {
+      "name": "sonic-reverb",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "size-s": {
+          "type": "number"
+        },
+        "damp": {
+          "type": "number"
+        },
+        "mix": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Réverbération générée"
+    },
+    {
+      "name": "sonic-router",
+      "props": {
+        "templateValueAttribute": {
+          "type": "string",
+          "default": "data-route"
+        },
+        "fallBackRoute": {
+          "type": "string"
+        },
+        "routes": {
+          "type": "string"
+        },
+        "basePath": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "sonic-same-value-helper",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "sameValueAs": {
+          "type": "string"
+        },
+        "descriptionWhenEqual": {
+          "type": "string",
+          "default": "Correspondance : oui"
+        },
+        "descriptionWhenNotEqual": {
+          "type": "string",
+          "default": "Correspondance : non"
+        },
+        "areEqual": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasNoChar": {
+          "type": "boolean",
+          "default": "true"
+        }
+      }
+    },
+    {
+      "name": "sonic-sampler",
+      "props": {
+        "samples": {
+          "type": "object"
+        },
+        "samples-provider": {
+          "type": "string"
+        },
+        "choke": {
+          "type": "array"
+        },
+        "notes-map": {
+          "type": "object"
+        },
+        "chromatic": {
+          "type": "string"
+        },
+        "gain": {
+          "type": "number"
+        },
+        "output": {
+          "type": "string"
+        },
+        "events": {
+          "type": "string"
+        },
+        "trigger": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "audio",
+      "description": "Sampler : samples {nom: url https/blob | {url|ref(DP SonicMediaRef), gain, pan, pitch, root, start, end, loop, reverse, gate}} ; événements {sample} ou {note} chromatique ; choke [[a,b]]"
+    },
+    {
+      "name": "sonic-scope",
+      "props": {}
+    },
+    {
+      "name": "sonic-screen",
+      "props": {
+        "active": {
+          "type": "boolean"
+        },
+        "audio": {
+          "type": "boolean"
+        },
+        "surface": {
+          "type": "string",
+          "description": "monitor, window, browser"
+        },
+        "cursor": {
+          "type": "string"
+        },
+        "allow-self": {
+          "type": "boolean"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "max-width": {
+          "type": "number"
+        },
+        "fit": {
+          "type": "string"
+        },
+        "hidden-preview": {
+          "type": "boolean"
+        },
+        "snapshot-type": {
+          "type": "string"
+        },
+        "max-snapshots": {
+          "type": "number"
+        },
+        "snapshot-provider": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP {active, snapshot: compteur}"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "media",
+      "description": "Capture d'écran (getDisplayMedia, clic direct requis : sonic-media-start for=\"screen\") : source d'images (#id) pour sonic-shader, photos (control.snapshot), son du partage (audio) pour l'analyseur / l'enregistreur, export par sonic-media-recorder ; état {status, error, surface, width, height, audio, snapshot}"
+    },
+    {
+      "name": "sonic-sdui",
+      "props": {
+        "sduiKey": {
+          "type": "string"
+        },
+        "messagesKey": {
+          "type": "string"
+        },
+        "profile": {
+          "type": "string",
+          "description": "Profil de rendu opt-in. `safe` refuse js / markup / innerHTML / prefix / suffix. Sans attribut, comportement historique inchangé."
+        },
+        "partial": {
+          "type": "boolean",
+          "default": "false",
+          "description": "Rendu partiel opt-in : les `childNodeIds` introuvables deviennent des placeholders. Activé aussi en mode incrémental (ops étape 6)."
+        },
+        "opsDataProvider": {
+          "type": "string",
+          "description": "DataProvider optionnel alimenté par un flux d'ops (`SDUIOp` ou `SDUIOp[]`). Chaque assignation est consommée via `applyOp`."
+        }
+      },
+      "description": "### sonic-sdui (Server Driven User Interface) est un fetcher chargant un JSON décrivant une interface utilisateur Extends mixins : Fetcher, [Subscriber](./?path=/docs/miscallenous-🔔-subscriber--page) * Si le composant possède un attribut…"
+    },
+    {
+      "name": "sonic-select",
+      "props": {
+        "valueKey": {
+          "type": "string",
+          "default": "value"
+        },
+        "wordingKey": {
+          "type": "string",
+          "default": "wording"
+        },
+        "multiple": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "size": {
+          "type": "string",
+          "values": [
+            "2xs",
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "2xl",
+            "inherit"
+          ]
+        },
+        "selectSize": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "values": [
+            "default",
+            "success",
+            "error",
+            "warning",
+            "primary",
+            "info"
+          ],
+          "default": "default"
+        },
+        "options": {
+          "type": "string"
+        },
+        "hasDoneFirstUpdate": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "_value": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "forceAutoFill": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "_description": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "_label": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "hasDescription": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasLabel": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasSuffix": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasPrefix": {
+          "type": "boolean",
+          "default": "false"
+        }
+      },
+      "description": "#### FormElement : Synchronise `value` via `formDataProvider` + `name`. Peut alimenter un `sonic-queue` via `dataFilterProvider` sur le même store."
+    },
+    {
+      "name": "sonic-sequencer",
+      "props": {
+        "pattern": {
+          "type": "object"
+        },
+        "bpm": {
+          "type": "number"
+        },
+        "swing": {
+          "type": "number"
+        },
+        "seed": {
+          "type": "number"
+        },
+        "beats": {
+          "type": "number"
+        },
+        "steps-per-beat": {
+          "type": "number"
+        },
+        "playing": {
+          "type": "boolean"
+        },
+        "control": {
+          "type": "string"
+        },
+        "store": {
+          "type": "string"
+        },
+        "lookahead-ms": {
+          "type": "number"
+        },
+        "out-data-provider": {
+          "type": "string"
+        },
+        "sync": {
+          "type": "string",
+          "description": "#id d'un sonic-midi : horloge externe"
+        }
+      },
+      "addon": "audio",
+      "description": "Horloge musicale : pattern {idInstrument: 'mini-notation' | {notes, scale, pad: 'x..x'}} joué sur des instruments par id ; store=id reçoit {type:step, payload:{step,beat,bar,phase,when,bpm}} ; control DP {playing,bpm,swing,seed,pattern} ; sync=\"#midi\" : suit l'horloge MIDI d'un appareil (Start/Stop, tempo, phase) ; état sync {locked, driftMs}"
+    },
+    {
+      "name": "sonic-sfx",
+      "props": {
+        "sound": {
+          "type": "string",
+          "description": "Nom du son (banque ou preset : click, select, coin, jump…)"
+        },
+        "on": {
+          "type": "string",
+          "description": "Événement déclencheur (défaut click)"
+        },
+        "hover": {
+          "type": "string",
+          "description": "Son au survol"
+        },
+        "engine": {
+          "type": "string"
+        },
+        "pitch": {
+          "type": "number",
+          "description": "Transposition en demi-tons"
+        },
+        "vol": {
+          "type": "number"
+        }
+      },
+      "addon": "sound",
+      "description": "Enveloppe des éléments et joue un son sur un événement (clic par défaut) et au survol"
+    },
+    {
+      "name": "sonic-shader",
+      "props": {
+        "image": {
+          "type": "string"
+        },
+        "buffer-a": {
+          "type": "string"
+        },
+        "buffer-b": {
+          "type": "string"
+        },
+        "buffer-c": {
+          "type": "string"
+        },
+        "buffer-d": {
+          "type": "string"
+        },
+        "common": {
+          "type": "string"
+        },
+        "channel0": {
+          "type": "string"
+        },
+        "channel1": {
+          "type": "string"
+        },
+        "channel2": {
+          "type": "string"
+        },
+        "channel3": {
+          "type": "string"
+        },
+        "play": {
+          "type": "boolean"
+        },
+        "play-on-hover": {
+          "type": "boolean"
+        },
+        "mouse": {
+          "type": "boolean"
+        },
+        "mouse-mode": {
+          "type": "string"
+        },
+        "param0": {
+          "type": "number"
+        },
+        "param1": {
+          "type": "number"
+        },
+        "param2": {
+          "type": "number"
+        },
+        "param3": {
+          "type": "number"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "shader",
+      "description": "Shader fragment Shadertoy"
+    },
+    {
+      "name": "sonic-shaper",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "curve": {
+          "type": "string"
+        },
+        "drive": {
+          "type": "number"
+        },
+        "oversample": {
+          "type": "string"
+        }
+      },
+      "addon": "audio",
+      "description": "Saturation / wavefold"
+    },
+    {
+      "name": "sonic-sound",
+      "props": {
+        "id": {
+          "type": "string",
+          "description": "Id du moteur (défaut \"default\")"
+        },
+        "bank": {
+          "type": "object",
+          "description": "Banque { sfx: {nom: SynthDef}, songs: {nom: SongDef} }"
+        },
+        "bank-provider": {
+          "type": "string",
+          "description": "DP contenant une banque, fusionnée sur bank"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage (chemin pointé accepté, ex. game.sound)"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP de l'état publié (défaut <id>State ou soundState)"
+        },
+        "max-voices": {
+          "type": "number"
+        }
+      },
+      "addon": "sound",
+      "description": "Moteur son : banque JSON (sfx + songs), pilotage par DP control {music, volume, muted, paused, fade, play:{nom:compteur}}, état publié dans out-data-provider"
+    },
+    {
+      "name": "sonic-states",
+      "props": {
+        "state": {
+          "type": "string"
+        },
+        "inverted": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "states": {
+          "type": "string"
+        },
+        "statePath": {
+          "type": "string"
+        },
+        "statePublisher": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "sonic-store",
+      "props": {
+        "initial": {
+          "type": "object"
+        },
+        "reducer": {
+          "type": "string"
+        },
+        "max-state-bytes": {
+          "type": "number"
+        },
+        "budget-ms": {
+          "type": "number"
+        },
+        "history": {
+          "type": "number"
+        }
+      },
+      "addon": "interactive",
+      "description": "Store declaratif + reducer JSONata"
+    },
+    {
+      "name": "sonic-submit",
+      "props": {
+        "submitResultKey": {
+          "type": "string",
+          "default": "null"
+        },
+        "disabled": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "endPoint": {
+          "type": "string",
+          "default": "null"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "api": {
+          "type": "string",
+          "default": "null"
+        },
+        "clickTimeStamp": {
+          "type": "number",
+          "default": "0"
+        }
+      },
+      "description": "###L'élément submit permet d'envoyer des données en rest * Les données envoyées sont celles présentes dans le publisher dont l'adresse est renseignée via l'attribut *formDataProvider*."
+    },
+    {
+      "name": "sonic-subscriber",
+      "props": {
+        "noAutofill": {
+          "type": "boolean",
+          "default": "true"
+        }
+      },
+      "description": "Voir la partie dédiée dans *MISCALLENOUS*"
+    },
+    {
+      "name": "sonic-switch",
+      "props": {
+        "class": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        }
+      },
+      "description": "Composant Concorde sonic-switch",
+      "example": {
+        "tagName": "sonic-switch",
+        "attributes": {}
+      }
+    },
+    {
+      "name": "sonic-t",
+      "props": {
+        "key": {
+          "type": "string"
+        },
+        "unsafeHTML": {
+          "type": "boolean"
+        }
+      }
+    },
+    {
+      "name": "sonic-table",
+      "props": {
+        "size": {
+          "type": "string",
+          "values": [
+            "2xs",
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "2xl",
+            "inherit"
+          ]
+        },
+        "bordered": {
+          "type": "boolean"
+        },
+        "rounded": {
+          "type": "boolean"
+        },
+        "noCustomScroll": {
+          "type": "boolean"
+        },
+        "maxHeight": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "sonic-tbody",
+      "props": {}
+    },
+    {
+      "name": "sonic-td",
+      "props": {
+        "colSpan": {
+          "type": "number"
+        },
+        "rowSpan": {
+          "type": "number"
+        },
+        "align": {
+          "type": "string",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "vAlign": {
+          "type": "string"
+        },
+        "minWidth": {
+          "type": "string"
+        },
+        "maxWidth": {
+          "type": "string"
+        },
+        "width": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "sonic-textarea",
+      "props": {
+        "size": {
+          "type": "string",
+          "values": [
+            "2xs",
+            "xs",
+            "sm",
+            "md",
+            "lg",
+            "xl",
+            "2xl",
+            "inherit"
+          ],
+          "default": "md"
+        },
+        "rows": {
+          "type": "number"
+        },
+        "cols": {
+          "type": "number"
+        },
+        "maxlength": {
+          "type": "number"
+        },
+        "minlength": {
+          "type": "number"
+        },
+        "wrap": {
+          "type": "string",
+          "values": [
+            "hard",
+            "soft"
+          ]
+        },
+        "readonly": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "resize": {
+          "type": "string",
+          "values": [
+            "none",
+            "both",
+            "horizontal",
+            "vertical",
+            "block",
+            "inline"
+          ],
+          "default": "vertical"
+        },
+        "hasDescription": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "hasLabel": {
+          "type": "boolean",
+          "default": "false"
+        }
+      }
+    },
+    {
+      "name": "sonic-tfoot",
+      "props": {}
+    },
+    {
+      "name": "sonic-th",
+      "props": {
+        "colSpan": {
+          "type": "number"
+        },
+        "rowSpan": {
+          "type": "number"
+        },
+        "align": {
+          "type": "string",
+          "values": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "minWidth": {
+          "type": "string"
+        },
+        "maxWidth": {
+          "type": "string"
+        },
+        "width": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "sonic-thead",
+      "props": {}
+    },
+    {
+      "name": "sonic-theme",
+      "props": {
+        "theme": {
+          "type": "string",
+          "values": [
+            "light",
+            "dark",
+            "auto",
+            "custom"
+          ]
+        },
+        "color": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "font": {
+          "type": "boolean",
+          "default": "false"
+        }
+      }
+    },
+    {
+      "name": "sonic-ticker",
+      "props": {
+        "target": {
+          "type": "string"
+        },
+        "interval": {
+          "type": "number"
+        },
+        "interval-key": {
+          "type": "string"
+        },
+        "running-key": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        }
+      },
+      "addon": "interactive",
+      "description": "Horloge tick -> store"
+    },
+    {
+      "name": "sonic-toast",
+      "props": {
+        "toasts": {
+          "type": "array",
+          "default": "[]"
+        }
+      }
+    },
+    {
+      "name": "sonic-toast-item",
+      "props": {
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "ghost": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "preserve": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "dismissForever": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "maxHeight": {
+          "type": "string",
+          "default": "10rem"
+        },
+        "useSlot": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "styleSheet": {
+          "type": "string"
+        },
+        "visible": {
+          "type": "boolean",
+          "default": "true"
+        }
+      }
+    },
+    {
+      "name": "sonic-toast-message-subscriber",
+      "props": {
+        "messages": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "sonic-tooltip",
+      "props": {
+        "label": {
+          "type": "string"
+        },
+        "placement": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean",
+          "default": "false"
+        },
+        "focusable": {
+          "type": "boolean",
+          "default": "false"
+        }
+      }
+    },
+    {
+      "name": "sonic-tr",
+      "props": {
+        "_metadata_": {
+          "type": "string",
+          "default": "{}"
+        },
+        "even": {
+          "type": "boolean"
+        },
+        "odd": {
+          "type": "boolean"
+        },
+        "last": {
+          "type": "boolean"
+        }
+      }
+    },
+    {
+      "name": "sonic-value",
+      "props": {}
+    },
+    {
+      "name": "sonic-vca",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "gain": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Ampli ; gain=\"<env>\" pour une enveloppe"
+    },
+    {
+      "name": "sonic-video",
+      "props": {
+        "src": {
+          "type": "url"
+        },
+        "src-provider": {
+          "type": "string"
+        },
+        "autoplay": {
+          "type": "boolean"
+        },
+        "loop": {
+          "type": "boolean"
+        },
+        "muted": {
+          "type": "boolean"
+        },
+        "controls": {
+          "type": "boolean"
+        },
+        "preload": {
+          "type": "string"
+        },
+        "crossorigin": {
+          "type": "string"
+        },
+        "fit": {
+          "type": "string"
+        },
+        "hidden-preview": {
+          "type": "boolean"
+        },
+        "rate": {
+          "type": "number"
+        },
+        "volume": {
+          "type": "number"
+        },
+        "loop-start": {
+          "type": "number"
+        },
+        "loop-end": {
+          "type": "number"
+        },
+        "audio-out": {
+          "type": "string"
+        },
+        "update-rate": {
+          "type": "number"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "media",
+      "description": "Lecteur vidéo (https, relatif, blob:) : DP control {playing, seek, rate, volume, muted, loop, loopStart, loopEnd} ; état {status, timeS, durationS, progress, playing} ; source d'images (#id) ; audio-out=master|#id|none pour l'analyse"
+    },
+    {
+      "name": "sonic-voice",
+      "props": {
+        "sample": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "out": {
+          "type": "string"
+        }
+      },
+      "addon": "audio",
+      "description": "Portée « par note » d'un patch ; sample=\"kick\" / note=\"C2\" pour un kit"
+    },
+    {
+      "name": "sonic-webgpu",
+      "props": {
+        "shader": {
+          "type": "string"
+        },
+        "kernel": {
+          "type": "string"
+        },
+        "backend": {
+          "type": "string"
+        },
+        "channel0": {
+          "type": "string"
+        },
+        "channel1": {
+          "type": "string"
+        },
+        "channel2": {
+          "type": "string"
+        },
+        "channel3": {
+          "type": "string"
+        },
+        "play": {
+          "type": "boolean"
+        },
+        "mouse": {
+          "type": "boolean"
+        },
+        "param0": {
+          "type": "number"
+        },
+        "param1": {
+          "type": "number"
+        },
+        "param2": {
+          "type": "number"
+        },
+        "param3": {
+          "type": "number"
+        },
+        "out-data-provider": {
+          "type": "string"
+        },
+        "frame-out": {
+          "type": "boolean"
+        },
+        "aspect-ratio": {
+          "type": "string"
+        }
+      },
+      "addon": "webgpu",
+      "description": "Shader / kernel WGSL"
     }
   ],
   "safeHtmlTags": [
@@ -3498,5 +4020,5 @@
     "i",
     "u"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded. creative-stack : sound (sonic-sound/sonic-sfx), audio (sonic-patch + modules dont ladder / fold / karplus / resonator / grain, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-midi, sonic-audio-recorder, module sonic-audio-input), media (sonic-camera, sonic-screen, sonic-video, sonic-media-start, sonic-media-recorder, sonic-media-download ; capabilities requis pour caméra / micro / MIDI / écran), physics (sonic-physics, sonic-body, sonic-joint : planck.js), controller (sonic-controller : manettes analogiques)."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 3d (sonic-3d) [requires: three]; audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-matrix); media (sonic-camera, sonic-video, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); physics (sonic-physics, sonic-body, sonic-joint); shader (sonic-shader); sound (sonic-sound, sonic-sfx); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }

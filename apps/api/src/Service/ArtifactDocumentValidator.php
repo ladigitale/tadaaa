@@ -107,7 +107,11 @@ final class ArtifactDocumentValidator
     /** @var array<string, true> */
     private array $allowedTagSet;
 
+    private const DEFAULT_CONCORDE_VERSION = '5.1.0';
+
     private readonly ArtifactA2uiValidator $a2uiValidator;
+
+    private readonly string $concordeVersion;
 
     /**
      * @param array{components?: list<array{name: string}>, safeHtmlTags?: list<string>}|null $catalog
@@ -129,8 +133,17 @@ final class ArtifactDocumentValidator
                 $tags[] = $component['name'];
             }
         }
+        $this->concordeVersion = \is_string($data['concordeVersion'] ?? null) && $data['concordeVersion'] !== ''
+            ? $data['concordeVersion']
+            : self::DEFAULT_CONCORDE_VERSION;
         $this->allowedTags = array_values(array_unique($tags));
         $this->allowedTagSet = array_fill_keys($this->allowedTags, true);
+    }
+
+    /** Version de Concorde du catalogue (enregistrée sur chaque artefact créé ou mis à jour). */
+    public function concordeVersion(): string
+    {
+        return $this->concordeVersion;
     }
 
     /** @return list<string> */
@@ -219,6 +232,16 @@ final class ArtifactDocumentValidator
         ];
     }
 
+    private static function firstSentence(string $text, int $max = 140): string
+    {
+        $text = trim($text);
+        if (preg_match('/^.{20,}?[.!?](?=\s|$)/u', $text, $m) === 1 && mb_strlen($m[0]) <= $max) {
+            return $m[0];
+        }
+
+        return mb_strlen($text) <= $max ? $text : rtrim(mb_substr($text, 0, $max - 1)).'…';
+    }
+
     /**
      * @param array<string, mixed> $catalog
      *
@@ -244,6 +267,10 @@ final class ArtifactDocumentValidator
                 if (isset($common[$prop])) {
                     continue;
                 }
+                // Compact : type, valeurs permises et défaut ; descriptions dans le catalogue complet.
+                if (\is_array($meta)) {
+                    unset($meta['description'], $meta['default']);
+                }
                 $specific[$prop] = $meta;
             }
             $entry = [
@@ -251,7 +278,7 @@ final class ArtifactDocumentValidator
                 'props' => $specific,
             ];
             if (isset($component['description']) && \is_string($component['description'])) {
-                $entry['description'] = $component['description'];
+                $entry['description'] = self::firstSentence($component['description']);
             }
             $components[] = $entry;
         }

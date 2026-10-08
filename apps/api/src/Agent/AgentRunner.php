@@ -53,7 +53,8 @@ final class AgentRunner
                 if ($text !== '') {
                     $this->emitText($sink, $text);
                 }
-                $messages[] = ['role' => 'assistant', 'content' => $response->content];
+                // Contenu brut si disponible : un tool_use `input: {}` doit rester un objet.
+                $messages[] = ['role' => 'assistant', 'content' => $response->rawContent ?? $response->content];
 
                 $uses = $response->toolUses();
                 if ($uses === []) {
@@ -65,7 +66,9 @@ final class AgentRunner
                 foreach ($uses as $use) {
                     $sink->emit(['type' => 'TOOL_CALL_START', 'toolCallId' => $use['id'], 'toolCallName' => $use['name']]);
                     $sink->emit(['type' => 'TOOL_CALL_ARGS', 'toolCallId' => $use['id'], 'delta' => json_encode((object) $use['input'], JSON_UNESCAPED_UNICODE)]);
+                    $context->rawInput = $use['raw'];
                     $result = $this->toolbox->execute($use['name'], $use['input'], $context);
+                    $context->rawInput = null;
                     $sink->emit(['type' => 'TOOL_CALL_END', 'toolCallId' => $use['id']]);
                     $results[] = [
                         'type' => 'tool_result',

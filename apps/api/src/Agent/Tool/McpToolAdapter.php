@@ -95,7 +95,13 @@ final class McpToolAdapter implements AgentTool
         } catch (\TypeError $e) {
             return ToolResult::json(['error' => 'Arguments invalides : '.$e->getMessage()], true);
         }
-        $result = $this->processor->process($dto, $this->metadata);
+        // Arguments bruts : le processor y retrouve les objets vides (`{}`) des documents.
+        $result = $this->processor->process(
+            $dto,
+            $this->metadata,
+            [],
+            $context->rawInput !== null ? ['raw_arguments' => $context->rawInput] : [],
+        );
         if (!$result instanceof CallToolResult) {
             return ToolResult::json(['result' => $result]);
         }

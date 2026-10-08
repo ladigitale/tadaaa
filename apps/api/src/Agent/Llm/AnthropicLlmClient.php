@@ -36,11 +36,27 @@ final class AnthropicLlmClient implements LlmClient
         if ($tools !== []) {
             $body['tools'] = $tools;
         }
-        $data = LlmHttp::postJson($this->http, rtrim($this->baseUrl, '/').'/v1/messages', $headers, $body);
+        $raw = null;
+        $data = LlmHttp::postJson($this->http, rtrim($this->baseUrl, '/').'/v1/messages', $headers, $body, $raw);
+
+        // Même réponse décodée en objets : `{}` reste distinct de `[]` (arguments, historique).
+        $rawContent = null;
+        $rawInputs = [];
+        $decoded = \is_string($raw) ? json_decode($raw, false) : null;
+        if ($decoded instanceof \stdClass && \is_array($decoded->content ?? null)) {
+            $rawContent = array_values($decoded->content);
+            foreach ($rawContent as $block) {
+                if ($block instanceof \stdClass && ($block->type ?? null) === 'tool_use' && $block->input instanceof \stdClass) {
+                    $rawInputs[(string) $block->id] = $block->input;
+                }
+            }
+        }
 
         return new LlmResponse(
             \is_array($data['content'] ?? null) ? array_values($data['content']) : [],
             (string) ($data['stop_reason'] ?? 'end_turn'),
+            $rawInputs,
+            $rawContent,
         );
     }
 }

@@ -105,15 +105,22 @@ final class OpenAiLlmClient implements LlmClient
         $choice = \is_array($data['choices'][0] ?? null) ? $data['choices'][0] : [];
         $message = \is_array($choice['message'] ?? null) ? $choice['message'] : [];
         $blocks = [];
+        $rawInputs = [];
         if (\is_string($message['content'] ?? null) && trim($message['content']) !== '') {
             $blocks[] = ['type' => 'text', 'text' => $message['content']];
         }
         foreach (\is_array($message['tool_calls'] ?? null) ? $message['tool_calls'] : [] as $i => $call) {
             $function = \is_array($call['function'] ?? null) ? $call['function'] : [];
-            $args = json_decode((string) ($function['arguments'] ?? '{}'), true);
+            $json = (string) ($function['arguments'] ?? '{}');
+            $args = json_decode($json, true);
+            $id = (string) ($call['id'] ?? 'call_'.$i);
+            $raw = json_decode($json, false);
+            if ($raw instanceof \stdClass) {
+                $rawInputs[$id] = $raw;
+            }
             $blocks[] = [
                 'type' => 'tool_use',
-                'id' => (string) ($call['id'] ?? 'call_'.$i),
+                'id' => $id,
                 'name' => (string) ($function['name'] ?? ''),
                 'input' => \is_array($args) ? $args : [],
             ];
@@ -124,6 +131,6 @@ final class OpenAiLlmClient implements LlmClient
             'tool_calls' => 'tool_use',
             'length' => 'max_tokens',
             default => 'end_turn',
-        });
+        }, $rawInputs);
     }
 }
