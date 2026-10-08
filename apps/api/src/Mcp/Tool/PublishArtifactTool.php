@@ -16,6 +16,7 @@ Publie un nouvel artefact SDUI. Valide le document avant enregistrement ; refuse
 
 - `datasetId` : optionnel : par défaut le jeu « Artefacts » (créé automatiquement, non supprimable).
 - `visibility` : `private` | `link` | `public`
+- Par défaut, déclarer `fonts` : polices Google Fonts adaptées au thème de l’artefact + `Material Symbols Sharp` (ou Rounded/Outlined) pour toutes les icônes d’action (ligatures `arrow_back`, `menu`, `replay`…), jamais d’émojis. Détails : `get_artifact_catalog` → rules.polices / rules.icones.
 - Retourne `{id, slug, url, version}` — `url` absolue (viewer Artefacts).
 
 Exemple minimal :
