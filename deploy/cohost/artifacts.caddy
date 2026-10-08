@@ -5,6 +5,17 @@
 	try_files {path} {path}/index.html /index.html
 	file_server
 
+	# Intégration sur d'autres sites : <script src="/embed.js" data-artifact="…">.
+	# Le module (type=module), ses chunks, le worklet audio et les assets sont lus en CORS
+	# depuis la page hôte. embed.js et artifact-embed.js n'ont pas de hash : cache court.
+	@embed path /embed.js /embed/* /assets/*
+	header @embed Access-Control-Allow-Origin "*"
+	header @embed Cross-Origin-Resource-Policy cross-origin
+	@embed_entry path /embed.js /embed/artifact-embed.js
+	header @embed_entry Cache-Control "public, max-age=300"
+	@embed_hashed path /embed/chunks/* /embed/assets/*
+	header @embed_hashed Cache-Control "public, max-age=31536000, immutable"
+
 	header {
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
