@@ -45,8 +45,11 @@ final class ArtifactController extends AbstractController
         $datasetId = $body['datasetId'] ?? null;
         $title = $body['title'] ?? null;
         $document = $body['document'] ?? null;
-        if (!\is_string($datasetId) || !\is_string($title) || !\is_array($document)) {
-            throw new BadRequestHttpException('datasetId, title et document sont requis.');
+        if (!\is_string($title) || !\is_array($document)) {
+            throw new BadRequestHttpException('title et document sont requis.');
+        }
+        if (!\is_string($datasetId) || $datasetId === '') {
+            $datasetId = $this->artifacts->artifactStoreFor($user)->getId()->toRfc4122();
         }
 
         $created = $this->artifacts->create(

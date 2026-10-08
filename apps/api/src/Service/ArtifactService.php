@@ -107,6 +107,32 @@ final class ArtifactService
         return $this->serializeDetail($artifact, $document);
     }
 
+    /**
+     * Jeu dédié aux artefacts (créé à la demande, non supprimable).
+     */
+    public function artifactStoreFor(User $user): Dataset
+    {
+        $existing = $this->datasets->findOneBy(['owner' => $user, 'artifactStore' => true]);
+        if ($existing instanceof Dataset) {
+            return $existing;
+        }
+
+        $name = 'Artefacts';
+        if ($this->datasets->findOneByNameForUser($user, $name) !== null) {
+            $name = 'Artefacts (stockage)';
+        }
+        $dataset = new Dataset($name);
+        $dataset->setOwner($user);
+        $dataset->setArtifactStore(true);
+        $this->em->persist($dataset);
+        if ($user->getActiveDataset() === null) {
+            $user->setActiveDataset($dataset);
+        }
+        $this->em->flush();
+
+        return $dataset;
+    }
+
     /** @return array<string, mixed> */
     public function getForUser(User $user, string $idOrSlug, ?int $versionNumber = null): array
     {

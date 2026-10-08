@@ -104,12 +104,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
 
         $datasetId = $this->emptyToNull($tool->datasetId);
         if ($datasetId === null) {
-            $active = $user->getActiveDataset();
-            if ($active === null) {
-                throw new BadRequestHttpException('datasetId requis ou activez un jeu via activate_dataset.');
-            }
-            $this->datasetAccess->assertCanWrite($user, $active);
-            $datasetId = $active->getId()->toRfc4122();
+            $datasetId = $this->artifacts->artifactStoreFor($user)->getId()->toRfc4122();
         }
 
         $created = $this->artifacts->create(
