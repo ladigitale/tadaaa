@@ -11,6 +11,7 @@ use App\Entity\User;
 use App\Mcp\Tool\CloseArtifactIntakeTool;
 use App\Mcp\Tool\DeleteArtifactTool;
 use App\Mcp\Tool\GetArtifactCatalogTool;
+use App\Service\ArtifactDocumentPatcher;
 use App\Mcp\Tool\GetArtifactTool;
 use App\Mcp\Tool\ListArtifactsTool;
 use App\Mcp\Tool\OpenArtifactIntakeTool;
@@ -148,17 +149,25 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $result = $this->artifacts->patch($user, $idOrSlug, $patch);
         }
 
-        if (\is_array($tool->document) && $tool->document !== []) {
+        $document = \is_array($tool->document) && $tool->document !== [] ? $tool->document : null;
+        if ($document === null && \is_array($tool->patch) && $tool->patch !== []) {
+            $current = $this->artifacts->getForUser($user, $idOrSlug)['document'] ?? null;
+            if (!\is_array($current)) {
+                throw new BadRequestHttpException('Document courant introuvable.');
+            }
+            $document = ArtifactDocumentPatcher::apply($current, $tool->patch);
+        }
+        if ($document !== null) {
             $result = $this->artifacts->putDocument(
                 $user,
                 $idOrSlug,
-                $tool->document,
+                $document,
                 $this->emptyToNull($tool->note),
             );
         }
 
         if ($result === null) {
-            throw new BadRequestHttpException('Rien à mettre à jour (document, title, visibility ou description).');
+            throw new BadRequestHttpException('Rien à mettre à jour (document, patch, title, visibility ou description).');
         }
 
         return [
