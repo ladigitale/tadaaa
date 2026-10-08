@@ -73,6 +73,7 @@ final class ArtifactService
     ): array {
         $dataset = $this->requireWritableDataset($user, $datasetId);
         $vis = $this->parseVisibility($visibility);
+        $document = ArtifactStyleExpander::expand($document);
         $result = $this->validator->validate($document);
         if (!$result['valid']) {
             throw new BadRequestHttpException('Document SDUI invalide : '.$this->formatErrors($result['errors']));
@@ -217,6 +218,7 @@ final class ArtifactService
     public function putDocument(User $user, string $idOrSlug, array $document, ?string $note = null, ?string $ip = null): array
     {
         $artifact = $this->requireWritableArtifact($user, $idOrSlug);
+        $document = ArtifactStyleExpander::expand($document);
         $result = $this->validator->validate($document);
         if (!$result['valid']) {
             throw new BadRequestHttpException('Document SDUI invalide : '.$this->formatErrors($result['errors']));
