@@ -18,6 +18,7 @@ Par défaut `compact=true` (props communes une fois + props spécifiques, < 8k t
 `compact=false` pour le catalogue complet.
 `components` : filtre optionnel (ex. ["sonic-store","sonic-shader"]).
 À appeler avant de composer un artefact SDUI.
+Lire `rules.polices` et `rules.icones` : polices Google Fonts adaptées au thème et vraie police d’icônes (Material Symbols) par défaut.
 DESC,
     processor: ArtifactMcpProcessor::class,
 )]
