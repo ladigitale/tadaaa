@@ -139,6 +139,15 @@ final class AgentRunnerTest extends TestCase
         self::assertSame('Agent non configuré.', $sink->events[1]['message']);
     }
 
+    public function testNotConfiguredCarriesAnErrorCode(): void
+    {
+        $sink = new ArrayEventSink();
+        (new AgentRunner(new \App\Agent\Llm\UnconfiguredLlmClient('Assistant non configuré.'), new Toolbox([])))
+            ->run(self::input([['role' => 'user', 'content' => 'Salut']]), $sink);
+        self::assertSame(['RUN_STARTED', 'RUN_ERROR'], $sink->types());
+        self::assertSame('AGENT_NOT_CONFIGURED', $sink->events[1]['code']);
+    }
+
     public function testStepLimit(): void
     {
         $llm = new ScriptedLlm(array_fill(0, AgentRunner::MAX_STEPS + 2, self::toolUse('t', 'list_todos', [])));

@@ -120,6 +120,17 @@ export const commandPaletteKey = new DataProviderKey<CommandPaletteForm>(
   "commandPalette",
 );
 export const appConfigKey = new DataProviderKey<AppConfigForm>("appConfig");
+
+/** Formulaire « Assistant IA » (la clé saisie n'est jamais préremplie). */
+export type AgentSettingsForm = {
+  provider: string;
+  model: string;
+  apiKey: string;
+  customBaseUrl: string;
+};
+export const agentSettingsFormKey = new DataProviderKey<AgentSettingsForm>(
+  "agentSettingsForm",
+);
 export const tagsListKey = new DataProviderKey<Tag[]>("tagsList");
 /** Catalogue actif (status=all) — publié par `<todos-catalog-loader>`. */
 export const todosCatalogKey = new DataProviderKey<Todo[]>("todosCatalog");

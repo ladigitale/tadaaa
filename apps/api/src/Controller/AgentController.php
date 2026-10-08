@@ -60,7 +60,7 @@ final class AgentController extends AbstractController
             // L'observabilité ne doit pas bloquer l'agent.
         }
 
-        $runner = $this->agents->create($profile);
+        $runner = $this->agents->create($profile, $user);
         $response = new StreamedResponse(static fn () => $runner->run($input, new SseEventSink()));
         $response->headers->set('Content-Type', 'text/event-stream; charset=utf-8');
         $response->headers->set('Cache-Control', 'no-cache, no-transform');
