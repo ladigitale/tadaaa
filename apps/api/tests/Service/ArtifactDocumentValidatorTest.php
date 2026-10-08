@@ -569,16 +569,31 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('non pris en charge : Slider', $result['errors'][0]['message']);
     }
 
-    public function testRejectsA2uiFunctionCallsAndTemplates(): void
+    public function testRejectsA2uiFunctionCalls(): void
     {
         $doc = $this->a2uiDoc();
         $doc['views'][0]['a2ui'][1]['updateComponents']['components'][0]['text'] = ['call' => 'formatString', 'args' => []];
-        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][2]['children'] = ['path' => '/items', 'componentId' => 't'];
         $result = $this->validator->validate($doc);
         self::assertFalse($result['valid']);
-        $messages = implode(' | ', array_column($result['errors'], 'message'));
-        self::assertStringContainsString('call', $messages);
-        self::assertStringContainsString('gabarit', $messages);
+        self::assertStringContainsString('call', $result['errors'][0]['message']);
+    }
+
+    public function testAcceptsA2uiTemplateLists(): void
+    {
+        $doc = $this->a2uiDoc();
+        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][2]['children'] = ['path' => '/items', 'componentId' => 'item'];
+        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][] = ['id' => 'item', 'component' => 'Text', 'text' => ['path' => 'name']];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][2]['children'] = ['path' => '/items', 'componentId' => 'item', 'x' => 1];
+        self::assertFalse($this->validator->validate($doc)['valid']);
+
+        $doc = $this->a2uiDoc();
+        $doc['views'][0]['a2ui'][2]['updateDataModel']['path'] = 'relative';
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('absolu', $result['errors'][0]['message']);
     }
 
     public function testRejectsA2uiUnsafeUrlAndUnknownSurface(): void

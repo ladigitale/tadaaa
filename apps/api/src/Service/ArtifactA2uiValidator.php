@@ -9,7 +9,8 @@ namespace App\Service;
  *
  * Le viewer les rend avec @ladigitale/agent-stack (sonic-sdui profil safe, texte brut).
  * On ne garde ici que ce que ce rendu sait faire : les composants pris en charge, des
- * props littérales ou liées par chemin, pas de fonctions client. Tout le reste est
+ * props littérales ou liées par chemin (relatif dans un gabarit de liste), pas de
+ * fonctions client. Tout le reste est
  * refusé à la publication plutôt que de casser à l'affichage.
  */
 final class ArtifactA2uiValidator
@@ -116,7 +117,7 @@ final class ArtifactA2uiValidator
                 $this->allowKeys($body, ['surfaceId', 'path', 'value'], $base, $errors);
                 $this->requireSurface($surfaces, $surfaceId, $base, $errors);
                 if (\array_key_exists('path', $body)) {
-                    $msg = $this->pointerError($body['path'], true);
+                    $msg = $this->pointerError($body['path'], true, false);
                     if ($msg !== null) {
                         $errors[] = ['path' => $base.'/path', 'message' => $msg];
                     }
@@ -173,8 +174,23 @@ final class ArtifactA2uiValidator
                 case 'component':
                     break;
                 case 'children':
-                    if (!\is_array($value) || !array_is_list($value)) {
-                        $errors[] = ['path' => $p, 'message' => 'children : liste d’ids attendue (listes à gabarit non prises en charge).'];
+                    if (\is_array($value) && !array_is_list($value)) {
+                        // Liste à gabarit : {"path": "/items" ou "items" dans un gabarit, "componentId": "tpl"}.
+                        if (array_keys($value) !== ['path', 'componentId'] && array_keys($value) !== ['componentId', 'path']) {
+                            $errors[] = ['path' => $p, 'message' => 'children : liste d’ids, ou gabarit {"path", "componentId"}.'];
+                            break;
+                        }
+                        if (!\is_string($value['componentId']) || !preg_match(self::ID, $value['componentId'])) {
+                            $errors[] = ['path' => $p.'/componentId', 'message' => 'componentId : id attendu.'];
+                        }
+                        $msg = $this->pointerError($value['path'], false);
+                        if ($msg !== null) {
+                            $errors[] = ['path' => $p.'/path', 'message' => $msg];
+                        }
+                        break;
+                    }
+                    if (!\is_array($value)) {
+                        $errors[] = ['path' => $p, 'message' => 'children : liste d’ids, ou gabarit {"path", "componentId"}.'];
                         break;
                     }
                     foreach ($value as $k => $child) {
@@ -280,9 +296,11 @@ final class ArtifactA2uiValidator
     }
 
     /**
-     * Chemins absolus uniquement (pas de gabarits), segments sans "." (chemins Concorde).
+     * Chemin absolu ("/a/b"), ou relatif ("b") pour un composant de gabarit — hors
+     * gabarit, le rendu le refuse. Segments sans "." (chemins Concorde). Les messages
+     * updateDataModel n'acceptent que l'absolu.
      */
-    private function pointerError(mixed $pointer, bool $rootAllowed): ?string
+    private function pointerError(mixed $pointer, bool $rootAllowed, bool $relativeAllowed = true): ?string
     {
         if (!\is_string($pointer)) {
             return 'Chemin : texte attendu.';
@@ -290,10 +308,11 @@ final class ArtifactA2uiValidator
         if ($pointer === '' || $pointer === '/') {
             return $rootAllowed ? null : 'Chemin vers une valeur attendu (pas la racine).';
         }
-        if (!str_starts_with($pointer, '/')) {
+        $relative = !str_starts_with($pointer, '/');
+        if ($relative && !$relativeAllowed) {
             return 'Chemin absolu attendu (commence par "/").';
         }
-        foreach (explode('/', substr($pointer, 1)) as $segment) {
+        foreach (explode('/', $relative ? $pointer : substr($pointer, 1)) as $segment) {
             if ($segment === '' || str_contains($segment, '.')) {
                 return 'Segment de chemin vide ou contenant "." : non pris en charge.';
             }

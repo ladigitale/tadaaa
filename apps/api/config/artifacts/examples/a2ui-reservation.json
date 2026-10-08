@@ -7,9 +7,10 @@
       "booking": {
         "initial": {
           "count": 0,
-          "last": null
+          "last": null,
+          "history": []
         },
-        "reducer": "$action.type = \"book\" ? $merge([$state, {\"count\": $state.count + 1, \"last\": $action.payload}]) : $state"
+        "reducer": "$action.type = \"book\" ? $merge([$state, {\"count\": $state.count + 1, \"last\": $action.payload, \"history\": $append($state.history, [$action.payload])}]) : $state"
       }
     }
   },
@@ -87,6 +88,38 @@
                     }
                   }
                 }
+              },
+              {
+                "id": "history",
+                "component": "List",
+                "children": {
+                  "path": "/booking/history",
+                  "componentId": "h-item"
+                }
+              },
+              {
+                "id": "h-item",
+                "component": "Row",
+                "children": [
+                  "h-qty",
+                  "h-show"
+                ]
+              },
+              {
+                "id": "h-qty",
+                "component": "Text",
+                "variant": "caption",
+                "text": {
+                  "path": "qty"
+                }
+              },
+              {
+                "id": "h-show",
+                "component": "Text",
+                "variant": "caption",
+                "text": {
+                  "path": "show"
+                }
               }
             ]
           }
@@ -108,7 +141,8 @@
                   "title",
                   "when",
                   "row",
-                  "count"
+                  "count",
+                  "history"
                 ]
               },
               {
