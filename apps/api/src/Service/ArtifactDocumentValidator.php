@@ -25,8 +25,8 @@ final class ArtifactDocumentValidator
     public const MAX_AUDIO_PARAMS = 4 * 1024;
 
     /** Accès sensibles déclarés par le document (`capabilities`) et composants qui les exigent. */
-    public const CAPABILITIES = ['camera', 'microphone'];
-    private const CAPABILITY_TAGS = ['sonic-camera' => 'camera', 'sonic-mic' => 'microphone'];
+    public const CAPABILITIES = ['camera', 'microphone', 'midi', 'screen'];
+    private const CAPABILITY_TAGS = ['sonic-camera' => 'camera', 'sonic-mic' => 'microphone', 'sonic-midi' => 'midi', 'sonic-screen' => 'screen'];
 
     /** @var array<string, int> balises rencontrées pendant la validation courante */
     private array $seenTags = [];
@@ -55,12 +55,13 @@ final class ArtifactDocumentValidator
         .'sonic-sfx sound="click" hover="hover" enveloppe des boutons (sons d’interface sans store).';
 
     /** Mémo de l'addon `media` (caméra, vidéo) et du micro. */
-    private const MEDIA_RULE = 'Caméra / micro : déclarer "capabilities": ["camera"] / ["microphone"] à la racine du document (sinon refusé ; le viewer prévient l’utilisateur). Aucun accès au chargement : démarrer par un clic. '
+    private const MEDIA_RULE = 'Caméra / micro / MIDI / écran : déclarer "capabilities": ["camera"] / ["microphone"] / ["midi"] / ["screen"] à la racine du document (sinon refusé ; le viewer prévient l’utilisateur). Aucun accès au chargement : démarrer par un clic. '
         .'BOUTON : sonic-media-start for="cam mic" label="Activer la caméra" (caché une fois prêt, affiche un refus) ; ou sonic-audio-unlock start="mic" (son + micro en un clic). '
         .'CAMÉRA : sonic-camera id="cam" (hidden-preview si elle ne sert que de source, facing user|environment, mirror auto|true|false, fit, width/height/fps) control="dp.cam" ({active, facing, deviceId, snapshot: compteur}) snapshot-provider="gallery.channel0" (photo SonicMediaRef écrite là) ; état camState {status: idle|requesting|ready|paused|denied|error|unsupported, error, width, height, snapshot, snapshots}. Dans un shader : channel0="#cam". '
         .'Photo : incrémenter control.snapshot dans le reducer ; l’afficher avec un sonic-shader dataProvider="gallery" (texture(iChannel0, uv)). '
         .'MICRO : sonic-mic id="mic" (monitor pour l’entendre, sinon muet) control="dp.mic" ({active, monitor, gain}) ; état micState {status, error, rms, db} ; sonic-audio-analyser source="#mic" (pitch pour la hauteur, onsetCount pour les attaques). '
         .'VIDÉO : sonic-video id="clip" src="https://…webm|mp4" (https ou relative) loop muted autoplay hidden-preview preload="blob" audio-out="master" (son → moteur audio, analysable par sonic-audio-analyser source="#clip") control="dp.player" ({playing, seek: {t, n}, rate, volume, muted, loopStart, loopEnd}) ; état clipState {status: loading|ready|playing|paused|ended|needs-gesture|error, timeS, durationS, progress}. Shader : channel0="#clip". Autoplay avec son refusé par le navigateur → démarre muette (needs-gesture) : prévoir sonic-media-start for="clip". '
+        .'ÉCRAN : sonic-screen id="screen" (hidden-preview, audio pour le son du partage, surface monitor|window|browser) démarré UNIQUEMENT par sonic-media-start for="screen" (clic direct exigé par le navigateur) ; état screenState {status, error ("partage arrêté" si l’utilisateur l’arrête), surface, width, height, audio} ; shader channel0="#screen" ; export video-source="#screen". '
         .'EXPORT : sonic-media-recorder id="export" video-source="#viz" (shader, caméra ou vidéo) audio-source="master|#id|none" control="dp.export" ({recording: true|false}) max-s="30" ; état exportState {status: waiting-source|ready|recording|error|unsupported, elapsedS, last: {url, mime, durS, size, width, height}}. '
         .'TÉLÉCHARGER : sonic-media-download source="exportState.last" filename="ma-creation" (contenu en slot, caché tant qu’il n’y a rien ; blob: uniquement : prises, photos, exports). '
         .'Compteurs (snapshot, seek.n) : la première valeur sert de référence, chaque hausse déclenche.';
@@ -75,6 +76,9 @@ final class ArtifactDocumentValidator
         .'store="idStore" : le reducer reçoit {type:"step", payload:{step,beat,bar,phase,when,bpm}} en avance et écrit des notes avec when (augmenter budget-ms / lookahead-ms si le reducer est lourd). État <id>State : {playing, step, beat, bar, phase}. '
         .'SAMPLER : sonic-sampler samples=\'{"kick":"https://…/kick.wav","voix":{"ref":"rec.last","root":"C4"}}\' (https uniquement ; gain pan pitch root start end loop reverse gate) choke=\'[["hat","openhat"]]\'. '
         .'ENREGISTRER : sonic-audio-recorder id="rec" source="#mic|#id|master" control="dp.rec" ({recording: true|false, target: "takes.A"}) max-s ; chaque prise {url, mime, durS, size} est écrite dans target, rejouable par sonic-sampler samples=\'{"A":{"ref":"takes.A"}}\' (pads vides listés dans padsState.empty) ; état recState {status: waiting-source|ready|recording, elapsedS, last, takes}. '
+        .'MIDI ("capabilities": ["midi"]) : sonic-midi id="midi" démarré par sonic-media-start for="midi" (ou sonic-audio-unlock start="midi") ; ENTRÉE input="all|nom" channel mpe (LinnStrument, Seaboard : bend/pression/timbre par note) target="#voix" (notes jouées directement ; dans le patch : sonic-mod from="voice.pressure|voice.timbre|voice.bend") store="idStore" ({type:"midi", payload:{kind: noteOn|noteOff|cc|program|start|stop|beat, note, name, vel, ch, cc, value}}) ; état midiState {status, inputs, held[{name, bend, pressure, timbre}], last, notes, cc{"74":0.5}, clock{running, bpm, beat}}. '
+        .'SORTIE output="nom d’appareil" out-channel : c’est un instrument (sonic-sequencer pattern=\'{"midi":"c3 e3 g3"}\' joue sur la machine), cc-out="dp.knobs" ({"74":0.5}), clock-out="#seq" (horloge 24 ppq + Start/Stop) ; control {active, input, output, channel, program, panic: compteur}. Horloge d’une machine : sonic-sequencer sync="#midi" (Start/Stop/tempo/phase externes ; état sync {locked, driftMs}). '
+        .'MODULES AVANCÉS : sonic-osc sync="m" (synchro dure sur l’osc m, balayer s.freq-hz par une enveloppe curve="exp"), sonic-ladder (freq-hz, res 0..1.2 auto-oscillant, drive), sonic-fold (amount 0..12, bias), sonic-karplus (corde : decay, damp ; suit voice.pitch et le bend), sonic-resonator (passe-bandes à exciter : bruit, entrée ; q, partials "1 2 3"), sonic-grain sample="https://…|takes.voix" (granulaire : position 0..1, spread, size-s, density grains/s, pitch, jitter ; réglables en direct par sonic-param source="dp.pos"). Presets : synth/string, synth/sync-lead, synth/acid. Les 4 premiers utilisent un AudioWorklet chargé avant le premier son (repli natif annoncé dans warnings). '
         .'EFFET SUR UNE ENTRÉE : patch sans sonic-voice : <sonic-patch id="clean" output="none"><sonic-audio-input source="#mic"/> sonic-filter… </sonic-patch>, puis enregistrer / analyser "#clean" (output="none" avec le micro : pas de Larsen) ; état inputs {nom: true} une fois branché. '
         .'ANALYSEUR : sonic-audio-analyser id="spectre" source="master|#id" → DP spectreState {rms, peak, db, bands[], centroidHz, onset, onsetCount, pitchHz(attr pitch)} ; sonic-shader channel0="#spectre" : texture(iChannel0, vec2(x,0.25)).r spectre, vec2(x,0.75) onde. '
         .'États : <id>State de chaque composant (status idle tant que le son n’est pas actif, errors lisibles). Volumes : garder gain ≤ 0.6 par instrument, le master est limité.';
@@ -656,6 +660,12 @@ final class ArtifactDocumentValidator
                 }
             }
         }
+        if ($tagName === 'sonic-grain' && $attrLower === 'sample') {
+            $u = trim($value);
+            if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $u) === 1 && stripos($u, 'https://') !== 0) {
+                return 'sonic-grain.sample : URL https uniquement, chemin relatif, ou chemin DP d’une prise (takes.voix).';
+            }
+        }
         if ($tagName === 'sonic-hugging-face-infer' && $attrLower === 'model') {
             $ok = (bool) preg_match('#^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$#', $value)
                 || (bool) preg_match('#^https://(www\.)?huggingface\.co/#i', $value);
@@ -721,7 +731,7 @@ final class ArtifactDocumentValidator
                 $errors[] = ['path' => '/capabilities', 'message' => sprintf('%s utilisé : ajouter "%s" à capabilities.', $tag, $cap)];
             }
         }
-        $limits = ['sonic-camera' => 2, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2];
+        $limits = ['sonic-camera' => 2, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2, 'sonic-midi' => 2, 'sonic-screen' => 1];
         foreach ($limits as $tag => $max) {
             if (($this->seenTags[$tag] ?? 0) > $max) {
                 $errors[] = ['path' => '/views', 'message' => sprintf('Trop de %s (max %d).', $tag, $max)];

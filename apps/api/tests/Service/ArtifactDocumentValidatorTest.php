@@ -46,6 +46,11 @@ final class ArtifactDocumentValidatorTest extends TestCase
                 ['name' => 'sonic-media-recorder'],
                 ['name' => 'sonic-media-download'],
                 ['name' => 'sonic-shader'],
+                ['name' => 'sonic-midi'],
+                ['name' => 'sonic-screen'],
+                ['name' => 'sonic-grain'],
+                ['name' => 'sonic-ladder'],
+                ['name' => 'sonic-karplus'],
             ],
         ];
         $scripts = [
@@ -407,6 +412,48 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('Trop de sonic-media-recorder', $result['errors'][0]['message']);
     }
 
+    public function testMidiAndScreenNeedCapabilities(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'sonic-midi', 'attributes' => ['id' => 'midi', 'mpe' => '', 'target' => '#voix', 'output' => 'digitone', 'clock-out' => '#seq']],
+            ['tagName' => 'sonic-screen', 'attributes' => ['id' => 'screen', 'hidden-preview' => '']],
+            ['tagName' => 'sonic-media-start', 'attributes' => ['for' => 'midi screen']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        $messages = implode(' | ', array_column($result['errors'], 'message'));
+        self::assertStringContainsString('"midi"', $messages);
+        self::assertStringContainsString('"screen"', $messages);
+
+        $doc['capabilities'] = ['midi', 'screen'];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['views'][0]['root']['nodes'] = array_fill(0, 2, ['tagName' => 'sonic-screen']);
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('Trop de sonic-screen', $result['errors'][0]['message']);
+    }
+
+    public function testGrainSampleUrls(): void
+    {
+        $doc = $this->minimalDoc();
+        $grain = fn (string $sample) => ['tagName' => 'sonic-patch', 'attributes' => ['id' => 'p'], 'nodes' => [
+            ['tagName' => 'sonic-voice', 'nodes' => [['tagName' => 'sonic-grain', 'attributes' => ['sample' => $sample]], ['tagName' => 'sonic-karplus']]],
+            ['tagName' => 'sonic-ladder', 'attributes' => ['freq-hz' => '800', 'res' => '0.9']],
+        ]];
+        foreach (['takes.voix', 'https://cdn.jsdelivr.net/gh/a/b@1/clip.webm', './son.wav'] as $ok) {
+            $doc['views'][0]['root']['nodes'] = [$grain($ok)];
+            $result = $this->validator->validate($doc);
+            self::assertTrue($result['valid'], $ok.' '.json_encode($result['errors']));
+        }
+        foreach (['http://insecure.org/a.wav', 'data:audio/wav;base64,AAAA', 'javascript:alert(1)'] as $bad) {
+            $doc['views'][0]['root']['nodes'] = [$grain($bad)];
+            self::assertFalse($this->validator->validate($doc)['valid'], $bad);
+        }
+    }
+
     public function testCatalogPayloadExplainsSound(): void
     {
         $payload = $this->validator->mcpCatalogPayload(true);
@@ -415,6 +462,9 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertArrayHasKey('audio', $payload['rules']);
         self::assertStringContainsString('sonic-audio-recorder', $payload['rules']['audio']);
         self::assertStringContainsString('sonic-media-download', $payload['rules']['media']);
+        self::assertStringContainsString('sonic-midi', $payload['rules']['audio']);
+        self::assertStringContainsString('sonic-grain', $payload['rules']['audio']);
+        self::assertStringContainsString('sonic-screen', $payload['rules']['media']);
         self::assertStringContainsString('sonic-sequencer', $payload['rules']['audio']);
         self::assertArrayHasKey('media', $payload['rules']);
         self::assertStringContainsString('capabilities', $payload['rules']['media']);

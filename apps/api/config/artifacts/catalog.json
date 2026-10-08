@@ -506,6 +506,135 @@
       "description": "Chorus"
     },
     {
+      "name": "sonic-ladder",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "freq-hz": {
+          "type": "number"
+        },
+        "res": {
+          "type": "number"
+        },
+        "drive": {
+          "type": "number"
+        },
+        "detune": {
+          "type": "number"
+        }
+      },
+      "description": "Filtre ladder 24 dB/oct non linéaire (AudioWorklet ; repli : 2 passe-bas natifs) : freq-hz, res 0..1.2 (auto-oscillation vers 1), drive, detune — tous modulables"
+    },
+    {
+      "name": "sonic-fold",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "bias": {
+          "type": "number"
+        },
+        "mix": {
+          "type": "number"
+        }
+      },
+      "description": "Wavefolder sinusoïdal ×2 (AudioWorklet ; repli : waveshaper fixe) : amount 0..12 et bias modulables, mix"
+    },
+    {
+      "name": "sonic-karplus",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "freq-hz": {
+          "type": "string"
+        },
+        "detune": {
+          "type": "number"
+        },
+        "decay": {
+          "type": "number"
+        },
+        "damp": {
+          "type": "number"
+        },
+        "level": {
+          "type": "number"
+        }
+      },
+      "description": "Corde pincée Karplus-Strong (AudioWorklet ; repli : filtre résonant), source de voix : freq-hz = voice.pitch, decay (s), damp 0..1, level ; suit le bend MPE"
+    },
+    {
+      "name": "sonic-resonator",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "freq-hz": {
+          "type": "string"
+        },
+        "detune": {
+          "type": "number"
+        },
+        "q": {
+          "type": "number"
+        },
+        "partials": {
+          "type": "string"
+        },
+        "level": {
+          "type": "number"
+        }
+      },
+      "description": "Résonateur (banque de passe-bandes natifs) : excité par l'entrée (bruit, micro…), freq-hz = voice.pitch, q, partials \"1 2 3 4.2\", level"
+    },
+    {
+      "name": "sonic-grain",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "sample": {
+          "type": "string"
+        },
+        "position": {
+          "type": "number"
+        },
+        "spread": {
+          "type": "number"
+        },
+        "size-s": {
+          "type": "number"
+        },
+        "density": {
+          "type": "number"
+        },
+        "pitch": {
+          "type": "number"
+        },
+        "jitter": {
+          "type": "number"
+        },
+        "level": {
+          "type": "number"
+        }
+      },
+      "description": "Granulaire (natif) : sample = URL https/blob ou chemin DP d'un SonicMediaRef (prise de sonic-audio-recorder) ; position, spread, size-s, density (grains/s), pitch, jitter réglables en direct (sonic-param) ; dans une voix, la hauteur suit la note (C4 = original)"
+    },
+    {
       "name": "sonic-comp",
       "props": {
         "name": {
@@ -1405,6 +1534,86 @@
       "description": "Enregistreur audio : source #mic (défaut), #id ou master ; DP control {recording, target} ; chaque prise (SonicMediaRef {url, mime, durS, size}) écrite dans control.target ou take-provider, rejouable par sonic-sampler {\"ref\": \"chemin\"} ; état {status, recording, elapsedS, last, takes}"
     },
     {
+      "name": "sonic-midi",
+      "props": {
+        "active": {
+          "type": "boolean"
+        },
+        "autostart": {
+          "type": "boolean"
+        },
+        "input": {
+          "type": "string",
+          "description": "all (défaut), none, first ou morceau de nom"
+        },
+        "output": {
+          "type": "string",
+          "description": "vide = aucune, first, all ou morceau de nom"
+        },
+        "channel": {
+          "type": "string",
+          "description": "all ou 1..16"
+        },
+        "out-channel": {
+          "type": "number"
+        },
+        "mpe": {
+          "type": "boolean"
+        },
+        "mpe-master": {
+          "type": "number"
+        },
+        "bend-range": {
+          "type": "number"
+        },
+        "transpose": {
+          "type": "number"
+        },
+        "target": {
+          "type": "string",
+          "description": "#id d'instruments séparés par des espaces"
+        },
+        "store": {
+          "type": "string"
+        },
+        "action-type": {
+          "type": "string"
+        },
+        "events": {
+          "type": "string"
+        },
+        "trigger": {
+          "type": "string"
+        },
+        "cc-out": {
+          "type": "string"
+        },
+        "clock-out": {
+          "type": "string"
+        },
+        "offset-ms": {
+          "type": "number"
+        },
+        "notes-map": {
+          "type": "object"
+        },
+        "dur-s": {
+          "type": "number"
+        },
+        "rate": {
+          "type": "number"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP {active, input, output, channel, outChannel, program, panic: compteur}"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "description": "Web MIDI (accès sur geste, sans SysEx). Entrée : target=\"#synth\" joue les notes (MPE : bend / pression / timbre par note → voice.bend|pressure|timbre du patch), store=id reçoit {type:\"midi\", payload:{kind, note, name, vel, ch, cc, value}} ; état {status, inputs, held, last, notes, cc, bend, pressure, clock{running,bpm,beat}}. Sortie : instrument (cible d'un sonic-sequencer ou events/trigger) vers output=\"nom\", cc-out (DP {\"74\":0.5}), clock-out=\"#seq\" (horloge 24 ppq + Start/Stop)"
+    },
+    {
       "name": "sonic-mix",
       "props": {
         "composition": {
@@ -1654,9 +1863,13 @@
         },
         "fm-amount": {
           "type": "number"
+        },
+        "sync": {
+          "type": "string",
+          "description": "nom d'un autre sonic-osc de la même voix"
         }
       },
-      "description": "Oscillateur (sine square sawtooth triangle pulse, harmonics) ; freq-hz = voice.pitch par défaut"
+      "description": "Oscillateur (sine square sawtooth triangle pulse, harmonics) ; freq-hz = voice.pitch par défaut ; sync=\"m\" : synchro dure sur l'oscillateur m (PolyBLEP, AudioWorklet)"
     },
     {
       "name": "sonic-pan",
@@ -1726,16 +1939,20 @@
       "name": "sonic-patch",
       "props": {
         "preset": {
-          "type": "string"
+          "type": "string",
+          "description": "synth/lead, synth/bass, synth/pad, synth/pluck, synth/fm-bell, synth/chip, synth/string, synth/sync-lead, synth/acid, drums/kick, drums/snare, drums/hat, drums/kit"
         },
         "params": {
-          "type": "object"
+          "type": "object",
+          "description": "Valeurs des paramètres exposés du preset"
         },
         "events": {
-          "type": "string"
+          "type": "string",
+          "description": "DP : liste d'événements {note|sample, vel, durS, type}"
         },
         "trigger": {
-          "type": "string"
+          "type": "string",
+          "description": "DP : chaque changement rejoue events"
         },
         "poly": {
           "type": "number"
@@ -1759,7 +1976,8 @@
           "type": "string"
         },
         "output": {
-          "type": "string"
+          "type": "string",
+          "description": "master (défaut), #id ou none"
         },
         "notes-map": {
           "type": "object"
@@ -1768,7 +1986,7 @@
           "type": "string"
         }
       },
-      "description": "Instrument modulaire : enfants sonic-voice (+ modules) ou preset (synth/lead synth/bass synth/pad synth/pluck synth/fm-bell synth/chip drums/kick drums/snare drums/hat drums/kit). events (DP liste) + trigger (DP), état dans out-data-provider"
+      "description": "Instrument modulaire : enfants sonic-voice (+ modules) ou preset (synth/lead synth/bass synth/pad synth/pluck synth/fm-bell synth/chip synth/string synth/sync-lead synth/acid drums/kick drums/snare drums/hat drums/kit). events (DP liste) + trigger (DP), état dans out-data-provider"
     },
     {
       "name": "sonic-pop",
@@ -2103,9 +2321,13 @@
         },
         "out-data-provider": {
           "type": "string"
+        },
+        "sync": {
+          "type": "string",
+          "description": "#id d'un sonic-midi : horloge externe"
         }
       },
-      "description": "Horloge musicale : pattern {idInstrument: 'mini-notation' | {notes, scale, pad: 'x..x'}} joué sur des instruments par id ; store=id reçoit {type:step, payload:{step,beat,bar,phase,when,bpm}} ; control DP {playing,bpm,swing,seed,pattern}"
+      "description": "Horloge musicale : pattern {idInstrument: 'mini-notation' | {notes, scale, pad: 'x..x'}} joué sur des instruments par id ; store=id reçoit {type:step, payload:{step,beat,bar,phase,when,bpm}} ; control DP {playing,bpm,swing,seed,pattern} ; sync=\"#midi\" : suit l'horloge MIDI d'un appareil (Start/Stop, tempo, phase) ; état sync {locked, driftMs}"
     },
     {
       "name": "sonic-sfx",
@@ -2843,6 +3065,56 @@
       "description": "Lecteur vidéo (https, relatif, blob:) : DP control {playing, seek, rate, volume, muted, loop, loopStart, loopEnd} ; état {status, timeS, durationS, progress, playing} ; source d'images (#id) ; audio-out=master|#id|none pour l'analyse"
     },
     {
+      "name": "sonic-screen",
+      "props": {
+        "active": {
+          "type": "boolean"
+        },
+        "audio": {
+          "type": "boolean"
+        },
+        "surface": {
+          "type": "string",
+          "description": "monitor, window, browser"
+        },
+        "cursor": {
+          "type": "string"
+        },
+        "allow-self": {
+          "type": "boolean"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "max-width": {
+          "type": "number"
+        },
+        "fit": {
+          "type": "string"
+        },
+        "hidden-preview": {
+          "type": "boolean"
+        },
+        "snapshot-type": {
+          "type": "string"
+        },
+        "max-snapshots": {
+          "type": "number"
+        },
+        "snapshot-provider": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP {active, snapshot: compteur}"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "description": "Capture d'écran (getDisplayMedia, clic direct requis : sonic-media-start for=\"screen\") : source d'images (#id) pour sonic-shader, photos (control.snapshot), son du partage (audio) pour l'analyseur / l'enregistreur, export par sonic-media-recorder ; état {status, error, surface, width, height, audio, snapshot}"
+    },
+    {
       "name": "sonic-voice",
       "props": {
         "sample": {
@@ -2968,5 +3240,5 @@
     "i",
     "u"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded. creative-stack : sound (sonic-sound/sonic-sfx), audio (sonic-patch + modules, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, module sonic-audio-input), media (sonic-camera, sonic-video, sonic-media-start, sonic-media-recorder, sonic-media-download ; capabilities requis pour caméra / micro)."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded. creative-stack : sound (sonic-sound/sonic-sfx), audio (sonic-patch + modules dont ladder / fold / karplus / resonator / grain, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-midi, sonic-audio-recorder, module sonic-audio-input), media (sonic-camera, sonic-screen, sonic-video, sonic-media-start, sonic-media-recorder, sonic-media-download ; capabilities requis pour caméra / micro / MIDI / écran)."
 }
