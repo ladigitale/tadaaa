@@ -40,6 +40,12 @@ final class ArtifactDocumentValidatorTest extends TestCase
                 ['name' => 'sonic-camera'],
                 ['name' => 'sonic-video'],
                 ['name' => 'sonic-media-start'],
+                ['name' => 'sonic-audio-input'],
+                ['name' => 'sonic-filter'],
+                ['name' => 'sonic-audio-recorder'],
+                ['name' => 'sonic-media-recorder'],
+                ['name' => 'sonic-media-download'],
+                ['name' => 'sonic-shader'],
             ],
         ];
         $scripts = [
@@ -377,12 +383,38 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('Trop de sonic-mic', $result['errors'][0]['message']);
     }
 
+    public function testAcceptsRecordingAndExport(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['capabilities'] = ['microphone'];
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'sonic-mic', 'attributes' => ['id' => 'mic']],
+            ['tagName' => 'sonic-patch', 'attributes' => ['id' => 'clean', 'output' => 'none'], 'nodes' => [
+                ['tagName' => 'sonic-audio-input', 'attributes' => ['name' => 'voix', 'source' => '#mic']],
+                ['tagName' => 'sonic-filter', 'attributes' => ['type' => 'highpass', 'freq-hz' => '110']],
+            ]],
+            ['tagName' => 'sonic-audio-recorder', 'attributes' => ['id' => 'rec', 'source' => '#clean', 'control' => 'p.rec', 'max-s' => '6']],
+            ['tagName' => 'sonic-sampler', 'attributes' => ['id' => 'pads', 'samples' => '{"A":{"ref":"takes.A"}}', 'events' => 'p.notes', 'trigger' => 'p.tick']],
+            ['tagName' => 'sonic-media-recorder', 'attributes' => ['id' => 'export', 'video-source' => '#viz', 'audio-source' => 'master', 'control' => 'p.export']],
+            ['tagName' => 'sonic-media-download', 'attributes' => ['source' => 'exportState.last', 'filename' => 'creation']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['views'][0]['root']['nodes'] = array_fill(0, 3, ['tagName' => 'sonic-media-recorder', 'attributes' => ['video-source' => '#viz']]);
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('Trop de sonic-media-recorder', $result['errors'][0]['message']);
+    }
+
     public function testCatalogPayloadExplainsSound(): void
     {
         $payload = $this->validator->mcpCatalogPayload(true);
         self::assertArrayHasKey('son', $payload['rules']);
         self::assertStringContainsString('play:{nom: compteur', $payload['rules']['son']);
         self::assertArrayHasKey('audio', $payload['rules']);
+        self::assertStringContainsString('sonic-audio-recorder', $payload['rules']['audio']);
+        self::assertStringContainsString('sonic-media-download', $payload['rules']['media']);
         self::assertStringContainsString('sonic-sequencer', $payload['rules']['audio']);
         self::assertArrayHasKey('media', $payload['rules']);
         self::assertStringContainsString('capabilities', $payload['rules']['media']);
