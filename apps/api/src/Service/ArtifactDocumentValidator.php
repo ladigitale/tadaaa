@@ -107,6 +107,8 @@ final class ArtifactDocumentValidator
     /** @var array<string, true> */
     private array $allowedTagSet;
 
+    private readonly ArtifactA2uiValidator $a2uiValidator;
+
     /**
      * @param array{components?: list<array{name: string}>, safeHtmlTags?: list<string>}|null $catalog
      */
@@ -117,7 +119,9 @@ final class ArtifactDocumentValidator
         private readonly string $schemaPath,
         private readonly ArtifactScriptsCatalog $scriptsCatalog,
         ?array $catalog = null,
+        ?ArtifactA2uiValidator $a2uiValidator = null,
     ) {
+        $this->a2uiValidator = $a2uiValidator ?? new ArtifactA2uiValidator();
         $data = $catalog ?? $this->loadJson($this->catalogPath);
         $tags = $data['safeHtmlTags'] ?? [];
         foreach ($data['components'] ?? [] as $component) {
@@ -206,6 +210,7 @@ final class ArtifactDocumentValidator
                 'audio' => self::AUDIO_RULE,
                 'media' => self::MEDIA_RULE,
                 'physique' => self::PHYSICS_RULE,
+                'a2ui' => 'Vue A2UI v0.9 (alternative à root) : views[].a2ui = liste de messages {"version":"v0.9", createSurface|updateComponents|updateDataModel|deleteSurface}. Catalogue de base uniquement (catalogId '.ArtifactA2uiValidator::BASIC_CATALOG_ID.'). Composants : '.implode(', ', ArtifactA2uiValidator::SUPPORTED_COMPONENTS).'. Props : littéraux ou {"path":"/abs"} ; pas de call, pas de listes à gabarit. Composants dans n’importe quel ordre, "root" obligatoire. views[].actionStore = id d’un data.stores : un clic sur action.event devient {type: name, payload: {...context résolu, surfaceId, sourceComponentId}} dispatché au store (reducer, sinks). Gabarits SDUI chat:answer / chat:result-card / chat:confirm / chat:short-form / chat:actions et a2ui:<Composant> disponibles en libraryKey dans les vues root.',
                 'polices' => 'Optionnel : "fonts": ["Patrick Hand", "Fredoka:wght@400;700"] (4 max, noms Google Fonts, pas d’URL). Le viewer les charge ; utiliser ensuite font-family:\'Patrick Hand\',cursive dans les styles. Toujours prévoir une police de repli.',
                 'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
             ],
@@ -319,11 +324,29 @@ final class ArtifactDocumentValidator
                 if (isset($view['hidden']) && !\is_bool($view['hidden'])) {
                     $errors[] = ['path' => $base.'/hidden', 'message' => 'hidden doit être un booléen (vue hors navigation).'];
                 }
-                $root = $view['root'] ?? null;
-                if (!\is_array($root)) {
-                    $errors[] = ['path' => $base.'/root', 'message' => 'root (descripteur SDUI) requis.'];
+                // Une vue porte soit `root` (descripteur SDUI), soit `a2ui` (messages A2UI v0.9).
+                $hasRoot = \array_key_exists('root', $view);
+                $hasA2ui = \array_key_exists('a2ui', $view);
+                if ($hasRoot && $hasA2ui) {
+                    $errors[] = ['path' => $base, 'message' => 'root et a2ui sont exclusifs.'];
+                } elseif ($hasA2ui) {
+                    $this->a2uiValidator->validate($view['a2ui'], $base.'/a2ui', $errors, $nodeCount);
                 } else {
-                    $this->validateDescriptor($root, $base.'/root', $errors, $nodeCount, 0);
+                    $root = $view['root'] ?? null;
+                    if (!\is_array($root)) {
+                        $errors[] = ['path' => $base.'/root', 'message' => 'root (descripteur SDUI) ou a2ui (messages A2UI) requis.'];
+                    } else {
+                        $this->validateDescriptor($root, $base.'/root', $errors, $nodeCount, 0);
+                    }
+                }
+                if (\array_key_exists('actionStore', $view)) {
+                    $store = $view['actionStore'];
+                    $stores = \is_array($document['data']['stores'] ?? null) ? $document['data']['stores'] : [];
+                    if (!$hasA2ui) {
+                        $errors[] = ['path' => $base.'/actionStore', 'message' => 'actionStore ne sert qu’aux vues a2ui.'];
+                    } elseif (!\is_string($store) || !\array_key_exists($store, $stores)) {
+                        $errors[] = ['path' => $base.'/actionStore', 'message' => 'actionStore doit nommer un store de data.stores.'];
+                    }
                 }
             }
 
