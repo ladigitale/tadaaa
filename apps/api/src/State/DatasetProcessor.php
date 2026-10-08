@@ -93,6 +93,10 @@ final class DatasetProcessor implements ProcessorInterface
         if ($operation instanceof Delete) {
             $this->access->assertIsOwner($user, $data);
 
+            if ($data->isArtifactStore()) {
+                throw new BadRequestHttpException('Ce jeu stocke vos artefacts : il ne peut pas être supprimé.');
+            }
+
             if ($this->datasets->countForUser($user) <= 1) {
                 throw new BadRequestHttpException('Impossible de supprimer le dernier jeu.');
             }

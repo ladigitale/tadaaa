@@ -28,6 +28,10 @@ final class StorageQuota
             return $override;
         }
 
+        if (\in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+            return null; // les administrateurs ne sont pas limités
+        }
+
         return max(0, $this->defaultQuotaBytes);
     }
 

@@ -74,6 +74,11 @@ class Dataset
     #[Groups(['dataset:read'])]
     private \DateTimeImmutable $updatedAt;
 
+    /** Jeu réservé au stockage des artefacts : non supprimable via l'API. */
+    #[ORM\Column(options: ['default' => false])]
+    #[Groups(['dataset:read'])]
+    private bool $artifactStore = false;
+
     #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'datasets')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private User $owner;
@@ -119,6 +124,18 @@ class Dataset
     public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    public function isArtifactStore(): bool
+    {
+        return $this->artifactStore;
+    }
+
+    public function setArtifactStore(bool $artifactStore): static
+    {
+        $this->artifactStore = $artifactStore;
+
+        return $this;
     }
 
     public function touch(): static

@@ -14,7 +14,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
     description: <<<'DESC'
 Publie un nouvel artefact SDUI. Valide le document avant enregistrement ; refuse si invalide.
 
-- `datasetId` : optionnel si un jeu est actif (`activate_dataset`).
+- `datasetId` : optionnel : par défaut le jeu « Artefacts » (créé automatiquement, non supprimable).
 - `visibility` : `private` | `link` | `public`
 - Retourne `{id, slug, url, version}` — `url` absolue (viewer Artefacts).
 
