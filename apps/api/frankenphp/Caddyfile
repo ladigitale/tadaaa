@@ -30,6 +30,9 @@
 	encode zstd br gzip
 
 	mercure {
+		# Static HS256 keys (publisher_jwt / subscriber_jwt) need compatibility mode
+		# since the Mercure module bundled in recent FrankenPHP images.
+		protocol_version_compatibility 8
 		# Publisher JWT key
 		publisher_jwt {env.MERCURE_PUBLISHER_JWT_KEY} {env.MERCURE_PUBLISHER_JWT_ALG}
 		# Subscriber JWT key
