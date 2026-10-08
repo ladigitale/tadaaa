@@ -16,11 +16,13 @@
 }
 
 {$API_SERVER_NAME:api.example.com} {
+	# Upstream is the `tadaaa-php` alias, not `php`: cohosted stacks joined to the
+	# edge (Glane on `web`) also expose a `php` alias and would capture this traffic.
 	# Mercure SSE: no compression, flush immediately
 	@mercure path /.well-known/mercure*
 
 	handle @mercure {
-		reverse_proxy php:80 {
+		reverse_proxy tadaaa-php:80 {
 			flush_interval -1
 			header_up X-Forwarded-Proto {scheme}
 			header_up X-Forwarded-Host {host}
@@ -29,7 +31,7 @@
 
 	handle {
 		encode zstd gzip
-		reverse_proxy php:80 {
+		reverse_proxy tadaaa-php:80 {
 			header_up X-Forwarded-Proto {scheme}
 			header_up X-Forwarded-Host {host}
 		}

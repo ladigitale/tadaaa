@@ -87,6 +87,12 @@ services:
       - jwt_keys:/app/config/jwt
     expose:
       - "80"
+    # Unique upstream name for the edge: the bare `php` alias is shared by every
+    # API Platform stack attached to a common proxy network (e.g. cohosted apps).
+    networks:
+      default:
+        aliases:
+          - tadaaa-php
     depends_on:
       database:
         condition: service_healthy
