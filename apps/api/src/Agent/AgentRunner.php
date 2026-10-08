@@ -79,7 +79,11 @@ final class AgentRunner
             $this->emitText($sink, 'Je m’arrête là : la demande a demandé trop d’étapes. Peux-tu la découper ?');
             $sink->emit(['type' => 'RUN_FINISHED', 'threadId' => $input->threadId, 'runId' => $input->runId]);
         } catch (LlmUnavailable $e) {
-            $sink->emit(['type' => 'RUN_ERROR', 'message' => $e->getMessage()]);
+            $error = ['type' => 'RUN_ERROR', 'message' => $e->getMessage()];
+            if ($e->errorCode() !== null) {
+                $error['code'] = $e->errorCode();
+            }
+            $sink->emit($error);
         } catch (\Throwable $e) {
             $this->logger->error('agent run failed', ['exception' => $e, 'runId' => $input->runId]);
             $sink->emit(['type' => 'RUN_ERROR', 'message' => 'L’agent a rencontré une erreur.']);
