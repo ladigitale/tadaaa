@@ -31,6 +31,11 @@ parameters:
     env(LEGAL_HOST_CONTACT): ''
     env(LEGAL_PRIVACY_EMAIL): ''
     env(ARTIFACTS_PUBLIC_URL): 'http://localhost:3300'
+    # Agent intégré (POST /api/agent/run) — clé vide = agent désactivé (RUN_ERROR explicite)
+    env(AGENT_LLM_API_KEY): ''
+    env(AGENT_LLM_MODEL): 'claude-sonnet-5-5'
+    env(AGENT_LLM_MAX_TOKENS): '2048'
+    env(AGENT_LLM_BASE_URL): 'https://api.anthropic.com'
 
 services:
     # default configuration for services in *this* file
@@ -55,3 +60,8 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    # Agent intégré
+    App\Agent\Llm\LlmClient: '@App\Agent\Llm\AnthropicLlmClient'
+    App\Agent\Tool\Toolbox:
+        factory: ['@App\Agent\ToolboxFactory', 'create']
