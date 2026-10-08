@@ -51,6 +51,10 @@ final class ArtifactDocumentValidatorTest extends TestCase
                 ['name' => 'sonic-grain'],
                 ['name' => 'sonic-ladder'],
                 ['name' => 'sonic-karplus'],
+                ['name' => 'sonic-physics'],
+                ['name' => 'sonic-body'],
+                ['name' => 'sonic-joint'],
+                ['name' => 'sonic-controller'],
             ],
         ];
         $scripts = [
@@ -454,6 +458,29 @@ final class ArtifactDocumentValidatorTest extends TestCase
         }
     }
 
+    public function testPhysicsAndController(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'sonic-physics', 'attributes' => ['id' => 'world', 'gravity' => '0 0', 'bounds' => 'box', 'store' => 'jeu', 'bodies' => 'jeu.bricks', 'input' => 'jeu.input'], 'nodes' => [
+                ['tagName' => 'sonic-body', 'attributes' => ['name' => 'paddle', 'type' => 'kinematic', 'shape' => 'polygon', 'points' => '-60,7 60,7 60,-1 -60,-1', 'clamp-x' => '62 738']],
+                ['tagName' => 'sonic-body', 'attributes' => ['name' => 'ball', 'shape' => 'circle', 'r' => '8', 'bullet' => '']],
+                ['tagName' => 'sonic-joint', 'attributes' => ['type' => 'revolute', 'a' => 'ground', 'b' => 'ball', 'at' => '400 200']],
+            ]],
+            ['tagName' => 'sonic-controller', 'attributes' => ['id' => 'pad', 'store' => 'jeu', 'analog-action' => 'stick', 'keymap' => '{"a":"launch"}']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['views'][0]['root']['nodes'] = array_fill(0, 5, ['tagName' => 'sonic-physics']);
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('Trop de sonic-physics', $result['errors'][0]['message']);
+
+        $doc['views'][0]['root']['nodes'] = [['tagName' => 'sonic-controller', 'attributes' => ['keymap' => '{pas du json']]];
+        self::assertFalse($this->validator->validate($doc)['valid']);
+    }
+
     public function testCatalogPayloadExplainsSound(): void
     {
         $payload = $this->validator->mcpCatalogPayload(true);
@@ -464,6 +491,8 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('sonic-media-download', $payload['rules']['media']);
         self::assertStringContainsString('sonic-midi', $payload['rules']['audio']);
         self::assertStringContainsString('sonic-grain', $payload['rules']['audio']);
+        self::assertStringContainsString('sonic-physics', $payload['rules']['physique']);
+        self::assertStringContainsString('sonic-controller', $payload['rules']['physique']);
         self::assertStringContainsString('sonic-screen', $payload['rules']['media']);
         self::assertStringContainsString('sonic-sequencer', $payload['rules']['audio']);
         self::assertArrayHasKey('media', $payload['rules']);

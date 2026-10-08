@@ -3195,6 +3195,264 @@
         "tagName": "sonic-webgpu",
         "attributes": {}
       }
+    },
+    {
+      "name": "sonic-physics",
+      "props": {
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "scale": {
+          "type": "number"
+        },
+        "gravity": {
+          "type": "string",
+          "description": "\"0 9.8\" (m/s², défaut), \"0 0\" vue de dessus"
+        },
+        "bounds": {
+          "type": "string",
+          "description": "walls (défaut), box (sans sol), floor, none"
+        },
+        "paused": {
+          "type": "boolean"
+        },
+        "time-scale": {
+          "type": "number"
+        },
+        "bodies": {
+          "type": "string"
+        },
+        "input": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "store": {
+          "type": "string"
+        },
+        "action-prefix": {
+          "type": "string"
+        },
+        "collide-min": {
+          "type": "number"
+        },
+        "drag": {
+          "type": "boolean"
+        },
+        "publish": {
+          "type": "string",
+          "description": "noms des corps publiés (défaut : tous)"
+        },
+        "rate": {
+          "type": "number"
+        },
+        "background": {
+          "type": "string"
+        },
+        "debug": {
+          "type": "boolean"
+        },
+        "hidden-preview": {
+          "type": "boolean"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "description": "Monde 2D (px, y vers le bas) : enfants sonic-body / sonic-joint, bodies=DP liste de corps (ajout / retrait suivis), input=DP {nom: {vx, vy, fx, fy, spin, torque, impulse:{n,x,y}, set:{n,x,y,vx,vy,angle}}} (n = compteur), control=DP {running, reset: compteur, gravity:[x,y], timeScale}, store=id reçoit collide {a,b,tagsA,tagsB,impulse,x,y} / enter / leave {sensor, body, tags} / out {body, side} / tap {x,y,body} ; état <id>State {bodies:{nom:{x,y,angle,vx,vy}}, collisions, time} ; source d'images #id pour sonic-shader"
+    },
+    {
+      "name": "sonic-body",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "string"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "w": {
+          "type": "number"
+        },
+        "h": {
+          "type": "number"
+        },
+        "r": {
+          "type": "number"
+        },
+        "points": {
+          "type": "string"
+        },
+        "loop": {
+          "type": "boolean"
+        },
+        "angle": {
+          "type": "number"
+        },
+        "vx": {
+          "type": "number"
+        },
+        "vy": {
+          "type": "number"
+        },
+        "spin": {
+          "type": "number"
+        },
+        "density": {
+          "type": "number"
+        },
+        "friction": {
+          "type": "number"
+        },
+        "restitution": {
+          "type": "number"
+        },
+        "sensor": {
+          "type": "boolean"
+        },
+        "bullet": {
+          "type": "boolean"
+        },
+        "fixed-rotation": {
+          "type": "boolean"
+        },
+        "damping": {
+          "type": "number"
+        },
+        "angular-damping": {
+          "type": "number"
+        },
+        "gravity-scale": {
+          "type": "number"
+        },
+        "group": {
+          "type": "string"
+        },
+        "collides": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "string"
+        },
+        "clamp-x": {
+          "type": "string"
+        },
+        "clamp-y": {
+          "type": "string"
+        },
+        "fill": {
+          "type": "string"
+        },
+        "stroke": {
+          "type": "string"
+        },
+        "line": {
+          "type": "number"
+        },
+        "label": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        }
+      },
+      "description": "Corps : type dynamic|static|kinematic, shape circle (r) | box (w h) | polygon / edge / chain (points \"x,y x,y\" relatifs au centre), x y angle vx vy spin, density friction restitution, sensor, bullet, fixed-rotation, damping, gravity-scale, group / collides (filtres), tags (repris dans les événements), clamp-x / clamp-y \"min max\", rendu fill stroke line label hidden"
+    },
+    {
+      "name": "sonic-joint",
+      "props": {
+        "type": {
+          "type": "string"
+        },
+        "a": {
+          "type": "string"
+        },
+        "b": {
+          "type": "string"
+        },
+        "at": {
+          "type": "string",
+          "description": "\"x y\" ancrage (monde)"
+        },
+        "to": {
+          "type": "string",
+          "description": "second ancrage"
+        },
+        "frequency": {
+          "type": "number"
+        },
+        "damping": {
+          "type": "number"
+        },
+        "length": {
+          "type": "number"
+        },
+        "motor": {
+          "type": "number"
+        },
+        "max-torque": {
+          "type": "number"
+        },
+        "lower": {
+          "type": "number"
+        },
+        "upper": {
+          "type": "number"
+        },
+        "axis": {
+          "type": "string"
+        },
+        "collide": {
+          "type": "boolean"
+        }
+      },
+      "description": "Joint entre deux corps (a, b ; ground = le décor) : revolute (pivot at, motor °/s, max-torque, lower / upper °), distance (ressort : frequency, damping, length), rope (length), weld, prismatic (axis, limites, moteur)"
+    },
+    {
+      "name": "sonic-controller",
+      "props": {
+        "store": {
+          "type": "string"
+        },
+        "keymap": {
+          "type": "object"
+        },
+        "release": {
+          "type": "boolean"
+        },
+        "analog-action": {
+          "type": "string"
+        },
+        "deadzone": {
+          "type": "number"
+        },
+        "player": {
+          "type": "string",
+          "description": "all ou 0..3"
+        },
+        "rate": {
+          "type": "number"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "description": "Manettes : keymap {\"a\":\"jump\",\"start\":\"pause\",\"ls-left\":\"left\"} → actions au store (release : aussi <type>:up), analog-action=\"stick\" → {type:\"stick\", payload:{pad, lx, ly, rx, ry, lt, rt}} quand un axe bouge ; état <id>State {status, count, pads:[{index, id, lx, ly, rx, ry, lt, rt, pressed}]} ; control DP {rumble:{n: compteur, ms, strong, weak}}. Boutons : a b x y lb rb lt rt select start ls rs up down left right home, ls-left/right/up/down"
     }
   ],
   "safeHtmlTags": [
@@ -3240,5 +3498,5 @@
     "i",
     "u"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded. creative-stack : sound (sonic-sound/sonic-sfx), audio (sonic-patch + modules dont ladder / fold / karplus / resonator / grain, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-midi, sonic-audio-recorder, module sonic-audio-input), media (sonic-camera, sonic-screen, sonic-video, sonic-media-start, sonic-media-recorder, sonic-media-download ; capabilities requis pour caméra / micro / MIDI / écran)."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded. creative-stack : sound (sonic-sound/sonic-sfx), audio (sonic-patch + modules dont ladder / fold / karplus / resonator / grain, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-midi, sonic-audio-recorder, module sonic-audio-input), media (sonic-camera, sonic-screen, sonic-video, sonic-media-start, sonic-media-recorder, sonic-media-download ; capabilities requis pour caméra / micro / MIDI / écran), physics (sonic-physics, sonic-body, sonic-joint : planck.js), controller (sonic-controller : manettes analogiques)."
 }
