@@ -38,8 +38,8 @@
     "capabilities": {
       "type": "array",
       "uniqueItems": true,
-      "items": { "enum": ["camera", "microphone"] },
-      "description": "Accès sensibles que le document peut demander (sonic-camera → camera, sonic-mic → microphone). Le viewer les annonce ; rien n'est activé sans clic."
+      "items": { "enum": ["camera", "microphone", "midi", "screen"] },
+      "description": "Accès sensibles que le document peut demander (sonic-camera → camera, sonic-mic → microphone, sonic-midi → midi, sonic-screen → screen). Le viewer les annonce ; rien n'est activé sans clic."
     },
     "data": {
       "type": "object",
