@@ -31,6 +31,8 @@ Exemple minimal :
   }
 }
 ```
+
+Une vue peut aussi être décrite en A2UI v0.9 (`"a2ui": [messages]` à la place de `root`, `"actionStore"` pour recevoir les actions) : voir `rules.a2ui` de `get_artifact_catalog`.
 DESC,
     processor: ArtifactMcpProcessor::class,
 )]

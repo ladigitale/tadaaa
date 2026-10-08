@@ -1,0 +1,52 @@
+{
+  "schema": "artifacts/1",
+  "title": "Formulaire A2UI",
+  "defaultView": "form",
+  "data": {
+    "stores": {
+      "inscription": {
+        "initial": { "sent": 0, "last": null },
+        "reducer": "$action.type = \"send\" ? $merge([$state, {\"sent\": $state.sent + 1, \"last\": $action.payload}]) : $state"
+      }
+    }
+  },
+  "views": [
+    {
+      "id": "form",
+      "title": "Inscription",
+      "actionStore": "inscription",
+      "a2uiBindings": { "/store": "inscription" },
+      "a2ui": [
+        { "version": "v0.9", "createSurface": { "surfaceId": "insc", "catalogId": "https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json" } },
+        {
+          "version": "v0.9",
+          "updateComponents": {
+            "surfaceId": "insc",
+            "components": [
+              { "id": "root", "component": "Tabs", "tabs": [{ "title": "Atelier", "child": "atelier" }, { "title": "Infos", "child": "infos" }] },
+              { "id": "atelier", "component": "Column", "children": ["niveau", "options", "places", "jour", "cgu", "actions"] },
+              { "id": "niveau", "component": "ChoicePicker", "label": "Niveau", "value": { "path": "/form/niveau" }, "options": [{ "label": "Débutant", "value": "deb" }, { "label": "Confirmé", "value": "conf" }] },
+              { "id": "options", "component": "ChoicePicker", "label": "Options", "variant": "multipleSelection", "value": { "path": "/form/options" }, "options": [{ "label": "Repas", "value": "repas" }, { "label": "Navette", "value": "navette" }] },
+              { "id": "places", "component": "Slider", "label": "Places", "min": 1, "max": 6, "value": { "path": "/form/places" } },
+              { "id": "jour", "component": "DateTimeInput", "label": "Jour", "enableDate": true, "value": { "path": "/form/jour" } },
+              { "id": "cgu", "component": "CheckBox", "label": "J'accepte le règlement", "value": { "path": "/form/cgu" } },
+              { "id": "actions", "component": "Row", "align": "center", "children": ["send", "help", "sent"] },
+              { "id": "send", "component": "Button", "variant": "primary", "child": "send-l", "action": { "event": { "name": "send", "context": { "niveau": { "path": "/form/niveau" }, "options": { "path": "/form/options" }, "places": { "path": "/form/places" }, "cgu": { "path": "/form/cgu" } } } } },
+              { "id": "send-l", "component": "Text", "text": "Envoyer" },
+              { "id": "help", "component": "Modal", "trigger": "help-btn", "content": "help-body" },
+              { "id": "help-btn", "component": "Button", "variant": "borderless", "child": "help-l", "action": { "event": { "name": "help" } } },
+              { "id": "help-l", "component": "Text", "text": "Aide" },
+              { "id": "help-body", "component": "Text", "text": "Un atelier par personne." },
+              { "id": "sent", "component": "Text", "variant": "caption", "text": { "path": "/store/sent" } },
+              { "id": "infos", "component": "Text", "text": "Samedi, salle des fêtes." }
+            ]
+          }
+        },
+        {
+          "version": "v0.9",
+          "updateDataModel": { "surfaceId": "insc", "path": "/form", "value": { "niveau": ["deb"], "options": [], "places": 2, "jour": "", "cgu": false } }
+        }
+      ]
+    }
+  ]
+}

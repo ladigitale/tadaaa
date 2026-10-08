@@ -545,6 +545,171 @@ final class ArtifactDocumentValidatorTest extends TestCase
     }
 
     /** @return array<string, mixed> */
+    public function testAcceptsA2uiView(): void
+    {
+        $result = $this->validator->validate($this->a2uiDoc());
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testRejectsRootAndA2uiTogether(): void
+    {
+        $doc = $this->a2uiDoc();
+        $doc['views'][0]['root'] = ['nodes' => []];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('exclusifs', $result['errors'][0]['message']);
+    }
+
+    public function testRejectsUnsupportedA2uiComponent(): void
+    {
+        $doc = $this->a2uiDoc();
+        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][] = ['id' => 's', 'component' => 'Video', 'url' => 'https://example.com/v.mp4'];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('non pris en charge : Video', $result['errors'][0]['message']);
+    }
+
+    public function testRejectsA2uiFunctionCalls(): void
+    {
+        $doc = $this->a2uiDoc();
+        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][0]['text'] = ['call' => 'formatString', 'args' => []];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('call', $result['errors'][0]['message']);
+    }
+
+    public function testAcceptsA2uiTemplateLists(): void
+    {
+        $doc = $this->a2uiDoc();
+        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][2]['children'] = ['path' => '/items', 'componentId' => 'item'];
+        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][] = ['id' => 'item', 'component' => 'Text', 'text' => ['path' => 'name']];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][2]['children'] = ['path' => '/items', 'componentId' => 'item', 'x' => 1];
+        self::assertFalse($this->validator->validate($doc)['valid']);
+
+        $doc = $this->a2uiDoc();
+        $doc['views'][0]['a2ui'][2]['updateDataModel']['path'] = 'relative';
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('absolu', $result['errors'][0]['message']);
+    }
+
+    public function testRejectsA2uiUnsafeUrlAndUnknownSurface(): void
+    {
+        $doc = $this->a2uiDoc();
+        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][] = ['id' => 'img', 'component' => 'Image', 'url' => 'javascript:alert(1)'];
+        $doc['views'][0]['a2ui'][] = ['version' => 'v0.9', 'updateDataModel' => ['surfaceId' => 'ghost', 'path' => '/a', 'value' => 1]];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        $messages = implode(' | ', array_column($result['errors'], 'message'));
+        self::assertStringContainsString('https uniquement', $messages);
+        self::assertStringContainsString('Surface inconnue', $messages);
+    }
+
+    public function testRejectsA2uiOtherCatalogAndDottedPath(): void
+    {
+        $doc = $this->a2uiDoc();
+        $doc['views'][0]['a2ui'][0]['createSurface']['catalogId'] = 'https://example.com/catalog.json';
+        $doc['views'][0]['a2ui'][2]['updateDataModel']['path'] = '/show/a.b';
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        $messages = implode(' | ', array_column($result['errors'], 'message'));
+        self::assertStringContainsString('catalogue de base', $messages);
+        self::assertStringContainsString('"."', $messages);
+    }
+
+    public function testActionStoreMustBeDeclared(): void
+    {
+        $doc = $this->a2uiDoc();
+        $doc['views'][0]['actionStore'] = 'nope';
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('actionStore', $result['errors'][0]['message']);
+
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['actionStore'] = 'booking';
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('vues a2ui', $result['errors'][0]['message']);
+    }
+
+    public function testA2uiBindings(): void
+    {
+        $doc = $this->a2uiDoc();
+        $doc['views'][0]['a2uiBindings'] = ['/booking' => 'booking'];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['views'][0]['a2uiBindings'] = ['/a.b' => 'booking', '/x' => 'nope'];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertCount(2, $result['errors']);
+
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['a2uiBindings'] = ['/x' => 'booking'];
+        self::assertFalse($this->validator->validate($doc)['valid']);
+    }
+
+    public function testAcceptsA2uiFormComponents(): void
+    {
+        $doc = $this->a2uiDoc();
+        $extra = [
+            ['id' => 'cb', 'component' => 'CheckBox', 'label' => 'OK', 'value' => ['path' => '/form/ok']],
+            ['id' => 'cp', 'component' => 'ChoicePicker', 'variant' => 'multipleSelection', 'value' => ['path' => '/form/o'], 'options' => [['label' => 'A', 'value' => 'a']]],
+            ['id' => 'sl', 'component' => 'Slider', 'min' => 0, 'max' => 10, 'value' => ['path' => '/form/n']],
+            ['id' => 'dt', 'component' => 'DateTimeInput', 'enableDate' => true, 'value' => ['path' => '/form/d']],
+            ['id' => 'tb', 'component' => 'Tabs', 'tabs' => [['title' => 'Un', 'child' => 'cb'], ['title' => 'Deux', 'child' => 'cp']]],
+            ['id' => 'md', 'component' => 'Modal', 'trigger' => 'book', 'content' => 'sl'],
+        ];
+        array_push($doc['views'][0]['a2ui'][1]['updateComponents']['components'], ...$extra);
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][] = ['id' => 'bad', 'component' => 'Tabs', 'tabs' => [['title' => ['path' => '/t'], 'child' => 'cb']]];
+        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][] = ['id' => 'bad2', 'component' => 'ChoicePicker', 'value' => ['path' => '/x'], 'options' => [['label' => 'A']]];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertCount(2, $result['errors']);
+    }
+
+    public function testA2uiMessagesMustBeWellFormed(): void
+    {
+        $doc = $this->a2uiDoc();
+        $doc['views'][0]['a2ui'][] = ['version' => 'v0.8', 'deleteSurface' => ['surfaceId' => 'booking'], 'createSurface' => []];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        $messages = implode(' | ', array_column($result['errors'], 'message'));
+        self::assertStringContainsString('v0.9', $messages);
+        self::assertStringContainsString('exactement un', $messages);
+    }
+
+    private function a2uiDoc(): array
+    {
+        $doc = $this->minimalDoc();
+        $doc['data'] = ['stores' => ['booking' => ['reducer' => '$state', 'initial' => ['count' => 0]]]];
+        $doc['views'][0] = [
+            'id' => 'home',
+            'title' => 'Réserver',
+            'actionStore' => 'booking',
+            'a2ui' => [
+                ['version' => 'v0.9', 'createSurface' => ['surfaceId' => 'booking', 'catalogId' => 'https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json']],
+                ['version' => 'v0.9', 'updateComponents' => ['surfaceId' => 'booking', 'components' => [
+                    ['id' => 'title', 'component' => 'Text', 'variant' => 'h3', 'text' => ['path' => '/show/title']],
+                    ['id' => 'qty', 'component' => 'TextField', 'label' => 'Places', 'value' => ['path' => '/form/qty']],
+                    ['id' => 'root', 'component' => 'Column', 'children' => ['title', 'qty', 'book']],
+                    ['id' => 'book-label', 'component' => 'Text', 'text' => 'Réserver'],
+                    ['id' => 'book', 'component' => 'Button', 'variant' => 'primary', 'child' => 'book-label',
+                        'action' => ['event' => ['name' => 'book', 'context' => ['qty' => ['path' => '/form/qty'], 'n' => 1]]]],
+                ]]],
+                ['version' => 'v0.9', 'updateDataModel' => ['surfaceId' => 'booking', 'path' => '/', 'value' => ['show' => ['title' => 'Concert'], 'form' => ['qty' => 2]]]],
+            ],
+        ];
+
+        return $doc;
+    }
+
     private function minimalDoc(): array
     {
         return [

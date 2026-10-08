@@ -24,6 +24,7 @@ final class UsageMeter
     public const EMBED_REQUESTS = 'embed_requests';
     public const EMBED_BYTES = 'embed_bytes';
     public const EMBED_ORIGIN_DENIED = 'embed_origin_denied';
+    public const AGENT_RUNS = 'agent_runs';
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

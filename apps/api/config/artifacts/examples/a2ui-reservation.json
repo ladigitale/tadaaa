@@ -1,0 +1,209 @@
+{
+  "schema": "artifacts/1",
+  "title": "Réservation A2UI",
+  "defaultView": "reserver",
+  "data": {
+    "stores": {
+      "booking": {
+        "initial": {
+          "count": 0,
+          "last": null,
+          "history": []
+        },
+        "reducer": "$action.type = \"book\" ? $merge([$state, {\"count\": $state.count + 1, \"last\": $action.payload, \"history\": $append($state.history, [$action.payload])}]) : $state"
+      }
+    }
+  },
+  "views": [
+    {
+      "id": "reserver",
+      "title": "Réserver",
+      "actionStore": "booking",
+      "a2ui": [
+        {
+          "version": "v0.9",
+          "createSurface": {
+            "surfaceId": "booking",
+            "catalogId": "https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json"
+          }
+        },
+        {
+          "version": "v0.9",
+          "updateComponents": {
+            "surfaceId": "booking",
+            "components": [
+              {
+                "id": "title",
+                "component": "Text",
+                "variant": "h3",
+                "text": {
+                  "path": "/show/title"
+                }
+              },
+              {
+                "id": "when",
+                "component": "Text",
+                "variant": "caption",
+                "text": {
+                  "path": "/show/when"
+                }
+              },
+              {
+                "id": "count",
+                "component": "Text",
+                "variant": "caption",
+                "text": {
+                  "path": "/booking/count"
+                }
+              },
+              {
+                "id": "qty",
+                "component": "TextField",
+                "label": "Nombre de places",
+                "variant": "number",
+                "value": {
+                  "path": "/form/qty"
+                }
+              },
+              {
+                "id": "book-label",
+                "component": "Text",
+                "text": "Réserver"
+              },
+              {
+                "id": "book",
+                "component": "Button",
+                "variant": "primary",
+                "child": "book-label",
+                "action": {
+                  "event": {
+                    "name": "book",
+                    "context": {
+                      "qty": {
+                        "path": "/form/qty"
+                      },
+                      "show": {
+                        "path": "/show/title"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "history",
+                "component": "List",
+                "children": {
+                  "path": "/booking/history",
+                  "componentId": "h-item"
+                }
+              },
+              {
+                "id": "h-item",
+                "component": "Row",
+                "children": [
+                  "h-qty",
+                  "h-show"
+                ]
+              },
+              {
+                "id": "h-qty",
+                "component": "Text",
+                "variant": "caption",
+                "text": {
+                  "path": "qty"
+                }
+              },
+              {
+                "id": "h-show",
+                "component": "Text",
+                "variant": "caption",
+                "text": {
+                  "path": "show"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "version": "v0.9",
+          "updateComponents": {
+            "surfaceId": "booking",
+            "components": [
+              {
+                "id": "root",
+                "component": "Card",
+                "child": "col"
+              },
+              {
+                "id": "col",
+                "component": "Column",
+                "children": [
+                  "title",
+                  "when",
+                  "row",
+                  "count",
+                  "history"
+                ]
+              },
+              {
+                "id": "row",
+                "component": "Row",
+                "align": "end",
+                "children": [
+                  "qty",
+                  "book"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "version": "v0.9",
+          "updateDataModel": {
+            "surfaceId": "booking",
+            "path": "/",
+            "value": {
+              "show": {
+                "title": "Orchestre d'harmonie",
+                "when": "Samedi 20 h 30"
+              },
+              "form": {
+                "qty": 2
+              }
+            }
+          }
+        }
+      ],
+      "a2uiBindings": {
+        "/booking": "booking"
+      }
+    },
+    {
+      "id": "confirmer",
+      "title": "Confirmer",
+      "root": {
+        "nodes": [
+          {
+            "libraryKey": "chat:confirm",
+            "nodes": [
+              {
+                "tagName": "sonic-value",
+                "attributes": {
+                  "dataProvider": "booking",
+                  "key": "count"
+                }
+              },
+              {
+                "libraryKey": "a2ui:Button.primary",
+                "parentElementSelector": "sonic-form-actions",
+                "attributes": {
+                  "data-test": "ok"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

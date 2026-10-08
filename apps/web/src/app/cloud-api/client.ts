@@ -1030,6 +1030,63 @@ export async function updateNotificationPreferences(
   return result.preferences ?? [];
 }
 
+/** Réglages « Assistant IA » (la clé n'est jamais renvoyée : `hasKey` + `keyHint`). */
+export type AgentProvider = {
+  id: string;
+  label: string;
+  protocol: "anthropic" | "openai";
+  baseUrl: string;
+  defaultModel: string;
+  models: string[];
+  keyRequired: boolean;
+};
+
+export type AgentSettingsView = {
+  provider: string;
+  model: string;
+  hasKey: boolean;
+  keyHint: string | null;
+  customBaseUrlEnabled: boolean;
+  customBaseUrl: string | null;
+  configured: boolean;
+  serverKeyAvailable: boolean;
+  allowPrivateUrls: boolean;
+  providers: AgentProvider[];
+  updatedAt: string | null;
+};
+
+export type AgentSettingsPatch = {
+  provider?: string;
+  model?: string;
+  /** absent = inchangée, "" = supprimée */
+  apiKey?: string;
+  customBaseUrlEnabled?: boolean;
+  customBaseUrl?: string | null;
+};
+
+export async function fetchAgentSettings(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<AgentSettingsView> {
+  return cloudFetch<AgentSettingsView>(`/agent/settings`, {}, settings);
+}
+
+export async function updateAgentSettings(
+  patch: AgentSettingsPatch,
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<AgentSettingsView> {
+  return cloudFetch<AgentSettingsView>(
+    `/agent/settings`,
+    {method: "PUT", body: JSON.stringify(patch)},
+    settings,
+  );
+}
+
+export async function testAgentSettings(
+  settings: AccountSettings = loadAccountSettings(),
+): Promise<{ok: boolean; message: string; source?: string; model?: string}> {
+  return cloudFetch(`/agent/settings/test`, {method: "POST", body: "{}"}, settings);
+}
+
 export type EmbedKeyInfo = {
   id: string;
   name: string;
