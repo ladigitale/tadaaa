@@ -506,6 +506,135 @@
       "description": "Chorus"
     },
     {
+      "name": "sonic-ladder",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "freq-hz": {
+          "type": "number"
+        },
+        "res": {
+          "type": "number"
+        },
+        "drive": {
+          "type": "number"
+        },
+        "detune": {
+          "type": "number"
+        }
+      },
+      "description": "Filtre ladder 24 dB/oct non linéaire (AudioWorklet ; repli : 2 passe-bas natifs) : freq-hz, res 0..1.2 (auto-oscillation vers 1), drive, detune — tous modulables"
+    },
+    {
+      "name": "sonic-fold",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "bias": {
+          "type": "number"
+        },
+        "mix": {
+          "type": "number"
+        }
+      },
+      "description": "Wavefolder sinusoïdal ×2 (AudioWorklet ; repli : waveshaper fixe) : amount 0..12 et bias modulables, mix"
+    },
+    {
+      "name": "sonic-karplus",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "freq-hz": {
+          "type": "string"
+        },
+        "detune": {
+          "type": "number"
+        },
+        "decay": {
+          "type": "number"
+        },
+        "damp": {
+          "type": "number"
+        },
+        "level": {
+          "type": "number"
+        }
+      },
+      "description": "Corde pincée Karplus-Strong (AudioWorklet ; repli : filtre résonant), source de voix : freq-hz = voice.pitch, decay (s), damp 0..1, level ; suit le bend MPE"
+    },
+    {
+      "name": "sonic-resonator",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "in": {
+          "type": "string"
+        },
+        "freq-hz": {
+          "type": "string"
+        },
+        "detune": {
+          "type": "number"
+        },
+        "q": {
+          "type": "number"
+        },
+        "partials": {
+          "type": "string"
+        },
+        "level": {
+          "type": "number"
+        }
+      },
+      "description": "Résonateur (banque de passe-bandes natifs) : excité par l'entrée (bruit, micro…), freq-hz = voice.pitch, q, partials \"1 2 3 4.2\", level"
+    },
+    {
+      "name": "sonic-grain",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "sample": {
+          "type": "string"
+        },
+        "position": {
+          "type": "number"
+        },
+        "spread": {
+          "type": "number"
+        },
+        "size-s": {
+          "type": "number"
+        },
+        "density": {
+          "type": "number"
+        },
+        "pitch": {
+          "type": "number"
+        },
+        "jitter": {
+          "type": "number"
+        },
+        "level": {
+          "type": "number"
+        }
+      },
+      "description": "Granulaire (natif) : sample = URL https/blob ou chemin DP d'un SonicMediaRef (prise de sonic-audio-recorder) ; position, spread, size-s, density (grains/s), pitch, jitter réglables en direct (sonic-param) ; dans une voix, la hauteur suit la note (C4 = original)"
+    },
+    {
       "name": "sonic-comp",
       "props": {
         "name": {
@@ -1734,9 +1863,13 @@
         },
         "fm-amount": {
           "type": "number"
+        },
+        "sync": {
+          "type": "string",
+          "description": "nom d'un autre sonic-osc de la même voix"
         }
       },
-      "description": "Oscillateur (sine square sawtooth triangle pulse, harmonics) ; freq-hz = voice.pitch par défaut"
+      "description": "Oscillateur (sine square sawtooth triangle pulse, harmonics) ; freq-hz = voice.pitch par défaut ; sync=\"m\" : synchro dure sur l'oscillateur m (PolyBLEP, AudioWorklet)"
     },
     {
       "name": "sonic-pan",
@@ -1806,16 +1939,20 @@
       "name": "sonic-patch",
       "props": {
         "preset": {
-          "type": "string"
+          "type": "string",
+          "description": "synth/lead, synth/bass, synth/pad, synth/pluck, synth/fm-bell, synth/chip, synth/string, synth/sync-lead, synth/acid, drums/kick, drums/snare, drums/hat, drums/kit"
         },
         "params": {
-          "type": "object"
+          "type": "object",
+          "description": "Valeurs des paramètres exposés du preset"
         },
         "events": {
-          "type": "string"
+          "type": "string",
+          "description": "DP : liste d'événements {note|sample, vel, durS, type}"
         },
         "trigger": {
-          "type": "string"
+          "type": "string",
+          "description": "DP : chaque changement rejoue events"
         },
         "poly": {
           "type": "number"
@@ -1839,7 +1976,8 @@
           "type": "string"
         },
         "output": {
-          "type": "string"
+          "type": "string",
+          "description": "master (défaut), #id ou none"
         },
         "notes-map": {
           "type": "object"
@@ -1848,7 +1986,7 @@
           "type": "string"
         }
       },
-      "description": "Instrument modulaire : enfants sonic-voice (+ modules) ou preset (synth/lead synth/bass synth/pad synth/pluck synth/fm-bell synth/chip drums/kick drums/snare drums/hat drums/kit). events (DP liste) + trigger (DP), état dans out-data-provider"
+      "description": "Instrument modulaire : enfants sonic-voice (+ modules) ou preset (synth/lead synth/bass synth/pad synth/pluck synth/fm-bell synth/chip synth/string synth/sync-lead synth/acid drums/kick drums/snare drums/hat drums/kit). events (DP liste) + trigger (DP), état dans out-data-provider"
     },
     {
       "name": "sonic-pop",
@@ -3102,5 +3240,5 @@
     "i",
     "u"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded. creative-stack : sound (sonic-sound/sonic-sfx), audio (sonic-patch + modules, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-midi, sonic-audio-recorder, module sonic-audio-input), media (sonic-camera, sonic-screen, sonic-video, sonic-media-start, sonic-media-recorder, sonic-media-download ; capabilities requis pour caméra / micro / MIDI / écran)."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded. creative-stack : sound (sonic-sound/sonic-sfx), audio (sonic-patch + modules dont ladder / fold / karplus / resonator / grain, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-midi, sonic-audio-recorder, module sonic-audio-input), media (sonic-camera, sonic-screen, sonic-video, sonic-media-start, sonic-media-recorder, sonic-media-download ; capabilities requis pour caméra / micro / MIDI / écran)."
 }

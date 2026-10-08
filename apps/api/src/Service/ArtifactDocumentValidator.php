@@ -78,6 +78,7 @@ final class ArtifactDocumentValidator
         .'ENREGISTRER : sonic-audio-recorder id="rec" source="#mic|#id|master" control="dp.rec" ({recording: true|false, target: "takes.A"}) max-s ; chaque prise {url, mime, durS, size} est écrite dans target, rejouable par sonic-sampler samples=\'{"A":{"ref":"takes.A"}}\' (pads vides listés dans padsState.empty) ; état recState {status: waiting-source|ready|recording, elapsedS, last, takes}. '
         .'MIDI ("capabilities": ["midi"]) : sonic-midi id="midi" démarré par sonic-media-start for="midi" (ou sonic-audio-unlock start="midi") ; ENTRÉE input="all|nom" channel mpe (LinnStrument, Seaboard : bend/pression/timbre par note) target="#voix" (notes jouées directement ; dans le patch : sonic-mod from="voice.pressure|voice.timbre|voice.bend") store="idStore" ({type:"midi", payload:{kind: noteOn|noteOff|cc|program|start|stop|beat, note, name, vel, ch, cc, value}}) ; état midiState {status, inputs, held[{name, bend, pressure, timbre}], last, notes, cc{"74":0.5}, clock{running, bpm, beat}}. '
         .'SORTIE output="nom d’appareil" out-channel : c’est un instrument (sonic-sequencer pattern=\'{"midi":"c3 e3 g3"}\' joue sur la machine), cc-out="dp.knobs" ({"74":0.5}), clock-out="#seq" (horloge 24 ppq + Start/Stop) ; control {active, input, output, channel, program, panic: compteur}. Horloge d’une machine : sonic-sequencer sync="#midi" (Start/Stop/tempo/phase externes ; état sync {locked, driftMs}). '
+        .'MODULES AVANCÉS : sonic-osc sync="m" (synchro dure sur l’osc m, balayer s.freq-hz par une enveloppe curve="exp"), sonic-ladder (freq-hz, res 0..1.2 auto-oscillant, drive), sonic-fold (amount 0..12, bias), sonic-karplus (corde : decay, damp ; suit voice.pitch et le bend), sonic-resonator (passe-bandes à exciter : bruit, entrée ; q, partials "1 2 3"), sonic-grain sample="https://…|takes.voix" (granulaire : position 0..1, spread, size-s, density grains/s, pitch, jitter ; réglables en direct par sonic-param source="dp.pos"). Presets : synth/string, synth/sync-lead, synth/acid. Les 4 premiers utilisent un AudioWorklet chargé avant le premier son (repli natif annoncé dans warnings). '
         .'EFFET SUR UNE ENTRÉE : patch sans sonic-voice : <sonic-patch id="clean" output="none"><sonic-audio-input source="#mic"/> sonic-filter… </sonic-patch>, puis enregistrer / analyser "#clean" (output="none" avec le micro : pas de Larsen) ; état inputs {nom: true} une fois branché. '
         .'ANALYSEUR : sonic-audio-analyser id="spectre" source="master|#id" → DP spectreState {rms, peak, db, bands[], centroidHz, onset, onsetCount, pitchHz(attr pitch)} ; sonic-shader channel0="#spectre" : texture(iChannel0, vec2(x,0.25)).r spectre, vec2(x,0.75) onde. '
         .'États : <id>State de chaque composant (status idle tant que le son n’est pas actif, errors lisibles). Volumes : garder gain ≤ 0.6 par instrument, le master est limité.';
@@ -657,6 +658,12 @@ final class ArtifactDocumentValidator
                 if ($msg !== null) {
                     return $msg;
                 }
+            }
+        }
+        if ($tagName === 'sonic-grain' && $attrLower === 'sample') {
+            $u = trim($value);
+            if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $u) === 1 && stripos($u, 'https://') !== 0) {
+                return 'sonic-grain.sample : URL https uniquement, chemin relatif, ou chemin DP d’une prise (takes.voix).';
             }
         }
         if ($tagName === 'sonic-hugging-face-infer' && $attrLower === 'model') {
