@@ -61,6 +61,8 @@ final class ArtifactDocumentValidator
         .'Photo : incrémenter control.snapshot dans le reducer ; l’afficher avec un sonic-shader dataProvider="gallery" (texture(iChannel0, uv)). '
         .'MICRO : sonic-mic id="mic" (monitor pour l’entendre, sinon muet) control="dp.mic" ({active, monitor, gain}) ; état micState {status, error, rms, db} ; sonic-audio-analyser source="#mic" (pitch pour la hauteur, onsetCount pour les attaques). '
         .'VIDÉO : sonic-video id="clip" src="https://…webm|mp4" (https ou relative) loop muted autoplay hidden-preview preload="blob" audio-out="master" (son → moteur audio, analysable par sonic-audio-analyser source="#clip") control="dp.player" ({playing, seek: {t, n}, rate, volume, muted, loopStart, loopEnd}) ; état clipState {status: loading|ready|playing|paused|ended|needs-gesture|error, timeS, durationS, progress}. Shader : channel0="#clip". Autoplay avec son refusé par le navigateur → démarre muette (needs-gesture) : prévoir sonic-media-start for="clip". '
+        .'EXPORT : sonic-media-recorder id="export" video-source="#viz" (shader, caméra ou vidéo) audio-source="master|#id|none" control="dp.export" ({recording: true|false}) max-s="30" ; état exportState {status: waiting-source|ready|recording|error|unsupported, elapsedS, last: {url, mime, durS, size, width, height}}. '
+        .'TÉLÉCHARGER : sonic-media-download source="exportState.last" filename="ma-creation" (contenu en slot, caché tant qu’il n’y a rien ; blob: uniquement : prises, photos, exports). '
         .'Compteurs (snapshot, seek.n) : la première valeur sert de référence, chaque hausse déclenche.';
 
     /** Mémo de l'addon `audio` (synthèse modulaire, séquenceur, sampler, analyseur). */
@@ -72,6 +74,8 @@ final class ArtifactDocumentValidator
         .'SÉQUENCEUR : sonic-sequencer bpm swing seed control="dp.transport" ({playing,bpm,swing,pattern}) pattern=\'{"kit":{"kick":"x...x...x...x...","hat":"[..x.]*4"},"bass":{"notes":"0 ~ 2 [4 7]","scale":"a2:minor-pentatonic"},"lead":"<c5 e5 g5>"}\' (clé = id d’instrument ; ligne = 1 mesure : grille x/X/., [ ] sous-division, ~ silence, - tenue, <a b> alternance, *n, !n, @n, ?p, x(3,8,r) euclide, c4+e4 accord, degrés avec scale). '
         .'store="idStore" : le reducer reçoit {type:"step", payload:{step,beat,bar,phase,when,bpm}} en avance et écrit des notes avec when (augmenter budget-ms / lookahead-ms si le reducer est lourd). État <id>State : {playing, step, beat, bar, phase}. '
         .'SAMPLER : sonic-sampler samples=\'{"kick":"https://…/kick.wav","voix":{"ref":"rec.last","root":"C4"}}\' (https uniquement ; gain pan pitch root start end loop reverse gate) choke=\'[["hat","openhat"]]\'. '
+        .'ENREGISTRER : sonic-audio-recorder id="rec" source="#mic|#id|master" control="dp.rec" ({recording: true|false, target: "takes.A"}) max-s ; chaque prise {url, mime, durS, size} est écrite dans target, rejouable par sonic-sampler samples=\'{"A":{"ref":"takes.A"}}\' (pads vides listés dans padsState.empty) ; état recState {status: waiting-source|ready|recording, elapsedS, last, takes}. '
+        .'EFFET SUR UNE ENTRÉE : patch sans sonic-voice : <sonic-patch id="clean" output="none"><sonic-audio-input source="#mic"/> sonic-filter… </sonic-patch>, puis enregistrer / analyser "#clean" (output="none" avec le micro : pas de Larsen) ; état inputs {nom: true} une fois branché. '
         .'ANALYSEUR : sonic-audio-analyser id="spectre" source="master|#id" → DP spectreState {rms, peak, db, bands[], centroidHz, onset, onsetCount, pitchHz(attr pitch)} ; sonic-shader channel0="#spectre" : texture(iChannel0, vec2(x,0.25)).r spectre, vec2(x,0.75) onde. '
         .'États : <id>State de chaque composant (status idle tant que le son n’est pas actif, errors lisibles). Volumes : garder gain ≤ 0.6 par instrument, le master est limité.';
 
@@ -717,7 +721,7 @@ final class ArtifactDocumentValidator
                 $errors[] = ['path' => '/capabilities', 'message' => sprintf('%s utilisé : ajouter "%s" à capabilities.', $tag, $cap)];
             }
         }
-        $limits = ['sonic-camera' => 2, 'sonic-mic' => 2, 'sonic-video' => 6];
+        $limits = ['sonic-camera' => 2, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2];
         foreach ($limits as $tag => $max) {
             if (($this->seenTags[$tag] ?? 0) > $max) {
                 $errors[] = ['path' => '/views', 'message' => sprintf('Trop de %s (max %d).', $tag, $max)];

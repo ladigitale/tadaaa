@@ -1246,6 +1246,54 @@
       "description": "Bouton d'invite : démarre caméra / micro / vidéo listés dans for (clic = geste) ; caché une fois prêts ; affiche un refus"
     },
     {
+      "name": "sonic-media-recorder",
+      "props": {
+        "video-source": {
+          "type": "string"
+        },
+        "audio-source": {
+          "type": "string"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "bits-per-second": {
+          "type": "number"
+        },
+        "max-s": {
+          "type": "number"
+        },
+        "max-takes": {
+          "type": "number"
+        },
+        "take-provider": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "description": "Export vidéo (webm/mp4) : video-source #id (shader, caméra, vidéo) + audio-source master|#id|none ; DP control {recording} ; prise SonicMediaRef {url, mime, durS, size, width, height} dans take-provider et l'état last"
+    },
+    {
+      "name": "sonic-media-download",
+      "props": {
+        "source": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "description": "Lien de téléchargement d'une prise (blob: uniquement) : source = chemin DP d'un SonicMediaRef (ex. exportState.last) ; caché tant qu'il n'y a rien ; contenu libre en slot"
+    },
+    {
       "name": "sonic-menu",
       "props": {
         "class": {
@@ -1330,6 +1378,31 @@
         }
       },
       "description": "Micro : source audio (#id) pour analyseur / patch ; jamais vers le master sauf monitor ; démarrage sur geste ; DP control {active, monitor, gain, deviceId} ; état {status, error, rms, db, devices}"
+    },
+    {
+      "name": "sonic-audio-recorder",
+      "props": {
+        "source": {
+          "type": "string"
+        },
+        "max-s": {
+          "type": "number"
+        },
+        "max-takes": {
+          "type": "number"
+        },
+        "take-provider": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP : {recording: true|false, target: \"chemin.dp\"}"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "description": "Enregistreur audio : source #mic (défaut), #id ou master ; DP control {recording, target} ; chaque prise (SonicMediaRef {url, mime, durS, size}) écrite dans control.target ou take-provider, rejouable par sonic-sampler {\"ref\": \"chemin\"} ; état {status, recording, elapsedS, last, takes}"
     },
     {
       "name": "sonic-mix",
@@ -1529,6 +1602,22 @@
         }
       },
       "description": "Bruit blanc / rose / brun"
+    },
+    {
+      "name": "sonic-audio-input",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "description": "#mic (défaut), #id d'une source audio, in (reçoit ce qui est routé vers le patch)"
+        },
+        "level": {
+          "type": "number"
+        }
+      },
+      "description": "Entrée externe d'un patch (hors sonic-voice) : source=\"#mic\" (défaut) ou #id d'une source audio (vidéo, sampler, autre patch) ; un patch sans sonic-voice devient une chaîne d'effets ; master interdit"
     },
     {
       "name": "sonic-osc",
@@ -2879,5 +2968,5 @@
     "i",
     "u"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded. creative-stack : sound (sonic-sound/sonic-sfx), audio (sonic-patch + modules, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic), media (sonic-camera, sonic-video, sonic-media-start ; capabilities requis pour caméra / micro)."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded. creative-stack : sound (sonic-sound/sonic-sfx), audio (sonic-patch + modules, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, module sonic-audio-input), media (sonic-camera, sonic-video, sonic-media-start, sonic-media-recorder, sonic-media-download ; capabilities requis pour caméra / micro)."
 }
