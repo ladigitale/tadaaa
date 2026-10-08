@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Agent\AgentRunner;
+use App\Agent\AgentFactory;
+use App\Agent\AgentProfile;
 use App\Agent\AgUi\SseEventSink;
 use App\Agent\RunInput;
 use App\Entity\User;
@@ -20,23 +21,25 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
- * Agent intégré, protocole AG-UI : `POST /api/agent/run` avec un RunAgentInput,
- * réponse en flux SSE d'événements AG-UI. Client : `sonic-chat` (agent-stack).
+ * Agent intégré, protocole AG-UI : `POST /api/agent/run` (profil tâches) ou
+ * `POST /api/agent/{profile}/run` (ex. `artifacts` : atelier d'Artefacts) avec un
+ * RunAgentInput, réponse en flux SSE d'événements AG-UI. Client : `sonic-chat` (agent-stack).
  */
 #[Route('/api/agent')]
 #[IsGranted('ROLE_USER')]
 final class AgentController extends AbstractController
 {
     public function __construct(
-        private readonly AgentRunner $runner,
+        private readonly AgentFactory $agents,
         private readonly UsageMeter $usage,
         #[Autowire(service: 'limiter.agent_runs')]
         private readonly RateLimiterFactoryInterface $agentRunsLimiter,
     ) {
     }
 
-    #[Route('/run', name: 'api_agent_run', methods: ['POST'])]
-    public function run(Request $request): Response
+    #[Route('/run', name: 'api_agent_run', methods: ['POST'], defaults: ['profile' => AgentProfile::TASKS])]
+    #[Route('/{profile}/run', name: 'api_agent_profile_run', methods: ['POST'], requirements: ['profile' => 'tasks|artifacts'])]
+    public function run(Request $request, string $profile): Response
     {
         /** @var User $user */
         $user = $this->getUser();
@@ -57,7 +60,8 @@ final class AgentController extends AbstractController
             // L'observabilité ne doit pas bloquer l'agent.
         }
 
-        $response = new StreamedResponse(fn () => $this->runner->run($input, new SseEventSink()));
+        $runner = $this->agents->create($profile);
+        $response = new StreamedResponse(static fn () => $runner->run($input, new SseEventSink()));
         $response->headers->set('Content-Type', 'text/event-stream; charset=utf-8');
         $response->headers->set('Cache-Control', 'no-cache, no-transform');
         $response->headers->set('X-Accel-Buffering', 'no');

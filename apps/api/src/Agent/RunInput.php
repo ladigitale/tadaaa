@@ -18,6 +18,7 @@ final class RunInput
      * @param array<string, mixed>|null                             $a2uiAction  `{version, action: {…}}`
      * @param array<string, mixed>|null                             $sduiAction  `{name, context, sourceNodeId?}`
      * @param list<array<string, mixed>>                            $a2uiErrors
+     * @param array{artifactSlug?: string}                          $appContext  contexte fourni par l'application
      */
     public function __construct(
         public readonly string $threadId,
@@ -26,6 +27,7 @@ final class RunInput
         public readonly ?array $a2uiAction = null,
         public readonly ?array $sduiAction = null,
         public readonly array $a2uiErrors = [],
+        public readonly array $appContext = [],
     ) {
     }
 
@@ -58,6 +60,15 @@ final class RunInput
             \is_array($fp['a2uiAction'] ?? null) ? $fp['a2uiAction'] : null,
             \is_array($fp['sduiAction'] ?? null) ? $fp['sduiAction'] : null,
             \is_array($fp['a2uiErrors'] ?? null) ? array_values(array_filter($fp['a2uiErrors'], 'is_array')) : [],
+            self::appContext($fp),
         );
+    }
+
+    /** @param array<string, mixed> $fp */
+    private static function appContext(array $fp): array
+    {
+        $slug = \is_array($fp['artifact'] ?? null) ? ($fp['artifact']['slug'] ?? null) : null;
+
+        return \is_string($slug) && preg_match('/^[a-z0-9][a-z0-9-]{2,63}$/', $slug) ? ['artifactSlug' => $slug] : [];
     }
 }

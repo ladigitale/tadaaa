@@ -27,6 +27,8 @@ final class AgentRunner
         private readonly Toolbox $toolbox,
         private readonly LoggerInterface $logger = new NullLogger(),
         private readonly ?\Closure $clock = null,
+        /** @var (\Closure(RunInput, \DateTimeImmutable): string)|null prompt système (défaut : profil tâches) */
+        private readonly ?\Closure $systemPrompt = null,
     ) {
     }
 
@@ -40,7 +42,8 @@ final class AgentRunner
 
             return;
         }
-        $system = SystemPrompt::build($this->clock ? ($this->clock)() : new \DateTimeImmutable());
+        $now = $this->clock ? ($this->clock)() : new \DateTimeImmutable();
+        $system = $this->systemPrompt ? ($this->systemPrompt)($input, $now) : SystemPrompt::build($now);
         $tools = $this->toolbox->schemas();
 
         try {

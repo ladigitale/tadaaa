@@ -57,7 +57,11 @@ final class McpToolAdapter implements AgentTool
                 'int' => ['type' => 'integer'],
                 'float' => ['type' => 'number'],
                 'bool' => ['type' => 'boolean'],
-                'array' => isset($listParams[$name]) ? ['type' => 'array', 'items' => ['type' => $listParams[$name]]] : ['type' => 'array'],
+                'array' => match ($listParams[$name] ?? null) {
+                    null => ['type' => 'array'],
+                    'object' => ['type' => 'object'],
+                    default => ['type' => 'array', 'items' => ['type' => $listParams[$name]]],
+                },
                 default => [],
             };
             if ($param->isDefaultValueAvailable()) {
@@ -105,10 +109,18 @@ final class McpToolAdapter implements AgentTool
         return new ToolResult(implode("\n", $texts), $result->isError);
     }
 
-    /** @return array<string, string> paramètre → type des éléments (depuis `@param list<string>`) */
+    /**
+     * @return array<string, string> paramètre → type des éléments (`@param list<string>`),
+     *                               ou "object" pour un tableau associatif (`@param array<string, mixed>`)
+     */
     private function listParams(string $doc): array
     {
         $out = [];
+        if (preg_match_all('/@param\s+array<string,\s*\w+>(?:\|null)?\s+\$(\w+)/', $doc, $m, PREG_SET_ORDER)) {
+            foreach ($m as [, $name]) {
+                $out[$name] = 'object';
+            }
+        }
         if (preg_match_all('/@param\s+(?:list|array)<(string|int)>(?:\|null)?\s+\$(\w+)/', $doc, $m, PREG_SET_ORDER)) {
             foreach ($m as [, $type, $name]) {
                 $out[$name] = $type === 'int' ? 'integer' : 'string';

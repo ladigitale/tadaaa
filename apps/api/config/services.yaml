@@ -47,6 +47,20 @@ services:
     # this creates a service per class whose id is the fully-qualified class name
     App\:
         resource: '../src/'
+        # Objets de valeur et classes construites à la main (agent intégré) : pas des services.
+        exclude:
+            - '../src/Agent/AgentRunner.php'
+            - '../src/Agent/RunInput.php'
+            - '../src/Agent/A2ui.php'
+            - '../src/Agent/AgentProfile.php'
+            - '../src/Agent/SystemPrompt.php'
+            - '../src/Agent/AgUi/'
+            - '../src/Agent/Llm/LlmResponse.php'
+            - '../src/Agent/Llm/LlmUnavailable.php'
+            - '../src/Agent/Tool/McpToolAdapter.php'
+            - '../src/Agent/Tool/Toolbox.php'
+            - '../src/Agent/Tool/ToolContext.php'
+            - '../src/Agent/Tool/ToolResult.php'
 
     App\Service\MercureFeature:
         arguments:
@@ -63,5 +77,3 @@ services:
 
     # Agent intégré
     App\Agent\Llm\LlmClient: '@App\Agent\Llm\AnthropicLlmClient'
-    App\Agent\Tool\Toolbox:
-        factory: ['@App\Agent\ToolboxFactory', 'create']

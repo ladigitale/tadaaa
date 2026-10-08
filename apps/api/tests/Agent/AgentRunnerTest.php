@@ -203,6 +203,65 @@ final class AgentRunnerTest extends TestCase
         self::assertSame("\n\n", substr($out, -2));
     }
 
+    public function testPreviewArtifact(): void
+    {
+        $validator = new \App\Service\ArtifactDocumentValidator(...self::validatorArgs());
+        $tool = new \App\Agent\Tool\PreviewArtifactTool($validator);
+        $sink = new ArrayEventSink();
+        $context = new \App\Agent\Tool\ToolContext($sink, 'r');
+
+        $bad = $tool->execute(['document' => ['schema' => 'artifacts/0']], $context);
+        self::assertTrue($bad->isError);
+        self::assertCount(0, $sink->events);
+
+        $doc = [
+            'schema' => 'artifacts/1', 'title' => 'Quiz', 'defaultView' => 'q',
+            'views' => [['id' => 'q', 'title' => 'Quiz', 'a2ui' => [
+                ['version' => 'v0.9', 'createSurface' => ['surfaceId' => 's', 'catalogId' => ArtifactA2uiValidator::BASIC_CATALOG_ID]],
+                ['version' => 'v0.9', 'updateComponents' => ['surfaceId' => 's', 'components' => [['id' => 'root', 'component' => 'Text', 'text' => 'Question 1']]]],
+            ]]],
+        ];
+        $ok = $tool->execute(['document' => $doc], $context);
+        self::assertFalse($ok->isError, $ok->content);
+        self::assertSame('artifact-preview', $sink->events[0]['name']);
+        self::assertSame('Quiz', $sink->events[0]['value']['document']['title']);
+    }
+
+    public function testArtifactsPromptAndContext(): void
+    {
+        $input = RunInput::fromArray([
+            'threadId' => 't', 'runId' => 'r', 'messages' => [['id' => '1', 'role' => 'user', 'content' => 'ajoute une question']],
+            'forwardedProps' => ['artifact' => ['slug' => 'quiz-loire']],
+        ]);
+        self::assertSame(['artifactSlug' => 'quiz-loire'], $input->appContext);
+        $prompt = \App\Agent\SystemPrompt::artifacts(new \DateTimeImmutable('2026-10-08'), $input->appContext);
+        self::assertStringContainsString('get_artifact(slug)', $prompt);
+        self::assertStringContainsString('quiz-loire', $prompt);
+        self::assertStringContainsString('preview_artifact', $prompt);
+        self::assertStringContainsString('ChoicePicker', $prompt);
+
+        $bad = RunInput::fromArray(['threadId' => 't', 'runId' => 'r', 'messages' => [], 'forwardedProps' => ['artifact' => ['slug' => '../x']]]);
+        self::assertSame([], $bad->appContext);
+        self::assertStringContainsString('publish_artifact', \App\Agent\SystemPrompt::artifacts(new \DateTimeImmutable(), []));
+    }
+
+    public function testCustomSystemPromptPerProfile(): void
+    {
+        $llm = new ScriptedLlm([self::text('ok')]);
+        $toolbox = new Toolbox([]);
+        (new AgentRunner($llm, $toolbox, systemPrompt: static fn (RunInput $i, \DateTimeImmutable $now) => 'PROMPT '.$i->runId))
+            ->run(self::input([['role' => 'user', 'content' => 'x']]), new ArrayEventSink());
+        self::assertSame('PROMPT run-1', $llm->calls[0]['system']);
+    }
+
+    public function testObjectParamsGetAnObjectSchema(): void
+    {
+        $tool = new McpToolAdapter(\App\Mcp\Tool\PublishArtifactTool::class, new FakeProcessor());
+        $schema = json_decode(json_encode($tool->inputSchema()), true);
+        self::assertSame(['type' => 'object'], $schema['properties']['document']);
+        self::assertSame('private', $schema['properties']['visibility']['default']);
+    }
+
     private function run(ScriptedLlm $llm, RunInput $input): ArrayEventSink
     {
         $toolbox = new Toolbox([
