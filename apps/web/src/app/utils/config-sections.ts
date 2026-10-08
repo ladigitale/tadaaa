@@ -90,6 +90,13 @@ export const CONFIG_SECTION_GROUPS: ConfigSectionGroup[] = [
     labelKey: "nav.group.connectivity",
     items: [
       {
+        id: "assistant",
+        labelKey: "config.section.assistant",
+        descriptionKey: "config.section.assistant.help",
+        icon: "sparks",
+        href: configSectionPath("assistant"),
+      },
+      {
         id: "mcp",
         labelKey: "config.section.mcp",
         descriptionKey: "config.section.mcp.help",
