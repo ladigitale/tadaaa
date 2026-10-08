@@ -22,7 +22,10 @@ final class ArtifactA2uiValidator
     public const MAX_STRING = 2000;
 
     /** Miroir de SUPPORTED_COMPONENTS (agent-stack, src/a2ui/basic-catalog.ts). */
-    public const SUPPORTED_COMPONENTS = ['Row', 'Column', 'List', 'Text', 'Card', 'Divider', 'Icon', 'Image', 'Button', 'TextField'];
+    public const SUPPORTED_COMPONENTS = [
+        'Row', 'Column', 'List', 'Text', 'Card', 'Divider', 'Icon', 'Image', 'Button', 'TextField',
+        'CheckBox', 'ChoicePicker', 'Slider', 'DateTimeInput', 'Tabs', 'Modal',
+    ];
 
     private const MESSAGE_KINDS = ['createSurface', 'updateComponents', 'updateDataModel', 'deleteSurface'];
     private const ID = '/^[A-Za-z0-9_.-]{1,64}$/';
@@ -202,6 +205,35 @@ final class ArtifactA2uiValidator
                 case 'child':
                     if (!\is_string($value) || !preg_match(self::ID, $value)) {
                         $errors[] = ['path' => $p, 'message' => 'child : id attendu.'];
+                    }
+                    break;
+                case 'trigger':
+                case 'content':
+                    if (!\is_string($value) || !preg_match(self::ID, $value)) {
+                        $errors[] = ['path' => $p, 'message' => $prop.' : id de composant attendu.'];
+                    }
+                    break;
+                case 'tabs':
+                    if (!\is_array($value) || !array_is_list($value) || $value === []) {
+                        $errors[] = ['path' => $p, 'message' => 'tabs : liste non vide de {"title", "child"} attendue.'];
+                        break;
+                    }
+                    foreach ($value as $k => $tab) {
+                        if (!\is_array($tab) || !\is_string($tab['title'] ?? null) || !\is_string($tab['child'] ?? null) || !preg_match(self::ID, $tab['child']) || \count($tab) !== 2) {
+                            $errors[] = ['path' => $p.'/'.$k, 'message' => 'Onglet : {"title": texte, "child": id} attendu (titre lié non pris en charge).'];
+                        }
+                    }
+                    break;
+                case 'options':
+                    if (!\is_array($value) || !array_is_list($value) || $value === []) {
+                        $errors[] = ['path' => $p, 'message' => 'options : liste non vide de {"label", "value"} attendue.'];
+                        break;
+                    }
+                    foreach ($value as $k => $opt) {
+                        if (!\is_array($opt) || !\is_string($opt['label'] ?? null) || !\is_string($opt['value'] ?? null) || \count($opt) !== 2
+                            || mb_strlen($opt['label']) > self::MAX_STRING) {
+                            $errors[] = ['path' => $p.'/'.$k, 'message' => 'Option : {"label": texte, "value": texte} attendu (libellé lié non pris en charge).'];
+                        }
                     }
                     break;
                 case 'weight':

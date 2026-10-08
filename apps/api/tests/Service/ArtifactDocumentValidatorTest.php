@@ -563,10 +563,10 @@ final class ArtifactDocumentValidatorTest extends TestCase
     public function testRejectsUnsupportedA2uiComponent(): void
     {
         $doc = $this->a2uiDoc();
-        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][] = ['id' => 's', 'component' => 'Slider', 'value' => ['path' => '/v']];
+        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][] = ['id' => 's', 'component' => 'Video', 'url' => 'https://example.com/v.mp4'];
         $result = $this->validator->validate($doc);
         self::assertFalse($result['valid']);
-        self::assertStringContainsString('non pris en charge : Slider', $result['errors'][0]['message']);
+        self::assertStringContainsString('non pris en charge : Video', $result['errors'][0]['message']);
     }
 
     public function testRejectsA2uiFunctionCalls(): void
@@ -650,6 +650,28 @@ final class ArtifactDocumentValidatorTest extends TestCase
         $doc = $this->minimalDoc();
         $doc['views'][0]['a2uiBindings'] = ['/x' => 'booking'];
         self::assertFalse($this->validator->validate($doc)['valid']);
+    }
+
+    public function testAcceptsA2uiFormComponents(): void
+    {
+        $doc = $this->a2uiDoc();
+        $extra = [
+            ['id' => 'cb', 'component' => 'CheckBox', 'label' => 'OK', 'value' => ['path' => '/form/ok']],
+            ['id' => 'cp', 'component' => 'ChoicePicker', 'variant' => 'multipleSelection', 'value' => ['path' => '/form/o'], 'options' => [['label' => 'A', 'value' => 'a']]],
+            ['id' => 'sl', 'component' => 'Slider', 'min' => 0, 'max' => 10, 'value' => ['path' => '/form/n']],
+            ['id' => 'dt', 'component' => 'DateTimeInput', 'enableDate' => true, 'value' => ['path' => '/form/d']],
+            ['id' => 'tb', 'component' => 'Tabs', 'tabs' => [['title' => 'Un', 'child' => 'cb'], ['title' => 'Deux', 'child' => 'cp']]],
+            ['id' => 'md', 'component' => 'Modal', 'trigger' => 'book', 'content' => 'sl'],
+        ];
+        array_push($doc['views'][0]['a2ui'][1]['updateComponents']['components'], ...$extra);
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][] = ['id' => 'bad', 'component' => 'Tabs', 'tabs' => [['title' => ['path' => '/t'], 'child' => 'cb']]];
+        $doc['views'][0]['a2ui'][1]['updateComponents']['components'][] = ['id' => 'bad2', 'component' => 'ChoicePicker', 'value' => ['path' => '/x'], 'options' => [['label' => 'A']]];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertCount(2, $result['errors']);
     }
 
     public function testA2uiMessagesMustBeWellFormed(): void
