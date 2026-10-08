@@ -66,6 +66,14 @@ final class ArtifactDocumentValidator
         .'TÉLÉCHARGER : sonic-media-download source="exportState.last" filename="ma-creation" (contenu en slot, caché tant qu’il n’y a rien ; blob: uniquement : prises, photos, exports). '
         .'Compteurs (snapshot, seek.n) : la première valeur sert de référence, chaque hausse déclenche.';
 
+    /** Mémo des addons `physics` (planck.js) et `controller` (manettes). */
+    private const PHYSICS_RULE = 'MONDE 2D (planck.js / Box2D) : <sonic-physics id="world" width="800" height="450" gravity="0 9.8" (m/s², "0 0" vue de dessus) bounds="walls|box (sans sol)|floor|none" store="jeu" bodies="jeu.bricks" input="jeu.input" control="jeu.ctl" drag> + enfants sonic-body / sonic-joint. Unités : px (y vers le bas), degrés, px/s. '
+        .'CORPS : sonic-body name type="dynamic|static|kinematic" shape="circle (r)|box (w h)|polygon|edge|chain (points=\'x,y x,y\' relatifs au centre)" x y angle vx vy restitution friction density sensor bullet fixed-rotation tags="brick" clamp-x="60 740" fill stroke label. La même description en liste JSON dans le store (bodies="jeu.bricks") : le monde suit ajouts et retraits (retirer une brique = la filtrer dans le reducer). '
+        .'JOINTS : sonic-joint type="revolute (motor °/s, lower/upper)|distance (frequency = ressort)|rope|weld|prismatic" a b at="x y" (b="ground" = décor). '
+        .'PILOTAGE input = {"paddle": {"vx": -650}, "ship": {"fx": 0, "fy": -20}, "ball": {"impulse": {"n": compteur, "x": 10, "y": -34}, "set": {"n": compteur, "x": 400, "y": 396}}} (vx/vy imposés à chaque pas, fx/fy forces, impulse/set déclenchés quand n augmente). control = {running, reset: compteur, gravity: [x, y]}. '
+        .'ÉVÉNEMENTS vers le store : collide {a, b, tagsA, tagsB, impulse, x, y}, enter/leave {sensor, body, tags}, out {body, side} (balle perdue), tap {x, y, body} ; mettre budget-ms="50" sur le store. État worldState {bodies: {nom: {x, y, angle, vx, vy}}, collisions}. Image du monde : sonic-shader channel0="#world" (lueur, déformations) ; hidden-preview si le shader seul s’affiche. '
+        .'MANETTES : sonic-controller id="pad" store="jeu" keymap=\'{"a":"launch","start":"pause","left":"left"}\' release (envoie aussi "left:up") analog-action="stick" (→ {type:"stick", payload:{pad, lx, ly, rx, ry, lt, rt}}) control="jeu.padCtl" ({rumble: {n: compteur, ms}}) ; état padState {status: idle|ready, count, pads}. Clavier tenu : sonic-keyboard keyup (actions "left" puis "left:up").';
+
     /** Mémo de l'addon `audio` (synthèse modulaire, séquenceur, sampler, analyseur). */
     private const AUDIO_RULE = 'Un seul moteur audio par page, démarré au premier geste (sonic-audio-unlock = bouton d’invite). '
         .'INSTRUMENT : sonic-patch preset="synth/lead|bass|pad|pluck|fm-bell|chip|drums/kick|snare|hat|kit" params=\'{"cutoff":900}\' (cutoff/reso, pad : attack, pluck : decay, chip : pw) events="dp.notes" trigger="dp.tick" (trigger = valeur qui change → rejoue events ; sans trigger : joué quand la liste change). '
@@ -197,6 +205,7 @@ final class ArtifactDocumentValidator
                 'son' => self::SOUND_RULE,
                 'audio' => self::AUDIO_RULE,
                 'media' => self::MEDIA_RULE,
+                'physique' => self::PHYSICS_RULE,
                 'polices' => 'Optionnel : "fonts": ["Patrick Hand", "Fredoka:wght@400;700"] (4 max, noms Google Fonts, pas d’URL). Le viewer les charge ; utiliser ensuite font-family:\'Patrick Hand\',cursive dans les styles. Toujours prévoir une police de repli.',
                 'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
             ],
@@ -731,7 +740,7 @@ final class ArtifactDocumentValidator
                 $errors[] = ['path' => '/capabilities', 'message' => sprintf('%s utilisé : ajouter "%s" à capabilities.', $tag, $cap)];
             }
         }
-        $limits = ['sonic-camera' => 2, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2, 'sonic-midi' => 2, 'sonic-screen' => 1];
+        $limits = ['sonic-camera' => 2, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2, 'sonic-midi' => 2, 'sonic-screen' => 1, 'sonic-physics' => 4, 'sonic-controller' => 2];
         foreach ($limits as $tag => $max) {
             if (($this->seenTags[$tag] ?? 0) > $max) {
                 $errors[] = ['path' => '/views', 'message' => sprintf('Trop de %s (max %d).', $tag, $max)];
