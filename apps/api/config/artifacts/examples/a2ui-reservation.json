@@ -5,7 +5,10 @@
   "data": {
     "stores": {
       "booking": {
-        "initial": { "count": 0, "last": null },
+        "initial": {
+          "count": 0,
+          "last": null
+        },
         "reducer": "$action.type = \"book\" ? $merge([$state, {\"count\": $state.count + 1, \"last\": $action.payload}]) : $state"
       }
     }
@@ -16,22 +19,74 @@
       "title": "Réserver",
       "actionStore": "booking",
       "a2ui": [
-        { "version": "v0.9", "createSurface": { "surfaceId": "booking", "catalogId": "https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json" } },
+        {
+          "version": "v0.9",
+          "createSurface": {
+            "surfaceId": "booking",
+            "catalogId": "https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json"
+          }
+        },
         {
           "version": "v0.9",
           "updateComponents": {
             "surfaceId": "booking",
             "components": [
-              { "id": "title", "component": "Text", "variant": "h3", "text": { "path": "/show/title" } },
-              { "id": "when", "component": "Text", "variant": "caption", "text": { "path": "/show/when" } },
-              { "id": "qty", "component": "TextField", "label": "Nombre de places", "variant": "number", "value": { "path": "/form/qty" } },
-              { "id": "book-label", "component": "Text", "text": "Réserver" },
+              {
+                "id": "title",
+                "component": "Text",
+                "variant": "h3",
+                "text": {
+                  "path": "/show/title"
+                }
+              },
+              {
+                "id": "when",
+                "component": "Text",
+                "variant": "caption",
+                "text": {
+                  "path": "/show/when"
+                }
+              },
+              {
+                "id": "count",
+                "component": "Text",
+                "variant": "caption",
+                "text": {
+                  "path": "/booking/count"
+                }
+              },
+              {
+                "id": "qty",
+                "component": "TextField",
+                "label": "Nombre de places",
+                "variant": "number",
+                "value": {
+                  "path": "/form/qty"
+                }
+              },
+              {
+                "id": "book-label",
+                "component": "Text",
+                "text": "Réserver"
+              },
               {
                 "id": "book",
                 "component": "Button",
                 "variant": "primary",
                 "child": "book-label",
-                "action": { "event": { "name": "book", "context": { "qty": { "path": "/form/qty" }, "show": { "path": "/show/title" } } } }
+                "action": {
+                  "event": {
+                    "name": "book",
+                    "context": {
+                      "qty": {
+                        "path": "/form/qty"
+                      },
+                      "show": {
+                        "path": "/show/title"
+                      }
+                    }
+                  }
+                }
               }
             ]
           }
@@ -41,9 +96,30 @@
           "updateComponents": {
             "surfaceId": "booking",
             "components": [
-              { "id": "root", "component": "Card", "child": "col" },
-              { "id": "col", "component": "Column", "children": ["title", "when", "row"] },
-              { "id": "row", "component": "Row", "align": "end", "children": ["qty", "book"] }
+              {
+                "id": "root",
+                "component": "Card",
+                "child": "col"
+              },
+              {
+                "id": "col",
+                "component": "Column",
+                "children": [
+                  "title",
+                  "when",
+                  "row",
+                  "count"
+                ]
+              },
+              {
+                "id": "row",
+                "component": "Row",
+                "align": "end",
+                "children": [
+                  "qty",
+                  "book"
+                ]
+              }
             ]
           }
         },
@@ -52,10 +128,21 @@
           "updateDataModel": {
             "surfaceId": "booking",
             "path": "/",
-            "value": { "show": { "title": "Orchestre d'harmonie", "when": "Samedi 20 h 30" }, "form": { "qty": 2 } }
+            "value": {
+              "show": {
+                "title": "Orchestre d'harmonie",
+                "when": "Samedi 20 h 30"
+              },
+              "form": {
+                "qty": 2
+              }
+            }
           }
         }
-      ]
+      ],
+      "a2uiBindings": {
+        "/booking": "booking"
+      }
     },
     {
       "id": "confirmer",
@@ -65,8 +152,20 @@
           {
             "libraryKey": "chat:confirm",
             "nodes": [
-              { "tagName": "sonic-value", "attributes": { "dataProvider": "booking", "key": "count" } },
-              { "libraryKey": "a2ui:Button.primary", "parentElementSelector": "sonic-form-actions", "attributes": { "data-test": "ok" } }
+              {
+                "tagName": "sonic-value",
+                "attributes": {
+                  "dataProvider": "booking",
+                  "key": "count"
+                }
+              },
+              {
+                "libraryKey": "a2ui:Button.primary",
+                "parentElementSelector": "sonic-form-actions",
+                "attributes": {
+                  "data-test": "ok"
+                }
+              }
             ]
           }
         ]

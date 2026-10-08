@@ -620,6 +620,23 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('vues a2ui', $result['errors'][0]['message']);
     }
 
+    public function testA2uiBindings(): void
+    {
+        $doc = $this->a2uiDoc();
+        $doc['views'][0]['a2uiBindings'] = ['/booking' => 'booking'];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['views'][0]['a2uiBindings'] = ['/a.b' => 'booking', '/x' => 'nope'];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertCount(2, $result['errors']);
+
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['a2uiBindings'] = ['/x' => 'booking'];
+        self::assertFalse($this->validator->validate($doc)['valid']);
+    }
+
     public function testA2uiMessagesMustBeWellFormed(): void
     {
         $doc = $this->a2uiDoc();
