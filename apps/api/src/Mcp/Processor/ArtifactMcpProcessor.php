@@ -186,7 +186,17 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             throw new BadRequestHttpException('id ou slug requis.');
         }
 
-        return $this->artifacts->getForUser($user, $idOrSlug, $tool->version);
+        $full = $this->artifacts->getForUser($user, $idOrSlug, $tool->version);
+        if ($tool->path === null || $tool->path === '') {
+            return $full;
+        }
+
+        $document = \is_array($full['document'] ?? null) ? $full['document'] : [];
+        unset($full['document'], $full['collections']);
+        $full['path'] = $tool->path;
+        $full['value'] = ArtifactDocumentPatcher::read($document, $tool->path, $tool->outline);
+
+        return $full;
     }
 
     /** @return array<string, mixed> */
