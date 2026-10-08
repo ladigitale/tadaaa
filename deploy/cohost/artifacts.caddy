@@ -10,7 +10,7 @@
 		Referrer-Policy strict-origin-when-cross-origin
 		# Caméra / micro : seulement pour l'origine du viewer (sonic-camera, sonic-mic),
 		# et seulement si le document les déclare dans `capabilities` (garde du viewer).
-		Permissions-Policy "camera=(self), microphone=(self), display-capture=(), geolocation=(), payment=(), usb=(), browsing-topics=()"
+		Permissions-Policy "camera=(self), microphone=(self), midi=(self), display-capture=(self), geolocation=(), payment=(), usb=(), browsing-topics=()"
 		X-Frame-Options DENY
 		# CSP: pas d'inline script / pas d'eval.
 		# fonts.googleapis.com : thèmes Tadaaa (appearance).

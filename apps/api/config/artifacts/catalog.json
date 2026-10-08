@@ -1405,6 +1405,86 @@
       "description": "Enregistreur audio : source #mic (défaut), #id ou master ; DP control {recording, target} ; chaque prise (SonicMediaRef {url, mime, durS, size}) écrite dans control.target ou take-provider, rejouable par sonic-sampler {\"ref\": \"chemin\"} ; état {status, recording, elapsedS, last, takes}"
     },
     {
+      "name": "sonic-midi",
+      "props": {
+        "active": {
+          "type": "boolean"
+        },
+        "autostart": {
+          "type": "boolean"
+        },
+        "input": {
+          "type": "string",
+          "description": "all (défaut), none, first ou morceau de nom"
+        },
+        "output": {
+          "type": "string",
+          "description": "vide = aucune, first, all ou morceau de nom"
+        },
+        "channel": {
+          "type": "string",
+          "description": "all ou 1..16"
+        },
+        "out-channel": {
+          "type": "number"
+        },
+        "mpe": {
+          "type": "boolean"
+        },
+        "mpe-master": {
+          "type": "number"
+        },
+        "bend-range": {
+          "type": "number"
+        },
+        "transpose": {
+          "type": "number"
+        },
+        "target": {
+          "type": "string",
+          "description": "#id d'instruments séparés par des espaces"
+        },
+        "store": {
+          "type": "string"
+        },
+        "action-type": {
+          "type": "string"
+        },
+        "events": {
+          "type": "string"
+        },
+        "trigger": {
+          "type": "string"
+        },
+        "cc-out": {
+          "type": "string"
+        },
+        "clock-out": {
+          "type": "string"
+        },
+        "offset-ms": {
+          "type": "number"
+        },
+        "notes-map": {
+          "type": "object"
+        },
+        "dur-s": {
+          "type": "number"
+        },
+        "rate": {
+          "type": "number"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP {active, input, output, channel, outChannel, program, panic: compteur}"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "description": "Web MIDI (accès sur geste, sans SysEx). Entrée : target=\"#synth\" joue les notes (MPE : bend / pression / timbre par note → voice.bend|pressure|timbre du patch), store=id reçoit {type:\"midi\", payload:{kind, note, name, vel, ch, cc, value}} ; état {status, inputs, held, last, notes, cc, bend, pressure, clock{running,bpm,beat}}. Sortie : instrument (cible d'un sonic-sequencer ou events/trigger) vers output=\"nom\", cc-out (DP {\"74\":0.5}), clock-out=\"#seq\" (horloge 24 ppq + Start/Stop)"
+    },
+    {
       "name": "sonic-mix",
       "props": {
         "composition": {
@@ -2103,9 +2183,13 @@
         },
         "out-data-provider": {
           "type": "string"
+        },
+        "sync": {
+          "type": "string",
+          "description": "#id d'un sonic-midi : horloge externe"
         }
       },
-      "description": "Horloge musicale : pattern {idInstrument: 'mini-notation' | {notes, scale, pad: 'x..x'}} joué sur des instruments par id ; store=id reçoit {type:step, payload:{step,beat,bar,phase,when,bpm}} ; control DP {playing,bpm,swing,seed,pattern}"
+      "description": "Horloge musicale : pattern {idInstrument: 'mini-notation' | {notes, scale, pad: 'x..x'}} joué sur des instruments par id ; store=id reçoit {type:step, payload:{step,beat,bar,phase,when,bpm}} ; control DP {playing,bpm,swing,seed,pattern} ; sync=\"#midi\" : suit l'horloge MIDI d'un appareil (Start/Stop, tempo, phase) ; état sync {locked, driftMs}"
     },
     {
       "name": "sonic-sfx",
@@ -2843,6 +2927,56 @@
       "description": "Lecteur vidéo (https, relatif, blob:) : DP control {playing, seek, rate, volume, muted, loop, loopStart, loopEnd} ; état {status, timeS, durationS, progress, playing} ; source d'images (#id) ; audio-out=master|#id|none pour l'analyse"
     },
     {
+      "name": "sonic-screen",
+      "props": {
+        "active": {
+          "type": "boolean"
+        },
+        "audio": {
+          "type": "boolean"
+        },
+        "surface": {
+          "type": "string",
+          "description": "monitor, window, browser"
+        },
+        "cursor": {
+          "type": "string"
+        },
+        "allow-self": {
+          "type": "boolean"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "max-width": {
+          "type": "number"
+        },
+        "fit": {
+          "type": "string"
+        },
+        "hidden-preview": {
+          "type": "boolean"
+        },
+        "snapshot-type": {
+          "type": "string"
+        },
+        "max-snapshots": {
+          "type": "number"
+        },
+        "snapshot-provider": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP {active, snapshot: compteur}"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "description": "Capture d'écran (getDisplayMedia, clic direct requis : sonic-media-start for=\"screen\") : source d'images (#id) pour sonic-shader, photos (control.snapshot), son du partage (audio) pour l'analyseur / l'enregistreur, export par sonic-media-recorder ; état {status, error, surface, width, height, audio, snapshot}"
+    },
+    {
       "name": "sonic-voice",
       "props": {
         "sample": {
@@ -2968,5 +3102,5 @@
     "i",
     "u"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded. creative-stack : sound (sonic-sound/sonic-sfx), audio (sonic-patch + modules, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, module sonic-audio-input), media (sonic-camera, sonic-video, sonic-media-start, sonic-media-recorder, sonic-media-download ; capabilities requis pour caméra / micro)."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Visual-stack: sonic-shader/webgpu/3d/jsonata/mix/input-autocomplete/hugging-face-infer. Demos excluded. Interactive addon: store/keyboard/gamepad/gesture/action/ticker/matrix. Demos excluded. creative-stack : sound (sonic-sound/sonic-sfx), audio (sonic-patch + modules, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-midi, sonic-audio-recorder, module sonic-audio-input), media (sonic-camera, sonic-screen, sonic-video, sonic-media-start, sonic-media-recorder, sonic-media-download ; capabilities requis pour caméra / micro / MIDI / écran)."
 }
