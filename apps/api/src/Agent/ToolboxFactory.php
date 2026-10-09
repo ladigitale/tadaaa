@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Agent;
 
 use App\Agent\Tool\McpToolAdapter;
+use App\Agent\Tool\EditPreviewTool;
 use App\Agent\Tool\PreviewArtifactTool;
 use App\Agent\Tool\PublishPreviewTool;
+use App\Agent\Tool\ReadPreviewTool;
 use App\Agent\Tool\RenderUiTool;
 use App\Agent\Tool\Toolbox;
 use App\Mcp\Processor\ArtifactMcpProcessor;
@@ -16,8 +18,8 @@ use App\Mcp\Tool;
 /**
  * Outils de l'agent intégré, par profil :
  * - `tasks` : les outils MCP « tâches » de Tadaaa + render_ui ;
- * - `artifacts` (atelier) : les outils MCP « artefacts » (lecture, validation, métadonnées)
- *   + preview_artifact + publish_preview (enregistre le dernier aperçu) + render_ui.
+ * - `artifacts` (atelier) : catalogue, liste et métadonnées des artefacts (MCP) + le brouillon
+ *   (preview_artifact, edit_preview, read_preview, publish_preview) + render_ui.
  * Outils MCP exécutés dans le process, avec l'utilisateur courant. Pas d'outils
  * destructifs ni d'administration (suppression, webhooks, détecteurs, collecte).
  */
@@ -40,9 +42,8 @@ final class ToolboxFactory
     public const ARTIFACT_TOOLS = [
         Tool\GetArtifactCatalogTool::class,
         Tool\ListArtifactsTool::class,
-        Tool\GetArtifactTool::class,
-        Tool\ValidateArtifactTool::class,
-        // Métadonnées (titre, visibilité) ; le document passe par publish_preview.
+        // Métadonnées (titre, visibilité). Le document passe par le brouillon :
+        // preview_artifact / edit_preview / read_preview / publish_preview.
         Tool\UpdateArtifactTool::class,
     ];
 
@@ -52,6 +53,8 @@ final class ToolboxFactory
         private readonly RenderUiTool $renderUi,
         private readonly PreviewArtifactTool $previewArtifact,
         private readonly PublishPreviewTool $publishPreview,
+        private readonly EditPreviewTool $editPreview,
+        private readonly ReadPreviewTool $readPreview,
     ) {
     }
 
@@ -60,6 +63,8 @@ final class ToolboxFactory
         if ($profile === AgentProfile::ARTIFACTS) {
             $tools = array_map(fn (string $class) => new McpToolAdapter($class, $this->artifactProcessor), self::ARTIFACT_TOOLS);
             $tools[] = $this->previewArtifact;
+            $tools[] = $this->editPreview;
+            $tools[] = $this->readPreview;
             $tools[] = $this->publishPreview;
         } else {
             $tools = array_map(fn (string $class) => new McpToolAdapter($class, $this->todoProcessor), self::MCP_TOOLS);

@@ -233,7 +233,7 @@ final class AgentRunnerTest extends TestCase
         $ok = $tool->execute(['document' => $doc], $context);
         self::assertFalse($ok->isError, $ok->content);
         self::assertSame('artifact-preview', $sink->events[0]['name']);
-        self::assertSame('Quiz', $sink->events[0]['value']['document']['title']);
+        self::assertSame('Quiz', $sink->events[0]['value']['document']->title);
     }
 
     public function testEmptyObjectsSurviveAgentTools(): void
@@ -290,7 +290,7 @@ final class AgentRunnerTest extends TestCase
         ]);
         self::assertSame(['artifactSlug' => 'quiz-loire'], $input->appContext);
         $prompt = \App\Agent\SystemPrompt::artifacts(new \DateTimeImmutable('2026-10-08'), $input->appContext);
-        self::assertStringContainsString('get_artifact(slug)', $prompt);
+        self::assertStringContainsString('read_preview', $prompt);
         self::assertStringContainsString('quiz-loire', $prompt);
         self::assertStringContainsString('preview_artifact', $prompt);
         self::assertStringContainsString('ChoicePicker', $prompt);

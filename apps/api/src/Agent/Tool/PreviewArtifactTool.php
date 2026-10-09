@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Agent\Tool;
 
 use App\Service\ArtifactDocumentValidator;
-use App\Service\JsonShape;
 
 /**
  * `preview_artifact` (atelier Artefacts) : valide un document `artifacts/1` et, s'il
@@ -16,9 +15,13 @@ final class PreviewArtifactTool implements AgentTool
 {
     public const EVENT = 'artifact-preview';
 
+    private readonly DraftStore $drafts;
+
     public function __construct(
         private readonly ArtifactDocumentValidator $validator,
+        ?DraftStore $drafts = null,
     ) {
+        $this->drafts = $drafts ?? new DraftStore();
     }
 
     public function name(): string
@@ -30,7 +33,7 @@ final class PreviewArtifactTool implements AgentTool
     {
         return 'Affiche un document artifacts/1 dans le panneau d’aperçu de l’atelier, sans le publier. '
             .'Renvoie {valid, errors} : corrige et rappelle tant que valid est faux. '
-            .'À utiliser après chaque modification, avant de proposer la publication : '
+            .'Pour une première version ou une refonte ; pour modifier, préfère edit_preview (patch). '
             .'publish_preview enregistre ensuite le dernier aperçu valide.';
     }
 
@@ -49,17 +52,25 @@ final class PreviewArtifactTool implements AgentTool
         if (!\is_array($document)) {
             return ToolResult::json(['valid' => false, 'errors' => [['path' => '', 'message' => 'document : objet attendu.']]], true);
         }
-        $result = $this->validator->validate($document);
+        // Forme objets (`{}` gardés) : arguments bruts du modèle si le client LLM les fournit.
+        $raw = $context->rawInput?->document ?? null;
+        $draft = $raw instanceof \stdClass ? $raw : json_decode((string) json_encode((object) $document), false);
+
+        return $this->show($draft, $context);
+    }
+
+    /**
+     * Valide un brouillon ; s'il passe, l'affiche dans l'atelier et le garde comme
+     * brouillon courant. Sinon rien ne change et les erreurs reviennent au modèle.
+     */
+    public function show(\stdClass $draft, ToolContext $context): ToolResult
+    {
+        $result = $this->validator->validate(DraftStore::assoc($draft));
         if (!$result['valid']) {
             return ToolResult::json($result, true);
         }
-        $wire = $context->withEmptyObjects($document, 'document');
-        $context->sink->emit(['type' => 'CUSTOM', 'name' => self::EVENT, 'value' => ['document' => $wire]]);
-        // Dernier aperçu valide : c'est lui que publish_preview enregistre.
-        $context->workspace['preview'] = [
-            'document' => $document,
-            'emptyObjects' => JsonShape::emptyObjectPaths(json_decode((string) json_encode($wire), false)),
-        ];
+        $context->sink->emit(['type' => 'CUSTOM', 'name' => self::EVENT, 'value' => ['document' => $draft]]);
+        $this->drafts->save($context, $draft);
 
         return ToolResult::json(['valid' => true, 'previewed' => true]);
     }

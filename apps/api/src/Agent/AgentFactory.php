@@ -6,6 +6,7 @@ namespace App\Agent;
 
 use App\Agent\Settings\AgentSettingsService;
 use App\Entity\User;
+use App\Service\ArtifactDocumentValidator;
 use Psr\Log\LoggerInterface;
 
 final class AgentFactory
@@ -15,18 +16,21 @@ final class AgentFactory
         private readonly ToolboxFactory $toolboxes,
         private readonly LoggerInterface $logger,
         private readonly ThreadStore $threads,
+        private readonly ArtifactDocumentValidator $artifacts,
     ) {
     }
 
     /** Runner pour un utilisateur : son modèle (ou celui du serveur), les outils du profil. */
     public function create(string $profile, User $user): AgentRunner
     {
+        $index = $profile === AgentProfile::ARTIFACTS ? $this->artifacts->catalogIndex() : '';
+
         return new AgentRunner(
             $this->settings->clientFor($user)['client'],
             $this->toolboxes->create($profile),
             $this->logger,
             systemPrompt: static fn (RunInput $input, \DateTimeImmutable $now): string => $profile === AgentProfile::ARTIFACTS
-                ? SystemPrompt::artifacts($now, $input->appContext)
+                ? SystemPrompt::artifacts($now, $input->appContext, $index)
                 : SystemPrompt::build($now),
             threads: $this->threads,
             threadScope: $user->getId()->toRfc4122().'|'.$profile,

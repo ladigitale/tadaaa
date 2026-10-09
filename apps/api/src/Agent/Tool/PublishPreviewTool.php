@@ -26,10 +26,14 @@ final class PublishPreviewTool implements AgentTool
 {
     public const EVENT = 'artifact-published';
 
+    private readonly DraftStore $drafts;
+
     public function __construct(
         #[Autowire(service: ArtifactMcpProcessor::class)]
         private readonly ProcessorInterface $processor,
+        ?DraftStore $drafts = null,
     ) {
+        $this->drafts = $drafts ?? new DraftStore();
     }
 
     public function name(): string
@@ -59,14 +63,13 @@ final class PublishPreviewTool implements AgentTool
 
     public function execute(array $input, ToolContext $context): ToolResult
     {
-        $preview = $context->workspace['preview'] ?? null;
-        if (!\is_array($preview) || !\is_array($preview['document'] ?? null)) {
+        // Brouillon déjà validé (aperçu) : pas le brouillon chargé depuis l'artefact, inchangé.
+        $draft = \is_string($context->workspace['draft'] ?? null) ? $this->drafts->current($context) : null;
+        if ($draft === null) {
             return ToolResult::json(['error' => 'Aucun aperçu valide dans cette conversation : appelle d’abord preview_artifact.'], true);
         }
-        $document = $preview['document'];
-        $raw = (object) ['document' => json_decode((string) json_encode(
-            \App\Service\JsonShape::restore($document, \is_array($preview['emptyObjects'] ?? null) ? $preview['emptyObjects'] : []),
-        ), false)];
+        $document = DraftStore::assoc($draft);
+        $raw = (object) ['document' => $draft];
         $string = static fn (string $key): ?string => \is_string($input[$key] ?? null) && trim($input[$key]) !== '' ? trim($input[$key]) : null;
 
         $slug = $context->appContext['artifactSlug'] ?? ($context->workspace['publishedSlug'] ?? null);

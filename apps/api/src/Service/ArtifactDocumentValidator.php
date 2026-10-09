@@ -109,6 +109,9 @@ final class ArtifactDocumentValidator
 
     private const DEFAULT_CONCORDE_VERSION = '5.1.0';
 
+    /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
+    public const LONG_RULES = ['a2ui', 'son', 'audio', 'media', 'physique', 'collecte'];
+
     private readonly ArtifactA2uiValidator $a2uiValidator;
 
     private readonly string $concordeVersion;
@@ -169,11 +172,12 @@ final class ArtifactDocumentValidator
      *
      * @return array<string, mixed>
      */
-    public function mcpCatalogPayload(bool $compact = true, ?array $components = null): array
+    public function mcpCatalogPayload(bool $compact = true, ?array $components = null, ?array $rules = null, bool $examples = true): array
     {
+        $withExamples = $examples;
         $examplesDir = \dirname($this->catalogPath).'/examples';
         $examples = [];
-        if (is_dir($examplesDir)) {
+        if ($withExamples && is_dir($examplesDir)) {
             foreach (glob($examplesDir.'/*.json') ?: [] as $file) {
                 $decoded = $this->loadJson($file);
                 if ($decoded !== []) {
@@ -194,7 +198,7 @@ final class ArtifactDocumentValidator
             $catalog = $this->compactCatalog($catalog);
         }
 
-        return [
+        $payload = [
             'catalog' => $catalog,
             'envelope' => [
                 'schema' => 'artifacts/1',
@@ -230,6 +234,55 @@ final class ArtifactDocumentValidator
             'scripts' => $this->scriptsCatalog->mcpSummary(),
             'examples' => array_slice($examples, 0, 5),
         ];
+
+        if ($rules !== null && $rules !== []) {
+            $want = array_fill_keys($rules, true);
+            foreach (self::LONG_RULES as $topic) {
+                if (!isset($want[$topic])) {
+                    unset($payload['rules'][$topic]);
+                }
+            }
+            // Le détail des bibliothèques de scripts aussi, sur demande (`rules: ["scripts"]`).
+            if (!isset($want['scripts'])) {
+                unset($payload['scripts']);
+            }
+        }
+        if (!$withExamples) {
+            unset($payload['examples']);
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Sommaire du catalogue pour un prompt système (~1k tokens) : noms des composants par
+     * origine et thèmes de règles. Le détail se demande ensuite à get_artifact_catalog
+     * (`components`, `rules`) : on évite d'envoyer 20k tokens de catalogue au modèle.
+     */
+    public function catalogIndex(): string
+    {
+        $groups = [];
+        foreach ($this->catalog()['components'] ?? [] as $component) {
+            if (\is_array($component) && \is_string($component['name'] ?? null)) {
+                $groups[\is_string($component['addon'] ?? null) ? $component['addon'] : 'concorde'][] = $component['name'];
+            }
+        }
+        ksort($groups);
+        $lines = ['Concorde '.$this->concordeVersion().' — composants (tagName) :'];
+        foreach (['concorde' => $groups['concorde'] ?? []] + $groups as $group => $names) {
+            $lines[] = sprintf('- %s : %s', $group === 'concorde' ? 'UI' : 'addon '.$group, implode(', ', $names));
+        }
+        $payload = $this->mcpCatalogPayload(true, ['__none__'], null, false);
+        $lines[] = 'Balises HTML sûres : '.implode(', ', $payload['catalog']['safeHtmlTags'] ?? []).'.';
+        $lines[] = 'Règles longues (rules) : '.implode(', ', self::LONG_RULES).', scripts (détail des bibliothèques).';
+        $short = array_diff_key($payload['rules'], array_fill_keys(self::LONG_RULES, true));
+        $lines[] = 'Règles courtes : '.json_encode($short, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES);
+        $lines[] = 'Bibliothèques scripts (ids) : '.implode(', ', array_map(
+            static fn (mixed $l): string => \is_array($l) ? (string) ($l['id'] ?? '') : '',
+            $payload['scripts']['libraries'] ?? [],
+        ));
+
+        return implode("\n", $lines);
     }
 
     private static function firstSentence(string $text, int $max = 140): string

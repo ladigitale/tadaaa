@@ -30,11 +30,15 @@ final class SystemPrompt
      *
      * @param array{artifactSlug?: string} $context
      */
-    public static function artifacts(\DateTimeImmutable $now, array $context): string
+    /**
+     * @param array{artifactSlug?: string} $context
+     * @param string                       $catalogIndex sommaire du catalogue ({@see \App\Service\ArtifactDocumentValidator::catalogIndex()})
+     */
+    public static function artifacts(\DateTimeImmutable $now, array $context, string $catalogIndex = ''): string
     {
         $ui = self::uiRules();
         $target = isset($context['artifactSlug'])
-            ? "L'utilisateur modifie l'artefact « {$context['artifactSlug']} » : commence par get_artifact(slug) ; publish_preview en enregistrera une nouvelle version."
+            ? "L'utilisateur modifie l'artefact « {$context['artifactSlug']} » : le brouillon part de sa version publiée (read_preview pour le plan, edit_preview pour modifier) ; publish_preview en enregistrera une nouvelle version."
             : "L'utilisateur crée un nouvel artefact : publish_preview le publiera (visibility \"private\" sauf demande contraire), puis en enregistrera les versions suivantes.";
 
         return <<<PROMPT
@@ -45,21 +49,26 @@ final class SystemPrompt
 
             ## Méthode
             1. Si la demande est floue, pose une seule question (de préférence avec render_ui : choix, curseur…).
-            2. Appelle get_artifact_catalog une fois par conversation (compact) : le format, les composants, les règles.
-               Tu te souviens des appels d'outils des messages précédents : ne refais pas ce qui est déjà fait.
+            2. Le sommaire du catalogue est plus bas. Demande seulement le détail utile :
+               get_artifact_catalog(components=[ceux que tu utilises], rules=[thèmes utiles], examples=false).
+               Tu te souviens des appels d'outils des messages précédents : ne redemande pas ce que tu as déjà.
             3. Compose le document complet. Pour un quiz, un formulaire, une liste ou un tableau de bord simple,
                préfère des vues A2UI ("a2ui": [messages], "actionStore", "a2uiBindings" : voir rules.a2ui du
                catalogue). Pour une mise en page riche ou les composants créatifs (son, 3D, physique), utilise
                des vues SDUI ("root"). Les gabarits chat:* et a2ui:* sont disponibles en libraryKey.
-            4. Appelle preview_artifact : l'utilisateur voit l'aperçu à côté du chat. Corrige jusqu'à valid=true.
-               Avant un long document, une phrase suffit pour dire ce que tu prépares. Reste compact : listes à
-               gabarit, pas de blocs recopiés, textes courts.
+            4. Première version (ou refonte complète) : preview_artifact avec le document entier. L'utilisateur voit
+               l'aperçu à côté du chat. Ensuite, toute modification passe par edit_preview (JSON Patch sur le
+               brouillon, read_preview pour en lire une partie) : ne renvoie jamais le document entier pour un
+               changement. Corrige jusqu'à valid=true. Reste compact : listes à gabarit, textes courts.
             5. Résume en une phrase ce que fait la page, puis propose la publication avec render_ui (boutons
                « Publier » / « Modifier encore »).
             6. Après le clic sur « Publier » (ou une demande explicite), appelle publish_preview : il enregistre le
                dernier aperçu valide, sans réécrire le document. Puis donne le lien renvoyé (url).
                update_artifact ne sert qu'au titre, à la visibilité ou à la description.
             Ne recopie jamais le document JSON dans ta réponse : l'aperçu suffit.
+
+            ## Sommaire du catalogue
+            {$catalogIndex}
 
             {$ui}
             PROMPT;

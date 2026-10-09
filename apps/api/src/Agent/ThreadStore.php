@@ -46,6 +46,7 @@ final class ThreadStore
 
     public function save(string $scope, string $threadId, ThreadState $state): void
     {
+        $state = $state->withoutDrafts();
         $data = serialize($state);
         if (\strlen($data) > self::MAX_BYTES) {
             $state = $state->compacted();

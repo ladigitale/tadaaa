@@ -530,6 +530,24 @@ final class ArtifactDocumentValidatorTest extends TestCase
         $compact = $validator->mcpCatalogPayload(true, ['sonic-alert']);
         self::assertSame(['type' => 'string', 'values' => ['default', 'info', 'success', 'warning', 'error']], $compact['catalog']['components'][0]['props']['status']);
         self::assertSame($validator->concordeVersion(), $compact['catalog']['concordeVersion']);
+
+        // Appel ciblé (agent) : composants, règles et exemples à la demande.
+        $targeted = $validator->mcpCatalogPayload(true, ['sonic-button'], ['a2ui'], false);
+        self::assertCount(1, $targeted['catalog']['components']);
+        self::assertArrayHasKey('a2ui', $targeted['rules']);
+        self::assertArrayHasKey('interdit', $targeted['rules']);
+        self::assertFalse(isset($targeted['rules']['audio']) || isset($targeted['examples']) || isset($targeted['scripts']));
+        self::assertLessThan(10_000, \strlen((string) json_encode($targeted)));
+        $full = $validator->mcpCatalogPayload(true);
+        self::assertArrayHasKey('audio', $full['rules']);
+        self::assertArrayHasKey('examples', $full);
+
+        // Sommaire pour le prompt système : tous les composants, ~1k tokens.
+        $index = $validator->catalogIndex();
+        self::assertLessThan(5_000, \strlen($index));
+        foreach (['sonic-button', 'sonic-store', 'sonic-physics', 'a2ui', 'chartjs', 'div'] as $needle) {
+            self::assertStringContainsString($needle, $index);
+        }
     }
 
     public function testAcceptsIntakeSourceAndSink(): void
