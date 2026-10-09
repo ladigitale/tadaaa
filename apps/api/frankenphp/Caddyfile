@@ -27,7 +27,9 @@
 	}
 
 	root /app/public
-	encode zstd br gzip
+	# Pas de compression du flux SSE de l'agent : chaque événement doit partir tout de suite.
+	@compressible not path /api/agent/*
+	encode @compressible zstd br gzip
 
 	mercure {
 		# Static HS256 keys (publisher_jwt / subscriber_jwt) need compatibility mode

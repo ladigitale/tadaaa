@@ -29,6 +29,16 @@
 		}
 	}
 
+	# Agent (SSE AG-UI) : pas de compression, flush immédiat.
+	@agent path /api/agent/*
+	handle @agent {
+		reverse_proxy tadaaa-php:80 {
+			flush_interval -1
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Forwarded-Host {host}
+		}
+	}
+
 	handle {
 		encode zstd gzip
 		reverse_proxy tadaaa-php:80 {

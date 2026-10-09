@@ -61,7 +61,11 @@ final class AgentController extends AbstractController
         }
 
         $runner = $this->agents->create($profile, $user);
-        $response = new StreamedResponse(static fn () => $runner->run($input, new SseEventSink()));
+        $response = new StreamedResponse(static function () use ($runner, $input): void {
+            // Un run enchaîne plusieurs appels au modèle (documents longs) : pas de limite PHP.
+            set_time_limit(0);
+            $runner->run($input, new SseEventSink());
+        });
         $response->headers->set('Content-Type', 'text/event-stream; charset=utf-8');
         $response->headers->set('Cache-Control', 'no-cache, no-transform');
         $response->headers->set('X-Accel-Buffering', 'no');
