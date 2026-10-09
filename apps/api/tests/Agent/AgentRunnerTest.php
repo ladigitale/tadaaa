@@ -297,7 +297,7 @@ final class AgentRunnerTest extends TestCase
 
         $bad = RunInput::fromArray(['threadId' => 't', 'runId' => 'r', 'messages' => [], 'forwardedProps' => ['artifact' => ['slug' => '../x']]]);
         self::assertSame([], $bad->appContext);
-        self::assertStringContainsString('publish_artifact', \App\Agent\SystemPrompt::artifacts(new \DateTimeImmutable(), []));
+        self::assertStringContainsString('publish_preview', \App\Agent\SystemPrompt::artifacts(new \DateTimeImmutable(), []));
     }
 
     public function testCustomSystemPromptPerProfile(): void
@@ -368,7 +368,7 @@ final class ScriptedLlm implements LlmClient
     {
     }
 
-    public function complete(string $system, array $messages, array $tools): LlmResponse
+    public function complete(string $system, array $messages, array $tools, ?\App\Agent\Llm\LlmStream $stream = null): LlmResponse
     {
         $this->calls[] = ['system' => $system, 'messages' => $messages, 'tools' => $tools];
         $next = array_shift($this->script) ?? new LlmResponse([['type' => 'text', 'text' => '(fin du script)']], 'end_turn');

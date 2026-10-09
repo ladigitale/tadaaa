@@ -6,6 +6,7 @@ namespace App\Agent;
 
 use App\Agent\Tool\McpToolAdapter;
 use App\Agent\Tool\PreviewArtifactTool;
+use App\Agent\Tool\PublishPreviewTool;
 use App\Agent\Tool\RenderUiTool;
 use App\Agent\Tool\Toolbox;
 use App\Mcp\Processor\ArtifactMcpProcessor;
@@ -15,7 +16,8 @@ use App\Mcp\Tool;
 /**
  * Outils de l'agent intégré, par profil :
  * - `tasks` : les outils MCP « tâches » de Tadaaa + render_ui ;
- * - `artifacts` (atelier) : les outils MCP « artefacts » + preview_artifact + render_ui.
+ * - `artifacts` (atelier) : les outils MCP « artefacts » (lecture, validation, métadonnées)
+ *   + preview_artifact + publish_preview (enregistre le dernier aperçu) + render_ui.
  * Outils MCP exécutés dans le process, avec l'utilisateur courant. Pas d'outils
  * destructifs ni d'administration (suppression, webhooks, détecteurs, collecte).
  */
@@ -40,7 +42,7 @@ final class ToolboxFactory
         Tool\ListArtifactsTool::class,
         Tool\GetArtifactTool::class,
         Tool\ValidateArtifactTool::class,
-        Tool\PublishArtifactTool::class,
+        // Métadonnées (titre, visibilité) ; le document passe par publish_preview.
         Tool\UpdateArtifactTool::class,
     ];
 
@@ -49,6 +51,7 @@ final class ToolboxFactory
         private readonly ArtifactMcpProcessor $artifactProcessor,
         private readonly RenderUiTool $renderUi,
         private readonly PreviewArtifactTool $previewArtifact,
+        private readonly PublishPreviewTool $publishPreview,
     ) {
     }
 
@@ -57,6 +60,7 @@ final class ToolboxFactory
         if ($profile === AgentProfile::ARTIFACTS) {
             $tools = array_map(fn (string $class) => new McpToolAdapter($class, $this->artifactProcessor), self::ARTIFACT_TOOLS);
             $tools[] = $this->previewArtifact;
+            $tools[] = $this->publishPreview;
         } else {
             $tools = array_map(fn (string $class) => new McpToolAdapter($class, $this->todoProcessor), self::MCP_TOOLS);
         }

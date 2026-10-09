@@ -7,7 +7,7 @@ namespace App\Agent\Tool;
 use App\Agent\AgUi\EventSink;
 use App\Service\JsonShape;
 
-/** Ce qu'un outil peut faire pendant un run : émettre des événements AG-UI. */
+/** Ce qu'un outil voit pendant un run : émettre des événements AG-UI, l'état de l'atelier. */
 final class ToolContext
 {
     private int $counter = 0;
@@ -18,9 +18,21 @@ final class ToolContext
      */
     public ?\stdClass $rawInput = null;
 
+    /**
+     * État des outils conservé d'un run à l'autre de la conversation ({@see \App\Agent\ThreadStore}) :
+     * dernier aperçu valide, artefact publié…
+     *
+     * @var array<string, mixed>
+     */
+    public array $workspace = [];
+
+    /**
+     * @param array{artifactSlug?: string} $appContext contexte fourni par l'application (RunInput)
+     */
     public function __construct(
         public readonly EventSink $sink,
         public readonly string $runId,
+        public readonly array $appContext = [],
     ) {
     }
 

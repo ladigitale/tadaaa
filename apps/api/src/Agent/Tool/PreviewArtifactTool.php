@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Agent\Tool;
 
 use App\Service\ArtifactDocumentValidator;
+use App\Service\JsonShape;
 
 /**
  * `preview_artifact` (atelier Artefacts) : valide un document `artifacts/1` et, s'il
@@ -29,7 +30,8 @@ final class PreviewArtifactTool implements AgentTool
     {
         return 'Affiche un document artifacts/1 dans le panneau d’aperçu de l’atelier, sans le publier. '
             .'Renvoie {valid, errors} : corrige et rappelle tant que valid est faux. '
-            .'À utiliser après chaque modification, avant de proposer la publication.';
+            .'À utiliser après chaque modification, avant de proposer la publication : '
+            .'publish_preview enregistre ensuite le dernier aperçu valide.';
     }
 
     public function inputSchema(): array
@@ -51,7 +53,13 @@ final class PreviewArtifactTool implements AgentTool
         if (!$result['valid']) {
             return ToolResult::json($result, true);
         }
-        $context->sink->emit(['type' => 'CUSTOM', 'name' => self::EVENT, 'value' => ['document' => $context->withEmptyObjects($document, 'document')]]);
+        $wire = $context->withEmptyObjects($document, 'document');
+        $context->sink->emit(['type' => 'CUSTOM', 'name' => self::EVENT, 'value' => ['document' => $wire]]);
+        // Dernier aperçu valide : c'est lui que publish_preview enregistre.
+        $context->workspace['preview'] = [
+            'document' => $document,
+            'emptyObjects' => JsonShape::emptyObjectPaths(json_decode((string) json_encode($wire), false)),
+        ];
 
         return ToolResult::json(['valid' => true, 'previewed' => true]);
     }

@@ -40,7 +40,7 @@ parameters:
     # URL libres vers le réseau privé (Ollama sur le LAN d'un serveur auto-hébergé) : 0 en production.
     env(AGENT_ALLOW_PRIVATE_URLS): '0'
     env(AGENT_LLM_MODEL): 'claude-sonnet-5-5'
-    env(AGENT_LLM_MAX_TOKENS): '2048'
+    env(AGENT_LLM_MAX_TOKENS): '16000'
     env(AGENT_LLM_BASE_URL): 'https://api.anthropic.com'
 
 services:
@@ -71,6 +71,9 @@ services:
             - '../src/Agent/Llm/OpenAiLlmClient.php'
             - '../src/Agent/Llm/UnconfiguredLlmClient.php'
             - '../src/Agent/Llm/LlmHttp.php'
+            - '../src/Agent/Llm/LlmStream.php'
+            - '../src/Agent/Llm/AnthropicStreamParser.php'
+            - '../src/Agent/ThreadState.php'
             - '../src/Agent/Settings/AgentProviders.php'
             - '../src/Agent/Settings/UrlGuard.php'
 

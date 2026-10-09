@@ -14,6 +14,7 @@ final class AgentFactory
         private readonly AgentSettingsService $settings,
         private readonly ToolboxFactory $toolboxes,
         private readonly LoggerInterface $logger,
+        private readonly ThreadStore $threads,
     ) {
     }
 
@@ -27,6 +28,8 @@ final class AgentFactory
             systemPrompt: static fn (RunInput $input, \DateTimeImmutable $now): string => $profile === AgentProfile::ARTIFACTS
                 ? SystemPrompt::artifacts($now, $input->appContext)
                 : SystemPrompt::build($now),
+            threads: $this->threads,
+            threadScope: $user->getId()->toRfc4122().'|'.$profile,
         );
     }
 }

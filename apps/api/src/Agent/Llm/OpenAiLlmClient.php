@@ -22,7 +22,7 @@ final class OpenAiLlmClient implements LlmClient
     ) {
     }
 
-    public function complete(string $system, array $messages, array $tools): LlmResponse
+    public function complete(string $system, array $messages, array $tools, ?LlmStream $stream = null): LlmResponse
     {
         $headers = ['content-type' => 'application/json'];
         if ($this->apiKey !== '') {

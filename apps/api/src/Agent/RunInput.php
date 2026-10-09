@@ -19,6 +19,8 @@ final class RunInput
      * @param array<string, mixed>|null                             $sduiAction  `{name, context, sourceNodeId?}`
      * @param list<array<string, mixed>>                            $a2uiErrors
      * @param array{artifactSlug?: string}                          $appContext  contexte fourni par l'application
+     * @param int|null                                              $messageCount nombre de messages texte reçus, avant
+     *                                                                            la troncature à MAX_MESSAGES
      */
     public function __construct(
         public readonly string $threadId,
@@ -28,8 +30,12 @@ final class RunInput
         public readonly ?array $sduiAction = null,
         public readonly array $a2uiErrors = [],
         public readonly array $appContext = [],
+        ?int $messageCount = null,
     ) {
+        $this->messageCount = $messageCount ?? \count($messages);
     }
+
+    public readonly int $messageCount;
 
     /** @param array<string, mixed> $body */
     public static function fromArray(array $body): self
@@ -50,6 +56,7 @@ final class RunInput
             }
             $messages[] = ['role' => $m['role'], 'content' => mb_substr($content, 0, self::MAX_CHARS)];
         }
+        $count = \count($messages);
         $messages = \array_slice($messages, -self::MAX_MESSAGES);
         $fp = \is_array($body['forwardedProps'] ?? null) ? $body['forwardedProps'] : [];
 
@@ -61,6 +68,7 @@ final class RunInput
             \is_array($fp['sduiAction'] ?? null) ? $fp['sduiAction'] : null,
             \is_array($fp['a2uiErrors'] ?? null) ? array_values(array_filter($fp['a2uiErrors'], 'is_array')) : [],
             self::appContext($fp),
+            $count,
         );
     }
 
