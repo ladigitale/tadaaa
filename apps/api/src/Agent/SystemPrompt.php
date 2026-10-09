@@ -71,6 +71,7 @@ final class SystemPrompt
                des vues SDUI ("root"). Les gabarits chat:* et a2ui:* sont disponibles en libraryKey.
                Soigne le visuel : icônes (sonic-icon library="iconoir", noms exacts via find_icons), couleurs,
                hiérarchie des titres, espacements. Une page avec des icônes bien choisies se lit mieux.
+               Couleurs : celles du thème (var(--sc-primary), var(--sc-base-200)…) sauf ambiance demandée.
             4. Première version (ou refonte complète) : preview_artifact avec le document entier. L'utilisateur voit
                l'aperçu à côté du chat. Ensuite, toute modification passe par edit_preview (JSON Patch sur le
                brouillon, read_preview pour en lire une partie) : ne renvoie jamais le document entier pour un

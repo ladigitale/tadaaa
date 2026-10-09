@@ -191,7 +191,7 @@
         {
          "tagName": "div",
          "attributes": {
-          "style": "border-radius:1rem;overflow:hidden;background:#05050a;box-shadow:0 10px 40px rgba(0,0,0,.3)"
+          "style": "border-radius:.75rem;overflow:hidden;background:#000;border:1px solid var(--sc-base-200,rgba(127,127,127,.25))"
          },
          "nodes": [
           {

@@ -373,7 +373,7 @@
          "tagName": "sonic-gesture",
          "attributes": {
           "target": "game",
-          "style": "display:block;touch-action:none;border-radius:.8rem;overflow:hidden;background:#0b0e16;padding:.4rem"
+          "style": "display:block;touch-action:none;border-radius:.8rem;overflow:hidden;background:var(--sc-base-900,#111827);padding:.4rem"
          },
          "nodes": [
           {

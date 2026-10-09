@@ -47,9 +47,9 @@
    },
    "accent": {
     "type": "string",
-    "maxLength": 30,
-    "default": "#4f46e5",
-    "description": "couleur CSS du bandeau"
+    "maxLength": 40,
+    "default": "var(--sc-primary)",
+    "description": "couleur d'accent (liseré, icônes) ; par défaut celle du thème"
    },
    "sections": {
     "type": "array",
@@ -198,7 +198,7 @@
          "attributes": {
           "data-hero": "",
           "style": {
-           "$text": "display:flex;flex-direction:column;gap:.9rem;padding:2.5rem 1.5rem;border-radius:1.25rem;color:#fff;background:linear-gradient(135deg,{{accent}},#111827)"
+           "$text": "display:flex;flex-direction:column;gap:.9rem;padding:2.5rem 1.5rem;border-radius:1rem;background:var(--sc-base-50,rgba(127,127,127,.05));border:1px solid var(--sc-base-200,rgba(127,127,127,.25))"
           }
          },
          "nodes": [
@@ -231,7 +231,7 @@
              }
             ],
             "attributes": {
-             "style": "margin:0;font-size:1.15rem;opacity:.9"
+             "style": "margin:0;font-size:1.15rem;opacity:.75"
             }
            }
           },
@@ -360,7 +360,7 @@
               "template": {
                "tagName": "div",
                "attributes": {
-                "style": "background:var(--sc-base,#fff);border:1px solid rgba(127,127,127,.2);border-radius:1rem;padding:1rem 1.1rem;display:flex;flex-direction:column;gap:.35rem",
+                "style": "background:var(--sc-base,#fff);border:1px solid var(--sc-base-200,rgba(127,127,127,.25));border-radius:.75rem;padding:1rem 1.1rem;display:flex;flex-direction:column;gap:.35rem",
                 "data-item": {
                  "$text": "{{^#}}.{{#}}"
                 }
@@ -460,7 +460,7 @@
             "template": {
              "tagName": "div",
              "attributes": {
-              "style": "background:var(--sc-base,#fff);border:1px solid rgba(127,127,127,.2);border-radius:1rem;padding:1rem 1.1rem;display:flex;flex-direction:column;gap:.35rem",
+              "style": "background:var(--sc-base,#fff);border:1px solid var(--sc-base-200,rgba(127,127,127,.25));border-radius:.75rem;padding:1rem 1.1rem;display:flex;flex-direction:column;gap:.35rem",
               "data-faq": {
                "$text": "{{#}}"
               }
@@ -517,7 +517,7 @@
            }
           ],
           "attributes": {
-           "style": "padding:1.5rem 0;text-align:center;font-size:.85rem;opacity:.65;border-top:1px solid rgba(127,127,127,.2)"
+           "style": "padding:1.5rem 0;text-align:center;font-size:.85rem;opacity:.65;border-top:1px solid var(--sc-base-200,rgba(127,127,127,.25))"
           }
          }
         }
