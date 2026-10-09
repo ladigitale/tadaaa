@@ -1,0 +1,475 @@
+{
+ "id": "onepage",
+ "title": "Page unique",
+ "description": "Page de présentation : bandeau d'accroche (titre, sous-titre, image, bouton), sections avec cartes, FAQ, pied de page.",
+ "use": "présenter un projet, une association, un événement, un produit, un CV",
+ "params": {
+  "type": "object",
+  "required": [
+   "title",
+   "sections"
+  ],
+  "properties": {
+   "title": {
+    "type": "string",
+    "maxLength": 120
+   },
+   "tagline": {
+    "type": "string",
+    "maxLength": 240
+   },
+   "image": {
+    "type": "string",
+    "maxLength": 500,
+    "description": "URL https d'une image d'accroche"
+   },
+   "imageAlt": {
+    "type": "string",
+    "maxLength": 200
+   },
+   "cta": {
+    "type": "object",
+    "required": [
+     "label",
+     "url"
+    ],
+    "properties": {
+     "label": {
+      "type": "string",
+      "maxLength": 40
+     },
+     "url": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "https://"
+     }
+    }
+   },
+   "accent": {
+    "type": "string",
+    "maxLength": 30,
+    "default": "#4f46e5",
+    "description": "couleur CSS du bandeau"
+   },
+   "sections": {
+    "type": "array",
+    "minItems": 1,
+    "maxItems": 12,
+    "items": {
+     "type": "object",
+     "required": [
+      "title"
+     ],
+     "properties": {
+      "title": {
+       "type": "string",
+       "maxLength": 120
+      },
+      "text": {
+       "type": "string",
+       "maxLength": 1200,
+       "default": ""
+      },
+      "items": {
+       "type": "array",
+       "default": [],
+       "maxItems": 12,
+       "items": {
+        "type": "object",
+        "required": [
+         "title"
+        ],
+        "properties": {
+         "title": {
+          "type": "string",
+          "maxLength": 120
+         },
+         "text": {
+          "type": "string",
+          "maxLength": 600,
+          "default": ""
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "faqTitle": {
+    "type": "string",
+    "maxLength": 80,
+    "default": "Questions fréquentes"
+   },
+   "faq": {
+    "type": "array",
+    "default": [],
+    "maxItems": 20,
+    "items": {
+     "type": "object",
+     "required": [
+      "q",
+      "a"
+     ],
+     "properties": {
+      "q": {
+       "type": "string",
+       "maxLength": 200
+      },
+      "a": {
+       "type": "string",
+       "maxLength": 800
+      }
+     }
+    }
+   },
+   "footer": {
+    "type": "string",
+    "maxLength": 300
+   }
+  }
+ },
+ "document": {
+  "schema": "artifacts/1",
+  "title": {
+   "$param": "title"
+  },
+  "defaultView": "page",
+  "views": [
+   {
+    "id": "page",
+    "title": {
+     "$param": "title"
+    },
+    "root": {
+     "nodes": [
+      {
+       "tagName": "div",
+       "attributes": {
+        "style": "display:flex;flex-direction:column;gap:2rem;max-width:56rem;margin:1rem auto;padding:0 1rem"
+       },
+       "nodes": [
+        {
+         "tagName": "sonic-store",
+         "attributes": {
+          "id": "page",
+          "reducer": "$state",
+          "initial": {
+           "$json": {
+            "title": {
+             "$param": "title"
+            },
+            "tagline": {
+             "$param": "tagline",
+             "default": ""
+            },
+            "cta": {
+             "$param": "cta",
+             "default": {}
+            },
+            "sections": {
+             "$param": "sections"
+            },
+            "faq": {
+             "$param": "faq"
+            },
+            "faqTitle": {
+             "$param": "faqTitle"
+            },
+            "footer": {
+             "$param": "footer",
+             "default": ""
+            }
+           }
+          }
+         }
+        },
+        {
+         "tagName": "header",
+         "attributes": {
+          "data-hero": "",
+          "style": {
+           "$text": "display:flex;flex-direction:column;gap:.9rem;padding:2.5rem 1.5rem;border-radius:1.25rem;color:#fff;background:linear-gradient(135deg,{{accent}},#111827)"
+          }
+         },
+         "nodes": [
+          {
+           "tagName": "h1",
+           "nodes": [
+            {
+             "tagName": "sonic-value",
+             "attributes": {
+              "dataProvider": "page",
+              "key": "title"
+             }
+            }
+           ],
+           "attributes": {
+            "style": "font-size:2.2rem;line-height:1.15;font-weight:800;margin:0"
+           }
+          },
+          {
+           "$if": "tagline",
+           "then": {
+            "tagName": "p",
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "page",
+               "key": "tagline"
+              }
+             }
+            ],
+            "attributes": {
+             "style": "margin:0;font-size:1.15rem;opacity:.9"
+            }
+           }
+          },
+          {
+           "$if": "image",
+           "then": {
+            "tagName": "img",
+            "attributes": {
+             "src": {
+              "$param": "image"
+             },
+             "alt": {
+              "$param": "imageAlt",
+              "default": ""
+             },
+             "style": "width:100%;max-height:22rem;object-fit:cover;border-radius:.9rem"
+            }
+           }
+          },
+          {
+           "$if": "cta",
+           "then": {
+            "tagName": "div",
+            "nodes": [
+             {
+              "tagName": "sonic-button",
+              "attributes": {
+               "type": "primary",
+               "href": {
+                "$param": "cta.url"
+               },
+               "target": "_blank",
+               "data-cta": ""
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "page",
+                 "key": "cta.label"
+                }
+               }
+              ]
+             }
+            ]
+           }
+          }
+         ]
+        },
+        {
+         "$each": "sections",
+         "template": {
+          "tagName": "section",
+          "attributes": {
+           "style": "display:flex;flex-direction:column;gap:.8rem",
+           "data-section": {
+            "$text": "{{#}}"
+           }
+          },
+          "nodes": [
+           {
+            "tagName": "h2",
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "page",
+               "key": {
+                "$text": "sections.{{#}}.title"
+               }
+              }
+             }
+            ],
+            "attributes": {
+             "style": "font-size:1.45rem;font-weight:700;margin:0"
+            }
+           },
+           {
+            "tagName": "p",
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "page",
+               "key": {
+                "$text": "sections.{{#}}.text"
+               }
+              }
+             }
+            ],
+            "attributes": {
+             "style": "margin:0;opacity:.85;line-height:1.55"
+            }
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:.75rem"
+            },
+            "nodes": [
+             {
+              "$each": ".items",
+              "template": {
+               "tagName": "div",
+               "attributes": {
+                "style": "background:var(--sc-base,#fff);border:1px solid rgba(127,127,127,.2);border-radius:1rem;padding:1rem 1.1rem;display:flex;flex-direction:column;gap:.35rem",
+                "data-item": {
+                 "$text": "{{^#}}.{{#}}"
+                }
+               },
+               "nodes": [
+                {
+                 "tagName": "strong",
+                 "nodes": [
+                  {
+                   "tagName": "sonic-value",
+                   "attributes": {
+                    "dataProvider": "page",
+                    "key": {
+                     "$text": "sections.{{^#}}.items.{{#}}.title"
+                    }
+                   }
+                  }
+                 ],
+                 "attributes": {
+                  "style": "font-size:1rem"
+                 }
+                },
+                {
+                 "tagName": "p",
+                 "nodes": [
+                  {
+                   "tagName": "sonic-value",
+                   "attributes": {
+                    "dataProvider": "page",
+                    "key": {
+                     "$text": "sections.{{^#}}.items.{{#}}.text"
+                    }
+                   }
+                  }
+                 ],
+                 "attributes": {
+                  "style": "margin:0;opacity:.8;font-size:.95rem"
+                 }
+                }
+               ]
+              }
+             }
+            ]
+           }
+          ]
+         }
+        },
+        {
+         "$if": "faq",
+         "then": {
+          "tagName": "section",
+          "attributes": {
+           "style": "display:flex;flex-direction:column;gap:.7rem",
+           "data-faq-section": ""
+          },
+          "nodes": [
+           {
+            "tagName": "h2",
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "page",
+               "key": "faqTitle"
+              }
+             }
+            ],
+            "attributes": {
+             "style": "font-size:1.45rem;font-weight:700;margin:0"
+            }
+           },
+           {
+            "$each": "faq",
+            "template": {
+             "tagName": "div",
+             "attributes": {
+              "style": "background:var(--sc-base,#fff);border:1px solid rgba(127,127,127,.2);border-radius:1rem;padding:1rem 1.1rem;display:flex;flex-direction:column;gap:.35rem",
+              "data-faq": {
+               "$text": "{{#}}"
+              }
+             },
+             "nodes": [
+              {
+               "tagName": "strong",
+               "nodes": [
+                {
+                 "tagName": "sonic-value",
+                 "attributes": {
+                  "dataProvider": "page",
+                  "key": {
+                   "$text": "faq.{{#}}.q"
+                  }
+                 }
+                }
+               ]
+              },
+              {
+               "tagName": "p",
+               "nodes": [
+                {
+                 "tagName": "sonic-value",
+                 "attributes": {
+                  "dataProvider": "page",
+                  "key": {
+                   "$text": "faq.{{#}}.a"
+                  }
+                 }
+                }
+               ],
+               "attributes": {
+                "style": "margin:0;opacity:.8"
+               }
+              }
+             ]
+            }
+           }
+          ]
+         }
+        },
+        {
+         "$if": "footer",
+         "then": {
+          "tagName": "footer",
+          "nodes": [
+           {
+            "tagName": "sonic-value",
+            "attributes": {
+             "dataProvider": "page",
+             "key": "footer"
+            }
+           }
+          ],
+          "attributes": {
+           "style": "padding:1.5rem 0;text-align:center;font-size:.85rem;opacity:.65;border-top:1px solid rgba(127,127,127,.2)"
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

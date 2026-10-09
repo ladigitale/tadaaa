@@ -308,6 +308,42 @@ final class AgentContinuityTest extends TestCase
         self::assertStringContainsString('"x":{}', (string) json_encode($processor->calls[1]['context']['raw_arguments']));
     }
 
+    public function testStartFromKitThenAdjust(): void
+    {
+        $processor = new RecordingProcessor();
+        $llm = new StreamingLlm([
+            self::toolCall('k0', 'start_from_kit', ['kit' => 'quiz', 'params' => ['title' => 'Q']]),
+            self::toolCall('k1', 'start_from_kit', ['kit' => 'quiz', 'params' => ['title' => 'Capitales', 'timer' => 10, 'speed' => true,
+                'questions' => [['question' => 'Capitale du Japon ?', 'answers' => ['Kyoto', 'Tokyo'], 'correct' => 1]]]]),
+            self::toolCall('e1', 'edit_preview', ['ops' => [['op' => 'replace', 'path' => '/views/0/title', 'value' => 'Jouer']]]),
+            self::toolCall('u1', 'publish_preview', []),
+            self::reply('Publié.'),
+        ]);
+        $sink = new ArrayEventSink();
+        $this->runner($llm, null, $processor)->run(self::input([['role' => 'user', 'content' => 'un quiz de vitesse sur les capitales']]), $sink);
+
+        $results = [];
+        foreach ($llm->calls as $call) {
+            $last = $call['messages'][\count($call['messages']) - 1];
+            if (\is_array($last['content']) && ($last['content'][0]['type'] ?? null) === 'tool_result') {
+                $results[$last['content'][0]['tool_use_id']] = $last['content'][0];
+            }
+        }
+        self::assertTrue($results['k0']['is_error']);
+        self::assertStringContainsString('params.questions : requis.', $results['k0']['content']);
+        self::assertFalse($results['k1']['is_error'], $results['k1']['content']);
+        self::assertFalse($results['e1']['is_error'], $results['e1']['content']);
+
+        $previews = array_values(array_filter($sink->events, static fn (array $e): bool => ($e['name'] ?? null) === 'artifact-preview'));
+        self::assertCount(2, $previews);
+        $doc = $processor->calls[0]['dto']->document;
+        self::assertSame('Capitales', $doc['title']);
+        self::assertSame('Jouer', $doc['views'][0]['title']);
+        self::assertStringContainsString('sonic-ticker', (string) json_encode($doc));
+        // Le modèle n'a écrit que des paramètres : rien de comparable à un document entier.
+        self::assertLessThan(400, \strlen((string) json_encode($llm->calls[1]['messages'][1]['content'])));
+    }
+
     public function testLargeTranscriptsAreCompacted(): void
     {
         $state = new ThreadState([
@@ -322,7 +358,8 @@ final class AgentContinuityTest extends TestCase
 
     private function runner(StreamingLlm $llm, ?ThreadStore $threads = null, ?RecordingProcessor $processor = null, bool $withCatalog = false): AgentRunner
     {
-        $validator = new ArtifactDocumentValidator(...self::validatorArgs());
+        $api = __DIR__.'/../../config/artifacts';
+        $validator = new ArtifactDocumentValidator($api.'/catalog.json', $api.'/sdui.schema.json', new \App\Service\ArtifactScriptsCatalog($api.'/scripts-catalog.json'));
         $processor ??= new RecordingProcessor();
         $drafts = new \App\Agent\Tool\DraftStore($processor);
         $preview = new PreviewArtifactTool($validator, $drafts);
@@ -331,6 +368,7 @@ final class AgentContinuityTest extends TestCase
             new \App\Agent\Tool\EditPreviewTool($preview, $drafts),
             new \App\Agent\Tool\ReadPreviewTool($drafts),
             new PublishPreviewTool($processor, $drafts),
+            new \App\Agent\Tool\StartFromKitTool(new \App\Service\ArtifactKits(__DIR__.'/../../config/artifacts/kits'), $preview),
         ];
         if ($withCatalog) {
             $tools[] = new StaticTool('get_artifact_catalog', '{"catalog":"…"}');

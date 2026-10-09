@@ -1,0 +1,9 @@
+{"title": "Repas de quartier", "intro": "Aide-nous à organiser le repas du 14 juin.",
+ "questions": [
+  {"id": "vient", "label": "Tu viens ?", "type": "yesno", "required": true},
+  {"id": "personnes", "label": "Combien de personnes ?", "type": "scale", "min": 1, "max": 8},
+  {"id": "plat", "label": "Tu apportes…", "type": "choice", "options": ["Entrée", "Plat", "Dessert", "Boissons"], "required": true},
+  {"id": "aide", "label": "Tu peux aider à…", "type": "multi", "options": ["Installer", "Ranger", "Cuisiner"]},
+  {"id": "nom", "label": "Ton prénom", "type": "text"},
+  {"id": "remarque", "label": "Une remarque ?", "type": "longtext"}
+ ]}

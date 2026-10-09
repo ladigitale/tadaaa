@@ -9,6 +9,7 @@ use App\Agent\Tool\EditPreviewTool;
 use App\Agent\Tool\PreviewArtifactTool;
 use App\Agent\Tool\PublishPreviewTool;
 use App\Agent\Tool\ReadPreviewTool;
+use App\Agent\Tool\StartFromKitTool;
 use App\Agent\Tool\RenderUiTool;
 use App\Agent\Tool\Toolbox;
 use App\Mcp\Processor\ArtifactMcpProcessor;
@@ -55,6 +56,7 @@ final class ToolboxFactory
         private readonly PublishPreviewTool $publishPreview,
         private readonly EditPreviewTool $editPreview,
         private readonly ReadPreviewTool $readPreview,
+        private readonly StartFromKitTool $startFromKit,
     ) {
     }
 
@@ -62,6 +64,7 @@ final class ToolboxFactory
     {
         if ($profile === AgentProfile::ARTIFACTS) {
             $tools = array_map(fn (string $class) => new McpToolAdapter($class, $this->artifactProcessor), self::ARTIFACT_TOOLS);
+            $tools[] = $this->startFromKit;
             $tools[] = $this->previewArtifact;
             $tools[] = $this->editPreview;
             $tools[] = $this->readPreview;

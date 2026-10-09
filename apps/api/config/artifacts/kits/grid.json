@@ -1,0 +1,586 @@
+{
+ "id": "grid",
+ "title": "Jeu de grille",
+ "description": "Jeu sur une grille de cases colorées (sonic-matrix) piloté par un store JSONata : clavier, gestes, croix directionnelle, horloge, scores.",
+ "use": "snake prêt à jouer (preset), ou tout jeu de grille dont tu écris les règles : memory, morpion, tetris, labyrinthe, jeu de la vie…",
+ "params": {
+  "type": "object",
+  "required": [
+   "title",
+   "cols",
+   "initial",
+   "reducer"
+  ],
+  "properties": {
+   "preset": {
+    "type": "string",
+    "enum": [
+     "snake"
+    ],
+    "description": "partir d'un jeu complet ; les autres paramètres le surchargent"
+   },
+   "title": {
+    "type": "string",
+    "maxLength": 120
+   },
+   "help": {
+    "type": "string",
+    "maxLength": 300
+   },
+   "cols": {
+    "type": "integer",
+    "minimum": 2,
+    "maximum": 64
+   },
+   "palette": {
+    "type": "object",
+    "description": "valeur de case → couleur CSS, ex. {\"0\":\"#111\",\"1\":\"#0f0\"}"
+   },
+   "initial": {
+    "type": "object",
+    "description": "état initial ; cells = tableau plat cols×lignes de valeurs de palette ; msg = texte d'état"
+   },
+   "reducer": {
+    "type": "string",
+    "maxLength": 12000,
+    "description": "JSONata ($state, $action) → nouvel état ; actions : init (au chargement), tick (si tick), celles du clavier et des boutons, swipe-up/down/left/right, tap ; $rand(seed) → {value, seed} ; pas de $random/$now"
+   },
+   "tick": {
+    "type": "integer",
+    "minimum": 0,
+    "maximum": 5000,
+    "default": 0,
+    "description": "ms entre deux tick, 0 = pas d'horloge ; state.speed le remplace, state.running le met en pause"
+   },
+   "keymap": {
+    "type": "object",
+    "default": {},
+    "description": "code de touche → action, ex. {\"ArrowUp\":\"up\",\"Space\":\"toggle\"}"
+   },
+   "dpad": {
+    "type": "boolean",
+    "default": false,
+    "description": "croix directionnelle (actions up/down/left/right)"
+   },
+   "buttons": {
+    "type": "array",
+    "default": [],
+    "maxItems": 8,
+    "items": {
+     "type": "object",
+     "required": [
+      "label",
+      "action"
+     ],
+     "properties": {
+      "label": {
+       "type": "string",
+       "maxLength": 40
+      },
+      "action": {
+       "type": "string",
+       "maxLength": 40
+      }
+     }
+    }
+   },
+   "stats": {
+    "type": "array",
+    "default": [],
+    "maxItems": 6,
+    "items": {
+     "type": "object",
+     "required": [
+      "label",
+      "key"
+     ],
+     "properties": {
+      "label": {
+       "type": "string",
+       "maxLength": 30
+      },
+      "key": {
+       "type": "string",
+       "maxLength": 60,
+       "description": "clé de l'état"
+      }
+     }
+    }
+   }
+  }
+ },
+ "presets": {
+  "snake": {
+   "title": "Snake",
+   "help": "Mange les fruits rouges sans toucher les bords ni ta queue. Le serpent accélère à chaque fruit.",
+   "cols": 20,
+   "palette": {
+    "0": "#151a26",
+    "1": "#22c55e",
+    "2": "#86efac",
+    "3": "#f43f5e"
+   },
+   "initial": {
+    "W": 20,
+    "H": 14,
+    "start": [
+     {
+      "x": 6,
+      "y": 7
+     },
+     {
+      "x": 5,
+      "y": 7
+     },
+     {
+      "x": 4,
+      "y": 7
+     }
+    ],
+    "snake": [],
+    "dir": "right",
+    "queued": "right",
+    "food": {
+     "x": 14,
+     "y": 7
+    },
+    "seed": 2026,
+    "score": 0,
+    "best": 0,
+    "speed": 150,
+    "initSpeed": 150,
+    "phase": "ready",
+    "running": false,
+    "cells": [],
+    "msg": "",
+    "txt": {
+     "ready": "Flèches, ZQSD ou glisser pour jouer — Espace : pause",
+     "paused": "Pause",
+     "over": "Perdu ! Score :"
+    }
+   },
+   "reducer": "(\n  $s := $state; $a := $action; $t := $a.type;\n  $W := $s.W; $H := $s.H;\n  $opp := {\"up\": \"down\", \"down\": \"up\", \"left\": \"right\", \"right\": \"left\"};\n  $dirOf := {\"up\": \"up\", \"down\": \"down\", \"left\": \"left\", \"right\": \"right\",\n             \"swipe-up\": \"up\", \"swipe-down\": \"down\", \"swipe-left\": \"left\", \"swipe-right\": \"right\"};\n  $render := function($st) {\n    $map([0..($W * $H - 1)], function($i) { (\n      $x := $i % $W; $y := $floor($i / $W);\n      $x = $st.snake[0].x and $y = $st.snake[0].y ? 2 :\n      $count($st.snake[x = $x and y = $y]) > 0 ? 1 :\n      $x = $st.food.x and $y = $st.food.y ? 3 : 0\n    ) })\n  };\n  $newFood := function($body, $seed) { (\n    $free := $filter([0..($W * $H - 1)], function($i) { $count($body[x = $i % $W and y = $floor($i / $W)]) = 0 });\n    $r := $rand($seed);\n    $k := $free[$floor($r.value * $count($free))];\n    {\"food\": {\"x\": $k % $W, \"y\": $floor($k / $W)}, \"seed\": $r.seed}\n  ) };\n  $fresh := function($st) { (\n    $f := $newFood($st.start, $st.seed);\n    $merge([$st, {\"snake\": $st.start, \"dir\": \"right\", \"queued\": \"right\", \"food\": $f.food, \"seed\": $f.seed,\n      \"score\": 0, \"speed\": $st.initSpeed, \"phase\": \"play\", \"running\": true, \"msg\": \"\"}])\n  ) };\n  $show := function($st) { $merge([$st, {\"cells\": $render($st)}]) };\n  $d := $lookup($dirOf, $t);\n  $t = \"init\" ? $show($merge([$s, {\"snake\": $s.start, \"phase\": \"ready\", \"running\": false, \"msg\": $s.txt.ready}])) :\n  $t = \"restart\" ? $show($fresh($s)) :\n  $t = \"toggle\" ? (\n    $s.phase = \"play\" ? $merge([$s, {\"phase\": \"pause\", \"running\": false, \"msg\": $s.txt.paused}]) :\n    $s.phase = \"pause\" ? $merge([$s, {\"phase\": \"play\", \"running\": true, \"msg\": \"\"}]) :\n    $show($fresh($s))\n  ) :\n  $d ? (\n    $s.phase = \"ready\" or $s.phase = \"over\" ? $show($merge([$fresh($s), {\"queued\": $d = \"left\" ? \"right\" : $d}])) :\n    $d != $lookup($opp, $s.dir) ? $merge([$s, {\"queued\": $d}]) : $s\n  ) :\n  $t = \"tick\" and $s.phase = \"play\" ? (\n    $dir := $s.queued;\n    $h := $s.snake[0];\n    $nx := $h.x + ($dir = \"right\" ? 1 : $dir = \"left\" ? -1 : 0);\n    $ny := $h.y + ($dir = \"down\" ? 1 : $dir = \"up\" ? -1 : 0);\n    $len := $count($s.snake);\n    $moving := $len > 1 ? $s.snake[[0..($len - 2)]] : [];\n    $hit := $nx < 0 or $ny < 0 or $nx >= $W or $ny >= $H or $count($moving[x = $nx and y = $ny]) > 0;\n    $hit\n      ? $merge([$s, {\"phase\": \"over\", \"running\": false, \"best\": $max([$s.best, $s.score]),\n          \"msg\": $s.txt.over & \" \" & $string($s.score)}])\n      : (\n        $eat := $nx = $s.food.x and $ny = $s.food.y;\n        $body := $append([{\"x\": $nx, \"y\": $ny}], $eat ? $s.snake : $moving);\n        $f := $eat ? $newFood($body, $s.seed) : {\"food\": $s.food, \"seed\": $s.seed};\n        $show($merge([$s, {\"snake\": $body, \"dir\": $dir, \"food\": $f.food, \"seed\": $f.seed,\n          \"score\": $s.score + ($eat ? 10 : 0),\n          \"speed\": $eat ? $max([60, $s.speed - 4]) : $s.speed}]))\n      )\n  ) :\n  $s\n)",
+   "tick": 150,
+   "keymap": {
+    "ArrowUp": "up",
+    "KeyW": "up",
+    "ArrowDown": "down",
+    "KeyS": "down",
+    "ArrowLeft": "left",
+    "KeyA": "left",
+    "ArrowRight": "right",
+    "KeyD": "right",
+    "Space": "toggle",
+    "Enter": "toggle"
+   },
+   "dpad": true,
+   "buttons": [
+    {
+     "label": "Jouer / Pause",
+     "action": "toggle"
+    },
+    {
+     "label": "Recommencer",
+     "action": "restart"
+    }
+   ],
+   "stats": [
+    {
+     "label": "Score",
+     "key": "score"
+    },
+    {
+     "label": "Record",
+     "key": "best"
+    }
+   ]
+  }
+ },
+ "document": {
+  "schema": "artifacts/1",
+  "title": {
+   "$param": "title"
+  },
+  "defaultView": "jeu",
+  "views": [
+   {
+    "id": "jeu",
+    "title": {
+     "$param": "title"
+    },
+    "root": {
+     "nodes": [
+      {
+       "tagName": "div",
+       "attributes": {
+        "style": "display:flex;flex-direction:column;gap:.75rem;max-width:36rem;margin:1rem auto;padding:0 1rem"
+       },
+       "nodes": [
+        {
+         "tagName": "sonic-store",
+         "attributes": {
+          "id": "gameui",
+          "initial": {
+           "$json": {
+            "title": {
+             "$param": "title"
+            },
+            "help": {
+             "$param": "help",
+             "default": ""
+            },
+            "buttons": {
+             "$param": "buttons"
+            },
+            "stats": {
+             "$param": "stats"
+            },
+            "pad": {
+             "up": "▲",
+             "down": "▼",
+             "left": "◀",
+             "right": "▶"
+            }
+           }
+          },
+          "reducer": "$state"
+         }
+        },
+        {
+         "tagName": "sonic-store",
+         "attributes": {
+          "id": "game",
+          "initial": {
+           "$json": {
+            "$param": "initial"
+           }
+          },
+          "reducer": {
+           "$param": "reducer"
+          },
+          "boot-action": "init",
+          "budget-ms": "120",
+          "max-state-bytes": "200000"
+         }
+        },
+        {
+         "$if": "tick",
+         "then": {
+          "tagName": "sonic-ticker",
+          "attributes": {
+           "target": "game",
+           "interval": {
+            "$param": "tick"
+           },
+           "interval-key": "speed",
+           "running-key": "running"
+          }
+         }
+        },
+        {
+         "tagName": "sonic-keyboard",
+         "attributes": {
+          "target": "game",
+          "scope": "document",
+          "keymap": {
+           "$json": {
+            "$param": "keymap"
+           }
+          }
+         }
+        },
+        {
+         "tagName": "h1",
+         "attributes": {
+          "style": "font-size:1.5rem;font-weight:700;margin:0"
+         },
+         "nodes": [
+          {
+           "tagName": "sonic-value",
+           "attributes": {
+            "dataProvider": "gameui",
+            "key": "title"
+           }
+          }
+         ]
+        },
+        {
+         "tagName": "div",
+         "attributes": {
+          "style": "display:flex;flex-wrap:wrap;gap:.5rem;align-items:center"
+         },
+         "nodes": [
+          {
+           "$each": "stats",
+           "template": {
+            "tagName": "sonic-badge",
+            "attributes": {
+             "type": "neutral",
+             "data-stat": {
+              "$item": "key"
+             }
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "gameui",
+               "key": {
+                "$text": "stats.{{#}}.label"
+               }
+              }
+             },
+             {
+              "tagName": "strong",
+              "attributes": {
+               "style": "margin-left:.4rem"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "game",
+                 "key": {
+                  "$item": "key"
+                 }
+                }
+               }
+              ]
+             }
+            ]
+           }
+          },
+          {
+           "tagName": "span",
+           "nodes": [
+            {
+             "tagName": "sonic-value",
+             "attributes": {
+              "dataProvider": "game",
+              "key": "msg"
+             }
+            }
+           ],
+           "attributes": {
+            "style": "font-size:.9rem;opacity:.75",
+            "data-msg": ""
+           }
+          }
+         ]
+        },
+        {
+         "tagName": "sonic-gesture",
+         "attributes": {
+          "target": "game",
+          "style": "display:block;touch-action:none;border-radius:.8rem;overflow:hidden;background:#0b0e16;padding:.4rem"
+         },
+         "nodes": [
+          {
+           "tagName": "sonic-matrix",
+           "attributes": {
+            "dataProvider": "game",
+            "key": "cells",
+            "cols": {
+             "$param": "cols"
+            },
+            "cell": "auto",
+            "gap": "1",
+            "palette": {
+             "$json": {
+              "$param": "palette"
+             }
+            }
+           }
+          }
+         ]
+        },
+        {
+         "$if": "dpad",
+         "then": {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:grid;grid-template-columns:repeat(3,3.2rem);gap:.35rem;justify-content:center"
+          },
+          "nodes": [
+           {
+            "tagName": "span"
+           },
+           {
+            "tagName": "sonic-action",
+            "attributes": {
+             "target": "game",
+             "type": "up"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-button",
+              "attributes": {
+               "variant": "outline",
+               "style": "width:100%",
+               "data-pad": "up"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "gameui",
+                 "key": "pad.up"
+                }
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tagName": "span"
+           },
+           {
+            "tagName": "sonic-action",
+            "attributes": {
+             "target": "game",
+             "type": "left"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-button",
+              "attributes": {
+               "variant": "outline",
+               "style": "width:100%",
+               "data-pad": "left"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "gameui",
+                 "key": "pad.left"
+                }
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tagName": "sonic-action",
+            "attributes": {
+             "target": "game",
+             "type": "down"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-button",
+              "attributes": {
+               "variant": "outline",
+               "style": "width:100%",
+               "data-pad": "down"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "gameui",
+                 "key": "pad.down"
+                }
+               }
+              ]
+             }
+            ]
+           },
+           {
+            "tagName": "sonic-action",
+            "attributes": {
+             "target": "game",
+             "type": "right"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-button",
+              "attributes": {
+               "variant": "outline",
+               "style": "width:100%",
+               "data-pad": "right"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "gameui",
+                 "key": "pad.right"
+                }
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        },
+        {
+         "tagName": "div",
+         "attributes": {
+          "style": "display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.4rem"
+         },
+         "nodes": [
+          {
+           "$each": "buttons",
+           "template": {
+            "tagName": "sonic-action",
+            "attributes": {
+             "target": "game",
+             "type": {
+              "$item": "action"
+             }
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-button",
+              "attributes": {
+               "variant": "outline",
+               "style": "width:100%",
+               "data-button": {
+                "$item": "action"
+               }
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "gameui",
+                 "key": {
+                  "$text": "buttons.{{#}}.label"
+                 }
+                }
+               }
+              ]
+             }
+            ]
+           }
+          }
+         ]
+        },
+        {
+         "$if": "help",
+         "then": {
+          "tagName": "p",
+          "nodes": [
+           {
+            "tagName": "sonic-value",
+            "attributes": {
+             "dataProvider": "gameui",
+             "key": "help"
+            }
+           }
+          ],
+          "attributes": {
+           "style": "margin:0;font-size:.85rem;opacity:.7"
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ]
+ }
+}
