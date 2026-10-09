@@ -60,7 +60,7 @@ final class AgentController extends AbstractController
             // L'observabilité ne doit pas bloquer l'agent.
         }
 
-        $runner = $this->agents->create($profile, $user);
+        $runner = $this->agents->create($profile, $user, $input->appContext);
         $response = new StreamedResponse(static function () use ($runner, $input): void {
             // Un run enchaîne plusieurs appels au modèle (documents longs) : pas de limite PHP.
             set_time_limit(0);

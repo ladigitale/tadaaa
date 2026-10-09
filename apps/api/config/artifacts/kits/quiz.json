@@ -19,6 +19,11 @@
     "maxLength": 400,
     "default": ""
    },
+   "icon": {
+    "type": "string",
+    "maxLength": 60,
+    "description": "icône iconoir à côté du titre (find_icons)"
+   },
    "timer": {
     "type": "integer",
     "minimum": 0,
@@ -133,9 +138,9 @@
              "question": "question",
              "questions": "questions",
              "perQuestion": "par question",
-             "right": "✓ Bonne réponse !",
-             "wrong": "✗ Raté ! C'était :",
-             "timeout": "⏱ Temps écoulé ! C'était :",
+             "right": "Bonne réponse !",
+             "wrong": "Raté ! C'était :",
+             "timeout": "Temps écoulé ! C'était :",
              "perfect": "Parfait, sans faute !",
              "good": "Bien joué !",
              "retry": "Tu feras mieux la prochaine fois."
@@ -146,6 +151,8 @@
             "good": 0,
             "running": false,
             "cur": {},
+            "ok": false,
+            "ko": false,
             "bar": [],
             "left": 0,
             "secs": "",
@@ -156,7 +163,7 @@
             "verdict": ""
            }
           },
-          "reducer": "(\n  $s := $state; $a := $action; $t := $a.type;\n  $Q := $s.questions; $n := $count($Q);\n  $ticks := $s.cfg.timer * 10;\n  $bar := function($left) { $ticks > 0 ? $map([1..20], function($k) { $k <= $ceil(20 * $left / $ticks) ? 1 : 0 }) : [] };\n  $answerText := function($q) { $q.answers[$q.correct] };\n  $explain := function($q) { $s.cfg.explain and $q.explain ? $q.explain : \"\" };\n  $show := function($st, $i) { $merge([$st, {\n    \"phase\": \"play\", \"i\": $i,\n    \"cur\": $merge([$Q[$i], {\"num\": $string($i + 1) & \" / \" & $string($n)}]),\n    \"left\": $ticks, \"secs\": $string($s.cfg.timer) & \" s\", \"bar\": $bar($ticks),\n    \"running\": $ticks > 0, \"msg\": \"\", \"explainText\": \"\"\n  }]) };\n  $verdict := function($st) { (\n    $ratio := $n > 0 ? $st.good / $n : 0;\n    $ratio = 1 ? $s.txt.perfect : $ratio >= 0.6 ? $s.txt.good : $s.txt.retry\n  ) };\n  $t = \"init\" ? $merge([$s, {\n    \"phase\": \"intro\",\n    \"info\": $string($n) & \" \" & ($n > 1 ? $s.txt.questions : $s.txt.question) & ($s.cfg.timer > 0 ? \" · \" & $string($s.cfg.timer) & \" s \" & $s.txt.perQuestion : \"\")\n  }]) :\n  $t = \"start\" ? $show($merge([$s, {\"score\": 0, \"good\": 0}]), 0) :\n  $t = \"answer\" and $s.phase = \"play\" ? (\n    $ok := $a.payload.a = $s.cur.correct;\n    $bonus := $ok and $s.cfg.speed and $ticks > 0 ? $round(100 * $s.left / $ticks) : 0;\n    $pts := $ok ? 100 + $bonus : 0;\n    $merge([$s, {\n      \"phase\": \"feedback\", \"running\": false, \"ok\": $ok,\n      \"score\": $s.score + $pts, \"good\": $s.good + ($ok ? 1 : 0),\n      \"msg\": $ok ? $s.txt.right & ($bonus > 0 ? \" +\" & $string($pts) : \"\") : $s.txt.wrong & \" \" & $answerText($s.cur),\n      \"explainText\": $explain($s.cur)\n    }])\n  ) :\n  $t = \"tick\" and $s.phase = \"play\" ? (\n    $l := $s.left - 1;\n    $l <= 0\n      ? $merge([$s, {\"phase\": \"feedback\", \"running\": false, \"ok\": false, \"left\": 0, \"bar\": $bar(0), \"secs\": \"0 s\",\n          \"msg\": $s.txt.timeout & \" \" & $answerText($s.cur), \"explainText\": $explain($s.cur)}])\n      : $merge([$s, {\"left\": $l, \"bar\": $bar($l), \"secs\": $string($ceil($l / 10)) & \" s\"}])\n  ) :\n  $t = \"next\" and $s.phase = \"feedback\" ? (\n    $s.i + 1 < $n ? $show($s, $s.i + 1) : $merge([$s, {\n      \"phase\": \"end\", \"running\": false,\n      \"final\": $string($s.good) & \" / \" & $string($n),\n      \"verdict\": $verdict($s)\n    }])\n  ) :\n  $t = \"restart\" ? $merge([$s, {\"phase\": \"intro\", \"running\": false}]) :\n  $s\n)",
+          "reducer": "(\n  $s := $state; $a := $action; $t := $a.type;\n  $Q := $s.questions; $n := $count($Q);\n  $ticks := $s.cfg.timer * 10;\n  $bar := function($left) { $ticks > 0 ? $map([1..20], function($k) { $k <= $ceil(20 * $left / $ticks) ? 1 : 0 }) : [] };\n  $answerText := function($q) { $q.answers[$q.correct] };\n  $explain := function($q) { $s.cfg.explain and $q.explain ? $q.explain : \"\" };\n  $show := function($st, $i) { $merge([$st, {\n    \"phase\": \"play\", \"i\": $i,\n    \"cur\": $merge([$Q[$i], {\"num\": $string($i + 1) & \" / \" & $string($n)}]),\n    \"left\": $ticks, \"secs\": $string($s.cfg.timer) & \" s\", \"bar\": $bar($ticks),\n    \"running\": $ticks > 0, \"msg\": \"\", \"explainText\": \"\"\n  }]) };\n  $verdict := function($st) { (\n    $ratio := $n > 0 ? $st.good / $n : 0;\n    $ratio = 1 ? $s.txt.perfect : $ratio >= 0.6 ? $s.txt.good : $s.txt.retry\n  ) };\n  $t = \"init\" ? $merge([$s, {\n    \"phase\": \"intro\",\n    \"info\": $string($n) & \" \" & ($n > 1 ? $s.txt.questions : $s.txt.question) & ($s.cfg.timer > 0 ? \" · \" & $string($s.cfg.timer) & \" s \" & $s.txt.perQuestion : \"\")\n  }]) :\n  $t = \"start\" ? $show($merge([$s, {\"score\": 0, \"good\": 0}]), 0) :\n  $t = \"answer\" and $s.phase = \"play\" ? (\n    $ok := $a.payload.a = $s.cur.correct;\n    $bonus := $ok and $s.cfg.speed and $ticks > 0 ? $round(100 * $s.left / $ticks) : 0;\n    $pts := $ok ? 100 + $bonus : 0;\n    $merge([$s, {\n      \"phase\": \"feedback\", \"running\": false, \"ok\": $ok, \"ko\": $not($ok),\n      \"score\": $s.score + $pts, \"good\": $s.good + ($ok ? 1 : 0),\n      \"msg\": $ok ? $s.txt.right & ($bonus > 0 ? \" +\" & $string($pts) : \"\") : $s.txt.wrong & \" \" & $answerText($s.cur),\n      \"explainText\": $explain($s.cur)\n    }])\n  ) :\n  $t = \"tick\" and $s.phase = \"play\" ? (\n    $l := $s.left - 1;\n    $l <= 0\n      ? $merge([$s, {\"phase\": \"feedback\", \"running\": false, \"ok\": false, \"ko\": true, \"left\": 0, \"bar\": $bar(0), \"secs\": \"0 s\",\n          \"msg\": $s.txt.timeout & \" \" & $answerText($s.cur), \"explainText\": $explain($s.cur)}])\n      : $merge([$s, {\"left\": $l, \"bar\": $bar($l), \"secs\": $string($ceil($l / 10)) & \" s\"}])\n  ) :\n  $t = \"next\" and $s.phase = \"feedback\" ? (\n    $s.i + 1 < $n ? $show($s, $s.i + 1) : $merge([$s, {\n      \"phase\": \"end\", \"running\": false,\n      \"final\": $string($s.good) & \" / \" & $string($n),\n      \"verdict\": $verdict($s)\n    }])\n  ) :\n  $t = \"restart\" ? $merge([$s, {\"phase\": \"intro\", \"running\": false}]) :\n  $s\n)",
           "boot-action": "init",
           "budget-ms": "60"
          }
@@ -175,9 +182,22 @@
         {
          "tagName": "h1",
          "attributes": {
-          "style": "font-size:1.6rem;font-weight:700;margin:0"
+          "style": "font-size:1.6rem;font-weight:700;margin:0;display:flex;align-items:center;gap:.6rem"
          },
          "nodes": [
+          {
+           "$if": "icon",
+           "then": {
+            "tagName": "sonic-icon",
+            "attributes": {
+             "library": "iconoir",
+             "name": {
+              "$param": "icon"
+             },
+             "style": "opacity:.7"
+            }
+           }
+          },
           {
            "tagName": "sonic-value",
            "attributes": {
@@ -198,7 +218,7 @@
           {
            "tagName": "div",
            "attributes": {
-            "style": "background:var(--sc-base,#fff);border:1px solid rgba(127,127,127,.25);border-radius:1rem;padding:1.25rem;display:flex;flex-direction:column;gap:.9rem",
+            "style": "background:var(--sc-base,#fff);border:1px solid var(--sc-base-200,rgba(127,127,127,.25));border-radius:.75rem;padding:1.25rem;display:flex;flex-direction:column;gap:.9rem",
             "data-phase": "intro"
            },
            "nodes": [
@@ -249,6 +269,14 @@
                },
                "nodes": [
                 {
+                 "tagName": "sonic-icon",
+                 "attributes": {
+                  "library": "iconoir",
+                  "name": "play-outline",
+                  "slot": "prefix"
+                 }
+                },
+                {
                  "tagName": "sonic-value",
                  "attributes": {
                   "dataProvider": "quiz",
@@ -274,7 +302,7 @@
           {
            "tagName": "div",
            "attributes": {
-            "style": "background:var(--sc-base,#fff);border:1px solid rgba(127,127,127,.25);border-radius:1rem;padding:1.25rem;display:flex;flex-direction:column;gap:.9rem",
+            "style": "background:var(--sc-base,#fff);border:1px solid var(--sc-base-200,rgba(127,127,127,.25));border-radius:.75rem;padding:1.25rem;display:flex;flex-direction:column;gap:.9rem",
             "data-phase": "play"
            },
            "nodes": [
@@ -301,9 +329,17 @@
                "then": {
                 "tagName": "span",
                 "attributes": {
-                 "data-secs": ""
+                 "data-secs": "",
+                 "style": "display:inline-flex;align-items:center;gap:.3rem"
                 },
                 "nodes": [
+                 {
+                  "tagName": "sonic-icon",
+                  "attributes": {
+                   "library": "iconoir",
+                   "name": "timer"
+                  }
+                 },
                  {
                   "tagName": "sonic-value",
                   "attributes": {
@@ -326,7 +362,7 @@
                "cols": "20",
                "cell": "auto",
                "gap": "2",
-               "palette": "{\"0\": \"rgba(127,127,127,.18)\", \"1\": \"#6366f1\"}"
+               "palette": "{\"0\": \"rgba(127,127,127,.15)\", \"1\": \"rgba(127,127,127,.6)\"}"
               }
              }
             },
@@ -590,7 +626,7 @@
           {
            "tagName": "div",
            "attributes": {
-            "style": "background:var(--sc-base,#fff);border:1px solid rgba(127,127,127,.25);border-radius:1rem;padding:1.25rem;display:flex;flex-direction:column;gap:.9rem",
+            "style": "background:var(--sc-base,#fff);border:1px solid var(--sc-base-200,rgba(127,127,127,.25));border-radius:.75rem;padding:1.25rem;display:flex;flex-direction:column;gap:.9rem",
             "data-phase": "feedback"
            },
            "nodes": [
@@ -611,7 +647,50 @@
             },
             {
              "tagName": "p",
+             "attributes": {
+              "style": "margin:0;font-size:1.15rem;font-weight:600;display:flex;align-items:center;gap:.5rem"
+             },
              "nodes": [
+              {
+               "tagName": "sonic-if",
+               "attributes": {
+                "dataProvider": "quiz",
+                "key": "ok",
+                "truthy": true
+               },
+               "nodes": [
+                {
+                 "tagName": "sonic-icon",
+                 "attributes": {
+                  "library": "heroicons",
+                  "name": "check-circle",
+                  "prefix": "solid",
+                  "size": "lg",
+                  "style": "color:var(--sc-success,#15803d)"
+                 }
+                }
+               ]
+              },
+              {
+               "tagName": "sonic-if",
+               "attributes": {
+                "dataProvider": "quiz",
+                "key": "ko",
+                "truthy": true
+               },
+               "nodes": [
+                {
+                 "tagName": "sonic-icon",
+                 "attributes": {
+                  "library": "heroicons",
+                  "name": "x-circle",
+                  "prefix": "solid",
+                  "size": "lg",
+                  "style": "color:var(--sc-danger,#dc2626)"
+                 }
+                }
+               ]
+              },
               {
                "tagName": "sonic-value",
                "attributes": {
@@ -619,10 +698,7 @@
                 "key": "msg"
                }
               }
-             ],
-             "attributes": {
-              "style": "margin:0;font-size:1.15rem;font-weight:600"
-             }
+             ]
             },
             {
              "tagName": "sonic-if",
@@ -671,6 +747,14 @@
                   "dataProvider": "quiz",
                   "key": "txt.next"
                  }
+                },
+                {
+                 "tagName": "sonic-icon",
+                 "attributes": {
+                  "library": "iconoir",
+                  "name": "nav-arrow-right",
+                  "slot": "suffix"
+                 }
                 }
                ]
               }
@@ -691,10 +775,26 @@
           {
            "tagName": "div",
            "attributes": {
-            "style": "background:var(--sc-base,#fff);border:1px solid rgba(127,127,127,.25);border-radius:1rem;padding:1.25rem;display:flex;flex-direction:column;gap:.9rem;text-align:center",
+            "style": "background:var(--sc-base,#fff);border:1px solid var(--sc-base-200,rgba(127,127,127,.25));border-radius:.75rem;padding:1.25rem;display:flex;flex-direction:column;gap:.9rem;text-align:center",
             "data-phase": "end"
            },
            "nodes": [
+            {
+             "tagName": "div",
+             "attributes": {
+              "style": "font-size:2.5rem;opacity:.75"
+             },
+             "nodes": [
+              {
+               "tagName": "sonic-icon",
+               "attributes": {
+                "library": "iconoir",
+                "name": "trophy",
+                "size": "2xl"
+               }
+              }
+             ]
+            },
             {
              "tagName": "p",
              "nodes": [
@@ -794,6 +894,14 @@
                 "data-restart": ""
                },
                "nodes": [
+                {
+                 "tagName": "sonic-icon",
+                 "attributes": {
+                  "library": "iconoir",
+                  "name": "refresh-double",
+                  "slot": "prefix"
+                 }
+                },
                 {
                  "tagName": "sonic-value",
                  "attributes": {

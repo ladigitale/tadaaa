@@ -18,7 +18,7 @@ final class RunInput
      * @param array<string, mixed>|null                             $a2uiAction  `{version, action: {…}}`
      * @param array<string, mixed>|null                             $sduiAction  `{name, context, sourceNodeId?}`
      * @param list<array<string, mixed>>                            $a2uiErrors
-     * @param array{artifactSlug?: string}                          $appContext  contexte fourni par l'application
+     * @param array{artifactSlug?: string, kits?: false}            $appContext  contexte fourni par l'application
      * @param int|null                                              $messageCount nombre de messages texte reçus, avant
      *                                                                            la troncature à MAX_MESSAGES
      */
@@ -75,8 +75,17 @@ final class RunInput
     /** @param array<string, mixed> $fp */
     private static function appContext(array $fp): array
     {
+        $context = [];
         $slug = \is_array($fp['artifact'] ?? null) ? ($fp['artifact']['slug'] ?? null) : null;
+        if (\is_string($slug) && preg_match('/^[a-z0-9][a-z0-9-]{2,63}$/', $slug)) {
+            $context['artifactSlug'] = $slug;
+        }
+        // Atelier : l'utilisateur peut désactiver les kits (composition libre).
+        $kits = \is_array($fp['atelier'] ?? null) ? ($fp['atelier']['kits'] ?? null) : null;
+        if ($kits === false) {
+            $context['kits'] = false;
+        }
 
-        return \is_string($slug) && preg_match('/^[a-z0-9][a-z0-9-]{2,63}$/', $slug) ? ['artifactSlug' => $slug] : [];
+        return $context;
     }
 }

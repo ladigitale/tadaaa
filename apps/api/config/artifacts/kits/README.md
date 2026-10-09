@@ -75,6 +75,8 @@ Tout est traité sur des valeurs décodées en objets : `{}` reste `{}`.
 
 ## Conseils
 
+- **Neutralité.** Les kits n'imposent pas de style : couleurs du thème Concorde (`var(--sc-primary)`, `var(--sc-base-200)`, `var(--sc-success)`…), pas de dégradés ni d'aplats vifs. L'agent personnalise ensuite selon la demande.
+
 - **Textes affichés.** Un nœud SDUI n'a pas de contenu texte. Les textes passent par un store dédié (`reducer: "$state"`) lu par `sonic-value`. Les kits `grid` et `shader` utilisent ce store « ui ».
 - **Store relié à un composant.** Ne mettez pas de textes (`title`…) dans le store d'un composant relié par `dataProvider`, comme `sonic-shader` : `Subscriber` les copierait en propriétés.
 - **Événements de `sonic-action`.** Il écoute `pointerdown` / `pointerup`. Pour tester, utilisez de vrais clics souris.

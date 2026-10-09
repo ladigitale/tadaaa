@@ -42,6 +42,7 @@ final class ToolboxFactory
     /** @var list<class-string> */
     public const ARTIFACT_TOOLS = [
         Tool\GetArtifactCatalogTool::class,
+        Tool\FindIconsTool::class,
         Tool\ListArtifactsTool::class,
         // Métadonnées (titre, visibilité). Le document passe par le brouillon :
         // preview_artifact / edit_preview / read_preview / publish_preview.
@@ -60,11 +61,14 @@ final class ToolboxFactory
     ) {
     }
 
-    public function create(string $profile = AgentProfile::TASKS): Toolbox
+    /** @param bool $withKits atelier : start_from_kit proposé (l'utilisateur peut le désactiver) */
+    public function create(string $profile = AgentProfile::TASKS, bool $withKits = true): Toolbox
     {
         if ($profile === AgentProfile::ARTIFACTS) {
             $tools = array_map(fn (string $class) => new McpToolAdapter($class, $this->artifactProcessor), self::ARTIFACT_TOOLS);
-            $tools[] = $this->startFromKit;
+            if ($withKits) {
+                $tools[] = $this->startFromKit;
+            }
             $tools[] = $this->previewArtifact;
             $tools[] = $this->editPreview;
             $tools[] = $this->readPreview;
