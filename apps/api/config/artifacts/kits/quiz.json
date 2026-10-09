@@ -662,10 +662,11 @@
                 {
                  "tagName": "sonic-icon",
                  "attributes": {
-                  "library": "iconoir",
-                  "name": "check-circled-outline",
+                  "library": "heroicons",
+                  "name": "check-circle",
+                  "prefix": "solid",
                   "size": "lg",
-                  "style": "color:var(--sc-success,#16a34a)"
+                  "style": "color:color-mix(in srgb,var(--sc-success,#16a34a) 45%,#000)"
                  }
                 }
                ]
@@ -681,10 +682,11 @@
                 {
                  "tagName": "sonic-icon",
                  "attributes": {
-                  "library": "iconoir",
-                  "name": "delete-circled-outline",
+                  "library": "heroicons",
+                  "name": "x-circle",
+                  "prefix": "solid",
                   "size": "lg",
-                  "style": "color:var(--sc-danger,#dc2626)"
+                  "style": "color:color-mix(in srgb,var(--sc-danger,#dc2626) 75%,#000)"
                  }
                 }
                ]
