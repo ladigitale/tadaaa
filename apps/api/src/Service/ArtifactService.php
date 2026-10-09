@@ -22,7 +22,6 @@ use Symfony\Component\Uid\Uuid;
 final class ArtifactService
 {
     private const SLUG_PATTERN = '/^[a-z0-9][a-z0-9-]{2,63}$/';
-    private const CONCORDE_VERSION = '4.9.98-visual-stack.3';
 
     public function __construct(
         private readonly ArtifactRepository $artifacts,
@@ -58,6 +57,7 @@ final class ArtifactService
 
     /**
      * @param array<string, mixed> $document
+     * @param list<string>         $emptyObjects pointeurs des objets vides du JSON reçu ({@see JsonShape})
      *
      * @return array<string, mixed>
      */
@@ -70,6 +70,7 @@ final class ArtifactService
         string $visibility = 'private',
         ?string $description = null,
         ?string $ip = null,
+        array $emptyObjects = [],
     ): array {
         $dataset = $this->requireWritableDataset($user, $datasetId);
         $vis = $this->parseVisibility($visibility);
@@ -85,12 +86,13 @@ final class ArtifactService
         $artifact = new Artifact($dataset, $user, $finalSlug, $title);
         $artifact->setDescription($description);
         $artifact->setVisibility($vis);
-        $artifact->setConcordeVersion(self::CONCORDE_VERSION);
+        $artifact->setConcordeVersion($this->validator->concordeVersion());
         if ($vis === ArtifactVisibility::Link) {
             $artifact->setLinkToken($this->newLinkToken());
         }
 
-        $version = new ArtifactVersion($artifact, 1, $document, $user, 'Publication initiale');
+        $emptyObjects = JsonShape::filter($document, $emptyObjects);
+        $version = new ArtifactVersion($artifact, 1, $document, $user, 'Publication initiale', $emptyObjects);
         $artifact->setCurrentVersion(1);
         $this->em->persist($artifact);
         $this->em->persist($version);
@@ -104,7 +106,7 @@ final class ArtifactService
             'version' => 1,
         ], $ip);
 
-        return $this->serializeDetail($artifact, $document);
+        return $this->serializeDetail($artifact, $document, $emptyObjects);
     }
 
     /**
@@ -143,7 +145,7 @@ final class ArtifactService
             throw new NotFoundHttpException('Version introuvable.');
         }
 
-        return $this->serializeDetail($artifact, $version->getDocument());
+        return $this->serializeDetail($artifact, $version->getDocument(), $version->getEmptyObjects());
     }
 
     /**
@@ -211,10 +213,11 @@ final class ArtifactService
 
     /**
      * @param array<string, mixed> $document
+     * @param list<string>         $emptyObjects pointeurs des objets vides du JSON reçu ({@see JsonShape})
      *
      * @return array<string, mixed>
      */
-    public function putDocument(User $user, string $idOrSlug, array $document, ?string $note = null, ?string $ip = null): array
+    public function putDocument(User $user, string $idOrSlug, array $document, ?string $note = null, ?string $ip = null, array $emptyObjects = []): array
     {
         $artifact = $this->requireWritableArtifact($user, $idOrSlug);
         $result = $this->validator->validate($document);
@@ -226,9 +229,10 @@ final class ArtifactService
         $this->quota->assertCanGrow($artifact->getDataset()->getOwner(), $delta);
 
         $next = $artifact->getCurrentVersion() + 1;
-        $version = new ArtifactVersion($artifact, $next, $document, $user, $note);
+        $emptyObjects = JsonShape::filter($document, $emptyObjects);
+        $version = new ArtifactVersion($artifact, $next, $document, $user, $note, $emptyObjects);
         $artifact->setCurrentVersion($next);
-        $artifact->setConcordeVersion(self::CONCORDE_VERSION);
+        $artifact->setConcordeVersion($this->validator->concordeVersion());
         $this->em->persist($version);
         $this->em->flush();
         $this->artifactData->syncCollectionsFromDocument($artifact, $document);
@@ -238,7 +242,7 @@ final class ArtifactService
             'version' => $next,
         ], $ip);
 
-        return $this->serializeDetail($artifact, $document);
+        return $this->serializeDetail($artifact, $document, $emptyObjects);
     }
 
     /** @return list<array<string, mixed>> */
@@ -273,6 +277,7 @@ final class ArtifactService
             $old->getDocument(),
             sprintf('Restauration de la version %d', $n),
             $ip,
+            $old->getEmptyObjects(),
         );
     }
 
@@ -343,7 +348,7 @@ final class ArtifactService
             'title' => $artifact->getTitle(),
             'description' => $artifact->getDescription(),
             'visibility' => $artifact->getVisibility()->value,
-            'document' => $document,
+            'document' => $version->getWireDocument(),
             'scriptAssets' => $scriptAssets,
             'concordeVersion' => $artifact->getConcordeVersion(),
             'version' => $artifact->getCurrentVersion(),
@@ -535,13 +540,14 @@ final class ArtifactService
 
     /**
      * @param array<string, mixed> $document
+     * @param list<string>         $emptyObjects
      *
      * @return array<string, mixed>
      */
-    private function serializeDetail(Artifact $artifact, array $document): array
+    private function serializeDetail(Artifact $artifact, array $document, array $emptyObjects = []): array
     {
         $summary = $this->serializeSummary($artifact);
-        $summary['document'] = $document;
+        $summary['document'] = JsonShape::restore($document, $emptyObjects);
         // Appelé uniquement pour des lecteurs authentifiés du jeu (getForUser / publish / update).
         $summary['collections'] = $this->artifactData->describeCollections($artifact, true);
         $summary['version'] = $artifact->getCurrentVersion();

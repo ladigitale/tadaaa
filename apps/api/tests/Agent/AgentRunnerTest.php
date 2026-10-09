@@ -236,6 +236,52 @@ final class AgentRunnerTest extends TestCase
         self::assertSame('Quiz', $sink->events[0]['value']['document']['title']);
     }
 
+    public function testEmptyObjectsSurviveAgentTools(): void
+    {
+        $json = '{"document":{"schema":"artifacts/1","title":"Quiz","defaultView":"q",'
+            .'"data":{"stores":{"quiz":{"initial":{"score":0,"answered":{}},"reducer":"$"}}},'
+            .'"views":[{"id":"q","title":"Quiz","a2ui":['
+            .'{"version":"v0.9","createSurface":{"surfaceId":"s","catalogId":"'.ArtifactA2uiValidator::BASIC_CATALOG_ID.'"}},'
+            .'{"version":"v0.9","updateComponents":{"surfaceId":"s","components":[{"id":"root","component":"Text","text":"Q1"}]}},'
+            .'{"version":"v0.9","updateDataModel":{"surfaceId":"s","path":"/","value":{"picked":{}}}}]}]}}';
+        $raw = json_decode($json, false);
+        $input = json_decode($json, true);
+        $content = [['type' => 'tool_use', 'id' => 'p1', 'name' => 'preview_artifact', 'input' => $input]];
+        $rawContent = json_decode(json_encode([['type' => 'tool_use', 'id' => 'p1', 'name' => 'preview_artifact', 'input' => $raw]]), false);
+        $llm = new ScriptedLlm([
+            new LlmResponse($content, 'tool_use', ['p1' => $raw], $rawContent),
+            self::text('Aperçu prêt.'),
+        ]);
+        $validator = new \App\Service\ArtifactDocumentValidator(...self::validatorArgs());
+        $runner = new AgentRunner($llm, new Toolbox([new \App\Agent\Tool\PreviewArtifactTool($validator)]));
+        $sink = new ArrayEventSink();
+        $runner->run(self::input([['role' => 'user', 'content' => 'un quiz']]), $sink);
+
+        $preview = array_values(array_filter($sink->events, static fn (array $e): bool => ($e['name'] ?? null) === 'artifact-preview'));
+        self::assertCount(1, $preview, json_encode($llm->calls[1]['messages'][2] ?? null));
+        $emitted = json_encode($preview[0]['value']['document']);
+        self::assertStringContainsString('"answered":{}', $emitted);
+        self::assertStringContainsString('"value":{"picked":{}}', $emitted);
+
+        // L'historique renvoyé au modèle garde le contenu brut (input objet).
+        $echo = json_encode($llm->calls[1]['messages'][1]['content']);
+        self::assertStringContainsString('"answered":{}', $echo);
+    }
+
+    public function testMcpToolAdapterForwardsRawArguments(): void
+    {
+        $processor = new FakeProcessor();
+        $tool = new McpToolAdapter(CreateTodoTool::class, $processor);
+        $context = new \App\Agent\Tool\ToolContext(new ArrayEventSink(), 'r');
+        $context->rawInput = json_decode('{"text":"Pain"}', false);
+        $tool->execute(['text' => 'Pain'], $context);
+        self::assertSame('{"text":"Pain"}', json_encode($processor->context['raw_arguments'] ?? null));
+
+        $context->rawInput = null;
+        $tool->execute(['text' => 'Pain'], $context);
+        self::assertSame([], $processor->context);
+    }
+
     public function testArtifactsPromptAndContext(): void
     {
         $input = RunInput::fromArray([
@@ -339,9 +385,13 @@ final class FakeProcessor implements ProcessorInterface
 {
     public ?object $last = null;
 
+    /** @var array<string, mixed> */
+    public array $context = [];
+
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): CallToolResult
     {
         $this->last = $data;
+        $this->context = $context;
 
         return new CallToolResult([new TextContent(json_encode(get_object_vars($data)))]);
     }

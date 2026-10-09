@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\AuditLog;
 use App\Entity\User;
+use App\Mcp\RawToolArguments;
 use App\Mcp\Tool\CloseArtifactIntakeTool;
 use App\Mcp\Tool\DeleteArtifactTool;
 use App\Mcp\Tool\GetArtifactCatalogTool;
@@ -44,6 +45,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         private readonly AuditLogger $audit,
         private readonly UsageMeter $usage,
         private readonly Security $security,
+        private readonly RawToolArguments $rawArguments,
     ) {
     }
 
@@ -68,8 +70,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 $data->components,
             ),
             $data instanceof ValidateArtifactTool => $this->validator->validate($data->document ?? []),
-            $data instanceof PublishArtifactTool => $this->publish($user, $data),
-            $data instanceof UpdateArtifactTool => $this->update($user, $data),
+            $data instanceof PublishArtifactTool => $this->publish($user, $data, $context),
+            $data instanceof UpdateArtifactTool => $this->update($user, $data, $context),
             $data instanceof GetArtifactTool => $this->get($user, $data),
             $data instanceof ListArtifactsTool => [
                 'artifacts' => $this->artifacts->listForUser($user, $this->emptyToNull($data->datasetId)),
@@ -94,8 +96,12 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         );
     }
 
-    /** @return array<string, mixed> */
-    private function publish(User $user, PublishArtifactTool $tool): array
+    /**
+     * @param array<string, mixed> $context
+     *
+     * @return array<string, mixed>
+     */
+    private function publish(User $user, PublishArtifactTool $tool, array $context): array
     {
         $document = $tool->document;
         if (!\is_array($document) || $document === []) {
@@ -115,6 +121,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $this->emptyToNull($tool->slug),
             $tool->visibility !== '' ? $tool->visibility : 'private',
             $this->emptyToNull($tool->description),
+            null,
+            $this->rawArguments->emptyObjects($context, 'publish_artifact', 'document'),
         );
 
         return [
@@ -125,8 +133,12 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         ];
     }
 
-    /** @return array<string, mixed> */
-    private function update(User $user, UpdateArtifactTool $tool): array
+    /**
+     * @param array<string, mixed> $context
+     *
+     * @return array<string, mixed>
+     */
+    private function update(User $user, UpdateArtifactTool $tool, array $context): array
     {
         $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
         if ($idOrSlug === null) {
@@ -154,6 +166,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 $idOrSlug,
                 $tool->document,
                 $this->emptyToNull($tool->note),
+                null,
+                $this->rawArguments->emptyObjects($context, 'update_artifact', 'document'),
             );
         }
 

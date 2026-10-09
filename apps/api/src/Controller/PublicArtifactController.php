@@ -94,7 +94,8 @@ final class PublicArtifactController extends AbstractController
             $user instanceof User ? $user : null,
         );
 
-        $response = $this->json($result['body']);
+        // Objets vides du document (`\stdClass`) gardés en `{}`.
+        $response = $this->json($result['body'], 200, [], ['preserve_empty_objects' => true]);
         $response->setEtag($result['etag']);
         if ($response->isNotModified($request)) {
             return $response;

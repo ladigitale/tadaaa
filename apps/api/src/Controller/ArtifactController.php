@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Service\ArtifactDataService;
 use App\Service\ArtifactDocumentValidator;
 use App\Service\ArtifactService;
+use App\Service\JsonShape;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -19,6 +20,9 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[IsGranted('ROLE_USER')]
 final class ArtifactController extends AbstractController
 {
+    /** Les objets vides des documents (`\stdClass`, voir JsonShape) restent `{}` en sortie. */
+    private const JSON_CONTEXT = ['preserve_empty_objects' => true];
+
     public function __construct(
         private readonly ArtifactService $artifacts,
         private readonly ArtifactDataService $artifactData,
@@ -61,9 +65,10 @@ final class ArtifactController extends AbstractController
             \is_string($body['visibility'] ?? null) ? $body['visibility'] : 'private',
             \is_string($body['description'] ?? null) ? $body['description'] : null,
             $request->getClientIp(),
+            JsonShape::emptyObjectPathsInJson($request->getContent(), '/document'),
         );
 
-        return $this->json($created, 201);
+        return $this->json($created, 201, [], self::JSON_CONTEXT);
     }
 
     #[Route('/validate', name: 'api_artifacts_validate', methods: ['POST'])]
@@ -81,7 +86,7 @@ final class ArtifactController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
 
-        return $this->json($this->artifacts->getForUser($user, $id));
+        return $this->json($this->artifacts->getForUser($user, $id), 200, [], self::JSON_CONTEXT);
     }
 
     #[Route('/{id}', name: 'api_artifacts_patch', methods: ['PATCH'])]
@@ -115,7 +120,19 @@ final class ArtifactController extends AbstractController
         }
         $note = \is_string($body['note'] ?? null) ? $body['note'] : null;
 
-        return $this->json($this->artifacts->putDocument($user, $id, $document, $note, $request->getClientIp()));
+        return $this->json(
+            $this->artifacts->putDocument(
+                $user,
+                $id,
+                $document,
+                $note,
+                $request->getClientIp(),
+                JsonShape::emptyObjectPathsInJson($request->getContent(), '/document'),
+            ),
+            200,
+            [],
+            self::JSON_CONTEXT,
+        );
     }
 
     #[Route('/{id}/versions', name: 'api_artifacts_versions', methods: ['GET'])]
@@ -133,7 +150,7 @@ final class ArtifactController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
 
-        return $this->json($this->artifacts->restoreVersion($user, $id, $n, $request->getClientIp()));
+        return $this->json($this->artifacts->restoreVersion($user, $id, $n, $request->getClientIp()), 200, [], self::JSON_CONTEXT);
     }
 
     #[Route('/{id}/rotate-link', name: 'api_artifacts_rotate_link', methods: ['POST'])]

@@ -72,12 +72,12 @@ final class RenderUiTool implements AgentTool
         if (!$existing) {
             $messages[] = A2ui::message('createSurface', ['surfaceId' => $surfaceId, 'catalogId' => ArtifactA2uiValidator::BASIC_CATALOG_ID]);
         }
-        $messages[] = A2ui::message('updateComponents', ['surfaceId' => $surfaceId, 'components' => $components]);
+        $messages[] = A2ui::message('updateComponents', ['surfaceId' => $surfaceId, 'components' => $context->withEmptyObjects($components, 'components')]);
         if (\array_key_exists('data', $input) && $input['data'] !== null) {
             if (!\is_array($input['data'])) {
                 return ToolResult::json(['error' => 'data : objet attendu.'], true);
             }
-            $messages[] = A2ui::message('updateDataModel', ['surfaceId' => $surfaceId, 'path' => '/', 'value' => (object) $input['data']]);
+            $messages[] = A2ui::message('updateDataModel', ['surfaceId' => $surfaceId, 'path' => '/', 'value' => (object) $context->withEmptyObjects($input['data'], 'data')]);
         }
 
         // Une surface existante a été créée par un appel précédent : on la recrée pour la validation seulement.

@@ -86,7 +86,17 @@ final class AgentSettingsTest extends TestCase
         ]]]]);
         self::assertSame('tool_use', $response->stopReason);
         self::assertSame('Un instant.', $response->text());
-        self::assertSame([['id' => 'c1', 'name' => 'render_ui', 'input' => ['components' => []]]], $response->toolUses());
+        $uses = $response->toolUses();
+        self::assertCount(1, $uses);
+        self::assertSame(['c1', 'render_ui', ['components' => []]], [$uses[0]['id'], $uses[0]['name'], $uses[0]['input']]);
+        self::assertSame('{"components":[]}', json_encode($uses[0]['raw']));
+
+        // Arguments bruts : un objet vide reste un objet.
+        $withEmpty = OpenAiLlmClient::fromOpenAiResponse(['choices' => [['finish_reason' => 'tool_calls', 'message' => [
+            'tool_calls' => [['id' => 'c2', 'type' => 'function', 'function' => ['name' => 'render_ui', 'arguments' => '{"components":[],"data":{"seen":{}}}']]],
+        ]]]]);
+        self::assertSame([], $withEmpty->toolUses()[0]['input']['data']['seen']);
+        self::assertSame('{"components":[],"data":{"seen":{}}}', json_encode($withEmpty->toolUses()[0]['raw']));
     }
 
     public function testOpenAiClientHttpCall(): void
