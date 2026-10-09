@@ -9,6 +9,7 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Entity\AuditLog;
 use App\Entity\User;
 use App\Mcp\RawToolArguments;
+use App\Mcp\Tool\BuildArtifactFromKitTool;
 use App\Mcp\Tool\CloseArtifactIntakeTool;
 use App\Mcp\Tool\DeleteArtifactTool;
 use App\Mcp\Tool\GetArtifactCatalogTool;
@@ -22,6 +23,7 @@ use App\Mcp\Tool\ValidateArtifactTool;
 use App\Mcp\Tool\WriteArtifactDataTool;
 use App\Service\ArtifactDataService;
 use App\Service\ArtifactDocumentValidator;
+use App\Service\ArtifactKits;
 use App\Service\ArtifactService;
 use App\Service\AuditLogger;
 use App\Service\DatasetAccessService;
@@ -46,6 +48,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         private readonly UsageMeter $usage,
         private readonly Security $security,
         private readonly RawToolArguments $rawArguments,
+        private readonly ArtifactKits $kits,
     ) {
     }
 
@@ -65,12 +68,11 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         }
 
         $payload = match (true) {
-            $data instanceof GetArtifactCatalogTool => $this->validator->mcpCatalogPayload(
-                $data->compact,
-                $data->components,
-                $data->rules,
-                $data->examples,
-            ),
+            $data instanceof GetArtifactCatalogTool => [
+                ...$this->validator->mcpCatalogPayload($data->compact, $data->components, $data->rules, $data->examples),
+                'kits' => $this->kits->summary(),
+            ],
+            $data instanceof BuildArtifactFromKitTool => $this->buildFromKit($data, $context),
             $data instanceof ValidateArtifactTool => $this->validator->validate($data->document ?? []),
             $data instanceof PublishArtifactTool => $this->publish($user, $data, $context),
             $data instanceof UpdateArtifactTool => $this->update($user, $data, $context),
@@ -96,6 +98,25 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             false,
             $payload,
         );
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     *
+     * @return array<string, mixed>
+     */
+    private function buildFromKit(BuildArtifactFromKitTool $tool, array $context): array
+    {
+        // Paramètres bruts (objets vides gardés), sinon la forme tableaux convertie.
+        $raw = $this->rawArguments->rawArgument($context, 'build_artifact_from_kit', 'params');
+        $params = $raw ?? json_decode((string) json_encode($tool->params ?? new \stdClass()), false);
+        $built = $this->kits->build($tool->kit, $params);
+        if ($built['document'] === null) {
+            return ['valid' => false, 'errors' => array_map(static fn (string $m): array => ['path' => 'params', 'message' => $m], $built['errors'])];
+        }
+        $result = $this->validator->validate(json_decode((string) json_encode($built['document']), true));
+
+        return ['valid' => $result['valid'], 'errors' => $result['errors'], 'document' => $built['document']];
     }
 
     /**
@@ -288,6 +309,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
     {
         return match (true) {
             $data instanceof GetArtifactCatalogTool => 'get_artifact_catalog',
+            $data instanceof BuildArtifactFromKitTool => 'build_artifact_from_kit',
             $data instanceof ValidateArtifactTool => 'validate_artifact',
             $data instanceof PublishArtifactTool => 'publish_artifact',
             $data instanceof UpdateArtifactTool => 'update_artifact',

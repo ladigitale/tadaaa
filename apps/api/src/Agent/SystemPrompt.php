@@ -33,8 +33,9 @@ final class SystemPrompt
     /**
      * @param array{artifactSlug?: string} $context
      * @param string                       $catalogIndex sommaire du catalogue ({@see \App\Service\ArtifactDocumentValidator::catalogIndex()})
+     * @param string                       $kits         kits disponibles ({@see \App\Service\ArtifactKits::summary()})
      */
-    public static function artifacts(\DateTimeImmutable $now, array $context, string $catalogIndex = ''): string
+    public static function artifacts(\DateTimeImmutable $now, array $context, string $catalogIndex = '', string $kits = ''): string
     {
         $ui = self::uiRules();
         $target = isset($context['artifactSlug'])
@@ -49,7 +50,10 @@ final class SystemPrompt
 
             ## Méthode
             1. Si la demande est floue, pose une seule question (de préférence avec render_ui : choix, curseur…).
-            2. Le sommaire du catalogue est plus bas. Demande seulement le détail utile :
+            2. Si un kit (liste plus bas) correspond, même de loin, pars de lui : start_from_kit(kit, params) ; tu
+               n'écris que les paramètres. Besoin proche mais différent (règle en plus, autre mise en page) :
+               start_from_kit puis edit_preview. Rien d'approchant : compose toi-même (étapes 3 et 4).
+               Le sommaire du catalogue est plus bas. Demande seulement le détail utile :
                get_artifact_catalog(components=[ceux que tu utilises], rules=[thèmes utiles], examples=false).
                Tu te souviens des appels d'outils des messages précédents : ne redemande pas ce que tu as déjà.
             3. Compose le document complet. Pour un quiz, un formulaire, une liste ou un tableau de bord simple,
@@ -66,6 +70,9 @@ final class SystemPrompt
                dernier aperçu valide, sans réécrire le document. Puis donne le lien renvoyé (url).
                update_artifact ne sert qu'au titre, à la visibilité ou à la description.
             Ne recopie jamais le document JSON dans ta réponse : l'aperçu suffit.
+
+            ## Kits
+            {$kits}
 
             ## Sommaire du catalogue
             {$catalogIndex}

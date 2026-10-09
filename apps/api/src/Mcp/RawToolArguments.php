@@ -30,11 +30,22 @@ final class RawToolArguments
      */
     public function emptyObjects(array $context, string $toolName, string $argument): array
     {
+        $node = $this->rawArgument($context, $toolName, $argument);
+
+        return $node === null ? [] : JsonShape::emptyObjectPaths($node);
+    }
+
+    /**
+     * Argument tel qu'envoyé (décodé en objets), ou null s'il est introuvable.
+     *
+     * @param array<string, mixed> $context contexte du processor API Platform
+     */
+    public function rawArgument(array $context, string $toolName, string $argument): mixed
+    {
         if (\array_key_exists('raw_arguments', $context)) {
             $raw = $context['raw_arguments'];
-            $node = $raw instanceof \stdClass && property_exists($raw, $argument) ? $raw->{$argument} : null;
 
-            return $node === null ? [] : JsonShape::emptyObjectPaths($node);
+            return $raw instanceof \stdClass && property_exists($raw, $argument) ? $raw->{$argument} : null;
         }
 
         $request = $context['request'] ?? null;
@@ -42,16 +53,16 @@ final class RawToolArguments
             $request = $this->requests->getCurrentRequest();
         }
         if ($request === null) {
-            return [];
+            return null;
         }
         $content = $request->getContent();
-        if ($content === '' || !str_contains($content, '{}')) {
-            return [];
+        if ($content === '') {
+            return null;
         }
         try {
             $decoded = json_decode($content, false, 512, \JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
-            return [];
+            return null;
         }
 
         $wantedId = $this->requestId($context['mcp_request'] ?? null);
@@ -70,11 +81,10 @@ final class RawToolArguments
             $candidates[] = $params->arguments ?? null;
         }
         if (\count($candidates) !== 1 || !$candidates[0] instanceof \stdClass) {
-            return [];
+            return null;
         }
-        $node = $candidates[0]->{$argument} ?? null;
 
-        return $node === null ? [] : JsonShape::emptyObjectPaths($node);
+        return $candidates[0]->{$argument} ?? null;
     }
 
     private function requestId(mixed $mcpRequest): string|int|null
