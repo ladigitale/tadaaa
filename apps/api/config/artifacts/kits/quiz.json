@@ -666,7 +666,7 @@
                   "name": "check-circle",
                   "prefix": "solid",
                   "size": "lg",
-                  "style": "color:color-mix(in srgb,var(--sc-success,#16a34a) 45%,#000)"
+                  "style": "color:var(--sc-success,#15803d)"
                  }
                 }
                ]
@@ -686,7 +686,7 @@
                   "name": "x-circle",
                   "prefix": "solid",
                   "size": "lg",
-                  "style": "color:color-mix(in srgb,var(--sc-danger,#dc2626) 75%,#000)"
+                  "style": "color:var(--sc-danger,#dc2626)"
                  }
                 }
                ]
