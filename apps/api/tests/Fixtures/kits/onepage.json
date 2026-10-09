@@ -1,8 +1,1 @@
-{"title": "Fanfare des Ponts", "tagline": "Cuivres, percussions et bonne humeur à Monts depuis 1998.", "accent": "#b45309",
- "cta": {"label": "Nous écrire", "url": "https://example.org/contact"},
- "sections": [
-  {"title": "Qui sommes-nous ?", "text": "Une trentaine de musiciens amateurs, de 12 à 77 ans."},
-  {"title": "Ce qu'on propose", "items": [{"title": "Concerts", "text": "Fêtes de village, mariages, carnavals."}, {"title": "Ateliers", "text": "Initiation aux cuivres le samedi matin."}, {"title": "Prêt d'instruments"}]}
- ],
- "faq": [{"q": "Faut-il savoir lire la musique ?", "a": "Non, on apprend aussi d'oreille."}],
- "footer": "Fanfare des Ponts — association loi 1901"}
+{"title": "Fanfare des Ponts", "tagline": "Cuivres, percussions et bonne humeur à Monts depuis 1998.", "accent": "#b45309", "cta": {"label": "Nous écrire", "url": "https://example.org/contact"}, "sections": [{"title": "Qui sommes-nous ?", "text": "Une trentaine de musiciens amateurs, de 12 à 77 ans.", "icon": "group"}, {"title": "Ce qu'on propose", "items": [{"title": "Concerts", "text": "Fêtes de village, mariages, carnavals.", "icon": "music-1"}, {"title": "Ateliers", "text": "Initiation aux cuivres le samedi matin.", "icon": "book"}, {"title": "Prêt d'instruments", "icon": "gift"}], "icon": "light-bulb"}], "faq": [{"q": "Faut-il savoir lire la musique ?", "a": "Non, on apprend aussi d'oreille."}], "footer": "Fanfare des Ponts — association loi 1901"}

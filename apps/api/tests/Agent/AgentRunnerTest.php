@@ -295,6 +295,15 @@ final class AgentRunnerTest extends TestCase
         self::assertStringContainsString('preview_artifact', $prompt);
         self::assertStringContainsString('ChoicePicker', $prompt);
 
+        $free = RunInput::fromArray(['threadId' => 't', 'runId' => 'r', 'messages' => [], 'forwardedProps' => ['atelier' => ['kits' => false]]]);
+        self::assertSame(['kits' => false], $free->appContext);
+        $withKits = \App\Agent\SystemPrompt::artifacts(new \DateTimeImmutable(), [], 'INDEX', '- quiz : …');
+        self::assertStringContainsString('raccourcis, pas un cadre', $withKits);
+        self::assertStringContainsString('## Kits', $withKits);
+        $without = \App\Agent\SystemPrompt::artifacts(new \DateTimeImmutable(), ['kits' => false], 'INDEX', '');
+        self::assertStringContainsString('composition libre', $without);
+        self::assertStringNotContainsString('start_from_kit', $without);
+        self::assertStringContainsString('find_icons', $without);
         $bad = RunInput::fromArray(['threadId' => 't', 'runId' => 'r', 'messages' => [], 'forwardedProps' => ['artifact' => ['slug' => '../x']]]);
         self::assertSame([], $bad->appContext);
         self::assertStringContainsString('publish_preview', \App\Agent\SystemPrompt::artifacts(new \DateTimeImmutable(), []));

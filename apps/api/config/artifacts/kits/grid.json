@@ -80,6 +80,11 @@
       "action": {
        "type": "string",
        "maxLength": 40
+      },
+      "icon": {
+       "type": "string",
+       "maxLength": 60,
+       "description": "icône iconoir"
       }
      }
     }
@@ -177,11 +182,13 @@
    "buttons": [
     {
      "label": "Jouer / Pause",
-     "action": "toggle"
+     "action": "toggle",
+     "icon": "play-outline"
     },
     {
      "label": "Recommencer",
-     "action": "restart"
+     "action": "restart",
+     "icon": "refresh-double"
     }
    ],
    "stats": [
@@ -234,12 +241,6 @@
             },
             "stats": {
              "$param": "stats"
-            },
-            "pad": {
-             "up": "▲",
-             "down": "▼",
-             "left": "◀",
-             "right": "▶"
             }
            }
           },
@@ -417,14 +418,15 @@
               "attributes": {
                "variant": "outline",
                "style": "width:100%",
-               "data-pad": "up"
+               "data-pad": "up",
+               "aria-label": "up"
               },
               "nodes": [
                {
-                "tagName": "sonic-value",
+                "tagName": "sonic-icon",
                 "attributes": {
-                 "dataProvider": "gameui",
-                 "key": "pad.up"
+                 "library": "iconoir",
+                 "name": "nav-arrow-up"
                 }
                }
               ]
@@ -446,14 +448,15 @@
               "attributes": {
                "variant": "outline",
                "style": "width:100%",
-               "data-pad": "left"
+               "data-pad": "left",
+               "aria-label": "left"
               },
               "nodes": [
                {
-                "tagName": "sonic-value",
+                "tagName": "sonic-icon",
                 "attributes": {
-                 "dataProvider": "gameui",
-                 "key": "pad.left"
+                 "library": "iconoir",
+                 "name": "nav-arrow-left"
                 }
                }
               ]
@@ -472,14 +475,15 @@
               "attributes": {
                "variant": "outline",
                "style": "width:100%",
-               "data-pad": "down"
+               "data-pad": "down",
+               "aria-label": "down"
               },
               "nodes": [
                {
-                "tagName": "sonic-value",
+                "tagName": "sonic-icon",
                 "attributes": {
-                 "dataProvider": "gameui",
-                 "key": "pad.down"
+                 "library": "iconoir",
+                 "name": "nav-arrow-down"
                 }
                }
               ]
@@ -498,14 +502,15 @@
               "attributes": {
                "variant": "outline",
                "style": "width:100%",
-               "data-pad": "right"
+               "data-pad": "right",
+               "aria-label": "right"
               },
               "nodes": [
                {
-                "tagName": "sonic-value",
+                "tagName": "sonic-icon",
                 "attributes": {
-                 "dataProvider": "gameui",
-                 "key": "pad.right"
+                 "library": "iconoir",
+                 "name": "nav-arrow-right"
                 }
                }
               ]
@@ -542,6 +547,19 @@
                }
               },
               "nodes": [
+               {
+                "$if": ".icon",
+                "then": {
+                 "tagName": "sonic-icon",
+                 "attributes": {
+                  "slot": "prefix",
+                  "library": "iconoir",
+                  "name": {
+                   "$item": "icon"
+                  }
+                 }
+                }
+               },
                {
                 "tagName": "sonic-value",
                 "attributes": {

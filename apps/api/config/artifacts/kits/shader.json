@@ -265,14 +265,15 @@
                  "style": "width:100%",
                  "data-dec": {
                   "$text": "{{#}}"
-                 }
+                 },
+                 "aria-label": "dec"
                 },
                 "nodes": [
                  {
-                  "tagName": "sonic-value",
+                  "tagName": "sonic-icon",
                   "attributes": {
-                   "dataProvider": "sceneui",
-                   "key": "txt.minus"
+                   "library": "iconoir",
+                   "name": "minus"
                   }
                  }
                 ]
@@ -316,14 +317,15 @@
                  "style": "width:100%",
                  "data-inc": {
                   "$text": "{{#}}"
-                 }
+                 },
+                 "aria-label": "inc"
                 },
                 "nodes": [
                  {
-                  "tagName": "sonic-value",
+                  "tagName": "sonic-icon",
                   "attributes": {
-                   "dataProvider": "sceneui",
-                   "key": "txt.plus"
+                   "library": "iconoir",
+                   "name": "plus"
                   }
                  }
                 ]
@@ -359,6 +361,14 @@
               },
               "nodes": [
                {
+                "tagName": "sonic-icon",
+                "attributes": {
+                 "slot": "prefix",
+                 "library": "iconoir",
+                 "name": "shuffle"
+                }
+               },
+               {
                 "tagName": "sonic-value",
                 "attributes": {
                  "dataProvider": "sceneui",
@@ -384,6 +394,14 @@
                "data-reset": ""
               },
               "nodes": [
+               {
+                "tagName": "sonic-icon",
+                "attributes": {
+                 "slot": "prefix",
+                 "library": "iconoir",
+                 "name": "refresh-double"
+                }
+               },
                {
                 "tagName": "sonic-value",
                 "attributes": {

@@ -1,6 +1,1 @@
-{"title": "Châteaux de la Loire", "intro": "Trois questions pour tester tes connaissances.", "timer": 5, "speed": true,
- "questions": [
-  {"question": "Quel château enjambe le Cher ?", "answers": ["Chambord", "Chenonceau", "Amboise"], "correct": 1, "explain": "Sa galerie traverse la rivière."},
-  {"question": "Quel roi a fait construire Chambord ?", "answers": ["Louis XIV", "François Ier", "Henri IV", "Charles VIII"], "correct": 1},
-  {"question": "Villandry est célèbre pour…", "answers": ["ses jardins", "son donjon"], "correct": 0}
- ]}
+{"title": "Châteaux de la Loire", "intro": "Trois questions pour tester tes connaissances.", "timer": 5, "speed": true, "questions": [{"question": "Quel château enjambe le Cher ?", "answers": ["Chambord", "Chenonceau", "Amboise"], "correct": 1, "explain": "Sa galerie traverse la rivière."}, {"question": "Quel roi a fait construire Chambord ?", "answers": ["Louis XIV", "François Ier", "Henri IV", "Charles VIII"], "correct": 1}, {"question": "Villandry est célèbre pour…", "answers": ["ses jardins", "son donjon"], "correct": 0}], "icon": "pin-alt"}

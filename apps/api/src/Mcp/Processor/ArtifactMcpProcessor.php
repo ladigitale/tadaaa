@@ -11,6 +11,7 @@ use App\Entity\User;
 use App\Mcp\RawToolArguments;
 use App\Mcp\Tool\BuildArtifactFromKitTool;
 use App\Mcp\Tool\CloseArtifactIntakeTool;
+use App\Mcp\Tool\FindIconsTool;
 use App\Mcp\Tool\DeleteArtifactTool;
 use App\Mcp\Tool\GetArtifactCatalogTool;
 use App\Mcp\Tool\GetArtifactTool;
@@ -23,6 +24,7 @@ use App\Mcp\Tool\ValidateArtifactTool;
 use App\Mcp\Tool\WriteArtifactDataTool;
 use App\Service\ArtifactDataService;
 use App\Service\ArtifactDocumentValidator;
+use App\Service\ArtifactIcons;
 use App\Service\ArtifactKits;
 use App\Service\ArtifactService;
 use App\Service\AuditLogger;
@@ -49,6 +51,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         private readonly Security $security,
         private readonly RawToolArguments $rawArguments,
         private readonly ArtifactKits $kits,
+        private readonly ArtifactIcons $icons,
     ) {
     }
 
@@ -73,6 +76,10 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 'kits' => $this->kits->summary(),
             ],
             $data instanceof BuildArtifactFromKitTool => $this->buildFromKit($data, $context),
+            $data instanceof FindIconsTool => [
+                'library' => $data->library,
+                'names' => $this->icons->search($data->query, $data->library !== '' ? $data->library : 'iconoir', 40),
+            ],
             $data instanceof ValidateArtifactTool => $this->validator->validate($data->document ?? []),
             $data instanceof PublishArtifactTool => $this->publish($user, $data, $context),
             $data instanceof UpdateArtifactTool => $this->update($user, $data, $context),
@@ -310,6 +317,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         return match (true) {
             $data instanceof GetArtifactCatalogTool => 'get_artifact_catalog',
             $data instanceof BuildArtifactFromKitTool => 'build_artifact_from_kit',
+            $data instanceof FindIconsTool => 'find_icons',
             $data instanceof ValidateArtifactTool => 'validate_artifact',
             $data instanceof PublishArtifactTool => 'publish_artifact',
             $data instanceof UpdateArtifactTool => 'update_artifact',
