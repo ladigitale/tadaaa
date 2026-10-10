@@ -65,6 +65,14 @@ final class ThreadStore
         }
     }
 
+    public function forget(string $scope, string $threadId): void
+    {
+        try {
+            $this->cache->deleteItem($this->key($scope, $threadId));
+        } catch (\Throwable) {
+        }
+    }
+
     private function key(string $scope, string $threadId): string
     {
         return 'agent_thread_'.hash('sha256', $scope."\0".$threadId);

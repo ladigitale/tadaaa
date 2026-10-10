@@ -41,7 +41,7 @@ final class AgentFactory
                 ? SystemPrompt::artifacts($now, $input->appContext, $index, $kits)
                 : SystemPrompt::build($now),
             threads: $this->threads,
-            threadScope: $user->getId()->toRfc4122().'|'.$profile,
+            threadScope: ConversationHistory::scope($user, $profile),
         );
     }
 }
