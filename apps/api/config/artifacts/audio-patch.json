@@ -1,0 +1,304 @@
+{
+ "generatedFrom": "creative-stack src/addons/audio/patch/modules.ts",
+ "modules": {
+  "sonic-osc": {
+   "kind": "source",
+   "params": {
+    "wave": {
+     "values": [
+      "sine",
+      "square",
+      "sawtooth",
+      "triangle",
+      "pulse"
+     ]
+    },
+    "freq-hz": {
+     "audio": true
+    },
+    "detune": {
+     "audio": true
+    },
+    "octave": {},
+    "semi": {},
+    "pw": {},
+    "harmonics": {},
+    "level": {
+     "audio": true
+    },
+    "fm": {},
+    "fm-amount": {},
+    "sync": {}
+   }
+  },
+  "sonic-noise": {
+   "kind": "source",
+   "params": {
+    "color": {
+     "values": [
+      "white",
+      "pink",
+      "brown"
+     ]
+    },
+    "level": {
+     "audio": true
+    }
+   }
+  },
+  "sonic-audio-input": {
+   "kind": "source",
+   "params": {
+    "source": {},
+    "level": {
+     "audio": true
+    }
+   }
+  },
+  "sonic-mixer": {
+   "kind": "processor",
+   "params": {
+    "levels": {}
+   }
+  },
+  "sonic-filter": {
+   "kind": "processor",
+   "params": {
+    "type": {
+     "values": [
+      "lowpass",
+      "highpass",
+      "bandpass",
+      "notch",
+      "lowshelf",
+      "highshelf",
+      "peaking",
+      "allpass"
+     ]
+    },
+    "freq-hz": {
+     "audio": true
+    },
+    "q": {
+     "audio": true
+    },
+    "gain-db": {
+     "audio": true
+    }
+   }
+  },
+  "sonic-vca": {
+   "kind": "processor",
+   "params": {
+    "gain": {
+     "audio": true
+    }
+   }
+  },
+  "sonic-env": {
+   "kind": "control",
+   "params": {
+    "a": {},
+    "d": {},
+    "s": {},
+    "r": {}
+   }
+  },
+  "sonic-lfo": {
+   "kind": "control",
+   "params": {
+    "wave": {
+     "values": [
+      "sine",
+      "square",
+      "sawtooth",
+      "triangle"
+     ]
+    },
+    "rate-hz": {
+     "audio": true
+    },
+    "sync": {}
+   }
+  },
+  "sonic-shaper": {
+   "kind": "processor",
+   "params": {
+    "curve": {
+     "values": [
+      "soft",
+      "hard",
+      "fold",
+      "bit"
+     ]
+    },
+    "drive": {},
+    "oversample": {
+     "values": [
+      "none",
+      "2x",
+      "4x"
+     ]
+    }
+   }
+  },
+  "sonic-pan": {
+   "kind": "processor",
+   "params": {
+    "pan": {
+     "audio": true
+    }
+   }
+  },
+  "sonic-delay": {
+   "kind": "processor",
+   "params": {
+    "time": {
+     "audio": true
+    },
+    "feedback": {
+     "audio": true
+    },
+    "mix": {},
+    "tone": {}
+   }
+  },
+  "sonic-reverb": {
+   "kind": "processor",
+   "params": {
+    "size-s": {},
+    "damp": {},
+    "mix": {}
+   }
+  },
+  "sonic-chorus": {
+   "kind": "processor",
+   "params": {
+    "rate-hz": {
+     "audio": true
+    },
+    "depth": {},
+    "delay": {},
+    "mix": {}
+   }
+  },
+  "sonic-ladder": {
+   "kind": "processor",
+   "params": {
+    "freq-hz": {
+     "audio": true
+    },
+    "res": {
+     "audio": true
+    },
+    "drive": {
+     "audio": true
+    },
+    "detune": {
+     "audio": true
+    }
+   }
+  },
+  "sonic-fold": {
+   "kind": "processor",
+   "params": {
+    "amount": {
+     "audio": true
+    },
+    "bias": {
+     "audio": true
+    },
+    "mix": {}
+   }
+  },
+  "sonic-karplus": {
+   "kind": "source",
+   "params": {
+    "freq-hz": {
+     "audio": true
+    },
+    "detune": {
+     "audio": true
+    },
+    "decay": {},
+    "damp": {},
+    "level": {
+     "audio": true
+    }
+   }
+  },
+  "sonic-resonator": {
+   "kind": "processor",
+   "params": {
+    "freq-hz": {
+     "audio": true
+    },
+    "detune": {
+     "audio": true
+    },
+    "q": {},
+    "partials": {},
+    "level": {
+     "audio": true
+    }
+   }
+  },
+  "sonic-grain": {
+   "kind": "source",
+   "params": {
+    "sample": {},
+    "position": {},
+    "spread": {},
+    "size-s": {},
+    "density": {},
+    "pitch": {},
+    "jitter": {},
+    "level": {
+     "audio": true
+    }
+   }
+  },
+  "sonic-comp": {
+   "kind": "processor",
+   "params": {
+    "threshold-db": {
+     "audio": true
+    },
+    "ratio": {
+     "audio": true
+    },
+    "knee": {
+     "audio": true
+    },
+    "attack": {
+     "audio": true
+    },
+    "release": {
+     "audio": true
+    }
+   }
+  }
+ },
+ "expTargets": [
+  "sonic-osc",
+  "sonic-filter",
+  "sonic-ladder",
+  "sonic-karplus",
+  "sonic-resonator"
+ ],
+ "voiceSources": [
+  "voice.pitch",
+  "voice.gate",
+  "voice.vel",
+  "voice.note",
+  "voice.rand",
+  "voice.bend",
+  "voice.pressure",
+  "voice.timbre"
+ ],
+ "structureTags": [
+  "sonic-voice",
+  "sonic-mod",
+  "sonic-param"
+ ]
+}

@@ -65,6 +65,9 @@ final class SystemPrompt
                Le sommaire du catalogue est plus bas. Demande seulement le détail utile :
                get_artifact_catalog(components=[ceux que tu utilises], rules=[thèmes utiles], examples=false).
                Tu te souviens des appels d'outils des messages précédents : ne redemande pas ce que tu as déjà.
+               Son (sonic-patch, synthé, LFO, modulation) : demande toujours rules=["audio"] AVANT d'écrire le patch : une seule
+               erreur de câblage fait refuser tout le patch (plus aucun son). Profondeur d'un LFO réglable : sonic-mod name="…"
+               puis sonic-param to="nom.amount". Corrige les erreurs « sonic-patch : … » renvoyées par la validation.
             3. Compose le document complet. Pour un quiz, un formulaire, une liste ou un tableau de bord simple,
                préfère des vues A2UI ("a2ui": [messages], "actionStore", "a2uiBindings" : voir rules.a2ui du
                catalogue). Pour une mise en page riche ou les composants créatifs (son, 3D, physique), utilise
