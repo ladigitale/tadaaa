@@ -6,7 +6,9 @@ namespace App\Controller;
 
 use App\Agent\AgentFactory;
 use App\Agent\AgentProfile;
+use App\Agent\AgUi\RecordingEventSink;
 use App\Agent\AgUi\SseEventSink;
+use App\Agent\ConversationHistory;
 use App\Agent\RunInput;
 use App\Entity\User;
 use App\Service\UsageMeter;
@@ -32,6 +34,7 @@ final class AgentController extends AbstractController
     public function __construct(
         private readonly AgentFactory $agents,
         private readonly UsageMeter $usage,
+        private readonly ConversationHistory $history,
         #[Autowire(service: 'limiter.agent_runs')]
         private readonly RateLimiterFactoryInterface $agentRunsLimiter,
     ) {
@@ -61,10 +64,31 @@ final class AgentController extends AbstractController
         }
 
         $runner = $this->agents->create($profile, $user, $input->appContext);
-        $response = new StreamedResponse(static function () use ($runner, $input): void {
-            // Un run enchaîne plusieurs appels au modèle (documents longs) : pas de limite PHP.
+        $history = $this->history;
+        $response = new StreamedResponse(static function () use ($runner, $input, $history, $user, $profile): void {
+            // Un run enchaîne plusieurs appels au modèle (documents longs) : pas de limite PHP,
+            // et le run est enregistré même si le navigateur est parti entre-temps.
             set_time_limit(0);
-            $runner->run($input, new SseEventSink());
+            ignore_user_abort(true);
+            $recorder = new RecordingEventSink(new SseEventSink());
+            $last = $input->messages !== [] ? $input->messages[\count($input->messages) - 1] : null;
+            if ($last !== null && $last['role'] === 'user' && $input->a2uiAction === null && $input->sduiAction === null) {
+                $recorder->user($last['content']);
+            }
+            try {
+                $history->rehydrate($user, $profile, $input->threadId);
+            } catch (\Throwable) {
+                // Historique best-effort : l'agent repartira du texte reçu.
+            }
+            try {
+                $runner->run($input, $recorder);
+            } finally {
+                try {
+                    $history->record($user, $profile, $input, $recorder);
+                } catch (\Throwable) {
+                    // L'historique ne doit jamais faire échouer un run.
+                }
+            }
         });
         $response->headers->set('Content-Type', 'text/event-stream; charset=utf-8');
         $response->headers->set('Cache-Control', 'no-cache, no-transform');
