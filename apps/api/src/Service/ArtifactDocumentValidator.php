@@ -79,7 +79,7 @@ final class ArtifactDocumentValidator
         .'INSTRUMENT : sonic-patch preset="synth/lead|bass|pad|pluck|fm-bell|chip|drums/kick|snare|hat|kit" params=\'{"cutoff":900}\' (cutoff/reso, pad : attack, pluck : decay, chip : pw) events="dp.notes" trigger="dp.tick" (trigger = valeur qui change → rejoue events ; sans trigger : joué quand la liste change). '
         .'Événement : {note:"C4"|60, vel, durS, sample:"kick", type:note|noteOn|noteOff|param, when, id}. drums/kit : samples kick snare clap hat openhat. '
         .'PATCH MAIN : <sonic-patch><sonic-voice> modules joués par note </sonic-voice> modules globaux </sonic-patch>. Modules : sonic-osc (wave sine|square|sawtooth|triangle|pulse, freq-hz=voice.pitch, detune, octave, semi, level, fm, fm-amount), sonic-noise (color), sonic-mixer (in, levels), sonic-filter (type, freq-hz, q), sonic-vca (gain), sonic-env (a d s r), sonic-lfo (rate-hz | sync="1/8"), sonic-shaper, sonic-pan, sonic-delay (time s|"3/16", feedback, mix), sonic-reverb (size-s, mix), sonic-chorus, sonic-comp. '
-        .'Câblage : name + in="o1 o2" (sinon module précédent ; global : la somme des voix). Modulation : sonic-mod from="env|lfo|voice.vel|voice.pitch|voice.rand" to="flt.freq-hz" amount (curve="exp" : demi-tons) ; raccourci gain="aenv". sonic-param to="flt.freq-hz" source="dp.cutoff" ramp-s min max | expose="cutoff". Boucle audio seulement via sonic-delay. Kit : plusieurs sonic-voice sample="kick" note="C2". '
+        .'Câblage : name + in="o1 o2" (sinon module précédent ; global : la somme des voix). Modulation : sonic-mod from="env|lfo|voice.vel|voice.pitch|voice.rand" to="flt.freq-hz" amount (curve="exp" : demi-tons, seulement vers freq-hz de sonic-osc|filter|ladder|karplus|resonator) ; raccourci gain="aenv". PROFONDEUR D’UN LFO / D’UNE ENVELOPPE : elle n’existe pas sur le LFO, c’est l’amount (nombre fixe) du sonic-mod. Pour la régler avec un potard : NOMME le câble et pilote-le, <sonic-mod name="vib" from="lfo" to="o1.detune" amount="0"/> + <sonic-param to="vib.amount" source="ui.vib" min="0" max="100"/> (seul amount est pilotable ; demi-tons si curve="exp"). Jamais sonic-param to="lfo.amount", ni amount="dp.chemin" dans le sonic-mod. UNE SEULE ERREUR DE PATCH = AUCUN SON (le compilateur refuse tout) : donne un name à chaque module visé par un to/from ; to="module.paramètre" avec un paramètre modulable (freq-hz, detune, level, gain, res, q, pan, time, feedback, rate-hz…) ; un sonic-lfo sync="1/8" n’a plus de rate-hz modulable ; un module de voix ne module pas un module global. Le contrôle à la publication te renvoie ces erreurs.  sonic-param to="flt.freq-hz" source="dp.cutoff" ramp-s min max | expose="cutoff". Boucle audio seulement via sonic-delay. Kit : plusieurs sonic-voice sample="kick" note="C2". '
         .'SÉQUENCEUR : sonic-sequencer bpm swing seed control="dp.transport" ({playing,bpm,swing,pattern}) pattern=\'{"kit":{"kick":"x...x...x...x...","hat":"[..x.]*4"},"bass":{"notes":"0 ~ 2 [4 7]","scale":"a2:minor-pentatonic"},"lead":"<c5 e5 g5>"}\' (clé = id d’instrument ; ligne = 1 mesure : grille x/X/., [ ] sous-division, ~ silence, - tenue, <a b> alternance, *n, !n, @n, ?p, x(3,8,r) euclide, c4+e4 accord, degrés avec scale). '
         .'store="idStore" : le reducer reçoit {type:"step", payload:{step,beat,bar,phase,when,bpm}} en avance et écrit des notes avec when (augmenter budget-ms / lookahead-ms si le reducer est lourd). État <id>State : {playing, step, beat, bar, phase}. '
         .'SAMPLER : sonic-sampler samples=\'{"kick":"https://…/kick.wav","voix":{"ref":"rec.last","root":"C4"}}\' (https uniquement ; gain pan pitch root start end loop reverse gate) choke=\'[["hat","openhat"]]\'. '
@@ -116,6 +116,11 @@ final class ArtifactDocumentValidator
 
     private readonly ArtifactIcons $icons;
 
+    private readonly ArtifactPatchLint $patchLint;
+
+    /** Bibliothèque (`library`) du descripteur en cours de validation, pour résoudre les libraryKey d'un patch. @var array<string, mixed> */
+    private array $library = [];
+
     private readonly string $concordeVersion;
 
     /**
@@ -130,7 +135,9 @@ final class ArtifactDocumentValidator
         ?array $catalog = null,
         ?ArtifactA2uiValidator $a2uiValidator = null,
         ?ArtifactIcons $icons = null,
+        ?ArtifactPatchLint $patchLint = null,
     ) {
+        $this->patchLint = $patchLint ?? new ArtifactPatchLint(\dirname($catalogPath).'/audio-patch.json');
         $this->a2uiValidator = $a2uiValidator ?? new ArtifactA2uiValidator();
         $this->icons = $icons ?? new ArtifactIcons(\dirname($catalogPath).'/icons.json');
         $data = $catalog ?? $this->loadJson($this->catalogPath);
@@ -372,6 +379,7 @@ final class ArtifactDocumentValidator
         }
 
         $this->seenTags = [];
+        $this->library = [];
 
         if (($document['schema'] ?? null) !== 'artifacts/1') {
             $errors[] = ['path' => '/schema', 'message' => 'schema doit être "artifacts/1".'];
@@ -526,6 +534,8 @@ final class ArtifactDocumentValidator
             }
         }
 
+        $outerLibrary = $this->library;
+        $this->library = \is_array($descriptor['library'] ?? null) ? $descriptor['library'] : [];
         if (isset($descriptor['nodes'])) {
             if (!\is_array($descriptor['nodes'])) {
                 $errors[] = ['path' => $path.'/nodes', 'message' => 'nodes doit être un tableau.'];
@@ -539,6 +549,8 @@ final class ArtifactDocumentValidator
                 }
             }
         }
+
+        $this->library = $outerLibrary;
 
         foreach (array_keys($descriptor) as $key) {
             if (!\in_array($key, ['library', 'nodes'], true) && !\in_array($key, self::FORBIDDEN_DESCRIPTOR_KEYS, true)) {
@@ -598,6 +610,12 @@ final class ArtifactDocumentValidator
                         }
                     }
                 }
+            }
+        }
+
+        if ($tagName === 'sonic-patch') {
+            foreach ($this->patchLint->check($node, $this->library) as $message) {
+                $errors[] = ['path' => $path, 'message' => 'sonic-patch : '.$message];
             }
         }
 

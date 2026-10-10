@@ -790,4 +790,31 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertCount(4, $r['errors']); // trop de polices + URL + injection + minuscule
     }
 
+
+    public function testSonicPatchErrorsAreReportedBeforePublication(): void
+    {
+        $dir = \dirname(__DIR__, 2).'/config/artifacts';
+        $validator = new ArtifactDocumentValidator($dir.'/catalog.json', $dir.'/sdui.schema.json', new \App\Service\ArtifactScriptsCatalog($dir.'/scripts-catalog.json'));
+        $patch = static fn (array $nodes): array => ['tagName' => 'sonic-patch', 'attributes' => ['id' => 'p'], 'nodes' => $nodes];
+        $voice = ['tagName' => 'sonic-voice', 'nodes' => [
+            ['tagName' => 'sonic-osc', 'attributes' => ['name' => 'o']],
+            ['tagName' => 'sonic-lfo', 'attributes' => ['name' => 'l']],
+            ['tagName' => 'sonic-mod', 'attributes' => ['name' => 'vib', 'from' => 'l', 'to' => 'o.detune', 'amount' => '0']],
+        ]];
+        $doc = static function (array $descriptor): array {
+            return ['schema' => 'artifacts/1', 'title' => 'Synthé', 'defaultView' => 'v', 'views' => [['id' => 'v', 'title' => 'v', 'root' => $descriptor]]];
+        };
+
+        // Profondeur réglée via le câble nommé, paramètre posé par la bibliothèque : accepté.
+        $ok = $validator->validate($doc([
+            'library' => ['P' => ['tagName' => 'sonic-param', 'attributes' => ['ramp-s' => '0.03']]],
+            'nodes' => [$patch([$voice, ['libraryKey' => 'P', 'attributes' => ['to' => 'vib.amount', 'source' => 'x.vib']]])],
+        ]));
+        self::assertTrue($ok['valid'], json_encode($ok['errors'], JSON_UNESCAPED_UNICODE));
+
+        // « sonic-param to=lfo.amount » : le compilateur refuserait tout le patch (plus de son).
+        $bad = $validator->validate($doc(['nodes' => [$patch([$voice, ['tagName' => 'sonic-param', 'attributes' => ['to' => 'l.amount', 'source' => 'x.vib']]])]]));
+        self::assertFalse($bad['valid']);
+        self::assertStringContainsString('sonic-patch : sonic-param to="l.amount"', $bad['errors'][0]['message']);
+    }
 }
