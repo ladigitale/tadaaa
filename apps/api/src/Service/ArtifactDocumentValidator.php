@@ -91,6 +91,23 @@ final class ArtifactDocumentValidator
         .'ANALYSEUR : sonic-audio-analyser id="spectre" source="master|#id" → DP spectreState {rms, peak, db, bands[], centroidHz, onset, onsetCount, pitchHz(attr pitch)} ; sonic-shader channel0="#spectre" : texture(iChannel0, vec2(x,0.25)).r spectre, vec2(x,0.75) onde. '
         .'États : <id>State de chaque composant (status idle tant que le son n’est pas actif, errors lisibles). Volumes : garder gain ≤ 0.6 par instrument, le master est limité.';
 
+    /**
+     * Alias de modèles déclarés par le viewer (ladigitale/artifacts, src/app/hf-config.ts).
+     * `model` est un alias de cette liste blanche, jamais un identifiant Hugging Face libre :
+     * à garder synchronisé avec le viewer (un alias inconnu laisse le composant inactif).
+     *
+     * @var array<string, string> alias => description (reprise dans les règles du catalogue)
+     */
+    public const HF_MODEL_ALIASES = [
+        'depth-small' => 'depth-estimation : photo (URL, data URL ou prise caméra) → carte de profondeur {width, height, url}, ≈ 27 Mo, CPU',
+        'zero-shot' => 'zero-shot-classification : texte anglais + étiquettes (options {"call":{"candidate_labels":["a","b"]}}) → {labels, scores}, ≈ 25 Mo, CPU',
+    ];
+
+    private const HF_RULE = 'INFÉRENCE LOCALE (Transformers.js, le calcul reste dans le navigateur) : <sonic-hugging-face-infer model="<alias>" inputProvider="dp.entree" outputProvider="dp.sortie" statusProvider="dp.statut" load="consent|first-use" trigger="mutation|demand" triggerProvider="dp.clic">. '
+        .'`model` est UN ALIAS de la liste blanche du viewer, jamais un id Hugging Face (org/nom) ni une URL ; modèles lourds ou génératifs (TRELLIS, Stable Fast 3D, VGGT, LLM…) indisponibles. Alias : %s. '
+        .'Entrée : texte, image (URL https, data URL, prise caméra snapshot-provider). Sortie en lecture seule, images produites {width, height, url} chaînables dans sonic-shader channel0 / sonic-image. '
+        .'Statut statusProvider : {state: idle|empty|awaiting-consent|downloading|loading|ready|running|done|invalid-input|error|unsupported, progress:{percent}, size:{totalMB}, error:{code,message}} ; load="consent" : afficher une invite tant que state = awaiting-consent (consentProvider="dp.accepted", valeur "accepted"). Rien ne se télécharge tant que l’entrée est vide.';
+
     /** @var list<string> */
     private const MODEL_HOST_ALLOWLIST = [
         'huggingface.co',
@@ -223,6 +240,7 @@ final class ArtifactDocumentValidator
                 'audio' => self::AUDIO_RULE,
                 'media' => self::MEDIA_RULE,
                 'physique' => self::PHYSICS_RULE,
+                'ia' => $this->huggingFaceRule(),
                 'a2ui' => 'Vue A2UI v0.9 (alternative à root) : views[].a2ui = liste de messages {"version":"v0.9", createSurface|updateComponents|updateDataModel|deleteSurface}. Catalogue de base uniquement (catalogId '.ArtifactA2uiValidator::BASIC_CATALOG_ID.'). Composants : '.implode(', ', ArtifactA2uiValidator::SUPPORTED_COMPONENTS).'. Props : littéraux ou {"path":"/abs"} ; pas de call. CheckBox (value booléen), ChoicePicker (options [{label, value}], value = liste de chaînes, variant mutuallyExclusive|multipleSelection), Slider (min, max, value nombre), DateTimeInput (enableDate, enableTime, value ISO), Tabs (tabs [{title, child}]), Modal (trigger, content) ; libellés en texte littéral. Liste à gabarit : "children": {"path":"/items","componentId":"item"} — le sous-arbre "item" est répété par élément, chemins relatifs ("name") résolus sur l’élément ; imbrication possible. Composants dans n’importe quel ordre, "root" obligatoire. views[].actionStore = id d’un data.stores : un clic sur action.event devient {type: name, payload: {...context résolu, surfaceId, sourceComponentId}} dispatché au store (reducer, sinks). views[].a2uiBindings = {"/booking": "booking"} : l’état du store est recopié dans le data model des surfaces à ce chemin à chaque changement (lire avec {"path":"/booking/count"}). Gabarits SDUI chat:answer / chat:result-card / chat:confirm / chat:short-form / chat:actions et a2ui:<Composant> disponibles en libraryKey dans les vues root.',
                 'polices' => 'Optionnel : "fonts": ["Patrick Hand", "Fredoka:wght@400;700"] (4 max, noms Google Fonts, pas d’URL). Le viewer les charge ; utiliser ensuite font-family:\'Patrick Hand\',cursive dans les styles. Toujours prévoir une police de repli.',
                 'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
@@ -247,6 +265,17 @@ final class ArtifactDocumentValidator
      *
      * @return array<string, mixed>
      */
+    /** Règle « ia » du catalogue : liste des alias de modèles avec ce que chacun produit. */
+    private function huggingFaceRule(): string
+    {
+        $aliases = [];
+        foreach (self::HF_MODEL_ALIASES as $alias => $description) {
+            $aliases[] = $alias.' ('.$description.')';
+        }
+
+        return sprintf(self::HF_RULE, implode(' ; ', $aliases));
+    }
+
     private function compactCatalog(array $catalog): array
     {
         $common = [
@@ -743,10 +772,8 @@ final class ArtifactDocumentValidator
             }
         }
         if ($tagName === 'sonic-hugging-face-infer' && $attrLower === 'model') {
-            $ok = (bool) preg_match('#^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$#', $value)
-                || (bool) preg_match('#^https://(www\.)?huggingface\.co/#i', $value);
-            if (!$ok) {
-                return 'model HF : org/nom ou URL https huggingface.co.';
+            if (!array_key_exists($value, self::HF_MODEL_ALIASES)) {
+                return 'model HF : alias de la liste blanche du viewer ('.implode(', ', array_keys(self::HF_MODEL_ALIASES)).'), pas d’identifiant Hugging Face ni d’URL.';
             }
         }
         if ($tagName === 'sonic-3d' && $attrLower === 'src') {

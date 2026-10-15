@@ -229,30 +229,53 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertFalse($result['valid']);
     }
 
-    public function testAcceptsHuggingFaceModelId(): void
+    public function testAcceptsHuggingFaceModelAlias(): void
     {
-        $doc = $this->minimalDoc();
-        $doc['views'][0]['root']['nodes'][0] = [
-            'tagName' => 'sonic-hugging-face-infer',
-            'attributes' => [
-                'model' => 'Xenova/distilbert-base-uncased-finetuned-sst-2-english',
-                'inputProvider' => 'text',
-                'outputProvider' => 'out',
-            ],
-        ];
-        $result = $this->validator->validate($doc);
-        self::assertTrue($result['valid'], json_encode($result['errors']));
+        foreach (array_keys(ArtifactDocumentValidator::HF_MODEL_ALIASES) as $alias) {
+            $doc = $this->minimalDoc();
+            $doc['views'][0]['root']['nodes'][0] = [
+                'tagName' => 'sonic-hugging-face-infer',
+                'attributes' => [
+                    'model' => $alias,
+                    'inputProvider' => 'text',
+                    'outputProvider' => 'out',
+                ],
+            ];
+            $result = $this->validator->validate($doc);
+            self::assertTrue($result['valid'], $alias.' : '.json_encode($result['errors']));
+        }
     }
 
-    public function testRejectsBadHuggingFaceModel(): void
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function badHuggingFaceModels(): iterable
+    {
+        yield 'url libre' => ['https://evil.example/model'];
+        yield 'url hub' => ['https://huggingface.co/Xenova/depth-anything-small-hf'];
+        yield 'id org/nom' => ['microsoft/TRELLIS'];
+        yield 'alias inconnu' => ['gpt-4'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('badHuggingFaceModels')]
+    public function testRejectsModelOutsideAllowlist(string $model): void
     {
         $doc = $this->minimalDoc();
         $doc['views'][0]['root']['nodes'][0] = [
             'tagName' => 'sonic-hugging-face-infer',
-            'attributes' => ['model' => 'https://evil.example/model'],
+            'attributes' => ['model' => $model],
         ];
         $result = $this->validator->validate($doc);
-        self::assertFalse($result['valid']);
+        self::assertFalse($result['valid'], $model);
+    }
+
+    public function testCatalogRulesListHuggingFaceAliases(): void
+    {
+        $rules = $this->validator->mcpCatalogPayload()['rules'];
+        self::assertArrayHasKey('ia', $rules);
+        foreach (array_keys(ArtifactDocumentValidator::HF_MODEL_ALIASES) as $alias) {
+            self::assertStringContainsString($alias, $rules['ia']);
+        }
     }
 
     public function testAcceptsSonicStoreAndMatrix(): void
