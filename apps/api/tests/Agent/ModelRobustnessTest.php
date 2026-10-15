@@ -192,6 +192,42 @@ final class ModelRobustnessTest extends TestCase
         self::assertTrue($parser->finish()->toolUses()[0]['invalid']);
     }
 
+    public function testInterfaceWithItsCaptionEndsTheTurnWithoutAnotherModelCall(): void
+    {
+        $llm = new OneShotLlm([
+            new LlmResponse([['type' => 'text', 'text' => 'Voici le choix.'], ['type' => 'tool_use', 'id' => 'u', 'name' => 'render_ui', 'input' => []]], 'tool_use'),
+        ]);
+        $sink = $this->run($llm, new EchoTool('render_ui'));
+
+        self::assertCount(1, $llm->calls);
+        self::assertSame('RUN_FINISHED', $sink->types()[\count($sink->events) - 1]);
+    }
+
+    public function testInterfaceWithoutCaptionOrWithAnErrorKeepsGoing(): void
+    {
+        $noText = new OneShotLlm([new LlmResponse([['type' => 'tool_use', 'id' => 'u', 'name' => 'render_ui', 'input' => []]], 'tool_use')]);
+        $this->run($noText, new EchoTool('render_ui'));
+        self::assertCount(2, $noText->calls);
+
+        $failing = new EchoTool('render_ui');
+        $failing->fail = true;
+        $withError = new OneShotLlm([new LlmResponse([['type' => 'text', 'text' => 'Voici.'], ['type' => 'tool_use', 'id' => 'u', 'name' => 'render_ui', 'input' => []]], 'tool_use')]);
+        $this->run($withError, $failing);
+        self::assertCount(2, $withError->calls);
+    }
+
+    public function testModelIsToldWhenTheStepBudgetRunsLow(): void
+    {
+        $use = new LlmResponse([['type' => 'tool_use', 'id' => 'a', 'name' => 'echo', 'input' => ['text' => 'x']]], 'tool_use');
+        $llm = new OneShotLlm(array_fill(0, AgentRunner::MAX_STEPS, $use));
+        $this->run($llm, new EchoTool());
+
+        $lastBlock = static fn (int $call): array => end($llm->calls[$call]['messages'])['content'][array_key_last(end($llm->calls[$call]['messages'])['content'])];
+        self::assertSame('tool_result', $lastBlock(AgentRunner::MAX_STEPS - 3)['type']);
+        self::assertStringContainsString('Il te reste 2 étapes', $lastBlock(AgentRunner::MAX_STEPS - 2)['text']);
+        self::assertStringContainsString('Il te reste 1 étape ', $lastBlock(AgentRunner::MAX_STEPS - 1)['text']);
+    }
+
     private function run(LlmClient $llm, AgentTool $tool): ArrayEventSink
     {
         $sink = new ArrayEventSink();
@@ -205,10 +241,15 @@ final class ModelRobustnessTest extends TestCase
 final class EchoTool implements AgentTool
 {
     public int $calls = 0;
+    public bool $fail = false;
+
+    public function __construct(private readonly string $name = 'echo')
+    {
+    }
 
     public function name(): string
     {
-        return 'echo';
+        return $this->name;
     }
 
     public function description(): string
@@ -225,7 +266,7 @@ final class EchoTool implements AgentTool
     {
         ++$this->calls;
 
-        return ToolResult::json($input);
+        return ToolResult::json($input, $this->fail);
     }
 }
 
