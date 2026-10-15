@@ -233,7 +233,7 @@ final class AgentRunnerTest extends TestCase
         $ok = $tool->execute(['document' => $doc], $context);
         self::assertFalse($ok->isError, $ok->content);
         self::assertSame('artifact-preview', $sink->events[0]['name']);
-        self::assertSame('Quiz', $sink->events[0]['value']['document']['title']);
+        self::assertSame('Quiz', $sink->events[0]['value']['document']->title);
     }
 
     public function testEmptyObjectsSurviveAgentTools(): void
@@ -290,11 +290,20 @@ final class AgentRunnerTest extends TestCase
         ]);
         self::assertSame(['artifactSlug' => 'quiz-loire'], $input->appContext);
         $prompt = \App\Agent\SystemPrompt::artifacts(new \DateTimeImmutable('2026-10-08'), $input->appContext);
-        self::assertStringContainsString('get_artifact(slug)', $prompt);
+        self::assertStringContainsString('read_preview', $prompt);
         self::assertStringContainsString('quiz-loire', $prompt);
         self::assertStringContainsString('preview_artifact', $prompt);
         self::assertStringContainsString('ChoicePicker', $prompt);
 
+        $free = RunInput::fromArray(['threadId' => 't', 'runId' => 'r', 'messages' => [], 'forwardedProps' => ['atelier' => ['kits' => false]]]);
+        self::assertSame(['kits' => false], $free->appContext);
+        $withKits = \App\Agent\SystemPrompt::artifacts(new \DateTimeImmutable(), [], 'INDEX', '- quiz : …');
+        self::assertStringContainsString('raccourcis, pas un cadre', $withKits);
+        self::assertStringContainsString('## Kits', $withKits);
+        $without = \App\Agent\SystemPrompt::artifacts(new \DateTimeImmutable(), ['kits' => false], 'INDEX', '');
+        self::assertStringContainsString('composition libre', $without);
+        self::assertStringNotContainsString('start_from_kit', $without);
+        self::assertStringContainsString('find_icons', $without);
         $bad = RunInput::fromArray(['threadId' => 't', 'runId' => 'r', 'messages' => [], 'forwardedProps' => ['artifact' => ['slug' => '../x']]]);
         self::assertSame([], $bad->appContext);
         self::assertStringContainsString('publish_preview', \App\Agent\SystemPrompt::artifacts(new \DateTimeImmutable(), []));

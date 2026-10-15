@@ -46,6 +46,7 @@ final class ThreadStore
 
     public function save(string $scope, string $threadId, ThreadState $state): void
     {
+        $state = $state->withoutDrafts();
         $data = serialize($state);
         if (\strlen($data) > self::MAX_BYTES) {
             $state = $state->compacted();
@@ -61,6 +62,14 @@ final class ThreadStore
             $this->cache->save($item);
         } catch (\Throwable) {
             // Mémoire best-effort : l'agent repartira de l'historique texte.
+        }
+    }
+
+    public function forget(string $scope, string $threadId): void
+    {
+        try {
+            $this->cache->deleteItem($this->key($scope, $threadId));
+        } catch (\Throwable) {
         }
     }
 

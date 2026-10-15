@@ -1,0 +1,503 @@
+{
+ "id": "survey",
+ "title": "Sondage / formulaire",
+ "description": "Formulaire (choix unique ou multiple, oui/non, échelle, texte, nombre) dont les réponses sont enregistrées dans une collecte anonyme Tadaaa.",
+ "use": "sondage, inscription, questionnaire de satisfaction, appel à idées ; la collecte s'ouvre ensuite pour une durée limitée (open_artifact_intake)",
+ "params": {
+  "type": "object",
+  "required": [
+   "title",
+   "questions"
+  ],
+  "properties": {
+   "title": {
+    "type": "string",
+    "maxLength": 120
+   },
+   "intro": {
+    "type": "string",
+    "maxLength": 400
+   },
+   "collection": {
+    "type": "string",
+    "maxLength": 40,
+    "default": "reponses",
+    "description": "nom de la collecte [a-z0-9_]"
+   },
+   "maxRecords": {
+    "type": "integer",
+    "minimum": 1,
+    "maximum": 500,
+    "default": 200
+   },
+   "submit": {
+    "type": "string",
+    "maxLength": 40,
+    "default": "Envoyer"
+   },
+   "thanks": {
+    "type": "string",
+    "maxLength": 200,
+    "default": "Merci, ta réponse est enregistrée !"
+   },
+   "questions": {
+    "type": "array",
+    "minItems": 1,
+    "maxItems": 20,
+    "items": {
+     "type": "object",
+     "required": [
+      "id",
+      "label",
+      "type"
+     ],
+     "properties": {
+      "id": {
+       "type": "string",
+       "maxLength": 32,
+       "description": "identifiant [a-zA-Z][a-zA-Z0-9_]*"
+      },
+      "label": {
+       "type": "string",
+       "maxLength": 200
+      },
+      "type": {
+       "type": "string",
+       "enum": [
+        "choice",
+        "multi",
+        "yesno",
+        "scale",
+        "text",
+        "longtext",
+        "number"
+       ]
+      },
+      "options": {
+       "type": "array",
+       "maxItems": 20,
+       "items": {
+        "type": "string",
+        "maxLength": 60
+       },
+       "description": "choice / multi"
+      },
+      "min": {
+       "type": "number"
+      },
+      "max": {
+       "type": "number"
+      },
+      "required": {
+       "type": "boolean",
+       "default": false
+      }
+     }
+    }
+   }
+  }
+ },
+ "document": {
+  "schema": "artifacts/1",
+  "title": {
+   "$param": "title"
+  },
+  "defaultView": "form",
+  "data": {
+   "sources": {
+    "answers": {
+     "collection": {
+      "$param": "collection"
+     },
+     "intake": {
+      "maxRecords": {
+       "$param": "maxRecords"
+      },
+      "fields": {
+       "$eachKey": "questions",
+       "key": {
+        "$text": "{{.id}}"
+       },
+       "template": {
+        "$if": ".type=choice",
+        "then": {
+         "type": "enum",
+         "values": {
+          "$item": "options"
+         },
+         "required": {
+          "$item": "required",
+          "default": false
+         }
+        },
+        "else": {
+         "$if": ".type=yesno",
+         "then": {
+          "type": "enum",
+          "values": [
+           "Oui",
+           "Non"
+          ],
+          "required": {
+           "$item": "required",
+           "default": false
+          }
+         },
+         "else": {
+          "$if": ".type=scale",
+          "then": {
+           "type": "integer",
+           "min": {
+            "$item": "min",
+            "default": 1
+           },
+           "max": {
+            "$item": "max",
+            "default": 5
+           },
+           "required": {
+            "$item": "required",
+            "default": false
+           }
+          },
+          "else": {
+           "$if": ".type=number",
+           "then": {
+            "type": "number",
+            "min": {
+             "$item": "min",
+             "default": 0
+            },
+            "max": {
+             "$item": "max",
+             "default": 1000000
+            },
+            "required": {
+             "$item": "required",
+             "default": false
+            }
+           },
+           "else": {
+            "type": "string",
+            "max": 200,
+            "required": {
+             "$item": "required",
+             "default": false
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "sinks": {
+    "answers": {
+     "collection": {
+      "$param": "collection"
+     },
+     "from": "form.outbox",
+     "ack": "form"
+    }
+   },
+   "stores": {
+    "form": {
+     "reducer": "(\n  $s := $state; $a := $action; $t := $a.type;\n  $clean := function($p) { $merge([{}, $each($p, function($v, $k) {\n    $k = \"surfaceId\" or $k = \"sourceComponentId\" ? {} :\n    {$k: $type($v) = \"array\" ? $join($v, \", \") : $lookup($s.types, $k) = \"number\" and $type($v) = \"string\" ? ($v = \"\" ? null : $number($v)) : $v}\n  })]) };\n  $t = \"send\" ? (\n    $data := $clean($a.payload);\n    $miss := [$filter($s.required, function($r) { (\n      $v := $lookup($data, $r.id);\n      $not($exists($v)) or $v = \"\" or $v = null\n    ) })];\n    $count($miss) > 0 ? $merge([$s, {\"msg\": $s.txt.missing & \" \" & $join($miss.label, \", \")}]) :\n    $s.sending ? $s :\n    $merge([$s, {\"outbox\": $append($s.outbox, [{\"id\": $string($round($a.t)), \"data\": $data}]), \"sending\": true, \"msg\": $s.txt.sending}])\n  ) :\n  $t = \"sink:ok\" ? $merge([$s, {\"outbox\": [$filter($s.outbox, function($o) { $o.id != $a.payload.id })], \"sending\": false, \"sent\": $s.sent + 1, \"msg\": $s.txt.thanks}]) :\n  $t = \"sink:error\" ? $merge([$s, {\"outbox\": [$filter($s.outbox, function($o) { $o.id != $a.payload.id })], \"sending\": false, \"msg\": $s.txt.error}]) :\n  $s\n)",
+     "initial": {
+      "outbox": [],
+      "sending": false,
+      "sent": 0,
+      "msg": "",
+      "required": {
+       "$each": "questions",
+       "template": {
+        "$if": ".required",
+        "then": {
+         "id": {
+          "$item": "id"
+         },
+         "label": {
+          "$item": "label"
+         }
+        }
+       }
+      },
+      "types": {
+       "$eachKey": "questions",
+       "key": {
+        "$text": "{{.id}}"
+       },
+       "template": {
+        "$if": ".type=number|scale",
+        "then": "number",
+        "else": "text"
+       }
+      },
+      "txt": {
+       "missing": "Il manque :",
+       "sending": "Envoi…",
+       "thanks": {
+        "$param": "thanks"
+       },
+       "error": "L'envoi a échoué : la collecte est peut-être fermée. Réessaie plus tard."
+      }
+     }
+    }
+   }
+  },
+  "views": [
+   {
+    "id": "form",
+    "title": {
+     "$param": "title"
+    },
+    "actionStore": "form",
+    "a2uiBindings": {
+     "/store": "form"
+    },
+    "a2ui": [
+     {
+      "version": "v0.9",
+      "createSurface": {
+       "surfaceId": "form",
+       "catalogId": "https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json"
+      }
+     },
+     {
+      "version": "v0.9",
+      "updateComponents": {
+       "surfaceId": "form",
+       "components": [
+        {
+         "id": "root",
+         "component": "Column",
+         "children": [
+          "title",
+          {
+           "$if": "intro",
+           "then": "intro"
+          },
+          {
+           "$each": "questions",
+           "template": {
+            "$text": "f-{{.id}}"
+           }
+          },
+          "actions"
+         ]
+        },
+        {
+         "id": "title",
+         "component": "Text",
+         "variant": "h2",
+         "text": {
+          "$param": "title"
+         }
+        },
+        {
+         "$if": "intro",
+         "then": {
+          "id": "intro",
+          "component": "Text",
+          "text": {
+           "$param": "intro"
+          }
+         }
+        },
+        {
+         "$each": "questions",
+         "template": {
+          "$if": ".type=choice|multi|yesno",
+          "then": {
+           "id": {
+            "$text": "f-{{.id}}"
+           },
+           "component": "ChoicePicker",
+           "label": {
+            "$if": ".required",
+            "then": {
+             "$text": "{{.label}} *"
+            },
+            "else": {
+             "$item": "label"
+            }
+           },
+           "variant": {
+            "$if": ".type=multi",
+            "then": "multipleSelection",
+            "else": "mutuallyExclusive"
+           },
+           "options": {
+            "$if": ".type=yesno",
+            "then": [
+             {
+              "label": "Oui",
+              "value": "Oui"
+             },
+             {
+              "label": "Non",
+              "value": "Non"
+             }
+            ],
+            "else": [
+             {
+              "$each": ".options",
+              "template": {
+               "label": {
+                "$item": ""
+               },
+               "value": {
+                "$item": ""
+               }
+              }
+             }
+            ]
+           },
+           "value": {
+            "path": {
+             "$text": "/form/{{.id}}"
+            }
+           }
+          },
+          "else": {
+           "$if": ".type=scale",
+           "then": {
+            "id": {
+             "$text": "f-{{.id}}"
+            },
+            "component": "Slider",
+            "label": {
+             "$if": ".required",
+             "then": {
+              "$text": "{{.label}} *"
+             },
+             "else": {
+              "$item": "label"
+             }
+            },
+            "min": {
+             "$item": "min",
+             "default": 1
+            },
+            "max": {
+             "$item": "max",
+             "default": 5
+            },
+            "value": {
+             "path": {
+              "$text": "/form/{{.id}}"
+             }
+            }
+           },
+           "else": {
+            "id": {
+             "$text": "f-{{.id}}"
+            },
+            "component": "TextField",
+            "label": {
+             "$if": ".required",
+             "then": {
+              "$text": "{{.label}} *"
+             },
+             "else": {
+              "$item": "label"
+             }
+            },
+            "variant": {
+             "$if": ".type=longtext",
+             "then": "longText",
+             "else": {
+              "$if": ".type=number",
+              "then": "number",
+              "else": "shortText"
+             }
+            },
+            "value": {
+             "path": {
+              "$text": "/form/{{.id}}"
+             }
+            }
+           }
+          }
+         }
+        },
+        {
+         "id": "actions",
+         "component": "Row",
+         "align": "center",
+         "children": [
+          "send",
+          "status"
+         ]
+        },
+        {
+         "id": "send",
+         "component": "Button",
+         "variant": "primary",
+         "child": "send-l",
+         "action": {
+          "event": {
+           "name": "send",
+           "context": {
+            "$eachKey": "questions",
+            "key": {
+             "$text": "{{.id}}"
+            },
+            "template": {
+             "path": {
+              "$text": "/form/{{.id}}"
+             }
+            }
+           }
+          }
+         }
+        },
+        {
+         "id": "send-l",
+         "component": "Text",
+         "text": {
+          "$param": "submit"
+         }
+        },
+        {
+         "id": "status",
+         "component": "Text",
+         "text": {
+          "path": "/store/msg"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "version": "v0.9",
+      "updateDataModel": {
+       "surfaceId": "form",
+       "path": "/form",
+       "value": {
+        "$eachKey": "questions",
+        "key": {
+         "$text": "{{.id}}"
+        },
+        "template": {
+         "$if": ".type=choice|multi|yesno",
+         "then": [],
+         "else": {
+          "$if": ".type=scale",
+          "then": {
+           "$item": "min",
+           "default": 1
+          },
+          "else": ""
+         }
+        }
+       }
+      }
+     }
+    ]
+   }
+  ]
+ }
+}

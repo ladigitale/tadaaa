@@ -79,7 +79,7 @@ final class ArtifactDocumentValidator
         .'INSTRUMENT : sonic-patch preset="synth/lead|bass|pad|pluck|fm-bell|chip|drums/kick|snare|hat|kit" params=\'{"cutoff":900}\' (cutoff/reso, pad : attack, pluck : decay, chip : pw) events="dp.notes" trigger="dp.tick" (trigger = valeur qui change → rejoue events ; sans trigger : joué quand la liste change). '
         .'Événement : {note:"C4"|60, vel, durS, sample:"kick", type:note|noteOn|noteOff|param, when, id}. drums/kit : samples kick snare clap hat openhat. '
         .'PATCH MAIN : <sonic-patch><sonic-voice> modules joués par note </sonic-voice> modules globaux </sonic-patch>. Modules : sonic-osc (wave sine|square|sawtooth|triangle|pulse, freq-hz=voice.pitch, detune, octave, semi, level, fm, fm-amount), sonic-noise (color), sonic-mixer (in, levels), sonic-filter (type, freq-hz, q), sonic-vca (gain), sonic-env (a d s r), sonic-lfo (rate-hz | sync="1/8"), sonic-shaper, sonic-pan, sonic-delay (time s|"3/16", feedback, mix), sonic-reverb (size-s, mix), sonic-chorus, sonic-comp. '
-        .'Câblage : name + in="o1 o2" (sinon module précédent ; global : la somme des voix). Modulation : sonic-mod from="env|lfo|voice.vel|voice.pitch|voice.rand" to="flt.freq-hz" amount (curve="exp" : demi-tons) ; raccourci gain="aenv". sonic-param to="flt.freq-hz" source="dp.cutoff" ramp-s min max | expose="cutoff". Boucle audio seulement via sonic-delay. Kit : plusieurs sonic-voice sample="kick" note="C2". '
+        .'Câblage : name + in="o1 o2" (sinon module précédent ; global : la somme des voix). Modulation : sonic-mod from="env|lfo|voice.vel|voice.pitch|voice.rand" to="flt.freq-hz" amount (curve="exp" : demi-tons, seulement vers freq-hz de sonic-osc|filter|ladder|karplus|resonator) ; raccourci gain="aenv". PROFONDEUR D’UN LFO / D’UNE ENVELOPPE : elle n’existe pas sur le LFO, c’est l’amount (nombre fixe) du sonic-mod. Pour la régler avec un potard : NOMME le câble et pilote-le, <sonic-mod name="vib" from="lfo" to="o1.detune" amount="0"/> + <sonic-param to="vib.amount" source="ui.vib" min="0" max="100"/> (seul amount est pilotable ; demi-tons si curve="exp"). Jamais sonic-param to="lfo.amount", ni amount="dp.chemin" dans le sonic-mod. UNE SEULE ERREUR DE PATCH = AUCUN SON (le compilateur refuse tout) : donne un name à chaque module visé par un to/from ; to="module.paramètre" avec un paramètre modulable (freq-hz, detune, level, gain, res, q, pan, time, feedback, rate-hz…) ; un sonic-lfo sync="1/8" n’a plus de rate-hz modulable ; un module de voix ne module pas un module global. Le contrôle à la publication te renvoie ces erreurs.  sonic-param to="flt.freq-hz" source="dp.cutoff" ramp-s min max | expose="cutoff". Boucle audio seulement via sonic-delay. Kit : plusieurs sonic-voice sample="kick" note="C2". '
         .'SÉQUENCEUR : sonic-sequencer bpm swing seed control="dp.transport" ({playing,bpm,swing,pattern}) pattern=\'{"kit":{"kick":"x...x...x...x...","hat":"[..x.]*4"},"bass":{"notes":"0 ~ 2 [4 7]","scale":"a2:minor-pentatonic"},"lead":"<c5 e5 g5>"}\' (clé = id d’instrument ; ligne = 1 mesure : grille x/X/., [ ] sous-division, ~ silence, - tenue, <a b> alternance, *n, !n, @n, ?p, x(3,8,r) euclide, c4+e4 accord, degrés avec scale). '
         .'store="idStore" : le reducer reçoit {type:"step", payload:{step,beat,bar,phase,when,bpm}} en avance et écrit des notes avec when (augmenter budget-ms / lookahead-ms si le reducer est lourd). État <id>State : {playing, step, beat, bar, phase}. '
         .'SAMPLER : sonic-sampler samples=\'{"kick":"https://…/kick.wav","voix":{"ref":"rec.last","root":"C4"}}\' (https uniquement ; gain pan pitch root start end loop reverse gate) choke=\'[["hat","openhat"]]\'. '
@@ -127,7 +127,17 @@ final class ArtifactDocumentValidator
 
     private const DEFAULT_CONCORDE_VERSION = '5.1.0';
 
+    /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
+    public const LONG_RULES = ['a2ui', 'son', 'audio', 'media', 'physique', 'ia', 'collecte'];
+
     private readonly ArtifactA2uiValidator $a2uiValidator;
+
+    private readonly ArtifactIcons $icons;
+
+    private readonly ArtifactPatchLint $patchLint;
+
+    /** Bibliothèque (`library`) du descripteur en cours de validation, pour résoudre les libraryKey d'un patch. @var array<string, mixed> */
+    private array $library = [];
 
     private readonly string $concordeVersion;
 
@@ -142,8 +152,12 @@ final class ArtifactDocumentValidator
         private readonly ArtifactScriptsCatalog $scriptsCatalog,
         ?array $catalog = null,
         ?ArtifactA2uiValidator $a2uiValidator = null,
+        ?ArtifactIcons $icons = null,
+        ?ArtifactPatchLint $patchLint = null,
     ) {
+        $this->patchLint = $patchLint ?? new ArtifactPatchLint(\dirname($catalogPath).'/audio-patch.json');
         $this->a2uiValidator = $a2uiValidator ?? new ArtifactA2uiValidator();
+        $this->icons = $icons ?? new ArtifactIcons(\dirname($catalogPath).'/icons.json');
         $data = $catalog ?? $this->loadJson($this->catalogPath);
         $tags = $data['safeHtmlTags'] ?? [];
         foreach ($data['components'] ?? [] as $component) {
@@ -187,11 +201,12 @@ final class ArtifactDocumentValidator
      *
      * @return array<string, mixed>
      */
-    public function mcpCatalogPayload(bool $compact = true, ?array $components = null): array
+    public function mcpCatalogPayload(bool $compact = true, ?array $components = null, ?array $rules = null, bool $examples = true): array
     {
+        $withExamples = $examples;
         $examplesDir = \dirname($this->catalogPath).'/examples';
         $examples = [];
-        if (is_dir($examplesDir)) {
+        if ($withExamples && is_dir($examplesDir)) {
             foreach (glob($examplesDir.'/*.json') ?: [] as $file) {
                 $decoded = $this->loadJson($file);
                 if ($decoded !== []) {
@@ -212,7 +227,7 @@ final class ArtifactDocumentValidator
             $catalog = $this->compactCatalog($catalog);
         }
 
-        return [
+        $payload = [
             'catalog' => $catalog,
             'envelope' => [
                 'schema' => 'artifacts/1',
@@ -243,12 +258,62 @@ final class ArtifactDocumentValidator
                 'physique' => self::PHYSICS_RULE,
                 'ia' => $this->huggingFaceRule(),
                 'a2ui' => 'Vue A2UI v0.9 (alternative à root) : views[].a2ui = liste de messages {"version":"v0.9", createSurface|updateComponents|updateDataModel|deleteSurface}. Catalogue de base uniquement (catalogId '.ArtifactA2uiValidator::BASIC_CATALOG_ID.'). Composants : '.implode(', ', ArtifactA2uiValidator::SUPPORTED_COMPONENTS).'. Props : littéraux ou {"path":"/abs"} ; pas de call. CheckBox (value booléen), ChoicePicker (options [{label, value}], value = liste de chaînes, variant mutuallyExclusive|multipleSelection), Slider (min, max, value nombre), DateTimeInput (enableDate, enableTime, value ISO), Tabs (tabs [{title, child}]), Modal (trigger, content) ; libellés en texte littéral. Liste à gabarit : "children": {"path":"/items","componentId":"item"} — le sous-arbre "item" est répété par élément, chemins relatifs ("name") résolus sur l’élément ; imbrication possible. Composants dans n’importe quel ordre, "root" obligatoire. views[].actionStore = id d’un data.stores : un clic sur action.event devient {type: name, payload: {...context résolu, surfaceId, sourceComponentId}} dispatché au store (reducer, sinks). views[].a2uiBindings = {"/booking": "booking"} : l’état du store est recopié dans le data model des surfaces à ce chemin à chaque changement (lire avec {"path":"/booking/count"}). Gabarits SDUI chat:answer / chat:result-card / chat:confirm / chat:short-form / chat:actions et a2ui:<Composant> disponibles en libraryKey dans les vues root.',
+                'icones' => $this->icons->rule(),
                 'polices' => 'Optionnel : "fonts": ["Patrick Hand", "Fredoka:wght@400;700"] (4 max, noms Google Fonts, pas d’URL). Le viewer les charge ; utiliser ensuite font-family:\'Patrick Hand\',cursive dans les styles. Toujours prévoir une police de repli.',
                 'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
             ],
             'scripts' => $this->scriptsCatalog->mcpSummary(),
             'examples' => array_slice($examples, 0, 5),
         ];
+
+        if ($rules !== null && $rules !== []) {
+            $want = array_fill_keys($rules, true);
+            foreach (self::LONG_RULES as $topic) {
+                if (!isset($want[$topic])) {
+                    unset($payload['rules'][$topic]);
+                }
+            }
+            // Le détail des bibliothèques de scripts aussi, sur demande (`rules: ["scripts"]`).
+            if (!isset($want['scripts'])) {
+                unset($payload['scripts']);
+            }
+        }
+        if (!$withExamples) {
+            unset($payload['examples']);
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Sommaire du catalogue pour un prompt système (~1k tokens) : noms des composants par
+     * origine et thèmes de règles. Le détail se demande ensuite à get_artifact_catalog
+     * (`components`, `rules`) : on évite d'envoyer 20k tokens de catalogue au modèle.
+     */
+    public function catalogIndex(): string
+    {
+        $groups = [];
+        foreach ($this->catalog()['components'] ?? [] as $component) {
+            if (\is_array($component) && \is_string($component['name'] ?? null)) {
+                $groups[\is_string($component['addon'] ?? null) ? $component['addon'] : 'concorde'][] = $component['name'];
+            }
+        }
+        ksort($groups);
+        $lines = ['Concorde '.$this->concordeVersion().' — composants (tagName) :'];
+        foreach (['concorde' => $groups['concorde'] ?? []] + $groups as $group => $names) {
+            $lines[] = sprintf('- %s : %s', $group === 'concorde' ? 'UI' : 'addon '.$group, implode(', ', $names));
+        }
+        $payload = $this->mcpCatalogPayload(true, ['__none__'], null, false);
+        $lines[] = 'Balises HTML sûres : '.implode(', ', $payload['catalog']['safeHtmlTags'] ?? []).'.';
+        $lines[] = 'Règles longues (rules) : '.implode(', ', self::LONG_RULES).', scripts (détail des bibliothèques).';
+        $short = array_diff_key($payload['rules'], array_fill_keys(self::LONG_RULES, true));
+        $lines[] = 'Règles courtes : '.json_encode($short, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES);
+        $lines[] = 'Bibliothèques scripts (ids) : '.implode(', ', array_map(
+            static fn (mixed $l): string => \is_array($l) ? (string) ($l['id'] ?? '') : '',
+            $payload['scripts']['libraries'] ?? [],
+        ));
+
+        return implode("\n", $lines);
     }
 
     private static function firstSentence(string $text, int $max = 140): string
@@ -344,6 +409,7 @@ final class ArtifactDocumentValidator
         }
 
         $this->seenTags = [];
+        $this->library = [];
 
         if (($document['schema'] ?? null) !== 'artifacts/1') {
             $errors[] = ['path' => '/schema', 'message' => 'schema doit être "artifacts/1".'];
@@ -498,6 +564,8 @@ final class ArtifactDocumentValidator
             }
         }
 
+        $outerLibrary = $this->library;
+        $this->library = \is_array($descriptor['library'] ?? null) ? $descriptor['library'] : [];
         if (isset($descriptor['nodes'])) {
             if (!\is_array($descriptor['nodes'])) {
                 $errors[] = ['path' => $path.'/nodes', 'message' => 'nodes doit être un tableau.'];
@@ -511,6 +579,8 @@ final class ArtifactDocumentValidator
                 }
             }
         }
+
+        $this->library = $outerLibrary;
 
         foreach (array_keys($descriptor) as $key) {
             if (!\in_array($key, ['library', 'nodes'], true) && !\in_array($key, self::FORBIDDEN_DESCRIPTOR_KEYS, true)) {
@@ -570,6 +640,19 @@ final class ArtifactDocumentValidator
                         }
                     }
                 }
+            }
+        }
+
+        if ($tagName === 'sonic-patch') {
+            foreach ($this->patchLint->check($node, $this->library) as $message) {
+                $errors[] = ['path' => $path, 'message' => 'sonic-patch : '.$message];
+            }
+        }
+
+        if ($tagName === 'sonic-icon' && \is_array($node['attributes'] ?? [])) {
+            $msg = $this->icons->check($node['attributes'] ?? []);
+            if ($msg !== null) {
+                $errors[] = ['path' => $path.'/attributes', 'message' => $msg];
             }
         }
 

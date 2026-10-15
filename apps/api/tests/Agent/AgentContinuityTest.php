@@ -231,6 +231,119 @@ final class AgentContinuityTest extends TestCase
         self::assertSame([['role' => 'user', 'content' => 'nouveau']], $llm->calls[0]['messages']);
     }
 
+    public function testEditByPatchReadAndPublish(): void
+    {
+        $processor = new RecordingProcessor();
+        $doc = self::quiz();
+        $llm = new StreamingLlm([
+            self::toolCall('p1', 'preview_artifact', ['document' => $doc]),
+            self::reply('Aperçu prêt.'),
+            // Run 2 : lecture ciblée, patch invalide (refusé), patch valide, publication.
+            self::toolCall('r1', 'read_preview', []),
+            self::toolCall('r2', 'read_preview', ['path' => '/views/0/title']),
+            self::toolCall('e1', 'edit_preview', ['ops' => [['op' => 'remove', 'path' => '/views/0']]]),
+            self::toolCall('e2', 'edit_preview', ['ops' => [
+                ['op' => 'replace', 'path' => '/title', 'value' => 'Quiz de la Loire'],
+                ['op' => 'add', 'path' => '/data/stores/quiz/initial/answered2', 'value' => new \stdClass()],
+            ]]),
+            self::toolCall('u1', 'publish_preview', ['title' => 'Quiz de la Loire']),
+            self::reply('Publié.'),
+        ]);
+        $runner = $this->runner($llm, null, $processor);
+        $history = [['role' => 'user', 'content' => 'un quiz']];
+        $runner->run(self::input($history), new ArrayEventSink());
+        $history[] = ['role' => 'assistant', 'content' => 'Aperçu prêt.'];
+        $history[] = ['role' => 'user', 'content' => 'change le titre et publie'];
+        $sink = new ArrayEventSink();
+        $runner->run(self::input($history), $sink);
+
+        $results = [];
+        foreach ($llm->calls as $call) {
+            $last = $call['messages'][\count($call['messages']) - 1];
+            if (\is_array($last['content']) && ($last['content'][0]['type'] ?? null) === 'tool_result') {
+                $results[$last['content'][0]['tool_use_id']] = $last['content'][0];
+            }
+        }
+        self::assertStringContainsString('"views":[{"id":"q","title":"Quiz","a2ui":["{…', $results['r1']['content']);
+        self::assertSame('"Quiz"', $results['r2']['content']);
+        self::assertTrue($results['e1']['is_error'], $results['e1']['content']);
+        self::assertFalse($results['e2']['is_error'], $results['e2']['content']);
+
+        // Aperçu réémis après le patch, objets vides du document et du patch compris.
+        $previews = array_values(array_filter($sink->events, static fn (array $e): bool => ($e['name'] ?? null) === 'artifact-preview'));
+        self::assertCount(1, $previews);
+        $json = (string) json_encode($previews[0]['value']['document']);
+        self::assertStringContainsString('"title":"Quiz de la Loire"', $json);
+        self::assertStringContainsString('"answered":{}', $json);
+        self::assertStringContainsString('"answered2":{}', $json);
+        // Publication : le document patché.
+        $dto = $processor->calls[0]['dto'];
+        self::assertInstanceOf(PublishArtifactTool::class, $dto);
+        self::assertSame('Quiz de la Loire', $dto->document['title']);
+        self::assertSame(\count($doc['views']), \count($dto->document['views']));
+
+        // Mémoire : le document complet du run 1 n'est plus relu au run 2.
+        $sent = (string) json_encode($llm->calls[2]['messages'], JSON_UNESCAPED_UNICODE);
+        self::assertStringContainsString('document retiré de la mémoire', $sent);
+        self::assertStringNotContainsString('createSurface', $sent);
+    }
+
+    public function testDraftStartsFromTheEditedArtifact(): void
+    {
+        $processor = new RecordingProcessor();
+        $processor->stored = (string) json_encode(['title' => 'Existant', 'data' => ['x' => new \stdClass()]] + self::quiz());
+        $llm = new StreamingLlm([
+            self::toolCall('e1', 'edit_preview', ['ops' => [['op' => 'replace', 'path' => '/title', 'value' => 'Modifié']]]),
+            self::toolCall('u1', 'publish_preview', ['note' => 'titre']),
+            self::reply('Fait.'),
+        ]);
+        $input = RunInput::fromArray(['threadId' => 'edit', 'runId' => 'r', 'messages' => [['role' => 'user', 'content' => 'renomme']], 'forwardedProps' => ['artifact' => ['slug' => 'quiz-loire']]]);
+        $this->runner($llm, null, $processor)->run($input, new ArrayEventSink());
+
+        self::assertInstanceOf(\App\Mcp\Tool\GetArtifactTool::class, $processor->calls[0]['dto']);
+        $update = $processor->calls[1]['dto'];
+        self::assertInstanceOf(UpdateArtifactTool::class, $update);
+        self::assertSame('quiz-loire', $update->slug);
+        self::assertSame('Modifié', $update->document['title']);
+        self::assertStringContainsString('"x":{}', (string) json_encode($processor->calls[1]['context']['raw_arguments']));
+    }
+
+    public function testStartFromKitThenAdjust(): void
+    {
+        $processor = new RecordingProcessor();
+        $llm = new StreamingLlm([
+            self::toolCall('k0', 'start_from_kit', ['kit' => 'quiz', 'params' => ['title' => 'Q']]),
+            self::toolCall('k1', 'start_from_kit', ['kit' => 'quiz', 'params' => ['title' => 'Capitales', 'timer' => 10, 'speed' => true,
+                'questions' => [['question' => 'Capitale du Japon ?', 'answers' => ['Kyoto', 'Tokyo'], 'correct' => 1]]]]),
+            self::toolCall('e1', 'edit_preview', ['ops' => [['op' => 'replace', 'path' => '/views/0/title', 'value' => 'Jouer']]]),
+            self::toolCall('u1', 'publish_preview', []),
+            self::reply('Publié.'),
+        ]);
+        $sink = new ArrayEventSink();
+        $this->runner($llm, null, $processor)->run(self::input([['role' => 'user', 'content' => 'un quiz de vitesse sur les capitales']]), $sink);
+
+        $results = [];
+        foreach ($llm->calls as $call) {
+            $last = $call['messages'][\count($call['messages']) - 1];
+            if (\is_array($last['content']) && ($last['content'][0]['type'] ?? null) === 'tool_result') {
+                $results[$last['content'][0]['tool_use_id']] = $last['content'][0];
+            }
+        }
+        self::assertTrue($results['k0']['is_error']);
+        self::assertStringContainsString('params.questions : requis.', $results['k0']['content']);
+        self::assertFalse($results['k1']['is_error'], $results['k1']['content']);
+        self::assertFalse($results['e1']['is_error'], $results['e1']['content']);
+
+        $previews = array_values(array_filter($sink->events, static fn (array $e): bool => ($e['name'] ?? null) === 'artifact-preview'));
+        self::assertCount(2, $previews);
+        $doc = $processor->calls[0]['dto']->document;
+        self::assertSame('Capitales', $doc['title']);
+        self::assertSame('Jouer', $doc['views'][0]['title']);
+        self::assertStringContainsString('sonic-ticker', (string) json_encode($doc));
+        // Le modèle n'a écrit que des paramètres : rien de comparable à un document entier.
+        self::assertLessThan(400, \strlen((string) json_encode($llm->calls[1]['messages'][1]['content'])));
+    }
+
     public function testLargeTranscriptsAreCompacted(): void
     {
         $state = new ThreadState([
@@ -245,8 +358,18 @@ final class AgentContinuityTest extends TestCase
 
     private function runner(StreamingLlm $llm, ?ThreadStore $threads = null, ?RecordingProcessor $processor = null, bool $withCatalog = false): AgentRunner
     {
-        $validator = new ArtifactDocumentValidator(...self::validatorArgs());
-        $tools = [new PreviewArtifactTool($validator), new PublishPreviewTool($processor ?? new RecordingProcessor())];
+        $api = __DIR__.'/../../config/artifacts';
+        $validator = new ArtifactDocumentValidator($api.'/catalog.json', $api.'/sdui.schema.json', new \App\Service\ArtifactScriptsCatalog($api.'/scripts-catalog.json'));
+        $processor ??= new RecordingProcessor();
+        $drafts = new \App\Agent\Tool\DraftStore($processor);
+        $preview = new PreviewArtifactTool($validator, $drafts);
+        $tools = [
+            $preview,
+            new \App\Agent\Tool\EditPreviewTool($preview, $drafts),
+            new \App\Agent\Tool\ReadPreviewTool($drafts),
+            new PublishPreviewTool($processor, $drafts),
+            new \App\Agent\Tool\StartFromKitTool(new \App\Service\ArtifactKits(__DIR__.'/../../config/artifacts/kits'), $preview),
+        ];
         if ($withCatalog) {
             $tools[] = new StaticTool('get_artifact_catalog', '{"catalog":"…"}');
         }
@@ -272,8 +395,8 @@ final class AgentContinuityTest extends TestCase
     {
         $content = $text !== '' ? [['type' => 'text', 'text' => $text]] : [];
         $content[] = ['type' => 'tool_use', 'id' => $id, 'name' => $name, 'input' => $input];
-        // Arguments bruts tels qu'un vrai modèle les écrirait : `answered` est un objet vide.
-        $raw = json_decode(str_replace('"answered":[]', '"answered":{}', (string) json_encode((object) $input)), false);
+        // Arguments bruts tels qu'un vrai modèle les écrirait : `answered*` sont des objets vides.
+        $raw = json_decode((string) preg_replace('/"(answered\d*)":\[\]/', '"$1":{}', (string) json_encode((object) $input)), false);
 
         return new LlmResponse($content, 'tool_use', [$id => $raw]);
     }
@@ -340,9 +463,15 @@ final class RecordingProcessor implements ProcessorInterface
     /** @var list<array{dto: object, context: array<string, mixed>}> */
     public array $calls = [];
 
+    /** Document renvoyé par get_artifact (JSON brut, objets vides compris). */
+    public string $stored = '{}';
+
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): CallToolResult
     {
         $this->calls[] = ['dto' => $data, 'context' => $context];
+        if ($data instanceof \App\Mcp\Tool\GetArtifactTool) {
+            return new CallToolResult([new TextContent('{"slug":"'.$data->slug.'","document":'.$this->stored.'}')]);
+        }
         $slug = $data instanceof UpdateArtifactTool ? $data->slug : 'quiz-loire';
 
         return new CallToolResult([new TextContent(['id' => 'a1', 'slug' => $slug, 'url' => 'https://artifacts.test/'.$slug, 'version' => \count($this->calls)])]);
