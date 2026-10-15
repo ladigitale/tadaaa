@@ -44,6 +44,7 @@ final class AnthropicStreamParser
         $content = [];
         $rawContent = [];
         $rawInputs = [];
+        $invalid = [];
         foreach ($this->blocks as $block) {
             if ($block['type'] === 'text') {
                 if (($block['text'] ?? '') === '') {
@@ -56,6 +57,9 @@ final class AnthropicStreamParser
                 $json = $json === '' ? '{}' : $json;
                 $raw = json_decode($json, false);
                 $input = json_decode($json, true);
+                if (!$raw instanceof \stdClass) {
+                    $invalid[] = (string) $block['id'];
+                }
                 $raw = $raw instanceof \stdClass ? $raw : new \stdClass();
                 $content[] = [
                     'type' => 'tool_use',
@@ -68,7 +72,7 @@ final class AnthropicStreamParser
             }
         }
 
-        return new LlmResponse($content, $this->stopReason, $rawInputs, $rawContent);
+        return new LlmResponse($content, $this->stopReason, $rawInputs, $rawContent, $invalid);
     }
 
     private function frame(string $frame): void

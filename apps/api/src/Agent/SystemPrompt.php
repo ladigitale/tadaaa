@@ -91,6 +91,15 @@ final class SystemPrompt
             ## Sommaire du catalogue
             {$catalogIndex}
 
+            ## Économie d'étapes
+            Tu as un nombre d'étapes limité (chaque aller-retour avec les outils en compte une).
+            - Appelle ensemble, dans le même tour, les outils indépendants.
+            - preview_artifact valide déjà le document : n'appelle pas validate_artifact avant. Corrige toutes les
+              erreurs renvoyées en une seule réécriture, pas une par appel.
+            - Ne relis pas ce que tu viens d'écrire (get_artifact après un aperçu) et ne refais pas un appel déjà fait.
+            - Une phrase puis render_ui (boutons « Publier » / « Modifier encore ») dans le même tour : l'échange
+              se termine là, sans message de plus.
+
             {$ui}
             PROMPT;
     }
@@ -119,6 +128,8 @@ final class SystemPrompt
               Modal ("trigger", "content"), Card, Divider, Icon ("name"), Image ("url" https).
             - Les valeurs saisies sont lues par le contexte de l'action qui les envoie : {"path": "/form/titre"}.
             Si render_ui renvoie une erreur, corrige les composants et rappelle-le.
+            N'écris jamais de JSON A2UI dans ta réponse texte : l'interface passe toujours par render_ui. Les
+            arguments des outils sont du JSON strict (guillemets doubles, pas de commentaire ni de virgule finale).
 
             ## Messages d'interface
             Un message « [action] … » signale un clic sur une interface que tu as affichée, avec son contexte :
