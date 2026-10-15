@@ -6,18 +6,58 @@ namespace App\Agent\Llm;
 
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /** Appel JSON commun aux clients LLM : erreurs traduites en LlmUnavailable lisible. */
 final class LlmHttp
 {
+    /** Secondes sans rien recevoir avant de signaler au client que l'attente continue. */
+    public const HEARTBEAT_EVERY = 10.0;
+    /** Secondes sans rien recevoir avant d'abandonner (fournisseur muet). */
+    public const IDLE_LIMIT = 120.0;
+
+    /**
+     * Lit la réponse morceau par morceau. Pendant les silences, appelle `$stream->waiting()`
+     * toutes les HEARTBEAT_EVERY secondes ; au-delà de `$idleLimit` sans rien recevoir, abandonne.
+     *
+     * @param \Closure(string): void $onChunk
+     */
+    public static function consume(
+        HttpClientInterface $http,
+        ResponseInterface $response,
+        \Closure $onChunk,
+        ?LlmStream $stream = null,
+        float $idleLimit = self::IDLE_LIMIT,
+        float $heartbeat = self::HEARTBEAT_EVERY,
+    ): void {
+        $silent = 0.0;
+        foreach ($http->stream($response, $heartbeat) as $chunk) {
+            if ($chunk->isTimeout()) {
+                $silent += $heartbeat;
+                if ($silent >= $idleLimit) {
+                    $response->cancel();
+                    throw new LlmUnavailable(sprintf('Le fournisseur ne répond plus (rien reçu depuis %d s).', (int) $silent));
+                }
+                $stream?->waiting();
+                continue;
+            }
+            if ($chunk->isFirst()) {
+                $response->getStatusCode(); // statut « lu » : une erreur 4xx/5xx ne lève pas ici, l'appelant la lit ensuite
+            }
+            $silent = 0.0;
+            $onChunk($chunk->getContent());
+        }
+    }
+
     /**
      * @param array<string, string> $headers
      * @param array<string, mixed>  $body
      * @param string|null           $raw  reçoit le corps brut de la réponse
+     * @param LlmStream|null        $stream signalé pendant l'attente (génération sans flux)
      *
      * @return array<string, mixed>
      */
-    public static function postJson(HttpClientInterface $http, string $url, array $headers, array $body, ?string &$raw = null): array
+    public static function postJson(HttpClientInterface $http, string $url, array $headers, array $body, ?string &$raw = null, ?LlmStream $stream = null): array
     {
         try {
             $response = $http->request('POST', $url, [
@@ -27,6 +67,13 @@ final class LlmHttp
                 'timeout' => 300,
                 'max_redirects' => 0,
             ]);
+            if ($stream !== null) {
+                // Sans flux, la réponse n'arrive qu'à la fin : on attend par tranches pour signaler la vie.
+                $buffer = '';
+                self::consume($http, $response, static function (string $c) use (&$buffer): void {
+                    $buffer .= $c;
+                }, $stream);
+            }
             $status = $response->getStatusCode();
             $data = $response->toArray(false);
             $raw = $response->getContent(false);

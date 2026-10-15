@@ -39,7 +39,18 @@ final class OpenAiLlmClient implements LlmClient
                 'function' => ['name' => $t['name'], 'description' => $t['description'], 'parameters' => $t['input_schema']],
             ], $tools);
         }
-        $data = LlmHttp::postJson($this->http, rtrim($this->baseUrl, '/').'/chat/completions', $headers, $body);
+        $url = rtrim($this->baseUrl, '/').'/chat/completions';
+        try {
+            $data = LlmHttp::postJson($this->http, $url, $headers, $body, $raw, $stream);
+        } catch (LlmUnavailable $e) {
+            // Modèles de raisonnement (o1, o3, gpt-5…) : `max_tokens` est refusé au profit de `max_completion_tokens`.
+            if (!str_contains($e->getMessage(), 'max_completion_tokens')) {
+                throw $e;
+            }
+            unset($body['max_tokens']);
+            $body['max_completion_tokens'] = $this->maxTokens;
+            $data = LlmHttp::postJson($this->http, $url, $headers, $body, $raw, $stream);
+        }
 
         return self::fromOpenAiResponse($data);
     }
@@ -106,22 +117,39 @@ final class OpenAiLlmClient implements LlmClient
         $message = \is_array($choice['message'] ?? null) ? $choice['message'] : [];
         $blocks = [];
         $rawInputs = [];
-        if (\is_string($message['content'] ?? null) && trim($message['content']) !== '') {
-            $blocks[] = ['type' => 'text', 'text' => $message['content']];
+        $invalid = [];
+        $text = self::contentText($message['content'] ?? null);
+        if ($text !== '') {
+            $blocks[] = ['type' => 'text', 'text' => $text];
         }
-        foreach (\is_array($message['tool_calls'] ?? null) ? $message['tool_calls'] : [] as $i => $call) {
+        $seen = [];
+        foreach (\is_array($message['tool_calls'] ?? null) ? $message['tool_calls'] : [] as $call) {
+            if (!\is_array($call)) {
+                continue;
+            }
             $function = \is_array($call['function'] ?? null) ? $call['function'] : [];
-            $json = (string) ($function['arguments'] ?? '{}');
+            // Selon le fournisseur, `arguments` est une chaîne JSON, un objet déjà décodé, ou absent/vide (outil sans paramètre).
+            $arguments = $function['arguments'] ?? '';
+            $json = \is_string($arguments) ? trim($arguments) : (\is_array($arguments) || $arguments instanceof \stdClass ? json_encode($arguments) : '');
+            $json = \in_array($json, ['', 'null', '[]'], true) ? '{}' : (string) $json;
             $args = json_decode($json, true);
-            $id = (string) ($call['id'] ?? 'call_'.$i);
             $raw = json_decode($json, false);
-            if ($raw instanceof \stdClass) {
+            // Id absent ou répété (certains serveurs locaux renvoient « call_0 » à chaque étape) : l'id doit être unique.
+            $id = \is_string($call['id'] ?? null) && $call['id'] !== '' ? $call['id'] : '';
+            if ($id === '' || isset($seen[$id])) {
+                $id = 'call_'.bin2hex(random_bytes(6));
+            }
+            $seen[$id] = true;
+            $name = (string) ($function['name'] ?? '');
+            if (!$raw instanceof \stdClass || !\is_array($args) || $name === '') {
+                $invalid[] = $id;
+            } else {
                 $rawInputs[$id] = $raw;
             }
             $blocks[] = [
                 'type' => 'tool_use',
                 'id' => $id,
-                'name' => (string) ($function['name'] ?? ''),
+                'name' => $name,
                 'input' => \is_array($args) ? $args : [],
             ];
         }
@@ -131,6 +159,28 @@ final class OpenAiLlmClient implements LlmClient
             'tool_calls' => 'tool_use',
             'length' => 'max_tokens',
             default => 'end_turn',
-        }, $rawInputs);
+        }, $rawInputs, null, $invalid);
+    }
+
+    /** `content` est une chaîne, ou (Mistral, certains proxys) une liste de parties `{type: text, text}`. */
+    private static function contentText(mixed $content): string
+    {
+        if (\is_string($content)) {
+            return trim($content) === '' ? '' : $content;
+        }
+        if (!\is_array($content)) {
+            return '';
+        }
+        $parts = [];
+        foreach ($content as $part) {
+            if (\is_string($part)) {
+                $parts[] = $part;
+            } elseif (\is_array($part) && \is_string($part['text'] ?? null)) {
+                $parts[] = $part['text'];
+            }
+        }
+        $text = implode('', $parts);
+
+        return trim($text) === '' ? '' : $text;
     }
 }

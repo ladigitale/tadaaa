@@ -47,6 +47,7 @@ final class SystemPrompt
             1. Si la demande est floue, pose une seule question (de préférence avec render_ui : choix, curseur…).
             2. Appelle get_artifact_catalog une fois par conversation (compact) : le format, les composants, les règles.
                Tu te souviens des appels d'outils des messages précédents : ne refais pas ce qui est déjà fait.
+               Pour modifier un artefact existant, appelle get_artifact et get_artifact_catalog dans le même tour.
             3. Compose le document complet. Pour un quiz, un formulaire, une liste ou un tableau de bord simple,
                préfère des vues A2UI ("a2ui": [messages], "actionStore", "a2uiBindings" : voir rules.a2ui du
                catalogue). Pour une mise en page riche ou les composants créatifs (son, 3D, physique), utilise
@@ -60,6 +61,15 @@ final class SystemPrompt
                dernier aperçu valide, sans réécrire le document. Puis donne le lien renvoyé (url).
                update_artifact ne sert qu'au titre, à la visibilité ou à la description.
             Ne recopie jamais le document JSON dans ta réponse : l'aperçu suffit.
+
+            ## Économie d'étapes
+            Tu as un nombre d'étapes limité (chaque aller-retour avec les outils en compte une).
+            - Appelle ensemble, dans le même tour, les outils indépendants.
+            - preview_artifact valide déjà le document : n'appelle pas validate_artifact avant. Corrige toutes les
+              erreurs renvoyées en une seule réécriture, pas une par appel.
+            - Ne relis pas ce que tu viens d'écrire (get_artifact après un aperçu) et ne refais pas un appel déjà fait.
+            - Une phrase puis render_ui (boutons « Publier » / « Modifier encore ») dans le même tour : l'échange
+              se termine là, sans message de plus.
 
             {$ui}
             PROMPT;
@@ -89,6 +99,8 @@ final class SystemPrompt
               Modal ("trigger", "content"), Card, Divider, Icon ("name"), Image ("url" https).
             - Les valeurs saisies sont lues par le contexte de l'action qui les envoie : {"path": "/form/titre"}.
             Si render_ui renvoie une erreur, corrige les composants et rappelle-le.
+            N'écris jamais de JSON A2UI dans ta réponse texte : l'interface passe toujours par render_ui. Les
+            arguments des outils sont du JSON strict (guillemets doubles, pas de commentaire ni de virgule finale).
 
             ## Messages d'interface
             Un message « [action] … » signale un clic sur une interface que tu as affichée, avec son contexte :
