@@ -128,7 +128,7 @@ final class ArtifactDocumentValidator
     private const DEFAULT_CONCORDE_VERSION = '5.1.0';
 
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
-    public const LONG_RULES = ['a2ui', 'son', 'audio', 'media', 'physique', 'collecte'];
+    public const LONG_RULES = ['a2ui', 'son', 'audio', 'media', 'physique', 'ia', 'collecte'];
 
     private readonly ArtifactA2uiValidator $a2uiValidator;
 
