@@ -23,6 +23,8 @@ use Symfony\Component\Uid\Uuid;
 final class AgentRunner
 {
     public const MAX_STEPS = 8;
+    /** Libellé d'état envoyé pendant les silences du fournisseur (`CUSTOM status`). */
+    public const WAITING_STATUS = 'Le modèle réfléchit…';
 
     public function __construct(
         private readonly LlmClient $llm,
@@ -56,6 +58,10 @@ final class AgentRunner
         $now = $this->clock ? ($this->clock)() : new \DateTimeImmutable();
         $system = $this->systemPrompt ? ($this->systemPrompt)($input, $now) : SystemPrompt::build($now);
         $tools = $this->toolbox->schemas();
+        $started0 = microtime(true);
+        $stats = ['steps' => 0, 'toolCalls' => 0, 'toolErrors' => 0, 'invalidArguments' => 0];
+        // Texte ou outil produit pendant le run : un run sans rien de tout ça est un échec du modèle, pas un succès.
+        $produced = false;
 
         try {
             for ($step = 0; $step < self::MAX_STEPS; ++$step) {
@@ -74,7 +80,12 @@ final class AgentRunner
                         $started[$id] = true;
                         $sink->emit(['type' => 'TOOL_CALL_START', 'toolCallId' => $id, 'toolCallName' => $name]);
                     },
+                    // Génération longue ou sans flux : un événement régulier évite que le client croie l'agent mort.
+                    static function () use ($sink): void {
+                        $sink->emit(['type' => 'CUSTOM', 'name' => 'status', 'value' => self::WAITING_STATUS]);
+                    },
                 );
+                ++$stats['steps'];
                 $response = $this->llm->complete($system, $messages, $tools, $stream);
                 if ($textId !== null) {
                     $sink->emit(['type' => 'TEXT_MESSAGE_END', 'messageId' => $textId]);
@@ -86,12 +97,21 @@ final class AgentRunner
 
                 $uses = $response->toolUses();
                 $truncated = $response->stopReason === 'max_tokens';
+                $produced = $produced || $textId !== null || $response->text() !== '' || $uses !== [];
                 if ($uses === []) {
+                    if (!$produced) {
+                        // Réponse vide (modèle qui « décroche », filtre du fournisseur…) : le dire, avec un code que le chat sait relancer.
+                        $this->logger->warning('agent run: empty model response', ['runId' => $input->runId, 'stopReason' => $response->stopReason] + $stats);
+                        $sink->emit(['type' => 'RUN_ERROR', 'code' => 'EMPTY_RESPONSE', 'message' => 'Le modèle n’a rien répondu. Réessaie, ou choisis un autre modèle dans les réglages de l’agent.']);
+
+                        return;
+                    }
                     if ($truncated) {
                         $this->emitText($sink, '(Réponse coupée : limite de longueur atteinte.)');
                     }
                     $this->remember($input, $messages, $context);
                     $sink->emit(['type' => 'RUN_FINISHED', 'threadId' => $input->threadId, 'runId' => $input->runId]);
+                    $this->logger->info('agent run finished', ['runId' => $input->runId, 'ms' => (int) ((microtime(true) - $started0) * 1000)] + $stats);
 
                     return;
                 }
@@ -105,12 +125,22 @@ final class AgentRunner
                         $result = ToolResult::json(['error' => 'Appel interrompu : ta réponse a atteint la limite de longueur '
                             .'avant la fin des arguments. Rappelle l’outil avec un contenu plus compact '
                             .'(moins de texte, gabarits et listes à gabarit plutôt que des blocs répétés).'], true);
+                    } elseif ($use['invalid']) {
+                        // JSON d'arguments mal formé : ne pas exécuter avec `{}` (le modèle croirait avoir agi).
+                        ++$stats['invalidArguments'];
+                        $result = ToolResult::json(['error' => sprintf(
+                            'Arguments de %s invalides : ce n’est pas un objet JSON valide%s. Rappelle l’outil avec des arguments JSON corrects.',
+                            $use['name'] !== '' ? $use['name'] : 'l’outil',
+                            $use['name'] === '' ? ' (nom d’outil manquant)' : '',
+                        )], true);
                     } else {
                         $sink->emit(['type' => 'TOOL_CALL_ARGS', 'toolCallId' => $use['id'], 'delta' => json_encode((object) $use['input'], JSON_UNESCAPED_UNICODE)]);
                         $context->rawInput = $use['raw'];
                         $result = $this->toolbox->execute($use['name'], $use['input'], $context);
                         $context->rawInput = null;
                     }
+                    ++$stats['toolCalls'];
+                    $stats['toolErrors'] += $result->isError ? 1 : 0;
                     $sink->emit(['type' => 'TOOL_CALL_END', 'toolCallId' => $use['id']]);
                     $results[] = [
                         'type' => 'tool_result',
@@ -121,6 +151,7 @@ final class AgentRunner
                 }
                 $messages[] = ['role' => 'user', 'content' => $results];
             }
+            $this->logger->warning('agent run: step limit', ['runId' => $input->runId] + $stats);
             $this->emitText($sink, 'Je m’arrête là : la demande a demandé trop d’étapes. Dis-moi de continuer, ou découpe-la.');
             $messages[] = ['role' => 'assistant', 'content' => '(Arrêt : limite d’étapes atteinte.)'];
             $this->remember($input, $messages, $context);
@@ -212,7 +243,8 @@ final class AgentRunner
             );
         }
         if ($input->a2uiErrors !== []) {
-            $notes[] = '[erreurs d’interface] '.json_encode($input->a2uiErrors, JSON_UNESCAPED_UNICODE);
+            $notes[] = '[erreurs d’interface] '.json_encode($input->a2uiErrors, JSON_UNESCAPED_UNICODE)
+                .' — si elles viennent d’une interface que tu as affichée, corrige-la avec render_ui (même surfaceId) ; sinon ignore-les.';
         }
 
         return $notes === [] ? [] : [['role' => 'user', 'content' => mb_substr(implode("\n", $notes), 0, RunInput::MAX_CHARS)]];

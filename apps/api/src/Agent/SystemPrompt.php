@@ -89,6 +89,8 @@ final class SystemPrompt
               Modal ("trigger", "content"), Card, Divider, Icon ("name"), Image ("url" https).
             - Les valeurs saisies sont lues par le contexte de l'action qui les envoie : {"path": "/form/titre"}.
             Si render_ui renvoie une erreur, corrige les composants et rappelle-le.
+            N'écris jamais de JSON A2UI dans ta réponse texte : l'interface passe toujours par render_ui. Les
+            arguments des outils sont du JSON strict (guillemets doubles, pas de commentaire ni de virgule finale).
 
             ## Messages d'interface
             Un message « [action] … » signale un clic sur une interface que tu as affichée, avec son contexte :

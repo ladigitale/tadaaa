@@ -109,9 +109,9 @@ final class AnthropicLlmClient implements LlmClient
                 $data = json_decode($response->getContent(false), true);
                 throw LlmHttp::failure($status, \is_array($data) ? $data : []);
             }
-            foreach ($this->http->stream($response) as $chunk) {
-                $parser->push($chunk->getContent());
-            }
+            LlmHttp::consume($this->http, $response, static function (string $chunk) use ($parser): void {
+                $parser->push($chunk);
+            }, $stream);
         } catch (ExceptionInterface $e) {
             throw LlmHttp::unreachable($e);
         }
