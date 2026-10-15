@@ -229,21 +229,32 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertFalse($result['valid']);
     }
 
-    public function testAcceptsHuggingFaceModelAlias(): void
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function goodHuggingFaceModels(): iterable
     {
-        foreach (array_keys(ArtifactDocumentValidator::HF_MODEL_ALIASES) as $alias) {
-            $doc = $this->minimalDoc();
-            $doc['views'][0]['root']['nodes'][0] = [
-                'tagName' => 'sonic-hugging-face-infer',
-                'attributes' => [
-                    'model' => $alias,
-                    'inputProvider' => 'text',
-                    'outputProvider' => 'out',
-                ],
-            ];
-            $result = $this->validator->validate($doc);
-            self::assertTrue($result['valid'], $alias.' : '.json_encode($result['errors']));
-        }
+        yield 'raccourci depth-small' => ['depth-small'];
+        yield 'raccourci zero-shot' => ['zero-shot'];
+        yield 'org/nom' => ['Xenova/distilbert-base-uncased-finetuned-sst-2-english'];
+        yield 'org/nom avec points' => ['onnx-community/whisper-tiny.en'];
+        yield 'url du modèle' => ['https://huggingface.co/Xenova/depth-anything-small-hf'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('goodHuggingFaceModels')]
+    public function testAcceptsHuggingFaceModel(string $model): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'][0] = [
+            'tagName' => 'sonic-hugging-face-infer',
+            'attributes' => [
+                'model' => $model,
+                'inputProvider' => 'text',
+                'outputProvider' => 'out',
+            ],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], $model.' : '.json_encode($result['errors']));
     }
 
     /**
@@ -251,14 +262,16 @@ final class ArtifactDocumentValidatorTest extends TestCase
      */
     public static function badHuggingFaceModels(): iterable
     {
-        yield 'url libre' => ['https://evil.example/model'];
-        yield 'url hub' => ['https://huggingface.co/Xenova/depth-anything-small-hf'];
-        yield 'id org/nom' => ['microsoft/TRELLIS'];
-        yield 'alias inconnu' => ['gpt-4'];
+        yield 'autre domaine' => ['https://evil.example/Xenova/model'];
+        yield 'domaine imitant le hub' => ['https://huggingface.co.evil.example/a/b'];
+        yield 'chemin trop long' => ['a/b/c'];
+        yield 'espace' => ['org/mon modele'];
+        yield 'schéma javascript' => ['javascript:alert(1)'];
+        yield 'nom seul inconnu' => ['gpt-4'];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('badHuggingFaceModels')]
-    public function testRejectsModelOutsideAllowlist(string $model): void
+    public function testRejectsBadHuggingFaceModel(string $model): void
     {
         $doc = $this->minimalDoc();
         $doc['views'][0]['root']['nodes'][0] = [
@@ -273,6 +286,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
     {
         $rules = $this->validator->mcpCatalogPayload()['rules'];
         self::assertArrayHasKey('ia', $rules);
+        self::assertStringContainsString('org/nom', $rules['ia']);
         foreach (array_keys(ArtifactDocumentValidator::HF_MODEL_ALIASES) as $alias) {
             self::assertStringContainsString($alias, $rules['ia']);
         }

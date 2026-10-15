@@ -92,19 +92,20 @@ final class ArtifactDocumentValidator
         .'États : <id>State de chaque composant (status idle tant que le son n’est pas actif, errors lisibles). Volumes : garder gain ≤ 0.6 par instrument, le master est limité.';
 
     /**
-     * Alias de modèles déclarés par le viewer (ladigitale/artifacts, src/app/hf-config.ts).
-     * `model` est un alias de cette liste blanche, jamais un identifiant Hugging Face libre :
-     * à garder synchronisé avec le viewer (un alias inconnu laisse le composant inactif).
+     * Raccourcis de modèles déclarés par le viewer (ladigitale/artifacts, src/app/hf-config.ts).
+     * Facultatifs : `model` accepte aussi n'importe quel `org/nom` (ou URL huggingface.co/org/nom),
+     * que le viewer résout via l'API du Hub avant le rendu (tâche, révision, dtype, taille).
      *
      * @var array<string, string> alias => description (reprise dans les règles du catalogue)
      */
     public const HF_MODEL_ALIASES = [
-        'depth-small' => 'depth-estimation : photo (URL, data URL ou prise caméra) → carte de profondeur {width, height, url}, ≈ 27 Mo, CPU',
-        'zero-shot' => 'zero-shot-classification : texte anglais + étiquettes (options {"call":{"candidate_labels":["a","b"]}}) → {labels, scores}, ≈ 25 Mo, CPU',
+        'depth-small' => 'Xenova/depth-anything-small-hf : photo → carte de profondeur, ≈ 27 Mo',
+        'zero-shot' => 'Xenova/mobilebert-uncased-mnli : classement de texte anglais, ≈ 25 Mo',
     ];
 
-    private const HF_RULE = 'INFÉRENCE LOCALE (Transformers.js, le calcul reste dans le navigateur) : <sonic-hugging-face-infer model="<alias>" inputProvider="dp.entree" outputProvider="dp.sortie" statusProvider="dp.statut" load="consent|first-use" trigger="mutation|demand" triggerProvider="dp.clic">. '
-        .'`model` est UN ALIAS de la liste blanche du viewer, jamais un id Hugging Face (org/nom) ni une URL ; modèles lourds ou génératifs (TRELLIS, Stable Fast 3D, VGGT, LLM…) indisponibles. Alias : %s. '
+    private const HF_RULE = 'INFÉRENCE LOCALE (Transformers.js, le calcul reste dans le navigateur) : <sonic-hugging-face-infer model="org/nom" inputProvider="dp.entree" outputProvider="dp.sortie" statusProvider="dp.statut" load="consent|first-use" trigger="mutation|demand" triggerProvider="dp.clic" options=\'{"call":{…}}\'>. '
+        .'`model` : identifiant Hugging Face `org/nom` (ou https://huggingface.co/org/nom) d\'un modèle PUBLIC avec poids ONNX (ex. Xenova/…, onnx-community/…), ou un raccourci : %s. '
+        .'Le viewer lit sa fiche sur le Hub : la tâche vient de son pipeline_tag. Tâches supportées : feature-extraction, text-classification, zero-shot-classification, translation, token-classification, fill-mask, question-answering, image-classification, zero-shot-image-classification, object-detection, zero-shot-object-detection, image-feature-extraction, image-segmentation, depth-estimation, image-to-text, audio-classification, automatic-speech-recognition. Pas de génération libre (text-generation, text-to-image, 3D…), pas de modèle gated, 600 Mo max. Un modèle refusé laisse le composant inactif (raison dans la console). '
         .'Entrée : texte, image (URL https, data URL, prise caméra snapshot-provider). Sortie en lecture seule, images produites {width, height, url} chaînables dans sonic-shader channel0 / sonic-image. '
         .'Statut statusProvider : {state: idle|empty|awaiting-consent|downloading|loading|ready|running|done|invalid-input|error|unsupported, progress:{percent}, size:{totalMB}, error:{code,message}} ; load="consent" : afficher une invite tant que state = awaiting-consent (consentProvider="dp.accepted", valeur "accepted"). Rien ne se télécharge tant que l’entrée est vide.';
 
@@ -265,7 +266,7 @@ final class ArtifactDocumentValidator
      *
      * @return array<string, mixed>
      */
-    /** Règle « ia » du catalogue : liste des alias de modèles avec ce que chacun produit. */
+    /** Règle « ia » du catalogue : syntaxe de `model`, tâches supportées et raccourcis. */
     private function huggingFaceRule(): string
     {
         $aliases = [];
@@ -772,8 +773,11 @@ final class ArtifactDocumentValidator
             }
         }
         if ($tagName === 'sonic-hugging-face-infer' && $attrLower === 'model') {
-            if (!array_key_exists($value, self::HF_MODEL_ALIASES)) {
-                return 'model HF : alias de la liste blanche du viewer ('.implode(', ', array_keys(self::HF_MODEL_ALIASES)).'), pas d’identifiant Hugging Face ni d’URL.';
+            $ok = array_key_exists($value, self::HF_MODEL_ALIASES)
+                || (bool) preg_match('#^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$#', $value)
+                || (bool) preg_match('#^https://(www\.)?huggingface\.co/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/?$#i', $value);
+            if (!$ok) {
+                return 'model HF : org/nom, https://huggingface.co/org/nom, ou raccourci ('.implode(', ', array_keys(self::HF_MODEL_ALIASES)).').';
             }
         }
         if ($tagName === 'sonic-3d' && $attrLower === 'src') {
