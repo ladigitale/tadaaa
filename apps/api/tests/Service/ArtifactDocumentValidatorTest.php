@@ -229,30 +229,67 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertFalse($result['valid']);
     }
 
-    public function testAcceptsHuggingFaceModelId(): void
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function goodHuggingFaceModels(): iterable
+    {
+        yield 'raccourci depth-small' => ['depth-small'];
+        yield 'raccourci zero-shot' => ['zero-shot'];
+        yield 'org/nom' => ['Xenova/distilbert-base-uncased-finetuned-sst-2-english'];
+        yield 'org/nom avec points' => ['onnx-community/whisper-tiny.en'];
+        yield 'url du modèle' => ['https://huggingface.co/Xenova/depth-anything-small-hf'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('goodHuggingFaceModels')]
+    public function testAcceptsHuggingFaceModel(string $model): void
     {
         $doc = $this->minimalDoc();
         $doc['views'][0]['root']['nodes'][0] = [
             'tagName' => 'sonic-hugging-face-infer',
             'attributes' => [
-                'model' => 'Xenova/distilbert-base-uncased-finetuned-sst-2-english',
+                'model' => $model,
                 'inputProvider' => 'text',
                 'outputProvider' => 'out',
             ],
         ];
         $result = $this->validator->validate($doc);
-        self::assertTrue($result['valid'], json_encode($result['errors']));
+        self::assertTrue($result['valid'], $model.' : '.json_encode($result['errors']));
     }
 
-    public function testRejectsBadHuggingFaceModel(): void
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function badHuggingFaceModels(): iterable
+    {
+        yield 'autre domaine' => ['https://evil.example/Xenova/model'];
+        yield 'domaine imitant le hub' => ['https://huggingface.co.evil.example/a/b'];
+        yield 'chemin trop long' => ['a/b/c'];
+        yield 'espace' => ['org/mon modele'];
+        yield 'schéma javascript' => ['javascript:alert(1)'];
+        yield 'nom seul inconnu' => ['gpt-4'];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('badHuggingFaceModels')]
+    public function testRejectsBadHuggingFaceModel(string $model): void
     {
         $doc = $this->minimalDoc();
         $doc['views'][0]['root']['nodes'][0] = [
             'tagName' => 'sonic-hugging-face-infer',
-            'attributes' => ['model' => 'https://evil.example/model'],
+            'attributes' => ['model' => $model],
         ];
         $result = $this->validator->validate($doc);
-        self::assertFalse($result['valid']);
+        self::assertFalse($result['valid'], $model);
+    }
+
+    public function testCatalogRulesListHuggingFaceAliases(): void
+    {
+        $rules = $this->validator->mcpCatalogPayload()['rules'];
+        self::assertArrayHasKey('ia', $rules);
+        self::assertStringContainsString('org/nom', $rules['ia']);
+        foreach (array_keys(ArtifactDocumentValidator::HF_MODEL_ALIASES) as $alias) {
+            self::assertStringContainsString($alias, $rules['ia']);
+        }
     }
 
     public function testAcceptsSonicStoreAndMatrix(): void
