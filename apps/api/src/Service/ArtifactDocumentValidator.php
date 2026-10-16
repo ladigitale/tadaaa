@@ -260,7 +260,8 @@ final class ArtifactDocumentValidator
                     .'TEXTES : un nœud SDUI n’a pas de contenu texte ; tout texte affiché vient d’un sonic-value lisant un store (reducer "$state" pour des textes fixes) ou une transform. '
                     .'PIÈGES : (1) le nom d’un dataProvider ou d’un target n’est pas vérifié par la validation : une faute de frappe donne un composant vide sans erreur, relis chaque nom contre data.stores / data.transforms / data.sources / sonic-store id ; '
                     .'(2) pas de textes dans le store relié par dataProvider à un composant qui en recopie les clés en propriétés (sonic-shader) : mets-les dans un store séparé ; '
-                    .'(3) une liste de longueur variable (cartes, lignes) se fait en vue A2UI (children {path, componentId}), pas en SDUI.',
+                    .'(3) une liste de longueur variable (cartes, lignes) se fait en vue A2UI (children {path, componentId}), pas en SDUI. '
+                    .'DONNÉES RÉELLES : l’atelier récupère des données avec search_public_apis / fetch_public_api (catalogue d’APIs publiques, pas d’URL libre) et les copie dans data.stores.<nom>.initial : la page publiée affiche un instantané, elle n’appelle pas ces APIs.',
                 'son' => self::SOUND_RULE,
                 'audio' => self::AUDIO_RULE,
                 'media' => self::MEDIA_RULE,
