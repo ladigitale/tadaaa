@@ -251,7 +251,16 @@ final class ArtifactDocumentValidator
                 'scripts' => 'Optionnel: tableau d’IDs du catalogue scripts (voir scripts.libraries[].id). Ex: ["chartjs","leaflet"]. Pas d’URL, pas de balise <script>.',
                 'tagName' => 'Uniquement composants Concorde (sonic-*) ou balises HTML sûres du catalogue.',
                 'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent. views[].hidden = true : vue absente des onglets (accessible par son #id).',
-                'interactive' => 'sonic-store + keyboard/gamepad/gesture/action/ticker + sonic-matrix.',
+                'interactive' => 'sonic-store + keyboard/gamepad/gesture/action/ticker + sonic-matrix. Câblage des données : voir la règle « donnees ».',
+                'donnees' => 'Un DataProvider (DP) est un nom : les composants le lisent avec dataProvider="nom", les actions l’écrivent avec target="nom". '
+                    .'DÉCLARER : (a) data.stores.<nom> = {initial: objet, reducer: JSONata ($state, $action = {type, payload}), dataProvider?: défaut = nom}, présent quelle que soit la vue ; '
+                    .'ou, dans une vue, <sonic-store id="nom" initial="<JSON en chaîne>" reducer="…"> ; (b) data.transforms.<nom> = {jsonata} : publie le résultat, peut lire les data.sources par leur nom ; (c) data.sources.<nom> = {collection} : publie {member:[…]}. '
+                    .'LIRE : sur le composant d’affichage, dataProvider="nom" + key="chemin.pointé" (ex. "cur.answers.0") : sonic-value (affiche le texte), sonic-if (+ equals="valeur", comparée en chaîne : equals="false"), sonic-matrix (key = tableau de cellules), sonic-shader (le DP fournit les uParam). '
+                    .'ÉCRIRE : <sonic-action target="nom du store" type="nom-action" payload=\'{"a":1}\'> enveloppe le bouton ; le reducer reçoit $action.type et $action.payload (objets en chaîne JSON dans les attributs). '
+                    .'TEXTES : un nœud SDUI n’a pas de contenu texte ; tout texte affiché vient d’un sonic-value lisant un store (reducer "$state" pour des textes fixes) ou une transform. '
+                    .'PIÈGES : (1) le nom d’un dataProvider ou d’un target n’est pas vérifié par la validation : une faute de frappe donne un composant vide sans erreur, relis chaque nom contre data.stores / data.transforms / data.sources / sonic-store id ; '
+                    .'(2) pas de textes dans le store relié par dataProvider à un composant qui en recopie les clés en propriétés (sonic-shader) : mets-les dans un store séparé ; '
+                    .'(3) une liste de longueur variable (cartes, lignes) se fait en vue A2UI (children {path, componentId}), pas en SDUI.',
                 'son' => self::SOUND_RULE,
                 'audio' => self::AUDIO_RULE,
                 'media' => self::MEDIA_RULE,

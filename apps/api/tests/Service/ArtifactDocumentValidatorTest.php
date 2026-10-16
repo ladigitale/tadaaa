@@ -292,6 +292,18 @@ final class ArtifactDocumentValidatorTest extends TestCase
         }
     }
 
+    public function testCatalogDocumentsDataProviderWiring(): void
+    {
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], null, false);
+        self::assertArrayHasKey('donnees', $payload['rules']);
+        foreach (['data.stores', 'data.transforms', 'dataProvider="nom"', 'sonic-action target=', 'sonic-value'] as $needle) {
+            self::assertStringContainsString($needle, $payload['rules']['donnees']);
+        }
+        // Règle courte : toujours présente dans le sommaire injecté dans le prompt de l'atelier.
+        self::assertNotContains('donnees', ArtifactDocumentValidator::LONG_RULES);
+        self::assertStringContainsString('donnees', $this->validator->catalogIndex());
+    }
+
     public function testAcceptsSonicStoreAndMatrix(): void
     {
         $doc = $this->minimalDoc();
