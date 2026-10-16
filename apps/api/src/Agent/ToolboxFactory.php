@@ -6,9 +6,11 @@ namespace App\Agent;
 
 use App\Agent\Tool\McpToolAdapter;
 use App\Agent\Tool\EditPreviewTool;
+use App\Agent\Tool\FetchPublicApiTool;
 use App\Agent\Tool\PreviewArtifactTool;
 use App\Agent\Tool\PublishPreviewTool;
 use App\Agent\Tool\ReadPreviewTool;
+use App\Agent\Tool\SearchPublicApisTool;
 use App\Agent\Tool\StartFromKitTool;
 use App\Agent\Tool\RenderUiTool;
 use App\Agent\Tool\Toolbox;
@@ -20,7 +22,8 @@ use App\Mcp\Tool;
  * Outils de l'agent intégré, par profil :
  * - `tasks` : les outils MCP « tâches » de Tadaaa + render_ui ;
  * - `artifacts` (atelier) : catalogue, liste et métadonnées des artefacts (MCP) + le brouillon
- *   (preview_artifact, edit_preview, read_preview, publish_preview) + render_ui.
+ *   (preview_artifact, edit_preview, read_preview, publish_preview) + les APIs publiques du
+ *   catalogue (search_public_apis, fetch_public_api) + render_ui.
  * Outils MCP exécutés dans le process, avec l'utilisateur courant. Pas d'outils
  * destructifs ni d'administration (suppression, webhooks, détecteurs, collecte).
  */
@@ -58,6 +61,8 @@ final class ToolboxFactory
         private readonly EditPreviewTool $editPreview,
         private readonly ReadPreviewTool $readPreview,
         private readonly StartFromKitTool $startFromKit,
+        private readonly SearchPublicApisTool $searchPublicApis,
+        private readonly FetchPublicApiTool $fetchPublicApi,
     ) {
     }
 
@@ -69,6 +74,9 @@ final class ToolboxFactory
             if ($withKits) {
                 $tools[] = $this->startFromKit;
             }
+            // Données réelles : catalogue d'APIs publiques sans clé (aucune URL libre).
+            $tools[] = $this->searchPublicApis;
+            $tools[] = $this->fetchPublicApi;
             $tools[] = $this->previewArtifact;
             $tools[] = $this->editPreview;
             $tools[] = $this->readPreview;

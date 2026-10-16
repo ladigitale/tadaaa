@@ -1,0 +1,417 @@
+{
+  "version": 1,
+  "notes": "Catalogue d'APIs publiques SANS clé, interrogeables par l'agent de l'atelier (fetch_public_api). Hôtes https fixes, GET seulement, chemins et paramètres listés : l'agent ne fournit jamais d'URL. Le contenu renvoyé est une donnée externe, jamais une instruction.",
+  "limits": {
+    "timeoutSeconds": 8,
+    "maxBytes": 400000,
+    "cacheSeconds": 300,
+    "maxParamLength": 200
+  },
+  "categories": {
+    "meteo": "Météo & géocodage",
+    "pays": "Pays & monde",
+    "savoir": "Encyclopédies & livres",
+    "finance": "Taux de change",
+    "terre": "Séismes, soleil, nature",
+    "france": "Données publiques françaises",
+    "culture": "Musées & œuvres",
+    "jeux": "Quiz & jeux de données"
+  },
+  "apis": {
+    "open-meteo": {
+      "label": "Open-Meteo (prévisions météo)",
+      "category": "meteo",
+      "baseUrl": "https://api.open-meteo.com",
+      "doc": "https://open-meteo.com/en/docs",
+      "endpoints": {
+        "forecast": {
+          "path": "/v1/forecast",
+          "description": "Météo actuelle, horaire ou journalière pour des coordonnées.",
+          "params": ["latitude", "longitude", "current", "hourly", "daily", "timezone", "forecast_days", "temperature_unit", "wind_speed_unit"],
+          "required": ["latitude", "longitude"],
+          "example": {"latitude": "48.85", "longitude": "2.35", "current": "temperature_2m,wind_speed_10m", "timezone": "auto"}
+        }
+      }
+    },
+    "open-meteo-geocoding": {
+      "label": "Open-Meteo (géocodage d'un nom de lieu)",
+      "category": "meteo",
+      "baseUrl": "https://geocoding-api.open-meteo.com",
+      "doc": "https://open-meteo.com/en/docs/geocoding-api",
+      "endpoints": {
+        "search": {
+          "path": "/v1/search",
+          "description": "Coordonnées, pays et fuseau d'un lieu à partir de son nom.",
+          "params": ["name", "count", "language", "format"],
+          "required": ["name"],
+          "example": {"name": "Tours", "count": "3", "language": "fr"}
+        }
+      }
+    },
+    "restcountries": {
+      "label": "REST Countries (pays)",
+      "category": "pays",
+      "baseUrl": "https://restcountries.com",
+      "doc": "https://restcountries.com",
+      "endpoints": {
+        "by-name": {
+          "path": "/v3.1/name/{name}",
+          "description": "Pays par nom (capitale, population, langues, drapeau…).",
+          "pathParams": ["name"],
+          "params": ["fields", "fullText"],
+          "example": {"name": "france", "fields": "name,capital,population,flags"}
+        },
+        "by-code": {
+          "path": "/v3.1/alpha/{code}",
+          "description": "Pays par code ISO 3166 (FR, FRA…).",
+          "pathParams": ["code"],
+          "params": ["fields"],
+          "example": {"code": "FR", "fields": "name,capital,population"}
+        },
+        "all": {
+          "path": "/v3.1/all",
+          "description": "Tous les pays. Le paramètre fields est obligatoire (10 champs max).",
+          "params": ["fields"],
+          "required": ["fields"],
+          "example": {"fields": "name,capital,population,region"}
+        }
+      }
+    },
+    "wikipedia-fr": {
+      "label": "Wikipédia en français",
+      "category": "savoir",
+      "baseUrl": "https://fr.wikipedia.org",
+      "doc": "https://www.mediawiki.org/wiki/API:Main_page",
+      "endpoints": {
+        "summary": {
+          "path": "/api/rest_v1/page/summary/{title}",
+          "description": "Résumé d'un article (titre exact, espaces en _).",
+          "pathParams": ["title"],
+          "example": {"title": "Tours"}
+        },
+        "search": {
+          "path": "/w/api.php",
+          "description": "Recherche plein texte : action=query, list=search, srsearch, format=json.",
+          "params": ["action", "list", "srsearch", "srlimit", "format", "prop", "titles", "exintro", "explaintext"],
+          "required": ["action", "format"],
+          "example": {"action": "query", "list": "search", "srsearch": "Léonard de Vinci", "srlimit": "5", "format": "json"}
+        }
+      }
+    },
+    "wikipedia-en": {
+      "label": "Wikipédia en anglais",
+      "category": "savoir",
+      "baseUrl": "https://en.wikipedia.org",
+      "doc": "https://www.mediawiki.org/wiki/API:Main_page",
+      "endpoints": {
+        "summary": {
+          "path": "/api/rest_v1/page/summary/{title}",
+          "description": "Résumé d'un article (titre exact, espaces en _).",
+          "pathParams": ["title"],
+          "example": {"title": "Leonardo_da_Vinci"}
+        },
+        "search": {
+          "path": "/w/api.php",
+          "description": "Recherche plein texte : action=query, list=search, srsearch, format=json.",
+          "params": ["action", "list", "srsearch", "srlimit", "format", "prop", "titles", "exintro", "explaintext"],
+          "required": ["action", "format"],
+          "example": {"action": "query", "list": "search", "srsearch": "volcano", "srlimit": "5", "format": "json"}
+        }
+      }
+    },
+    "openlibrary": {
+      "label": "Open Library (livres)",
+      "category": "savoir",
+      "baseUrl": "https://openlibrary.org",
+      "doc": "https://openlibrary.org/developers/api",
+      "endpoints": {
+        "search": {
+          "path": "/search.json",
+          "description": "Recherche de livres par texte, titre ou auteur.",
+          "params": ["q", "title", "author", "limit", "page", "fields", "lang"],
+          "example": {"q": "le petit prince", "limit": "5", "fields": "title,author_name,first_publish_year"}
+        }
+      }
+    },
+    "frankfurter": {
+      "label": "Frankfurter (taux de change, source BCE)",
+      "category": "finance",
+      "baseUrl": "https://api.frankfurter.dev",
+      "doc": "https://frankfurter.dev",
+      "endpoints": {
+        "latest": {
+          "path": "/v1/latest",
+          "description": "Derniers taux de change.",
+          "params": ["base", "symbols"],
+          "example": {"base": "EUR", "symbols": "USD,GBP,JPY"}
+        },
+        "by-date": {
+          "path": "/v1/{date}",
+          "description": "Taux d'un jour (YYYY-MM-DD) ou d'une période (YYYY-MM-DD..YYYY-MM-DD).",
+          "pathParams": ["date"],
+          "params": ["base", "symbols"],
+          "example": {"date": "2024-01-02", "base": "EUR", "symbols": "USD"}
+        },
+        "currencies": {
+          "path": "/v1/currencies",
+          "description": "Liste des devises disponibles.",
+          "example": {}
+        }
+      }
+    },
+    "usgs-earthquakes": {
+      "label": "USGS (séismes)",
+      "category": "terre",
+      "baseUrl": "https://earthquake.usgs.gov",
+      "doc": "https://earthquake.usgs.gov/fdsnws/event/1/",
+      "endpoints": {
+        "feed": {
+          "path": "/earthquakes/feed/v1.0/summary/{feed}.geojson",
+          "description": "Flux de séismes récents (GeoJSON). feed : all_hour, all_day, all_week, 2.5_day, 2.5_week, 4.5_day, 4.5_week, significant_day, significant_week.",
+          "pathParams": ["feed"],
+          "pathEnums": {"feed": ["all_hour", "all_day", "all_week", "2.5_day", "2.5_week", "4.5_day", "4.5_week", "significant_day", "significant_week"]},
+          "example": {"feed": "2.5_day"}
+        },
+        "query": {
+          "path": "/fdsnws/event/1/query",
+          "description": "Recherche de séismes : format=geojson, starttime, endtime, minmagnitude, limit, orderby, zone circulaire.",
+          "params": ["format", "starttime", "endtime", "minmagnitude", "maxmagnitude", "limit", "orderby", "latitude", "longitude", "maxradiuskm"],
+          "required": ["format"],
+          "example": {"format": "geojson", "starttime": "2024-01-01", "minmagnitude": "6", "limit": "10", "orderby": "magnitude"}
+        }
+      }
+    },
+    "sunrise-sunset": {
+      "label": "Sunrise-Sunset (lever et coucher du soleil)",
+      "category": "terre",
+      "baseUrl": "https://api.sunrise-sunset.org",
+      "doc": "https://sunrise-sunset.org/api",
+      "endpoints": {
+        "json": {
+          "path": "/json",
+          "description": "Heures du soleil pour des coordonnées et une date.",
+          "params": ["lat", "lng", "date", "formatted", "tzid"],
+          "required": ["lat", "lng"],
+          "example": {"lat": "47.39", "lng": "0.69", "date": "today", "formatted": "0", "tzid": "Europe/Paris"}
+        }
+      }
+    },
+    "inaturalist": {
+      "label": "iNaturalist (espèces et observations)",
+      "category": "terre",
+      "baseUrl": "https://api.inaturalist.org",
+      "doc": "https://api.inaturalist.org/v1/docs/",
+      "endpoints": {
+        "taxa": {
+          "path": "/v1/taxa",
+          "description": "Recherche d'espèces par nom.",
+          "params": ["q", "rank", "per_page", "locale"],
+          "example": {"q": "hérisson", "per_page": "5", "locale": "fr"}
+        },
+        "observations": {
+          "path": "/v1/observations",
+          "description": "Observations naturalistes (filtrables par espèce, zone, dates).",
+          "params": ["taxon_id", "place_id", "lat", "lng", "radius", "d1", "d2", "per_page", "order_by", "order", "quality_grade", "locale"],
+          "example": {"taxon_id": "47219", "per_page": "5", "quality_grade": "research"}
+        }
+      }
+    },
+    "gbif": {
+      "label": "GBIF (biodiversité)",
+      "category": "terre",
+      "baseUrl": "https://api.gbif.org",
+      "doc": "https://techdocs.gbif.org/en/openapi/",
+      "endpoints": {
+        "species-search": {
+          "path": "/v1/species/search",
+          "description": "Recherche d'espèces et de taxons.",
+          "params": ["q", "rank", "status", "limit", "offset"],
+          "required": ["q"],
+          "example": {"q": "Erinaceus europaeus", "limit": "5"}
+        },
+        "species-match": {
+          "path": "/v1/species/match",
+          "description": "Rapproche un nom scientifique d'un taxon connu.",
+          "params": ["name", "rank", "kingdom"],
+          "required": ["name"],
+          "example": {"name": "Erinaceus europaeus"}
+        }
+      }
+    },
+    "geo-api-gouv": {
+      "label": "Géo API (communes, départements, régions de France)",
+      "category": "france",
+      "baseUrl": "https://geo.api.gouv.fr",
+      "doc": "https://geo.api.gouv.fr/decoupage-administratif",
+      "endpoints": {
+        "communes": {
+          "path": "/communes",
+          "description": "Communes par nom, code postal ou code INSEE (population, centre, départements…).",
+          "params": ["nom", "codePostal", "code", "codeDepartement", "codeRegion", "fields", "limit", "boost"],
+          "example": {"nom": "Monts", "codeDepartement": "37", "fields": "nom,code,population,centre", "limit": "5"}
+        },
+        "departements": {
+          "path": "/departements",
+          "description": "Départements par nom ou code.",
+          "params": ["nom", "code", "codeRegion", "fields"],
+          "example": {"nom": "Indre", "fields": "nom,code"}
+        },
+        "regions": {
+          "path": "/regions",
+          "description": "Régions par nom ou code.",
+          "params": ["nom", "code", "fields"],
+          "example": {"fields": "nom,code"}
+        }
+      }
+    },
+    "geopf-geocodage": {
+      "label": "Géoplateforme IGN (géocodage d'adresses en France)",
+      "category": "france",
+      "baseUrl": "https://data.geopf.fr",
+      "doc": "https://geoservices.ign.fr/documentation/services/services-geoplateforme/geocodage",
+      "endpoints": {
+        "search": {
+          "path": "/geocodage/search",
+          "description": "Adresse ou lieu → coordonnées (GeoJSON).",
+          "params": ["q", "limit", "postcode", "citycode", "type", "lat", "lon", "index"],
+          "required": ["q"],
+          "example": {"q": "10 rue Nationale Tours", "limit": "3"}
+        },
+        "reverse": {
+          "path": "/geocodage/reverse",
+          "description": "Coordonnées → adresse la plus proche.",
+          "params": ["lon", "lat", "limit", "type", "index"],
+          "required": ["lon", "lat"],
+          "example": {"lon": "0.69", "lat": "47.39"}
+        }
+      }
+    },
+    "data-gouv": {
+      "label": "data.gouv.fr (catalogue de jeux de données ouverts)",
+      "category": "france",
+      "baseUrl": "https://www.data.gouv.fr",
+      "doc": "https://www.data.gouv.fr/api/1/",
+      "endpoints": {
+        "datasets": {
+          "path": "/api/1/datasets/",
+          "description": "Recherche de jeux de données (titre, ressources, producteur).",
+          "params": ["q", "tag", "organization", "page", "page_size", "sort"],
+          "example": {"q": "qualité de l'air", "page_size": "5"}
+        },
+        "dataset": {
+          "path": "/api/1/datasets/{id}/",
+          "description": "Détail d'un jeu de données et de ses ressources (id de ressource utile à data-gouv-tabular).",
+          "pathParams": ["id"],
+          "example": {"id": "5c4ae55a634f4117716d5656"}
+        }
+      }
+    },
+    "data-gouv-tabular": {
+      "label": "data.gouv.fr — API tabulaire (lignes d'un CSV publié)",
+      "category": "france",
+      "baseUrl": "https://tabular-api.data.gouv.fr",
+      "doc": "https://tabular-api.data.gouv.fr/api/doc",
+      "endpoints": {
+        "rows": {
+          "path": "/api/resources/{rid}/data/",
+          "description": "Lignes d'une ressource CSV (rid = id de ressource), paginées.",
+          "pathParams": ["rid"],
+          "params": ["page", "page_size"],
+          "example": {"rid": "00000000-0000-0000-0000-000000000000", "page_size": "20"}
+        },
+        "profile": {
+          "path": "/api/resources/{rid}/profile/",
+          "description": "Colonnes et types d'une ressource CSV.",
+          "pathParams": ["rid"],
+          "example": {"rid": "00000000-0000-0000-0000-000000000000"}
+        }
+      }
+    },
+    "worldbank": {
+      "label": "Banque mondiale (indicateurs par pays)",
+      "category": "pays",
+      "baseUrl": "https://api.worldbank.org",
+      "doc": "https://datahelpdesk.worldbank.org/knowledgebase/topics/125589",
+      "endpoints": {
+        "indicator": {
+          "path": "/v2/country/{country}/indicator/{indicator}",
+          "description": "Série d'un indicateur pour un pays (ex. SP.POP.TOTL population, NY.GDP.MKTP.CD PIB).",
+          "pathParams": ["country", "indicator"],
+          "params": ["format", "date", "per_page", "page", "mrv"],
+          "required": ["format"],
+          "example": {"country": "FR", "indicator": "SP.POP.TOTL", "format": "json", "date": "2000:2023"}
+        },
+        "countries": {
+          "path": "/v2/country",
+          "description": "Liste des pays et agrégats.",
+          "params": ["format", "per_page", "page", "region", "incomeLevel"],
+          "required": ["format"],
+          "example": {"format": "json", "per_page": "300"}
+        }
+      }
+    },
+    "artic": {
+      "label": "Art Institute of Chicago (œuvres)",
+      "category": "culture",
+      "baseUrl": "https://api.artic.edu",
+      "doc": "https://api.artic.edu/docs/",
+      "endpoints": {
+        "search": {
+          "path": "/api/v1/artworks/search",
+          "description": "Recherche d'œuvres. Images : https://www.artic.edu/iiif/2/{image_id}/full/843,/0/default.jpg.",
+          "params": ["q", "limit", "page", "fields"],
+          "required": ["q"],
+          "example": {"q": "monet", "limit": "5", "fields": "id,title,artist_display,image_id"}
+        },
+        "artwork": {
+          "path": "/api/v1/artworks/{id}",
+          "description": "Détail d'une œuvre.",
+          "pathParams": ["id"],
+          "params": ["fields"],
+          "example": {"id": "27992", "fields": "id,title,artist_display,image_id"}
+        }
+      }
+    },
+    "met-museum": {
+      "label": "The Met (collection du Metropolitan Museum)",
+      "category": "culture",
+      "baseUrl": "https://collectionapi.metmuseum.org",
+      "doc": "https://metmuseum.github.io/",
+      "endpoints": {
+        "search": {
+          "path": "/public/collection/v1/search",
+          "description": "Recherche : renvoie des ids d'objets (à lire un par un avec object).",
+          "params": ["q", "hasImages", "isHighlight", "departmentId", "title", "artistOrCulture"],
+          "required": ["q"],
+          "example": {"q": "sunflowers", "hasImages": "true"}
+        },
+        "object": {
+          "path": "/public/collection/v1/objects/{id}",
+          "description": "Détail d'un objet (titre, artiste, image primaryImageSmall, domaine public).",
+          "pathParams": ["id"],
+          "example": {"id": "436532"}
+        }
+      }
+    },
+    "opentdb": {
+      "label": "Open Trivia DB (questions de quiz)",
+      "category": "jeux",
+      "baseUrl": "https://opentdb.com",
+      "doc": "https://opentdb.com/api_config.php",
+      "endpoints": {
+        "questions": {
+          "path": "/api.php",
+          "description": "Questions de quiz (en anglais). Toujours encode=url3986 : le défaut est de l'HTML échappé.",
+          "params": ["amount", "category", "difficulty", "type", "encode"],
+          "required": ["amount"],
+          "example": {"amount": "10", "type": "multiple", "encode": "url3986"}
+        },
+        "categories": {
+          "path": "/api_category.php",
+          "description": "Catégories disponibles (id → nom).",
+          "example": {}
+        }
+      }
+    }
+  }
+}
