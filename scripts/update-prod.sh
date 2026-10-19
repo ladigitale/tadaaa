@@ -164,6 +164,12 @@ fi
 need_cmd docker
 need_cmd curl
 
+# Avec le viewer cohébergé, php monte aussi son dist/ (outil MCP render_artifact) :
+# l'overlay doit faire partie de la pile principale, sinon php est recréé sans le volume.
+if [[ -n "${ARTIFACTS_DIST:-}" && -f "$ROOT/compose.prod.artifacts-cohost.yaml" ]]; then
+  COMPOSE+=(-f compose.prod.artifacts-cohost.yaml)
+fi
+
 info "Building front (VITE_API_BASE_URL=https://${api_host})…"
 # Use monorepo root yarn.lock (Concorde 4.9.x). Do not install from apps/web alone —
 # apps/web/yarn.lock can pin an older Concorde and break tsc (ApiResult, @post, …).

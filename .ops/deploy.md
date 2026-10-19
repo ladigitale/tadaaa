@@ -36,6 +36,8 @@ This:
 4. `docker compose -f compose.prod.yaml up -d --build`
 5. Runs Doctrine migrations
 
+Avec `ARTIFACTS_DIST` (viewer cohébergé), le `dist/` est aussi monté dans le conteneur `php` (`/viewer-dist`, variable `RENDER_VIEWER_DIST`) : l'outil MCP `render_artifact` s'en sert pour rendre les artefacts dans Chromium. Sans `ARTIFACTS_DIST`, le tool répond « rendu indisponible » ; `simulate_store` et le contrôle JSONata n'en dépendent pas.
+
 If `MAILER_DSN` is still `null://null`, set Infomaniak SMTP in `.env` then recreate PHP:
 
 ```bash
