@@ -279,7 +279,7 @@ final class ArtifactDocumentValidator
                     .'Ou pars du kit shader (start_from_kit : shader GLSL + jusqu’à 4 réglages « controls » déjà câblés), puis ajuste avec edit_preview.',
                 'icones' => $this->icons->rule(),
                 'polices' => 'Optionnel : "fonts": ["Patrick Hand", "Fredoka:wght@400;700"] (4 max, noms Google Fonts, pas d’URL). Le viewer les charge ; utiliser ensuite font-family:\'Patrick Hand\',cursive dans les styles. Toujours prévoir une police de repli.',
-                'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée (24 h max) ; intake.permanent:true = toujours ouverte (pas de session, garde au plus maxRecords en évinçant le pire ou le plus ancien, minInterval 3 s par défaut) ; intake.unique:{field:"nom",keep:"max:score"} = un seul record par valeur de field (keep : max:<champ>|min:<champ>|last), idéal pour un classement (meilleur score par pseudo). Lecture triée/bornée côté serveur : GET …/collections/<x>?sort=-score&limit=5 (read_artifact_data accepte sort et limit). data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
+                'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée (24 h max) ; intake.permanent:true = toujours ouverte (pas de session, garde au plus maxRecords en évinçant le pire ou le plus ancien, minInterval 3 s par défaut) ; intake.unique:{field:"nom",keep:"max:score"} = un seul record par valeur de field (keep : max:<champ>|min:<champ>|last), idéal pour un classement (meilleur score par pseudo). Lecture triée/bornée côté serveur : data.sources.<x> accepte sort (\"-score\") et limit (5) ; l’API accepte ?sort=-score&limit=5 et read_artifact_data aussi. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
             ],
             'scripts' => $this->scriptsCatalog->mcpSummary(),
             'examples' => array_slice($examples, 0, 5),
@@ -806,6 +806,12 @@ final class ArtifactDocumentValidator
                     }
                     if (isset($src['publicRead']) && !\is_bool($src['publicRead'])) {
                         $errors[] = ['path' => $path.'/sources/'.$name.'/publicRead', 'message' => 'publicRead doit être un booléen.'];
+                    }
+                    if (isset($src['sort']) && (!\is_string($src['sort']) || !preg_match('/^[-+]?[a-zA-Z][a-zA-Z0-9_]{0,31}(,[-+]?[a-zA-Z][a-zA-Z0-9_]{0,31}){0,2}$/', $src['sort']))) {
+                        $errors[] = ['path' => $path.'/sources/'.$name.'/sort', 'message' => 'sort : champs séparés par des virgules, - pour décroissant (ex. "-score,nom", 3 max).'];
+                    }
+                    if (isset($src['limit']) && (!\is_int($src['limit']) || $src['limit'] < 1 || $src['limit'] > ArtifactIntakeSchema::HARD_MAX_RECORDS)) {
+                        $errors[] = ['path' => $path.'/sources/'.$name.'/limit', 'message' => 'limit : 1…'.ArtifactIntakeSchema::HARD_MAX_RECORDS.'.'];
                     }
                     if (isset($src['refresh']) && (!\is_int($src['refresh']) || $src['refresh'] < 5 || $src['refresh'] > 3600)) {
                         $errors[] = ['path' => $path.'/sources/'.$name.'/refresh', 'message' => 'refresh : 5…3600 secondes.'];
