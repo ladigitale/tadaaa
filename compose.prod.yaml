@@ -14,6 +14,8 @@ services:
       APP_SERVER_NAME: ${APP_SERVER_NAME:-app.example.com}
       API_SERVER_NAME: ${API_SERVER_NAME:-api.example.com}
       ACME_EMAIL: ${ACME_EMAIL:-}
+      # Taille max d'un message publié directement sur le hub par un participant de salon (octets).
+      MERCURE_MAX_PUBLISH_BYTES: ${MERCURE_MAX_PUBLISH_BYTES:-65536}
     volumes:
       - ./apps/web/dist:/srv:ro
       - ./deploy/Caddyfile.edge:/etc/caddy/Caddyfile:ro
@@ -58,8 +60,11 @@ services:
       MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET}
       MERCURE_PUBLISHER_JWT_ALG: ${MERCURE_PUBLISHER_JWT_ALG:-HS256}
       MERCURE_SUBSCRIBER_JWT_ALG: ${MERCURE_SUBSCRIBER_JWT_ALG:-HS256}
+      # Origines autorisées à s'abonner / publier sur le hub : l'app, et le viewer Artefacts (salons
+      # `sonic-p2p`). Le jeton voyage dans l'URL (pas de cookie) : `*` est acceptable pour permettre
+      # l'embed sur des sites tiers — MERCURE_CORS_ORIGINS='*'.
       MERCURE_EXTRA_DIRECTIVES: |
-        cors_origins https://${APP_SERVER_NAME:-app.example.com}
+        cors_origins ${MERCURE_CORS_ORIGINS:-https://${APP_SERVER_NAME:-app.example.com} https://${ARTIFACTS_SERVER_NAME:-artifacts.tadaaa.space}}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:noreply@tadaaa.app}

@@ -9,6 +9,7 @@ Symfony 8 + API Platform 4 (FrankenPHP).
 - Phase 4: OAuth 2.1 AS for Claude.ai connectors (`/oauth/*`, `/.well-known/*`)
 - Phase 5: dataset sharing (invites, members, reader/writer) + Mercure realtime
 - Phase 6: link detectors (REST + MCP tools) + due-date fields on todos
+- Salons d'artefacts (`/api/public/artifacts/{slug}/rooms`) : annuaire, entrée ouverte / code / sur demande, invités sans compte ; les données circulent sur Mercure (voir `.ops/deploy.md`)
 
 ## Local
 

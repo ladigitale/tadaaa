@@ -49,6 +49,19 @@ final class PublicArtifactCorsSubscriberTest extends TestCase
         self::assertStringNotContainsString('Authorization', (string) $response->headers->get('Access-Control-Allow-Headers'));
     }
 
+    public function testRoomsAreReachableFromAnyOriginWithoutAuthorizationHeader(): void
+    {
+        // Salons (sonic-p2p) : l'identité du participant est dans le corps JSON, jamais en en-tête.
+        $get = $this->dispatch($this->request('/api/public/artifacts/mon-jeu/rooms'));
+        self::assertSame('*', $get->headers->get('Access-Control-Allow-Origin'));
+
+        $preflight = new Response('', Response::HTTP_OK, ['Access-Control-Allow-Headers' => 'Content-Type, Authorization']);
+        $response = $this->dispatch($this->request('/api/public/artifacts/mon-jeu/rooms/join', 'OPTIONS'), $preflight);
+        self::assertSame('*', $response->headers->get('Access-Control-Allow-Origin'));
+        self::assertStringContainsString('POST', (string) $response->headers->get('Access-Control-Allow-Methods'));
+        self::assertStringNotContainsString('Authorization', (string) $response->headers->get('Access-Control-Allow-Headers'));
+    }
+
     public function testKeepsNelmioHeadersForConfiguredOrigins(): void
     {
         $existing = new Response('{}', 200, ['Access-Control-Allow-Origin' => 'https://artifacts.tadaaa.space']);

@@ -391,11 +391,10 @@ final class ArtifactService
     }
 
     /**
-     * Public / link / private (JWT member) read.
-     *
-     * @return array{body: array<string, mixed>, etag: string}
+     * Artefact lisible par ce visiteur (public, lien secret, ou membre du jeu) ; 404 sinon.
+     * Sans charger la version : sert aux endpoints annexes (salons…) qui ne lisent pas le document.
      */
-    public function publicRead(string $slug, ?string $linkToken, ?User $user, bool $draft = false): array
+    public function resolveReadableArtifact(string $slug, ?string $linkToken, ?User $user): Artifact
     {
         $artifact = $this->artifacts->findOneBySlug($slug);
         if ($artifact === null) {
@@ -418,6 +417,18 @@ final class ArtifactService
                 throw new NotFoundHttpException('Artefact introuvable.');
             }
         }
+
+        return $artifact;
+    }
+
+    /**
+     * Public / link / private (JWT member) read.
+     *
+     * @return array{body: array<string, mixed>, etag: string}
+     */
+    public function publicRead(string $slug, ?string $linkToken, ?User $user, bool $draft = false): array
+    {
+        $artifact = $this->resolveReadableArtifact($slug, $linkToken, $user);
 
         // Brouillon : réservé aux membres du jeu ; le public voit toujours la version en ligne.
         $isMember = $user !== null && $this->access->getRole($user, $artifact->getDataset()) !== null;

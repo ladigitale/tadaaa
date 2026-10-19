@@ -22,6 +22,11 @@
 	@mercure path /.well-known/mercure*
 
 	handle @mercure {
+		# Les participants d'un salon publient directement sur le hub (jeton limité à leur topic) :
+		# on borne la taille d'un message, le hub n'ayant ni limite ni quota propre.
+		request_body {
+			max_size {$MERCURE_MAX_PUBLISH_BYTES:65536}
+		}
 		reverse_proxy tadaaa-php:80 {
 			flush_interval -1
 			header_up X-Forwarded-Proto {scheme}
