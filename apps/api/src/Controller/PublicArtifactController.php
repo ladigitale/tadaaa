@@ -94,6 +94,7 @@ final class PublicArtifactController extends AbstractController
             $slug,
             $request->query->getString('k') ?: null,
             $user instanceof User ? $user : null,
+            $request->query->getBoolean('draft'),
         );
 
         // Objets vides du document (`\stdClass`) gardés en `{}`.
@@ -102,7 +103,8 @@ final class PublicArtifactController extends AbstractController
         if ($response->isNotModified($request)) {
             return $response;
         }
-        $response->headers->set('Cache-Control', 'public, max-age=30');
+        // Brouillon (réservé aux membres) : jamais en cache partagé.
+        $response->headers->set('Cache-Control', ($result['body']['draft'] ?? false) ? 'private, no-store' : 'public, max-age=30');
         $response->headers->set('ETag', $result['etag']);
 
         return $response;

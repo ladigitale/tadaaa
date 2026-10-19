@@ -42,6 +42,10 @@ class Artifact
     #[ORM\Column]
     private int $currentVersion = 0;
 
+    /** Version servie au public tant qu'un brouillon est en attente (null : la version courante est en ligne). */
+    #[ORM\Column(nullable: true)]
+    private ?int $liveVersion = null;
+
     #[ORM\Column(length: 32)]
     private string $concordeVersion = '5.1.0';
 
@@ -155,6 +159,24 @@ class Artifact
     public function getCurrentVersion(): int
     {
         return $this->currentVersion;
+    }
+
+    /** Version vue par le public : le brouillon n'est pas en ligne tant qu'il n'est pas promu. */
+    public function getLiveVersion(): int
+    {
+        return $this->liveVersion ?? $this->currentVersion;
+    }
+
+    public function setLiveVersion(?int $liveVersion): static
+    {
+        $this->liveVersion = $liveVersion;
+
+        return $this;
+    }
+
+    public function hasDraft(): bool
+    {
+        return $this->liveVersion !== null && $this->liveVersion < $this->currentVersion;
     }
 
     public function setCurrentVersion(int $currentVersion): static

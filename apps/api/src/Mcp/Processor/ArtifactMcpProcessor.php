@@ -17,6 +17,7 @@ use App\Mcp\Tool\GetArtifactCatalogTool;
 use App\Mcp\Tool\GetArtifactTool;
 use App\Mcp\Tool\ListArtifactsTool;
 use App\Mcp\Tool\OpenArtifactIntakeTool;
+use App\Mcp\Tool\PromoteArtifactTool;
 use App\Mcp\Tool\PublishArtifactTool;
 use App\Mcp\Tool\ReadArtifactDataTool;
 use App\Mcp\Tool\RenderArtifactTool;
@@ -94,6 +95,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof ValidateArtifactTool => $this->validateWithLint($data->document ?? []),
             $data instanceof PublishArtifactTool => $this->publish($user, $data, $context),
             $data instanceof UpdateArtifactTool => $this->update($user, $data, $context),
+            $data instanceof PromoteArtifactTool => $this->promote($user, $data),
             $data instanceof GetArtifactTool => $this->get($user, $data),
             $data instanceof ListArtifactsTool => [
                 'artifacts' => $this->artifacts->listForUser($user, $this->emptyToNull($data->datasetId)),
@@ -218,6 +220,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 $this->emptyToNull($tool->note),
                 null,
                 $this->rawArguments->emptyObjects($context, 'update_artifact', 'document'),
+                $tool->draft === true,
             );
         }
 
@@ -236,6 +239,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 \is_array($ops) ? $ops : [],
                 \is_array($edits) ? $edits : [],
                 $this->emptyToNull($tool->note),
+                null,
+                $tool->draft === true,
             );
         }
 
@@ -249,6 +254,10 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             'url' => $result['url'],
             'version' => $result['version'] ?? $result['currentVersion'],
         ];
+        if ($tool->draft === true && (\is_array($tool->document) || $hasOps || $hasEdits)) {
+            $out['draft'] = true;
+            $out['note'] = 'Brouillon : non publié. Vérifier avec render_artifact / simulate_store, puis promote_artifact.';
+        }
         if (\is_array($result['document'] ?? null)) {
             $warnings = $this->validator->lint($result['document']);
             if ($warnings !== []) {
@@ -271,6 +280,25 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         $result['warnings'] = $result['valid'] ? $this->validator->lint($document) : [];
 
         return $result;
+    }
+
+    /** @return array<string, mixed> */
+    private function promote(User $user, PromoteArtifactTool $tool): array
+    {
+        $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
+        if ($idOrSlug === null) {
+            throw new BadRequestHttpException('id ou slug requis.');
+        }
+        $r = $this->artifacts->promoteDraft($user, $idOrSlug);
+
+        return [
+            'id' => $r['id'],
+            'slug' => $r['slug'],
+            'url' => $r['url'],
+            'version' => $r['currentVersion'],
+            'liveVersion' => $r['liveVersion'],
+            'hasDraft' => $r['hasDraft'],
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -462,6 +490,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof RenderArtifactTool => 'render_artifact',
             $data instanceof PublishArtifactTool => 'publish_artifact',
             $data instanceof UpdateArtifactTool => 'update_artifact',
+            $data instanceof PromoteArtifactTool => 'promote_artifact',
             $data instanceof GetArtifactTool => 'get_artifact',
             $data instanceof ListArtifactsTool => 'list_artifacts',
             $data instanceof DeleteArtifactTool => 'delete_artifact',

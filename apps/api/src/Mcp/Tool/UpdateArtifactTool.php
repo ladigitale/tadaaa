@@ -12,7 +12,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
 #[McpTool(
     name: 'update_artifact',
     description: <<<'DESC'
-Met à jour un artefact existant (`id` ou `slug`). Fournir `document` (version complète) OU une modification partielle du document courant : `ops` (JSON Patch RFC 6902, chemins JSON Pointer, ex. {"op":"replace","path":"/data/transforms/lb","value":"…"}) et/ou `edits` ([{path, old, new, all?}] : remplace une sous-chaîne `old` dans la chaîne située à `path`, idéal pour retoucher un shader ou un réducteur sans renvoyer tout le document ; `old` doit être unique sauf all:true). Tout ou rien, le résultat est validé. Fournir aussi, si besoin, `title`, `visibility`, `description`.
+Met à jour un artefact existant (`id` ou `slug`). Fournir `document` (version complète) OU une modification partielle du document courant : `ops` (JSON Patch RFC 6902, chemins JSON Pointer, ex. {"op":"replace","path":"/data/transforms/lb","value":"…"}) et/ou `edits` ([{path, old, new, all?}] : remplace une sous-chaîne `old` dans la chaîne située à `path`, idéal pour retoucher un shader ou un réducteur sans renvoyer tout le document ; `old` doit être unique sauf all:true). Tout ou rien, le résultat est validé. `draft:true` enregistre une version de travail SANS la mettre en ligne : le public garde la version précédente, les éditeurs voient le brouillon (get_artifact, render_artifact, simulate_store, viewer avec ?draft=1) ; `promote_artifact` la met ensuite en ligne. Fournir aussi, si besoin, `title`, `visibility`, `description`.
 
 Retourne `{id, slug, url, version}`.
 
@@ -41,6 +41,7 @@ final class UpdateArtifactTool
         public ?string $note = null,
         public ?array $ops = null,
         public ?array $edits = null,
+        public ?bool $draft = null,
     ) {
     }
 }

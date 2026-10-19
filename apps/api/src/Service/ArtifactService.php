@@ -217,7 +217,7 @@ final class ArtifactService
      *
      * @return array<string, mixed>
      */
-    public function putDocument(User $user, string $idOrSlug, array $document, ?string $note = null, ?string $ip = null, array $emptyObjects = []): array
+    public function putDocument(User $user, string $idOrSlug, array $document, ?string $note = null, ?string $ip = null, array $emptyObjects = [], bool $draft = false): array
     {
         $artifact = $this->requireWritableArtifact($user, $idOrSlug);
         $result = $this->validator->validate($document);
@@ -231,18 +231,52 @@ final class ArtifactService
         $next = $artifact->getCurrentVersion() + 1;
         $emptyObjects = JsonShape::filter($document, $emptyObjects);
         $version = new ArtifactVersion($artifact, $next, $document, $user, $note, $emptyObjects);
+        $previous = $artifact->getCurrentVersion();
+        $live = $artifact->getLiveVersion(); // avant de changer la version courante
         $artifact->setCurrentVersion($next);
+        // Brouillon : le public garde la version en ligne ; sinon cette version devient la version en ligne.
+        $artifact->setLiveVersion($draft && $previous > 0 ? $live : null);
         $artifact->setConcordeVersion($this->validator->concordeVersion());
         $this->em->persist($version);
         $this->em->flush();
-        $this->artifactData->syncCollectionsFromDocument($artifact, $document);
+        if (!$draft || $previous === 0) {
+            // Les collections (collecte, lecture publique) suivent la version en ligne seulement.
+            $this->artifactData->syncCollectionsFromDocument($artifact, $document);
+        }
 
         $this->audit->log($artifact->getDataset()->getOwner(), AuditLog::CATEGORY_ARTIFACT, 'artifact.update', [
             'artifactId' => $artifact->getId()->toRfc4122(),
             'version' => $next,
+            'draft' => $draft,
         ], $ip);
 
         return $this->serializeDetail($artifact, $document, $emptyObjects);
+    }
+
+    /**
+     * Met en ligne le brouillon courant (la version la plus récente devient la version publique).
+     *
+     * @return array<string, mixed>
+     */
+    public function promoteDraft(User $user, string $idOrSlug, ?string $ip = null): array
+    {
+        $artifact = $this->requireWritableArtifact($user, $idOrSlug);
+        if (!$artifact->hasDraft()) {
+            throw new BadRequestHttpException('Aucun brouillon en attente : la version courante est déjà en ligne.');
+        }
+        $version = $this->versions->findOneForArtifactVersion($artifact, $artifact->getCurrentVersion());
+        if ($version === null) {
+            throw new NotFoundHttpException('Version introuvable.');
+        }
+        $artifact->setLiveVersion(null);
+        $this->em->flush();
+        $this->artifactData->syncCollectionsFromDocument($artifact, $version->getDocument());
+        $this->audit->log($artifact->getDataset()->getOwner(), AuditLog::CATEGORY_ARTIFACT, 'artifact.promote', [
+            'artifactId' => $artifact->getId()->toRfc4122(),
+            'version' => $artifact->getCurrentVersion(),
+        ], $ip);
+
+        return $this->serializeSummary($artifact);
     }
 
     /**
@@ -254,7 +288,7 @@ final class ArtifactService
      *
      * @return array<string, mixed>
      */
-    public function patchDocument(User $user, string $idOrSlug, array $ops, array $edits = [], ?string $note = null, ?string $ip = null): array
+    public function patchDocument(User $user, string $idOrSlug, array $ops, array $edits = [], ?string $note = null, ?string $ip = null, bool $draft = false): array
     {
         $artifact = $this->requireWritableArtifact($user, $idOrSlug);
         $version = $this->versions->findOneForArtifactVersion($artifact, $artifact->getCurrentVersion());
@@ -275,7 +309,7 @@ final class ArtifactService
         }
         $assoc = json_decode((string) json_encode($doc), true);
 
-        return $this->putDocument($user, $idOrSlug, $assoc, $note, $ip, JsonShape::emptyObjectPaths($doc));
+        return $this->putDocument($user, $idOrSlug, $assoc, $note, $ip, JsonShape::emptyObjectPaths($doc), $draft);
     }
 
     private function applyStringEdit(mixed $doc, mixed $edit, int $i): mixed
@@ -315,6 +349,7 @@ final class ArtifactService
                 'createdBy' => $v->getCreatedBy()->getEmail(),
                 'note' => $v->getNote(),
                 'current' => $v->getVersion() === $artifact->getCurrentVersion(),
+                'live' => $v->getVersion() === $artifact->getLiveVersion(),
             ],
             $this->versions->findAllForArtifact($artifact),
         );
@@ -360,7 +395,7 @@ final class ArtifactService
      *
      * @return array{body: array<string, mixed>, etag: string}
      */
-    public function publicRead(string $slug, ?string $linkToken, ?User $user): array
+    public function publicRead(string $slug, ?string $linkToken, ?User $user, bool $draft = false): array
     {
         $artifact = $this->artifacts->findOneBySlug($slug);
         if ($artifact === null) {
@@ -384,7 +419,10 @@ final class ArtifactService
             }
         }
 
-        $version = $this->versions->findOneForArtifactVersion($artifact, $artifact->getCurrentVersion());
+        // Brouillon : réservé aux membres du jeu ; le public voit toujours la version en ligne.
+        $isMember = $user !== null && $this->access->getRole($user, $artifact->getDataset()) !== null;
+        $shown = $draft && $isMember ? $artifact->getCurrentVersion() : $artifact->getLiveVersion();
+        $version = $this->versions->findOneForArtifactVersion($artifact, $shown);
         if ($version === null) {
             throw new NotFoundHttpException('Artefact introuvable.');
         }
@@ -409,7 +447,8 @@ final class ArtifactService
             'document' => $version->getWireDocument(),
             'scriptAssets' => $scriptAssets,
             'concordeVersion' => $artifact->getConcordeVersion(),
-            'version' => $artifact->getCurrentVersion(),
+            'version' => $shown,
+            'draft' => $draft && $isMember && $artifact->hasDraft(),
             'updatedAt' => $artifact->getUpdatedAt()->format(\DateTimeInterface::ATOM),
             'collections' => $readableCollections,
             'canWrite' => $user !== null && $this->access->getRole($user, $artifact->getDataset())?->canWrite() === true,
@@ -588,6 +627,8 @@ final class ArtifactService
             'description' => $artifact->getDescription(),
             'visibility' => $artifact->getVisibility()->value,
             'currentVersion' => $artifact->getCurrentVersion(),
+            'liveVersion' => $artifact->getLiveVersion(),
+            'hasDraft' => $artifact->hasDraft(),
             'concordeVersion' => $artifact->getConcordeVersion(),
             'url' => $url,
             'hasLinkToken' => $artifact->getLinkToken() !== null,
