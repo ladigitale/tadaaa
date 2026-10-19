@@ -80,7 +80,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 'library' => $data->library,
                 'names' => $this->icons->search($data->query, $data->library !== '' ? $data->library : 'iconoir', 40),
             ],
-            $data instanceof ValidateArtifactTool => $this->validator->validate($data->document ?? []),
+            $data instanceof ValidateArtifactTool => $this->validateWithLint($data->document ?? []),
             $data instanceof PublishArtifactTool => $this->publish($user, $data, $context),
             $data instanceof UpdateArtifactTool => $this->update($user, $data, $context),
             $data instanceof GetArtifactTool => $this->get($user, $data),
@@ -201,19 +201,58 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             );
         }
 
-        if ($result === null) {
-            throw new BadRequestHttpException('Rien à mettre à jour (document, title, visibility ou description).');
+        $hasOps = \is_array($tool->ops) && $tool->ops !== [];
+        $hasEdits = \is_array($tool->edits) && $tool->edits !== [];
+        if ($hasOps || $hasEdits) {
+            if (\is_array($tool->document) && $tool->document !== []) {
+                throw new BadRequestHttpException('document est exclusif avec ops/edits.');
+            }
+            // Versions brutes (objets vides conservés) si le client les fournit.
+            $ops = $this->rawArguments->rawArgument($context, 'update_artifact', 'ops') ?? json_decode((string) json_encode($tool->ops ?? []), false);
+            $edits = $this->rawArguments->rawArgument($context, 'update_artifact', 'edits') ?? json_decode((string) json_encode($tool->edits ?? []), false);
+            $result = $this->artifacts->patchDocument(
+                $user,
+                $idOrSlug,
+                \is_array($ops) ? $ops : [],
+                \is_array($edits) ? $edits : [],
+                $this->emptyToNull($tool->note),
+            );
         }
 
-        return [
+        if ($result === null) {
+            throw new BadRequestHttpException('Rien à mettre à jour (document, ops, edits, title, visibility ou description).');
+        }
+
+        $out = [
             'id' => $result['id'],
             'slug' => $result['slug'],
             'url' => $result['url'],
             'version' => $result['version'] ?? $result['currentVersion'],
         ];
+        if (\is_array($result['document'] ?? null)) {
+            $warnings = $this->validator->lint($result['document']);
+            if ($warnings !== []) {
+                $out['warnings'] = $warnings;
+            }
+        }
+
+        return $out;
     }
 
     /** @return array<string, mixed> */
+    /**
+     * @param array<string, mixed> $document
+     *
+     * @return array<string, mixed>
+     */
+    private function validateWithLint(array $document): array
+    {
+        $result = $this->validator->validate($document);
+        $result['warnings'] = $result['valid'] ? $this->validator->lint($document) : [];
+
+        return $result;
+    }
+
     private function get(User $user, GetArtifactTool $tool): array
     {
         $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);

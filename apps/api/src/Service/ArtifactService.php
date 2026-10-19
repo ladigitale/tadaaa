@@ -245,6 +245,64 @@ final class ArtifactService
         return $this->serializeDetail($artifact, $document, $emptyObjects);
     }
 
+    /**
+     * Modification partielle du document courant : JSON Patch (RFC 6902) puis remplacements de
+     * sous-chaîne (`edits`), appliqués à une copie ; tout ou rien, puis {@see putDocument()}.
+     *
+     * @param list<mixed> $ops   opérations JSON Patch décodées en objets
+     * @param list<mixed> $edits `{path, old, new, all?}` : remplace `old` (présent exactement une fois, sauf `all`) dans la chaîne au pointeur `path`
+     *
+     * @return array<string, mixed>
+     */
+    public function patchDocument(User $user, string $idOrSlug, array $ops, array $edits = [], ?string $note = null, ?string $ip = null): array
+    {
+        $artifact = $this->requireWritableArtifact($user, $idOrSlug);
+        $version = $this->versions->findOneForArtifactVersion($artifact, $artifact->getCurrentVersion());
+        if ($version === null) {
+            throw new NotFoundHttpException('Version introuvable.');
+        }
+        $current = json_decode((string) json_encode($version->getWireDocument()), false);
+        try {
+            $doc = $ops === [] ? $current : JsonPatch::apply($current, $ops);
+            foreach (array_values($edits) as $i => $edit) {
+                $doc = $this->applyStringEdit($doc, $edit, $i);
+            }
+        } catch (\InvalidArgumentException $e) {
+            throw new BadRequestHttpException('Patch invalide : '.$e->getMessage());
+        }
+        if (!$doc instanceof \stdClass) {
+            throw new BadRequestHttpException('Patch invalide : le document doit rester un objet.');
+        }
+        $assoc = json_decode((string) json_encode($doc), true);
+
+        return $this->putDocument($user, $idOrSlug, $assoc, $note, $ip, JsonShape::emptyObjectPaths($doc));
+    }
+
+    private function applyStringEdit(mixed $doc, mixed $edit, int $i): mixed
+    {
+        if (!$edit instanceof \stdClass || !\is_string($edit->path ?? null) || !\is_string($edit->old ?? null) || !\is_string($edit->new ?? null) || $edit->old === '') {
+            throw new \InvalidArgumentException(sprintf('edits[%d] : {path, old, new} attendus (old non vide).', $i));
+        }
+        try {
+            $text = JsonPatch::get($doc, $edit->path);
+        } catch (\InvalidArgumentException $e) {
+            throw new \InvalidArgumentException(sprintf('edits[%d] : %s', $i, $e->getMessage()));
+        }
+        if (!\is_string($text)) {
+            throw new \InvalidArgumentException(sprintf('edits[%d] : %s n’est pas une chaîne.', $i, $edit->path));
+        }
+        $count = substr_count($text, $edit->old);
+        $all = ($edit->all ?? false) === true;
+        if ($count === 0) {
+            throw new \InvalidArgumentException(sprintf('edits[%d] : texte `old` introuvable dans %s.', $i, $edit->path));
+        }
+        if ($count > 1 && !$all) {
+            throw new \InvalidArgumentException(sprintf('edits[%d] : `old` apparaît %d fois dans %s (allonger le contexte ou all:true).', $i, $count, $edit->path));
+        }
+
+        return JsonPatch::apply($doc, [(object) ['op' => 'replace', 'path' => $edit->path, 'value' => str_replace($edit->old, $edit->new, $text)]]);
+    }
+
     /** @return list<array<string, mixed>> */
     public function listVersions(User $user, string $idOrSlug): array
     {

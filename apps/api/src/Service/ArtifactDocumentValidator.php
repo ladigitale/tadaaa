@@ -558,6 +558,89 @@ final class ArtifactDocumentValidator
     }
 
     /**
+     * Contrôles sémantiques non bloquants (fautes de frappe silencieuses) : sinks et câblage clavier.
+     *
+     * @param array<string, mixed> $document
+     *
+     * @return list<array{path: string, message: string}>
+     */
+    public function lint(array $document): array
+    {
+        $warnings = [];
+        $data = \is_array($document['data'] ?? null) ? $document['data'] : [];
+        $providers = [];
+        foreach (['stores', 'transforms', 'sources'] as $section) {
+            if (\is_array($data[$section] ?? null)) {
+                foreach (array_keys($data[$section]) as $k) {
+                    $providers[(string) $k] = true;
+                }
+            }
+        }
+        /** @var array<string, string> $reducers */
+        $reducers = [];
+        $keyboards = [];
+        $walk = function (mixed $node, string $path) use (&$walk, &$providers, &$reducers, &$keyboards): void {
+            if (!\is_array($node)) {
+                return;
+            }
+            $attrs = \is_array($node['attributes'] ?? null) ? $node['attributes'] : [];
+            $tag = $node['tagName'] ?? null;
+            if ($tag === 'sonic-store' && \is_string($attrs['id'] ?? null)) {
+                $providers[$attrs['id']] = true;
+                $reducers[$attrs['id']] = \is_string($attrs['reducer'] ?? null) ? $attrs['reducer'] : '';
+            }
+            if ($tag === 'sonic-keyboard') {
+                $keyboards[] = [$path, $attrs];
+            }
+            foreach (\is_array($node['nodes'] ?? null) ? $node['nodes'] : [] as $i => $child) {
+                $walk($child, $path.'/nodes/'.$i);
+            }
+        };
+        foreach (\is_array($document['views'] ?? null) ? array_values($document['views']) : [] as $i => $view) {
+            if (\is_array($view) && \is_array($view['root'] ?? null)) {
+                $walk($view['root'], '/views/'.$i.'/root');
+            }
+        }
+
+        foreach (\is_array($data['sinks'] ?? null) ? $data['sinks'] : [] as $name => $sink) {
+            if (!\is_array($sink)) {
+                continue;
+            }
+            $p = '/data/sinks/'.$name;
+            $paths = array_filter(['from' => $sink['from'] ?? null, 'code' => $sink['code'] ?? null] + (\is_array($sink['merge'] ?? null) ? $sink['merge'] : []), '\is_string');
+            foreach ($paths as $field => $dp) {
+                $root = explode('.', $dp)[0];
+                if (!isset($providers[$root])) {
+                    $warnings[] = ['path' => $p.'/'.$field, 'message' => sprintf('« %s » ne correspond à aucun store, transform ou source.', $root)];
+                }
+            }
+            if (\is_string($sink['ack'] ?? null) && !isset($providers[$sink['ack']])) {
+                $warnings[] = ['path' => $p.'/ack', 'message' => sprintf('ack « %s » : aucun store de ce nom (sink:ok / sink:error ne seront jamais reçus).', $sink['ack'])];
+            }
+        }
+
+        foreach ($keyboards as [$path, $attrs]) {
+            $store = $attrs['store'] ?? null;
+            if (\is_string($store) && !isset($providers[$store])) {
+                $warnings[] = ['path' => $path.'/attributes/store', 'message' => sprintf('store « %s » introuvable.', $store)];
+                continue;
+            }
+            $keymap = \is_string($attrs['keymap'] ?? null) ? json_decode($attrs['keymap'], true) : null;
+            $reducer = \is_string($store) ? ($reducers[$store] ?? '') : '';
+            if (!\is_array($keymap) || $reducer === '') {
+                continue;
+            }
+            foreach (array_unique(array_filter(array_values($keymap), '\is_string')) as $action) {
+                if (!str_contains($reducer, "'".$action."'") && !str_contains($reducer, '"'.$action.'"')) {
+                    $warnings[] = ['path' => $path.'/attributes/keymap', 'message' => sprintf('Action « %s » absente du réducteur de « %s » : la touche ne fera rien.', $action, $store)];
+                }
+            }
+        }
+
+        return $warnings;
+    }
+
+    /**
      * @param array<string, mixed> $descriptor
      * @param list<array{path: string, message: string}> $errors
      */
