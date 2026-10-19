@@ -85,6 +85,11 @@ MCP_ALLOWED_HOSTS=api.example.com
 MERCURE_JWT_SECRET=change-me-mercure-jwt-secret
 # Optional override (defaults to https://api…/.well-known/mercure)
 # MERCURE_PUBLIC_URL=https://api.example.com/.well-known/mercure
+# Origins allowed to subscribe/publish on the hub (default: app + Artefacts viewer). Set '*' to let
+# `embed.js` pages on third-party sites use rooms — safe here: tokens travel in the URL, never cookies.
+# MERCURE_CORS_ORIGINS=*
+# Max size of one message published straight to the hub by a room participant (edge Caddy, bytes).
+# MERCURE_MAX_PUBLISH_BYTES=65536
 
 # Web Push (VAPID) — required for server push to devices when the app is closed
 # Generate inside the API container:
@@ -252,3 +257,20 @@ MERCURE_JWT_SECRET="!ChangeThisMercureHubJWTSecretKey!"
 Then `yarn api:up` && `yarn api:migrate`.
 
 Realtime sync uses the FrankenPHP Mercure hub (`/.well-known/mercure`). Without FrankenPHP (plain PHP-FPM), publishes are logged and ignored; the SPA still falls back to focus/online pull.
+
+### Artifact rooms (`sonic-p2p`)
+
+Rooms (`/api/public/artifacts/{slug}/rooms`) need the Mercure hub (503 otherwise). Run the migration
+(`artifact_rooms`, `artifact_room_members`). The API is the control plane (create, list, join, accept,
+kick, token refresh); participants then **publish straight to the hub** with a JWT limited to their
+room's `data` topic, so messages never go through PHP.
+
+- Tokens last 5 minutes and are renewed by the client (which also signals it is alive); a participant
+  silent for 10 minutes is dropped, a room lives 6 h from the host's last renewal. Cleanup is lazy
+  (done on each room request), no scheduled task.
+- A kick cannot revoke a JWT already issued: it stays valid until it expires (≤ 5 min).
+- The hub keeps message history for `Last-Event-ID` replay. The Caddyfile sets no transport, so the
+  module default applies — check that history is **bounded** (e.g. `transport_url
+  bolt:///data/mercure.db?size=1000` through `MERCURE_EXTRA_DIRECTIVES`), otherwise high-frequency
+  room traffic grows the database without limit.
+- The hub has no rate limit of its own: the edge Caddy caps one publish at `MERCURE_MAX_PUBLISH_BYTES`.
