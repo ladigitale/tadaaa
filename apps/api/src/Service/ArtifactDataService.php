@@ -101,7 +101,7 @@ final class ArtifactDataService
     /**
      * @return list<array{id: string, data: array<string, mixed>, createdAt: string, updatedAt: string}>
      */
-    public function readForUser(User $user, string $idOrSlug, string $collectionName): array
+    public function readForUser(User $user, string $idOrSlug, string $collectionName, ?string $sort = null, ?int $limit = null): array
     {
         $artifact = $this->resolveArtifact($idOrSlug);
         $this->access->assertCanRead($user, $artifact->getDataset());
@@ -109,7 +109,7 @@ final class ArtifactDataService
 
         $ownerFilter = $collection->getScope() === ArtifactCollectionScope::PerUser ? $user : null;
 
-        return array_map(
+        return ArtifactIntakeSchema::sortAndLimit(array_map(
             static fn (ArtifactRecord $r): array => [
                 'id' => $r->getId()->toRfc4122(),
                 'data' => $r->getData(),
@@ -117,7 +117,7 @@ final class ArtifactDataService
                 'updatedAt' => $r->getUpdatedAt()->format(\DateTimeInterface::ATOM),
             ],
             $this->records->findForCollection($collection, $ownerFilter),
-        );
+        ), $sort, $limit);
     }
 
     /**
@@ -126,7 +126,7 @@ final class ArtifactDataService
      *
      * @return list<array<string, mixed>>
      */
-    public function readPublic(string $slug, string $collectionName, ?string $linkToken = null, ?string $readKey = null, ?User $user = null): array
+    public function readPublic(string $slug, string $collectionName, ?string $linkToken = null, ?string $readKey = null, ?User $user = null, ?string $sort = null, ?int $limit = null): array
     {
         $artifact = $this->resolveArtifact($slug);
         $this->assertPublicAccess($artifact, $linkToken, $user);
@@ -138,7 +138,7 @@ final class ArtifactDataService
             throw new NotFoundHttpException('Collection introuvable.');
         }
 
-        return array_map(
+        return ArtifactIntakeSchema::sortAndLimit(array_map(
             static fn (ArtifactRecord $r): array => [
                 'id' => $r->getId()->toRfc4122(),
                 'data' => $r->getData(),
@@ -146,7 +146,7 @@ final class ArtifactDataService
                 'updatedAt' => $r->getUpdatedAt()->format(\DateTimeInterface::ATOM),
             ],
             $this->records->findForCollection($collection, null),
-        );
+        ), $sort, $limit);
     }
 
     /**
@@ -166,11 +166,12 @@ final class ArtifactDataService
         if ($schema === null || $collection->getWriteMode() !== ArtifactWriteMode::Intake) {
             throw new AccessDeniedHttpException('Cette collection n’accepte pas d’envois.');
         }
-        if (!$collection->isIntakeOpen($now)) {
+        $permanent = (bool) ($schema['permanent'] ?? false);
+        if (!$permanent && !$collection->isIntakeOpen($now)) {
             throw new AccessDeniedHttpException('La collecte est fermée.');
         }
         $expected = $collection->getIntakeCode();
-        if ($expected !== null && ($code === null || !hash_equals($expected, $code))) {
+        if (!$permanent && $expected !== null && ($code === null || !hash_equals($expected, $code))) {
             throw new AccessDeniedHttpException('Code de session invalide.');
         }
 
@@ -179,10 +180,14 @@ final class ArtifactDataService
             throw new BadRequestHttpException(implode(' ', $result['errors']));
         }
 
-        $since = $collection->getIntakeOpenedAt() ?? $now;
-        $max = $collection->getIntakeMaxRecords() ?? ArtifactIntakeSchema::DEFAULT_MAX_RECORDS;
-        if ($this->records->countAnonymousSince($collection, $since) >= $max) {
-            throw new AccessDeniedHttpException('Quota de la collecte atteint.');
+        $max = $permanent
+            ? (int) $schema['maxRecords']
+            : ($collection->getIntakeMaxRecords() ?? ArtifactIntakeSchema::DEFAULT_MAX_RECORDS);
+        if (!$permanent) {
+            $since = $collection->getIntakeOpenedAt() ?? $now;
+            if ($this->records->countAnonymousSince($collection, $since) >= $max) {
+                throw new AccessDeniedHttpException('Quota de la collecte atteint.');
+            }
         }
 
         // Intervalle par IP : désactivé par défaut (une classe partage souvent une seule IP publique).
@@ -194,6 +199,45 @@ final class ArtifactDataService
             }
             $item->set(1)->expiresAfter($interval);
             $this->cache->save($item);
+        }
+
+        $keep = ArtifactIntakeSchema::parseKeep($schema['unique']['keep'] ?? 'last', $schema['fields']);
+        $uniqueField = $schema['unique']['field'] ?? null;
+        $existing = ($permanent || $uniqueField !== null) ? $this->records->findForCollection($collection, null) : [];
+
+        // Un seul record par valeur de `unique.field` : mise à jour si le nouvel envoi bat l'ancien.
+        if ($uniqueField !== null && $keep !== null && isset($result['data'][$uniqueField])) {
+            foreach ($existing as $row) {
+                if (($row->getData()[$uniqueField] ?? null) !== $result['data'][$uniqueField]) {
+                    continue;
+                }
+                if (ArtifactIntakeSchema::beats($keep, $result['data'], $row->getData())) {
+                    $row->setData($result['data']);
+                    $this->em->flush();
+                }
+
+                return ['id' => $row->getId()->toRfc4122()];
+            }
+        }
+
+        // Collecte permanente pleine : on évince le pire (selon `keep`) ou le plus ancien.
+        if ($permanent && \count($existing) >= $max) {
+            $victim = $existing[0] ?? null;
+            if ($keep !== null && $keep['field'] !== null) {
+                foreach ($existing as $row) {
+                    if (!ArtifactIntakeSchema::beats($keep, $row->getData(), $victim->getData())) {
+                        $victim = $row;
+                    }
+                }
+                if ($victim !== null && !ArtifactIntakeSchema::beats($keep, $result['data'], $victim->getData())) {
+                    return ['id' => 'ignored']; // moins bon que le pire déjà conservé
+                }
+            } else {
+                $victim = end($existing) ?: null; // findForCollection est trié du plus récent au plus ancien
+            }
+            if ($victim !== null) {
+                $this->em->remove($victim);
+            }
         }
 
         $record = new ArtifactRecord($collection, $result['data'], null);
@@ -216,6 +260,9 @@ final class ArtifactDataService
         $schema = $collection->getIntakeSchema();
         if ($schema === null || $collection->getWriteMode() !== ArtifactWriteMode::Intake) {
             throw new BadRequestHttpException('Collection sans schéma `intake` : déclarez-le dans data.sources.');
+        }
+        if ($schema['permanent'] ?? false) {
+            return $this->describeCollection($collection, true); // toujours ouverte : rien à ouvrir
         }
         $minutes = max(1, min(ArtifactIntakeSchema::MAX_SESSION_MINUTES, $minutes));
         $max = $maxRecords ?? (int) $schema['maxRecords'];
@@ -282,11 +329,14 @@ final class ArtifactDataService
             'records' => $this->records->countForCollection($collection),
         ];
         if ($schema !== null) {
-            $open = $collection->isIntakeOpen($now);
+            $permanent = (bool) ($schema['permanent'] ?? false);
+            $open = $permanent || $collection->isIntakeOpen($now);
             $row['intake'] = [
+                'permanent' => $permanent,
+                'unique' => $schema['unique'] ?? null,
                 'fields' => $schema['fields'],
                 'open' => $open,
-                'openUntil' => $open ? $collection->getIntakeOpenUntil()?->format(\DateTimeInterface::ATOM) : null,
+                'openUntil' => $open && !$permanent ? $collection->getIntakeOpenUntil()?->format(\DateTimeInterface::ATOM) : null,
                 'maxRecords' => $collection->getIntakeMaxRecords() ?? $schema['maxRecords'],
                 'received' => $collection->getIntakeOpenedAt() !== null
                     ? $this->records->countAnonymousSince($collection, $collection->getIntakeOpenedAt())

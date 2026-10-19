@@ -77,4 +77,49 @@ final class ArtifactIntakeSchemaTest extends TestCase
         $r = ArtifactIntakeSchema::validateRecord($fields, ['name' => '<img src=x>', 'score' => 1]);
         self::assertSame(['name : caractères < et > non autorisés.'], $r['errors']);
     }
+
+    public function testPermanentAndUniqueDeclaration(): void
+    {
+        $d = $this->decl();
+        unset($d['minInterval']);
+        $d['permanent'] = true;
+        $d['unique'] = ['field' => 'name', 'keep' => 'max:score'];
+        self::assertSame([], ArtifactIntakeSchema::validateDeclaration($d));
+        $n = ArtifactIntakeSchema::normalize($d);
+        self::assertTrue($n['permanent']);
+        self::assertSame(ArtifactIntakeSchema::PERMANENT_MIN_INTERVAL, $n['minInterval']);
+        self::assertSame(['field' => 'name', 'keep' => 'max:score'], $n['unique']);
+
+        $bad = $d;
+        $bad['unique'] = ['field' => 'score', 'keep' => 'max:score'];
+        self::assertNotSame([], ArtifactIntakeSchema::validateDeclaration($bad), 'unique.field doit être une chaîne');
+        $bad['unique'] = ['field' => 'name', 'keep' => 'max:name'];
+        self::assertNotSame([], ArtifactIntakeSchema::validateDeclaration($bad), 'keep sur un champ non numérique');
+        $bad = $d;
+        $bad['requireCode'] = true;
+        self::assertNotSame([], ArtifactIntakeSchema::validateDeclaration($bad), 'permanent + requireCode');
+    }
+
+    public function testBeats(): void
+    {
+        $max = ['mode' => 'max', 'field' => 'score'];
+        self::assertTrue(ArtifactIntakeSchema::beats($max, ['score' => 10], ['score' => 5]));
+        self::assertFalse(ArtifactIntakeSchema::beats($max, ['score' => 5], ['score' => 5]));
+        self::assertTrue(ArtifactIntakeSchema::beats(['mode' => 'min', 'field' => 'score'], ['score' => 3], ['score' => 5]));
+        self::assertTrue(ArtifactIntakeSchema::beats(['mode' => 'last', 'field' => null], ['score' => 1], ['score' => 9]));
+    }
+
+    public function testSortAndLimit(): void
+    {
+        $rows = [
+            ['id' => 'a', 'data' => ['nom' => 'Zoe', 'score' => 10], 'createdAt' => '2026-01-01'],
+            ['id' => 'b', 'data' => ['nom' => 'Bob', 'score' => 30], 'createdAt' => '2026-01-02'],
+            ['id' => 'c', 'data' => ['nom' => 'Ann', 'score' => 30], 'createdAt' => '2026-01-03'],
+            ['id' => 'd', 'data' => ['nom' => 'Sans'], 'createdAt' => '2026-01-04'],
+        ];
+        $ids = static fn (array $r): array => array_column($r, 'id');
+        self::assertSame(['c', 'b'], $ids(ArtifactIntakeSchema::sortAndLimit($rows, '-score,nom', 2)));
+        self::assertSame(['d', 'c', 'b', 'a'], $ids(ArtifactIntakeSchema::sortAndLimit($rows, '-createdAt', null)));
+        self::assertSame(['a', 'b', 'c', 'd'], $ids(ArtifactIntakeSchema::sortAndLimit($rows, 'inconnu;drop', null)), 'tri invalide ignoré');
+    }
 }

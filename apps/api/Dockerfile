@@ -8,6 +8,15 @@ FROM dunglas/frankenphp:1-php8.4 AS frankenphp_upstream
 # https://docs.docker.com/compose/compose-file/#target
 
 
+# Simulateur de réducteurs JSONata (outil MCP simulate_store) : Node + dépendances
+FROM node:22-slim AS simulate_store_deps
+WORKDIR /tools/simulate-store
+COPY tools/simulate-store/package.json ./
+RUN npm install --omit=dev --no-audit --no-fund
+WORKDIR /tools/render-artifact
+COPY tools/render-artifact/package.json ./
+RUN npm install --omit=dev --no-audit --no-fund
+
 # Base FrankenPHP image
 FROM frankenphp_upstream AS frankenphp_base
 
@@ -32,6 +41,18 @@ RUN set -eux; \
 		pdo_pgsql \
 		zip \
 	;
+
+# Node (sous-processus bridé, voir App\Service\StoreSimulator) et ses dépendances
+COPY --from=simulate_store_deps /usr/local/bin/node /usr/local/bin/node
+COPY --from=simulate_store_deps /tools/simulate-store/node_modules /app/tools/simulate-store/node_modules
+COPY --from=simulate_store_deps /tools/render-artifact/node_modules /app/tools/render-artifact/node_modules
+
+# Rendu headless (outil MCP render_artifact) : Chromium système ; RENDER_VIEWER_DIST doit pointer
+# vers le dist/ du viewer (ladigitale/artifacts), p. ex. monté en volume.
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends chromium fonts-liberation \
+	&& rm -rf /var/lib/apt/lists/*
+ENV RENDER_CHROME=/usr/bin/chromium
 
 # https://getcomposer.org/doc/03-cli.md#composer-allow-superuser
 ENV COMPOSER_ALLOW_SUPERUSER=1

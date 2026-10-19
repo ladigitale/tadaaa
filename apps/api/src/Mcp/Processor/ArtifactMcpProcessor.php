@@ -17,19 +17,27 @@ use App\Mcp\Tool\GetArtifactCatalogTool;
 use App\Mcp\Tool\GetArtifactTool;
 use App\Mcp\Tool\ListArtifactsTool;
 use App\Mcp\Tool\OpenArtifactIntakeTool;
+use App\Mcp\Tool\PromoteArtifactTool;
 use App\Mcp\Tool\PublishArtifactTool;
 use App\Mcp\Tool\ReadArtifactDataTool;
+use App\Mcp\Tool\RenderArtifactTool;
+use App\Mcp\Tool\SimulateStoreTool;
 use App\Mcp\Tool\UpdateArtifactTool;
 use App\Mcp\Tool\ValidateArtifactTool;
 use App\Mcp\Tool\WriteArtifactDataTool;
 use App\Service\ArtifactDataService;
 use App\Service\ArtifactDocumentValidator;
+use App\Service\ArtifactFiles;
 use App\Service\ArtifactIcons;
 use App\Service\ArtifactKits;
+use App\Service\ArtifactRenderer;
 use App\Service\ArtifactService;
 use App\Service\AuditLogger;
 use App\Service\DatasetAccessService;
+use App\Service\JsonPatch;
+use App\Service\StoreSimulator;
 use App\Service\UsageMeter;
+use Mcp\Schema\Content\ImageContent;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -52,6 +60,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         private readonly RawToolArguments $rawArguments,
         private readonly ArtifactKits $kits,
         private readonly ArtifactIcons $icons,
+        private readonly StoreSimulator $simulator,
+        private readonly ArtifactRenderer $renderer,
     ) {
     }
 
@@ -70,6 +80,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         } catch (\Throwable) {
         }
 
+        $png = null;
         $payload = match (true) {
             $data instanceof GetArtifactCatalogTool => [
                 ...$this->validator->mcpCatalogPayload($data->compact, $data->components, $data->rules, $data->examples),
@@ -80,16 +91,19 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 'library' => $data->library,
                 'names' => $this->icons->search($data->query, $data->library !== '' ? $data->library : 'iconoir', 40),
             ],
-            $data instanceof ValidateArtifactTool => $this->validator->validate($data->document ?? []),
+            $data instanceof SimulateStoreTool => $this->simulate($user, $data),
+            $data instanceof RenderArtifactTool => $this->render($user, $data, $png),
+            $data instanceof ValidateArtifactTool => $this->validateWithLint($data->document ?? []),
             $data instanceof PublishArtifactTool => $this->publish($user, $data, $context),
             $data instanceof UpdateArtifactTool => $this->update($user, $data, $context),
+            $data instanceof PromoteArtifactTool => $this->promote($user, $data),
             $data instanceof GetArtifactTool => $this->get($user, $data),
             $data instanceof ListArtifactsTool => [
                 'artifacts' => $this->artifacts->listForUser($user, $this->emptyToNull($data->datasetId)),
             ],
             $data instanceof DeleteArtifactTool => $this->delete($user, $data),
             $data instanceof ReadArtifactDataTool => [
-                'records' => $this->data->readForUser($user, $data->slug, $data->collection),
+                'records' => $this->data->readForUser($user, $data->slug, $data->collection, $this->emptyToNull($data->sort), $data->limit),
             ],
             $data instanceof WriteArtifactDataTool => $this->writeData($user, $data),
             $data instanceof OpenArtifactIntakeTool => $this->openIntake($user, $data),
@@ -100,8 +114,17 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             )),
         };
 
+        $content = [new TextContent($payload)];
+        if (\is_string($png) && class_exists(ImageContent::class)) {
+            try {
+                $content[] = new ImageContent($png, 'image/png');
+            } catch (\Throwable) {
+                // Version du SDK MCP sans ce constructeur : le rapport texte suffit.
+            }
+        }
+
         return new CallToolResult(
-            [new TextContent($payload)],
+            $content,
             false,
             $payload,
         );
@@ -198,22 +221,148 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 $this->emptyToNull($tool->note),
                 null,
                 $this->rawArguments->emptyObjects($context, 'update_artifact', 'document'),
+                $tool->draft === true,
+            );
+        }
+
+        $hasOps = \is_array($tool->ops) && $tool->ops !== [];
+        $hasEdits = \is_array($tool->edits) && $tool->edits !== [];
+        if ($hasOps || $hasEdits) {
+            if (\is_array($tool->document) && $tool->document !== []) {
+                throw new BadRequestHttpException('document est exclusif avec ops/edits.');
+            }
+            // Versions brutes (objets vides conservés) si le client les fournit.
+            $ops = $this->rawArguments->rawArgument($context, 'update_artifact', 'ops') ?? json_decode((string) json_encode($tool->ops ?? []), false);
+            $edits = $this->rawArguments->rawArgument($context, 'update_artifact', 'edits') ?? json_decode((string) json_encode($tool->edits ?? []), false);
+            $result = $this->artifacts->patchDocument(
+                $user,
+                $idOrSlug,
+                \is_array($ops) ? $ops : [],
+                \is_array($edits) ? $edits : [],
+                $this->emptyToNull($tool->note),
+                null,
+                $tool->draft === true,
             );
         }
 
         if ($result === null) {
-            throw new BadRequestHttpException('Rien à mettre à jour (document, title, visibility ou description).');
+            throw new BadRequestHttpException('Rien à mettre à jour (document, ops, edits, title, visibility ou description).');
         }
 
-        return [
+        $out = [
             'id' => $result['id'],
             'slug' => $result['slug'],
             'url' => $result['url'],
             'version' => $result['version'] ?? $result['currentVersion'],
         ];
+        if ($tool->draft === true && (\is_array($tool->document) || $hasOps || $hasEdits)) {
+            $out['draft'] = true;
+            $out['note'] = 'Brouillon : non publié. Vérifier avec render_artifact / simulate_store, puis promote_artifact.';
+        }
+        if (\is_array($result['document'] ?? null)) {
+            $expanded = ArtifactFiles::expand(json_decode((string) json_encode($result['document']), true));
+            $warnings = [...$this->validator->lint($expanded), ...$this->simulator->checkJsonata($expanded)];
+            if ($warnings !== []) {
+                $out['warnings'] = $warnings;
+            }
+        }
+
+        return $out;
     }
 
     /** @return array<string, mixed> */
+    /**
+     * @param array<string, mixed> $document
+     *
+     * @return array<string, mixed>
+     */
+    private function validateWithLint(array $document): array
+    {
+        $result = $this->validator->validate($document);
+        $expanded = ArtifactFiles::expand($document);
+        $result['warnings'] = $result['valid'] ? [...$this->validator->lint($expanded), ...$this->simulator->checkJsonata($expanded)] : [];
+
+        return $result;
+    }
+
+    /** @return array<string, mixed> */
+    private function promote(User $user, PromoteArtifactTool $tool): array
+    {
+        $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
+        if ($idOrSlug === null) {
+            throw new BadRequestHttpException('id ou slug requis.');
+        }
+        $r = $this->artifacts->promoteDraft($user, $idOrSlug);
+
+        return [
+            'id' => $r['id'],
+            'slug' => $r['slug'],
+            'url' => $r['url'],
+            'version' => $r['currentVersion'],
+            'liveVersion' => $r['liveVersion'],
+            'hasDraft' => $r['hasDraft'],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function render(User $user, RenderArtifactTool $tool, ?string &$png): array
+    {
+        $document = $tool->document;
+        if (!\is_array($document) || $document === []) {
+            $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
+            if ($idOrSlug === null) {
+                throw new BadRequestHttpException('document, id ou slug requis.');
+            }
+            $document = $this->artifacts->getForUser($user, $idOrSlug)['document'];
+        }
+        $validation = $this->validator->validate($document);
+        $document = ArtifactFiles::expand(json_decode((string) json_encode($document), false));
+        if (!$validation['valid']) {
+            return ['ok' => false, 'errors' => array_map(static fn (array $e): string => $e['path'].' : '.$e['message'], $validation['errors'])];
+        }
+        $rendered = $this->renderer->render(array_filter([
+            'document' => $document,
+            'view' => $tool->view,
+            'viewport' => $tool->viewport,
+            'steps' => $tool->steps,
+            'settleMs' => $tool->settleMs,
+            'fps' => $tool->fps,
+        ], static fn (mixed $v): bool => $v !== null));
+        $png = $rendered['png'];
+
+        return $rendered['result'];
+    }
+
+    /** @return array<string, mixed> */
+    private function simulate(User $user, SimulateStoreTool $tool): array
+    {
+        $document = $tool->document;
+        if (!\is_array($document) || $document === []) {
+            $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
+            if ($idOrSlug === null) {
+                throw new BadRequestHttpException('document, id ou slug requis.');
+            }
+            $document = $this->artifacts->getForUser($user, $idOrSlug)['document'];
+        }
+        $document = ArtifactFiles::expand(json_decode((string) json_encode($document), false));
+        if (!\is_string($tool->store) || $tool->store === '') {
+            throw new BadRequestHttpException('store requis.');
+        }
+        if (!\is_array($tool->actions) || $tool->actions === []) {
+            throw new BadRequestHttpException('actions requis (liste non vide).');
+        }
+
+        return $this->simulator->simulate(array_filter([
+            'document' => $document,
+            'store' => $tool->store,
+            'actions' => $tool->actions,
+            'until' => $tool->until,
+            'maxSteps' => $tool->maxSteps,
+            'snapshots' => $tool->snapshots,
+            'tickMs' => $tool->tickMs,
+        ], static fn (mixed $v): bool => $v !== null));
+    }
+
     private function get(User $user, GetArtifactTool $tool): array
     {
         $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
@@ -221,7 +370,30 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             throw new BadRequestHttpException('id ou slug requis.');
         }
 
-        return $this->artifacts->getForUser($user, $idOrSlug, $tool->version);
+        $detail = $this->artifacts->getForUser($user, $idOrSlug, $tool->version);
+        if ($tool->path === null || $tool->path === '') {
+            return $detail;
+        }
+        $doc = json_decode((string) json_encode($detail['document']), false);
+        try {
+            $value = $tool->path === '/' ? $doc : JsonPatch::get($doc, $tool->path);
+        } catch (\InvalidArgumentException $e) {
+            throw new BadRequestHttpException($e->getMessage());
+        }
+        $out = [
+            'id' => $detail['id'],
+            'slug' => $detail['slug'],
+            'version' => $detail['version'],
+            'path' => $tool->path,
+        ];
+        $keys = $value instanceof \stdClass ? array_keys(get_object_vars($value)) : (\is_array($value) ? range(0, max(0, \count($value) - 1)) : null);
+        if ($tool->keysOnly === true) {
+            $out['keys'] = $value === [] ? [] : $keys;
+        } else {
+            $out['value'] = $value;
+        }
+
+        return $out;
     }
 
     /** @return array<string, mixed> */
@@ -319,8 +491,11 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof BuildArtifactFromKitTool => 'build_artifact_from_kit',
             $data instanceof FindIconsTool => 'find_icons',
             $data instanceof ValidateArtifactTool => 'validate_artifact',
+            $data instanceof SimulateStoreTool => 'simulate_store',
+            $data instanceof RenderArtifactTool => 'render_artifact',
             $data instanceof PublishArtifactTool => 'publish_artifact',
             $data instanceof UpdateArtifactTool => 'update_artifact',
+            $data instanceof PromoteArtifactTool => 'promote_artifact',
             $data instanceof GetArtifactTool => 'get_artifact',
             $data instanceof ListArtifactsTool => 'list_artifacts',
             $data instanceof DeleteArtifactTool => 'delete_artifact',

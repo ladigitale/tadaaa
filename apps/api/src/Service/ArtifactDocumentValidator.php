@@ -279,7 +279,8 @@ final class ArtifactDocumentValidator
                     .'Ou pars du kit shader (start_from_kit : shader GLSL + jusqu’à 4 réglages « controls » déjà câblés), puis ajuste avec edit_preview.',
                 'icones' => $this->icons->rule(),
                 'polices' => 'Optionnel : "fonts": ["Patrick Hand", "Fredoka:wght@400;700"] (4 max, noms Google Fonts, pas d’URL). Le viewer les charge ; utiliser ensuite font-family:\'Patrick Hand\',cursive dans les styles. Toujours prévoir une police de repli.',
-                'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
+                'fichiers' => 'Gros shader / réducteur / texte : déclarer "files": {"jeu.jsonata": "…", "scene.glsl": "…"} au niveau du document et y renvoyer par la valeur exacte "@file:jeu.jsonata" (attribut image d’un sonic-shader, reducer d’un store, jsonata d’une transform…). Le serveur remplace les références avant validation et affichage ; retoucher un fichier = update_artifact avec edits sur /files/jeu.jsonata (chemin court, pas besoin de renvoyer le document). Noms a-z0-9._-, 24 fichiers max, 64 Ko chacun.',
+                'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée (24 h max) ; intake.permanent:true = toujours ouverte (pas de session, garde au plus maxRecords en évinçant le pire ou le plus ancien, minInterval 3 s par défaut) ; intake.unique:{field:"nom",keep:"max:score"} = un seul record par valeur de field (keep : max:<champ>|min:<champ>|last), idéal pour un classement (meilleur score par pseudo). Lecture triée/bornée côté serveur : data.sources.<x> accepte sort (\"-score\") et limit (5) ; l’API accepte ?sort=-score&limit=5 et read_artifact_data aussi. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
             ],
             'scripts' => $this->scriptsCatalog->mcpSummary(),
             'examples' => array_slice($examples, 0, 5),
@@ -419,6 +420,14 @@ final class ArtifactDocumentValidator
             return ['valid' => false, 'errors' => [['path' => '', 'message' => 'Le document doit être un objet JSON.']]];
         }
 
+        // Fichiers séparés (`files`, références @file:nom) : structure vérifiée, puis le reste de la
+        // validation porte sur le document développé.
+        $fileErrors = ArtifactFiles::check($document);
+        if ($fileErrors !== []) {
+            return ['valid' => false, 'errors' => $fileErrors];
+        }
+        $document = ArtifactFiles::expand($document);
+
         $encoded = json_encode($document, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($encoded === false) {
             return ['valid' => false, 'errors' => [['path' => '', 'message' => 'JSON invalide.']]];
@@ -555,6 +564,89 @@ final class ArtifactDocumentValidator
         }
 
         return ['valid' => $errors === [], 'errors' => $errors];
+    }
+
+    /**
+     * Contrôles sémantiques non bloquants (fautes de frappe silencieuses) : sinks et câblage clavier.
+     *
+     * @param array<string, mixed> $document
+     *
+     * @return list<array{path: string, message: string}>
+     */
+    public function lint(array $document): array
+    {
+        $warnings = [];
+        $data = \is_array($document['data'] ?? null) ? $document['data'] : [];
+        $providers = [];
+        foreach (['stores', 'transforms', 'sources'] as $section) {
+            if (\is_array($data[$section] ?? null)) {
+                foreach (array_keys($data[$section]) as $k) {
+                    $providers[(string) $k] = true;
+                }
+            }
+        }
+        /** @var array<string, string> $reducers */
+        $reducers = [];
+        $keyboards = [];
+        $walk = function (mixed $node, string $path) use (&$walk, &$providers, &$reducers, &$keyboards): void {
+            if (!\is_array($node)) {
+                return;
+            }
+            $attrs = \is_array($node['attributes'] ?? null) ? $node['attributes'] : [];
+            $tag = $node['tagName'] ?? null;
+            if ($tag === 'sonic-store' && \is_string($attrs['id'] ?? null)) {
+                $providers[$attrs['id']] = true;
+                $reducers[$attrs['id']] = \is_string($attrs['reducer'] ?? null) ? $attrs['reducer'] : '';
+            }
+            if ($tag === 'sonic-keyboard') {
+                $keyboards[] = [$path, $attrs];
+            }
+            foreach (\is_array($node['nodes'] ?? null) ? $node['nodes'] : [] as $i => $child) {
+                $walk($child, $path.'/nodes/'.$i);
+            }
+        };
+        foreach (\is_array($document['views'] ?? null) ? array_values($document['views']) : [] as $i => $view) {
+            if (\is_array($view) && \is_array($view['root'] ?? null)) {
+                $walk($view['root'], '/views/'.$i.'/root');
+            }
+        }
+
+        foreach (\is_array($data['sinks'] ?? null) ? $data['sinks'] : [] as $name => $sink) {
+            if (!\is_array($sink)) {
+                continue;
+            }
+            $p = '/data/sinks/'.$name;
+            $paths = array_filter(['from' => $sink['from'] ?? null, 'code' => $sink['code'] ?? null] + (\is_array($sink['merge'] ?? null) ? $sink['merge'] : []), '\is_string');
+            foreach ($paths as $field => $dp) {
+                $root = explode('.', $dp)[0];
+                if (!isset($providers[$root])) {
+                    $warnings[] = ['path' => $p.'/'.$field, 'message' => sprintf('« %s » ne correspond à aucun store, transform ou source.', $root)];
+                }
+            }
+            if (\is_string($sink['ack'] ?? null) && !isset($providers[$sink['ack']])) {
+                $warnings[] = ['path' => $p.'/ack', 'message' => sprintf('ack « %s » : aucun store de ce nom (sink:ok / sink:error ne seront jamais reçus).', $sink['ack'])];
+            }
+        }
+
+        foreach ($keyboards as [$path, $attrs]) {
+            $store = $attrs['store'] ?? null;
+            if (\is_string($store) && !isset($providers[$store])) {
+                $warnings[] = ['path' => $path.'/attributes/store', 'message' => sprintf('store « %s » introuvable.', $store)];
+                continue;
+            }
+            $keymap = \is_string($attrs['keymap'] ?? null) ? json_decode($attrs['keymap'], true) : null;
+            $reducer = \is_string($store) ? ($reducers[$store] ?? '') : '';
+            if (!\is_array($keymap) || $reducer === '') {
+                continue;
+            }
+            foreach (array_unique(array_filter(array_values($keymap), '\is_string')) as $action) {
+                if (!str_contains($reducer, "'".$action."'") && !str_contains($reducer, '"'.$action.'"')) {
+                    $warnings[] = ['path' => $path.'/attributes/keymap', 'message' => sprintf('Action « %s » absente du réducteur de « %s » : la touche ne fera rien.', $action, $store)];
+                }
+            }
+        }
+
+        return $warnings;
     }
 
     /**
@@ -723,6 +815,12 @@ final class ArtifactDocumentValidator
                     }
                     if (isset($src['publicRead']) && !\is_bool($src['publicRead'])) {
                         $errors[] = ['path' => $path.'/sources/'.$name.'/publicRead', 'message' => 'publicRead doit être un booléen.'];
+                    }
+                    if (isset($src['sort']) && (!\is_string($src['sort']) || !preg_match('/^[-+]?[a-zA-Z][a-zA-Z0-9_]{0,31}(,[-+]?[a-zA-Z][a-zA-Z0-9_]{0,31}){0,2}$/', $src['sort']))) {
+                        $errors[] = ['path' => $path.'/sources/'.$name.'/sort', 'message' => 'sort : champs séparés par des virgules, - pour décroissant (ex. "-score,nom", 3 max).'];
+                    }
+                    if (isset($src['limit']) && (!\is_int($src['limit']) || $src['limit'] < 1 || $src['limit'] > ArtifactIntakeSchema::HARD_MAX_RECORDS)) {
+                        $errors[] = ['path' => $path.'/sources/'.$name.'/limit', 'message' => 'limit : 1…'.ArtifactIntakeSchema::HARD_MAX_RECORDS.'.'];
                     }
                     if (isset($src['refresh']) && (!\is_int($src['refresh']) || $src['refresh'] < 5 || $src['refresh'] > 3600)) {
                         $errors[] = ['path' => $path.'/sources/'.$name.'/refresh', 'message' => 'refresh : 5…3600 secondes.'];

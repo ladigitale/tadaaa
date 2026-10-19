@@ -1,0 +1,9 @@
+{
+  "name": "simulate-store",
+  "private": true,
+  "type": "module",
+  "description": "Simulateur de réducteur JSONata (outil MCP simulate_store). Copie de ladigitale/artifacts scripts/simulate-store.mjs.",
+  "dependencies": {
+    "jsonata": "2.0.6"
+  }
+}

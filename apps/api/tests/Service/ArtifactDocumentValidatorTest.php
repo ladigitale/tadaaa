@@ -871,4 +871,20 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertFalse($bad['valid']);
         self::assertStringContainsString('sonic-patch : sonic-param to="l.amount"', $bad['errors'][0]['message']);
     }
+
+    public function testLintFlagsUnknownSinkStoreAndUnhandledKey(): void
+    {
+        $doc = [
+            'data' => ['sinks' => ['out' => ['collection' => 'c', 'from' => 'ghost.outbox', 'ack' => 'nope']]],
+            'views' => [['id' => 'v', 'root' => ['tagName' => 'div', 'nodes' => [
+                ['tagName' => 'sonic-store', 'attributes' => ['id' => 'game', 'reducer' => "\$action.type='jump'?1:0"]],
+                ['tagName' => 'sonic-keyboard', 'attributes' => ['store' => 'game', 'keymap' => '{"Space":"jump","KeyP":"pause"}']],
+            ]]]],
+        ];
+        $messages = array_column($this->validator->lint($doc), 'message');
+        self::assertCount(3, $messages);
+        self::assertStringContainsString('ghost', $messages[0]);
+        self::assertStringContainsString('nope', $messages[1]);
+        self::assertStringContainsString('pause', $messages[2]);
+    }
 }

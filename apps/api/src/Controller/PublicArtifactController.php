@@ -41,6 +41,8 @@ final class PublicArtifactController extends AbstractController
             $request->query->getString('k') ?: null,
             $readKey,
             $user instanceof User ? $user : null,
+            $request->query->getString('sort') ?: null,
+            $request->query->has('limit') ? max(1, $request->query->getInt('limit')) : null,
         )]);
         // Lecture par lien secret ou membre : jamais en cache partagé.
         $response->headers->set('Cache-Control', $readKey !== null || $user instanceof User ? 'private, no-store' : 'public, max-age=30');
@@ -92,6 +94,7 @@ final class PublicArtifactController extends AbstractController
             $slug,
             $request->query->getString('k') ?: null,
             $user instanceof User ? $user : null,
+            $request->query->getBoolean('draft'),
         );
 
         // Objets vides du document (`\stdClass`) gardés en `{}`.
@@ -100,7 +103,8 @@ final class PublicArtifactController extends AbstractController
         if ($response->isNotModified($request)) {
             return $response;
         }
-        $response->headers->set('Cache-Control', 'public, max-age=30');
+        // Brouillon (réservé aux membres) : jamais en cache partagé.
+        $response->headers->set('Cache-Control', ($result['body']['draft'] ?? false) ? 'private, no-store' : 'public, max-age=30');
         $response->headers->set('ETag', $result['etag']);
 
         return $response;
