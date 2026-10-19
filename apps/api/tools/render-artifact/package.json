@@ -1,0 +1,9 @@
+{
+  "name": "render-artifact",
+  "private": true,
+  "type": "module",
+  "description": "Rendu headless d'un artefact (outil MCP render_artifact). Copie de ladigitale/artifacts scripts/render-artifact.mjs.",
+  "dependencies": {
+    "playwright-core": "1.55.0"
+  }
+}

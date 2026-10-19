@@ -47,44 +47,18 @@ final class StoreSimulator
             '--max-old-space-size=128',
             $script,
         ];
-        $proc = @proc_open($cmd, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $this->toolDir, ['PATH' => (string) getenv('PATH')]);
-        if (!\is_resource($proc)) {
+        $run = SubprocessRunner::run($cmd, $this->toolDir, $payload, self::TIMEOUT_S, self::MAX_OUTPUT, ['PATH' => (string) getenv('PATH')]);
+        if ($run['status'] === 'spawn') {
             return ['ok' => false, 'errors' => ['Node introuvable sur ce serveur.']];
         }
-        stream_set_blocking($pipes[1], false);
-        stream_set_blocking($pipes[2], false);
-        fwrite($pipes[0], $payload);
-        fclose($pipes[0]);
-
-        $out = '';
-        $err = '';
-        $deadline = microtime(true) + self::TIMEOUT_S;
-        $timedOut = false;
-        while (true) {
-            $out .= (string) fread($pipes[1], 65536);
-            $err .= (string) fread($pipes[2], 8192);
-            if (!proc_get_status($proc)['running']) {
-                $out .= (string) stream_get_contents($pipes[1]);
-                $err .= (string) stream_get_contents($pipes[2]);
-                break;
-            }
-            if (\strlen($out) > self::MAX_OUTPUT || microtime(true) > $deadline) {
-                $timedOut = microtime(true) > $deadline;
-                proc_terminate($proc, 9);
-                break;
-            }
-            usleep(5000);
-        }
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        proc_close($proc);
-
-        if ($timedOut) {
+        if ($run['status'] === 'timeout') {
             return ['ok' => false, 'errors' => [sprintf('Délai dépassé (%d s) : réducteur trop lent ou boucle infinie.', self::TIMEOUT_S)]];
         }
-        if (\strlen($out) > self::MAX_OUTPUT) {
+        if ($run['status'] === 'toolarge') {
             return ['ok' => false, 'errors' => ['Sortie trop volumineuse : réduire maxSteps ou utiliser snapshots.']];
         }
+        $out = $run['stdout'];
+        $err = $run['stderr'];
         $decoded = json_decode($out, true);
         if (!\is_array($decoded)) {
             return ['ok' => false, 'errors' => ['Simulateur : sortie invalide.'.($err !== '' ? ' '.mb_substr(trim($err), 0, 300) : '')]];

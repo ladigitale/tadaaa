@@ -19,6 +19,7 @@ use App\Mcp\Tool\ListArtifactsTool;
 use App\Mcp\Tool\OpenArtifactIntakeTool;
 use App\Mcp\Tool\PublishArtifactTool;
 use App\Mcp\Tool\ReadArtifactDataTool;
+use App\Mcp\Tool\RenderArtifactTool;
 use App\Mcp\Tool\SimulateStoreTool;
 use App\Mcp\Tool\UpdateArtifactTool;
 use App\Mcp\Tool\ValidateArtifactTool;
@@ -27,12 +28,14 @@ use App\Service\ArtifactDataService;
 use App\Service\ArtifactDocumentValidator;
 use App\Service\ArtifactIcons;
 use App\Service\ArtifactKits;
+use App\Service\ArtifactRenderer;
 use App\Service\ArtifactService;
 use App\Service\AuditLogger;
 use App\Service\DatasetAccessService;
 use App\Service\JsonPatch;
 use App\Service\StoreSimulator;
 use App\Service\UsageMeter;
+use Mcp\Schema\Content\ImageContent;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -56,6 +59,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         private readonly ArtifactKits $kits,
         private readonly ArtifactIcons $icons,
         private readonly StoreSimulator $simulator,
+        private readonly ArtifactRenderer $renderer,
     ) {
     }
 
@@ -74,6 +78,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         } catch (\Throwable) {
         }
 
+        $png = null;
         $payload = match (true) {
             $data instanceof GetArtifactCatalogTool => [
                 ...$this->validator->mcpCatalogPayload($data->compact, $data->components, $data->rules, $data->examples),
@@ -85,6 +90,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 'names' => $this->icons->search($data->query, $data->library !== '' ? $data->library : 'iconoir', 40),
             ],
             $data instanceof SimulateStoreTool => $this->simulate($user, $data),
+            $data instanceof RenderArtifactTool => $this->render($user, $data, $png),
             $data instanceof ValidateArtifactTool => $this->validateWithLint($data->document ?? []),
             $data instanceof PublishArtifactTool => $this->publish($user, $data, $context),
             $data instanceof UpdateArtifactTool => $this->update($user, $data, $context),
@@ -105,8 +111,17 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             )),
         };
 
+        $content = [new TextContent($payload)];
+        if (\is_string($png) && class_exists(ImageContent::class)) {
+            try {
+                $content[] = new ImageContent($png, 'image/png');
+            } catch (\Throwable) {
+                // Version du SDK MCP sans ce constructeur : le rapport texte suffit.
+            }
+        }
+
         return new CallToolResult(
-            [new TextContent($payload)],
+            $content,
             false,
             $payload,
         );
@@ -256,6 +271,34 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         $result['warnings'] = $result['valid'] ? $this->validator->lint($document) : [];
 
         return $result;
+    }
+
+    /** @return array<string, mixed> */
+    private function render(User $user, RenderArtifactTool $tool, ?string &$png): array
+    {
+        $document = $tool->document;
+        if (!\is_array($document) || $document === []) {
+            $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
+            if ($idOrSlug === null) {
+                throw new BadRequestHttpException('document, id ou slug requis.');
+            }
+            $document = $this->artifacts->getForUser($user, $idOrSlug)['document'];
+        }
+        $validation = $this->validator->validate($document);
+        if (!$validation['valid']) {
+            return ['ok' => false, 'errors' => array_map(static fn (array $e): string => $e['path'].' : '.$e['message'], $validation['errors'])];
+        }
+        $rendered = $this->renderer->render(array_filter([
+            'document' => $document,
+            'view' => $tool->view,
+            'viewport' => $tool->viewport,
+            'steps' => $tool->steps,
+            'settleMs' => $tool->settleMs,
+            'fps' => $tool->fps,
+        ], static fn (mixed $v): bool => $v !== null));
+        $png = $rendered['png'];
+
+        return $rendered['result'];
     }
 
     /** @return array<string, mixed> */
@@ -416,6 +459,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof FindIconsTool => 'find_icons',
             $data instanceof ValidateArtifactTool => 'validate_artifact',
             $data instanceof SimulateStoreTool => 'simulate_store',
+            $data instanceof RenderArtifactTool => 'render_artifact',
             $data instanceof PublishArtifactTool => 'publish_artifact',
             $data instanceof UpdateArtifactTool => 'update_artifact',
             $data instanceof GetArtifactTool => 'get_artifact',
