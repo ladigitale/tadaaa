@@ -17,7 +17,9 @@ namespace App\Service;
  *     },
  *     "maxRecords": 40,       // par session ouverte (plafond dur HARD_MAX_RECORDS)
  *     "minInterval": 0,       // s entre deux envois d’une même IP (0 = off ; éviter en classe : IP partagée)
- *     "requireCode": false    // code à 4 chiffres généré à l'ouverture
+ *     "requireCode": false,   // code à 4 chiffres généré à l'ouverture
+ *     "permanent": false,     // true : toujours ouverte (pas de session) ; garde au plus maxRecords (évince le pire, ou le plus ancien) ; minInterval 3 s par défaut
+ *     "unique": {"field": "name", "keep": "max:score"}   // un seul record par valeur de `field` : keep = max:<champ> | min:<champ> | last
  *   }
  */
 final class ArtifactIntakeSchema
@@ -29,6 +31,7 @@ final class ArtifactIntakeSchema
     public const DEFAULT_MIN_INTERVAL = 0;
     public const MAX_SESSION_MINUTES = 1440;
     public const MAX_PAYLOAD_BYTES = 2048;
+    public const PERMANENT_MIN_INTERVAL = 3;
 
     private const TYPES = ['string', 'integer', 'number', 'boolean', 'enum'];
     private const FIELD_NAME = '/^[a-zA-Z][a-zA-Z0-9_]{0,31}$/';
@@ -104,6 +107,21 @@ final class ArtifactIntakeSchema
         if (isset($intake['requireCode']) && !\is_bool($intake['requireCode'])) {
             $errors[] = 'intake.requireCode doit être un booléen.';
         }
+        if (isset($intake['permanent'])) {
+            if (!\is_bool($intake['permanent'])) {
+                $errors[] = 'intake.permanent doit être un booléen.';
+            } elseif ($intake['permanent'] && ($intake['requireCode'] ?? false) === true) {
+                $errors[] = 'intake.permanent est incompatible avec requireCode.';
+            }
+        }
+        if (isset($intake['unique'])) {
+            $u = $intake['unique'];
+            if (!\is_array($u) || !\is_string($u['field'] ?? null) || !isset($fields[$u['field']]) || ($fields[$u['field']]['type'] ?? null) !== 'string') {
+                $errors[] = 'intake.unique.field doit nommer un champ de type string.';
+            } elseif (self::parseKeep($u['keep'] ?? 'last', $fields) === null) {
+                $errors[] = 'intake.unique.keep : last | max:<champ numérique> | min:<champ numérique>.';
+            }
+        }
 
         return $errors;
     }
@@ -111,7 +129,7 @@ final class ArtifactIntakeSchema
     /**
      * Normalise une déclaration valide (valeurs par défaut appliquées).
      *
-     * @return array{fields: array<string, array<string, mixed>>, maxRecords: int, minInterval: int, requireCode: bool}
+     * @return array{fields: array<string, array<string, mixed>>, maxRecords: int, minInterval: int, requireCode: bool, permanent: bool, unique: array{field: string, keep: string}|null}
      */
     public static function normalize(array $intake): array
     {
@@ -126,12 +144,112 @@ final class ArtifactIntakeSchema
             $fields[(string) $name] = $f;
         }
 
+        $permanent = (bool) ($intake['permanent'] ?? false);
+        $unique = null;
+        if (\is_array($intake['unique'] ?? null)) {
+            $unique = ['field' => (string) $intake['unique']['field'], 'keep' => (string) ($intake['unique']['keep'] ?? 'last')];
+        }
+
         return [
             'fields' => $fields,
             'maxRecords' => min(self::HARD_MAX_RECORDS, (int) ($intake['maxRecords'] ?? self::DEFAULT_MAX_RECORDS)),
-            'minInterval' => (int) ($intake['minInterval'] ?? self::DEFAULT_MIN_INTERVAL),
+            'minInterval' => (int) ($intake['minInterval'] ?? ($permanent ? self::PERMANENT_MIN_INTERVAL : self::DEFAULT_MIN_INTERVAL)),
             'requireCode' => (bool) ($intake['requireCode'] ?? false),
+            'permanent' => $permanent,
+            'unique' => $unique,
         ];
+    }
+
+    /**
+     * Règle de conservation : `last`, `max:<champ>` ou `min:<champ>` (champ numérique du schéma).
+     *
+     * @param array<string, mixed> $fields
+     *
+     * @return array{mode: 'last'|'max'|'min', field: ?string}|null
+     */
+    public static function parseKeep(mixed $keep, array $fields): ?array
+    {
+        if ($keep === 'last') {
+            return ['mode' => 'last', 'field' => null];
+        }
+        if (\is_string($keep) && preg_match('/^(max|min):([a-zA-Z][a-zA-Z0-9_]{0,31})$/', $keep, $m)
+            && \in_array($fields[$m[2]]['type'] ?? null, ['integer', 'number'], true)) {
+            return ['mode' => $m[1], 'field' => $m[2]];
+        }
+
+        return null;
+    }
+
+    /**
+     * Le nouvel envoi bat-il l'ancien selon la règle ? (`last` : toujours.)
+     *
+     * @param array{mode: string, field: ?string} $keep
+     * @param array<string, mixed>                $new
+     * @param array<string, mixed>                $old
+     */
+    public static function beats(array $keep, array $new, array $old): bool
+    {
+        if ($keep['mode'] === 'last' || $keep['field'] === null) {
+            return true;
+        }
+        $a = $new[$keep['field']] ?? null;
+        $b = $old[$keep['field']] ?? null;
+        if (!is_numeric($a)) {
+            return false;
+        }
+        if (!is_numeric($b)) {
+            return true;
+        }
+
+        return $keep['mode'] === 'max' ? $a > $b : $a < $b;
+    }
+
+    /**
+     * Tri / limite côté serveur d'une lecture. `sort` : "-score,nom" (champs de `data` ou createdAt/updatedAt,
+     * préfixe - = décroissant) ; `limit` : 1…HARD_MAX_RECORDS.
+     *
+     * @param list<array<string, mixed>> $rows records {id, data, createdAt, updatedAt}
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function sortAndLimit(array $rows, ?string $sort, ?int $limit): array
+    {
+        $keys = [];
+        foreach (array_slice(array_filter(array_map('trim', explode(',', (string) $sort))), 0, 3) as $k) {
+            $desc = str_starts_with($k, '-');
+            $name = ltrim($k, '-+');
+            if (preg_match('/^[a-zA-Z][a-zA-Z0-9_]{0,31}$/', $name)) {
+                $keys[] = [$name, $desc];
+            }
+        }
+        if ($keys !== []) {
+            $value = static fn (array $r, string $f): mixed => \in_array($f, ['createdAt', 'updatedAt'], true) ? $r[$f] ?? null : ($r['data'][$f] ?? null);
+            usort($rows, static function (array $x, array $y) use ($keys, $value): int {
+                foreach ($keys as [$f, $desc]) {
+                    $a = $value($x, $f);
+                    $b = $value($y, $f);
+                    // Valeurs absentes toujours en dernier, quel que soit le sens.
+                    if ($a === null || $b === null) {
+                        if ($a === $b) {
+                            continue;
+                        }
+
+                        return $a === null ? 1 : -1;
+                    }
+                    $c = (is_numeric($a) && is_numeric($b)) ? $a <=> $b : strcmp((string) $a, (string) $b);
+                    if ($c !== 0) {
+                        return $desc ? -$c : $c;
+                    }
+                }
+
+                return 0;
+            });
+        }
+        if ($limit !== null && $limit > 0) {
+            $rows = \array_slice($rows, 0, min($limit, self::HARD_MAX_RECORDS));
+        }
+
+        return $rows;
     }
 
     /**

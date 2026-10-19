@@ -100,7 +100,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             ],
             $data instanceof DeleteArtifactTool => $this->delete($user, $data),
             $data instanceof ReadArtifactDataTool => [
-                'records' => $this->data->readForUser($user, $data->slug, $data->collection),
+                'records' => $this->data->readForUser($user, $data->slug, $data->collection, $this->emptyToNull($data->sort), $data->limit),
             ],
             $data instanceof WriteArtifactDataTool => $this->writeData($user, $data),
             $data instanceof OpenArtifactIntakeTool => $this->openIntake($user, $data),

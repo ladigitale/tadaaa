@@ -41,6 +41,8 @@ final class PublicArtifactController extends AbstractController
             $request->query->getString('k') ?: null,
             $readKey,
             $user instanceof User ? $user : null,
+            $request->query->getString('sort') ?: null,
+            $request->query->has('limit') ? max(1, $request->query->getInt('limit')) : null,
         )]);
         // Lecture par lien secret ou membre : jamais en cache partagé.
         $response->headers->set('Cache-Control', $readKey !== null || $user instanceof User ? 'private, no-store' : 'public, max-age=30');
