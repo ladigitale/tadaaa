@@ -19,6 +19,7 @@ use App\Mcp\Tool\ListArtifactsTool;
 use App\Mcp\Tool\OpenArtifactIntakeTool;
 use App\Mcp\Tool\PublishArtifactTool;
 use App\Mcp\Tool\ReadArtifactDataTool;
+use App\Mcp\Tool\SimulateStoreTool;
 use App\Mcp\Tool\UpdateArtifactTool;
 use App\Mcp\Tool\ValidateArtifactTool;
 use App\Mcp\Tool\WriteArtifactDataTool;
@@ -30,6 +31,7 @@ use App\Service\ArtifactService;
 use App\Service\AuditLogger;
 use App\Service\DatasetAccessService;
 use App\Service\JsonPatch;
+use App\Service\StoreSimulator;
 use App\Service\UsageMeter;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
@@ -53,6 +55,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         private readonly RawToolArguments $rawArguments,
         private readonly ArtifactKits $kits,
         private readonly ArtifactIcons $icons,
+        private readonly StoreSimulator $simulator,
     ) {
     }
 
@@ -81,6 +84,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 'library' => $data->library,
                 'names' => $this->icons->search($data->query, $data->library !== '' ? $data->library : 'iconoir', 40),
             ],
+            $data instanceof SimulateStoreTool => $this->simulate($user, $data),
             $data instanceof ValidateArtifactTool => $this->validateWithLint($data->document ?? []),
             $data instanceof PublishArtifactTool => $this->publish($user, $data, $context),
             $data instanceof UpdateArtifactTool => $this->update($user, $data, $context),
@@ -254,6 +258,35 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         return $result;
     }
 
+    /** @return array<string, mixed> */
+    private function simulate(User $user, SimulateStoreTool $tool): array
+    {
+        $document = $tool->document;
+        if (!\is_array($document) || $document === []) {
+            $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
+            if ($idOrSlug === null) {
+                throw new BadRequestHttpException('document, id ou slug requis.');
+            }
+            $document = $this->artifacts->getForUser($user, $idOrSlug)['document'];
+        }
+        if (!\is_string($tool->store) || $tool->store === '') {
+            throw new BadRequestHttpException('store requis.');
+        }
+        if (!\is_array($tool->actions) || $tool->actions === []) {
+            throw new BadRequestHttpException('actions requis (liste non vide).');
+        }
+
+        return $this->simulator->simulate(array_filter([
+            'document' => $document,
+            'store' => $tool->store,
+            'actions' => $tool->actions,
+            'until' => $tool->until,
+            'maxSteps' => $tool->maxSteps,
+            'snapshots' => $tool->snapshots,
+            'tickMs' => $tool->tickMs,
+        ], static fn (mixed $v): bool => $v !== null));
+    }
+
     private function get(User $user, GetArtifactTool $tool): array
     {
         $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
@@ -382,6 +415,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof BuildArtifactFromKitTool => 'build_artifact_from_kit',
             $data instanceof FindIconsTool => 'find_icons',
             $data instanceof ValidateArtifactTool => 'validate_artifact',
+            $data instanceof SimulateStoreTool => 'simulate_store',
             $data instanceof PublishArtifactTool => 'publish_artifact',
             $data instanceof UpdateArtifactTool => 'update_artifact',
             $data instanceof GetArtifactTool => 'get_artifact',
