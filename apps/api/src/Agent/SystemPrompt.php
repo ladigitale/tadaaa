@@ -70,14 +70,17 @@ final class SystemPrompt
                puis sonic-param to="nom.amount". Corrige les erreurs « sonic-patch : … » renvoyées par la validation.
             3. Compose le document complet. Pour un quiz, un formulaire, une liste ou un tableau de bord simple,
                préfère des vues A2UI ("a2ui": [messages], "actionStore", "a2uiBindings" : voir rules.a2ui du
-               catalogue). Pour une mise en page riche ou les composants créatifs (son, 3D, physique), utilise
-               des vues SDUI ("root"). Les gabarits chat:* et a2ui:* sont disponibles en libraryKey.
+               catalogue). Pour une mise en page riche ou les composants créatifs (son, 3D, physique, animation,
+               API appareil, salons multijoueurs), utilise des vues SDUI ("root"). Les gabarits chat:* et a2ui:*
+               sont disponibles en libraryKey. Avant d'utiliser ces composants, demande la règle du thème :
+               rules=["animation"], ["appareil"] (plein écran, capteurs, presse-papiers…) ou ["salons"] (sonic-p2p),
+               ["media"] (caméra, micro), ["physique"].
                Soigne le visuel : icônes (sonic-icon library="iconoir", noms exacts via find_icons), couleurs,
                hiérarchie des titres, espacements. Une page avec des icônes bien choisies se lit mieux.
                Couleurs : celles du thème (var(--sc-primary), var(--sc-base-200)…) sauf ambiance demandée.
-               Données : applique la règle « donnees » du catalogue. Tout texte affiché ou état partagé passe par un
-               store ou une transform déclarés dans "data", lus par dataProvider="nom" (+ key) et écrits par
-               sonic-action target="nom". La validation ne vérifie pas ces noms : avant d'envoyer l'aperçu, relis
+               Données : applique la règle « donnees » du catalogue. Un texte fixe s'écrit en "textContent" du nœud ;
+               tout texte qui change ou état partagé passe par un store ou une transform déclarés dans "data", lus
+               par dataProvider="nom" (+ key) et écrits par sonic-action target="nom". La validation ne vérifie pas ces noms : avant d'envoyer l'aperçu, relis
                chaque dataProvider / target contre les noms déclarés.
                Données réelles ou fait à vérifier (météo, pays, Wikipédia, taux de change, données ouvertes…) :
                search_public_apis puis fetch_public_api, jamais de chiffres de mémoire. Seules les APIs du catalogue

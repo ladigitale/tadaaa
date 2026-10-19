@@ -55,6 +55,15 @@ final class ArtifactDocumentValidatorTest extends TestCase
                 ['name' => 'sonic-body'],
                 ['name' => 'sonic-joint'],
                 ['name' => 'sonic-controller'],
+                ['name' => 'sonic-animate'],
+                ['name' => 'sonic-clock'],
+                ['name' => 'sonic-timeline'],
+                ['name' => 'sonic-p2p'],
+                ['name' => 'sonic-fullscreen'],
+                ['name' => 'sonic-pointer-lock'],
+                ['name' => 'sonic-wake-lock'],
+                ['name' => 'sonic-orientation'],
+                ['name' => 'sonic-capabilities'],
             ],
         ];
         $scripts = [
@@ -555,10 +564,18 @@ final class ArtifactDocumentValidatorTest extends TestCase
 
     public function testCompactCatalogPayloadIsSmall(): void
     {
+        // Un agent qui filtre les règles longues (rules=[...]) ne reçoit que le catalogue et les règles courtes.
+        $filtered = $this->validator->mcpCatalogPayload(true, null, ['__none__'], false);
+        $encodedFiltered = json_encode($filtered, JSON_UNESCAPED_UNICODE);
+        self::assertNotFalse($encodedFiltered);
+        self::assertLessThan(9_000, strlen($encodedFiltered));
+
+        // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, animation, appareil,
+        // salons, ia, collecte). Plafond large, pour repérer une dérive de taille.
         $payload = $this->validator->mcpCatalogPayload(true);
         $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE);
         self::assertNotFalse($encoded);
-        self::assertLessThan(20_000, strlen($encoded));
+        self::assertLessThan(40_000, strlen($encoded));
         self::assertArrayHasKey('commonProps', $payload['catalog']);
     }
 
@@ -571,7 +588,9 @@ final class ArtifactDocumentValidatorTest extends TestCase
             new \App\Service\ArtifactScriptsCatalog($dir.'/scripts-catalog.json'),
         );
         self::assertStringStartsWith('5.', $validator->concordeVersion());
-        foreach (['sonic-button', 'sonic-alert', 'sonic-radio', 'sonic-switch', 'sonic-store', 'sonic-sound', 'sonic-physics', 'div'] as $tag) {
+        foreach (['sonic-button', 'sonic-alert', 'sonic-radio', 'sonic-switch', 'sonic-store', 'sonic-sound', 'sonic-physics', 'div',
+            // Derniers addons de la creative-stack : le catalogue livré doit les connaître (sinon le validateur les refuse).
+            'sonic-animate', 'sonic-clock', 'sonic-timeline', 'sonic-p2p', 'sonic-fullscreen', 'sonic-pointer-lock', 'sonic-wake-lock', 'sonic-orientation', 'sonic-capabilities'] as $tag) {
             self::assertContains($tag, $validator->allowedTags(), $tag);
         }
         self::assertFalse(\in_array('sonic-example', $validator->allowedTags(), true));
@@ -591,15 +610,15 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertArrayHasKey('a2ui', $targeted['rules']);
         self::assertArrayHasKey('interdit', $targeted['rules']);
         self::assertFalse(isset($targeted['rules']['audio']) || isset($targeted['examples']) || isset($targeted['scripts']));
-        self::assertLessThan(10_000, \strlen((string) json_encode($targeted)));
+        self::assertLessThan(13_000, \strlen((string) json_encode($targeted)));
         $full = $validator->mcpCatalogPayload(true);
         self::assertArrayHasKey('audio', $full['rules']);
         self::assertArrayHasKey('examples', $full);
 
-        // Sommaire pour le prompt système : tous les composants, ~1k tokens.
+        // Sommaire pour le prompt système : tous les composants et les thèmes de règles (~2,5k tokens).
         $index = $validator->catalogIndex();
-        self::assertLessThan(5_000, \strlen($index));
-        foreach (['sonic-button', 'sonic-store', 'sonic-physics', 'a2ui', 'chartjs', 'div'] as $needle) {
+        self::assertLessThan(10_000, \strlen($index));
+        foreach (['sonic-button', 'sonic-store', 'sonic-physics', 'a2ui', 'chartjs', 'div', 'addon animation', 'addon device', 'addon p2p', 'animation, appareil, salons'] as $needle) {
             self::assertStringContainsString($needle, $index);
         }
     }
@@ -886,5 +905,119 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('ghost', $messages[0]);
         self::assertStringContainsString('nope', $messages[1]);
         self::assertStringContainsString('pause', $messages[2]);
+    }
+
+    public function testAcceptsPlainTextContentAndNodeId(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'span', 'nodeId' => 'titre', 'attributes' => ['id' => 'titre'], 'textContent' => 'Bienvenue'],
+            ['tagName' => 'p', 'textContent' => '<b>pas du HTML</b> : rendu comme texte brut'],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testRejectsBadTextContentAndNodeId(): void
+    {
+        $doc = $this->minimalDoc();
+        $cases = [
+            ['textContent', ['not', 'a string'], 'chaîne'],
+            ['textContent', str_repeat('a', ArtifactDocumentValidator::MAX_TEXT_CONTENT + 1), 'trop long'],
+            ['nodeId', '1titre', 'nodeId'],
+            ['nodeId', 'a b', 'nodeId'],
+            ['nodeId', str_repeat('a', 65), 'nodeId'],
+            ['nodeId', ['x'], 'nodeId'],
+        ];
+        foreach ($cases as [$key, $value, $needle]) {
+            $doc['views'][0]['root']['nodes'] = [['tagName' => 'p', $key => $value]];
+            $result = $this->validator->validate($doc);
+            self::assertFalse($result['valid'], $key.' '.json_encode($value));
+            self::assertStringContainsString($needle, $result['errors'][0]['message']);
+        }
+        // Les clés dangereuses restent refusées, textContent ne les rend pas acceptables.
+        $doc['views'][0]['root']['nodes'] = [['tagName' => 'p', 'textContent' => 'x', 'innerHTML' => '<b>x</b>']];
+        self::assertFalse($this->validator->validate($doc)['valid']);
+    }
+
+    public function testTimelineDescriptor(): void
+    {
+        $timeline = static fn (string $descriptor): array => ['tagName' => 'sonic-timeline', 'attributes' => ['time-source' => 'clock.t', 'descriptor' => $descriptor]];
+        $doc = $this->minimalDoc();
+
+        // prefix / suffix sont des champs légitimes des nœuds `text` d'une timeline.
+        $ok = json_encode(['duration' => 3, 'root' => ['type' => 'seq', 'nodes' => [
+            ['type' => 'tween', 'targets' => ['titre'], 'props' => ['opacity' => [0, 1]], 'duration' => 0.8],
+            ['type' => 'text', 'mode' => 'count', 'targets' => ['n'], 'from' => 0, 'to' => 100, 'prefix' => '≈ ', 'suffix' => ' %'],
+        ]]], JSON_UNESCAPED_UNICODE);
+        $doc['views'][0]['root']['nodes'] = [['tagName' => 'sonic-clock', 'attributes' => ['dataProvider' => 'clock', 'duration' => '4', 'mode' => 'loop']], $timeline($ok)];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $bad = [
+            'JSON cassé' => '{"root": ',
+            'pas un objet' => '"juste du texte"',
+            'clé js' => '{"root":{"type":"tween","targets":["a"],"props":{},"js":"alert(1)"}}',
+            'css imbriqué' => '{"root":{"type":"seq","nodes":[{"type":"tween","targets":["a"],"props":{},"css":"x"}]}}',
+            'trop gros' => '{"root":{"type":"set","path":"a.b","value":"'.str_repeat('x', ArtifactDocumentValidator::MAX_TIMELINE_DESCRIPTOR).'"}}',
+        ];
+        foreach ($bad as $label => $descriptor) {
+            $doc['views'][0]['root']['nodes'] = [$timeline($descriptor)];
+            self::assertFalse($this->validator->validate($doc)['valid'], $label);
+        }
+    }
+
+    public function testSingletonLimitsForRoomsAndDeviceApi(): void
+    {
+        $doc = $this->minimalDoc();
+        foreach (['sonic-p2p', 'sonic-pointer-lock', 'sonic-wake-lock', 'sonic-orientation'] as $tag) {
+            $doc['views'][0]['root']['nodes'] = [['tagName' => $tag, 'attributes' => ['id' => 'a']]];
+            $result = $this->validator->validate($doc);
+            self::assertTrue($result['valid'], $tag.' '.json_encode($result['errors']));
+
+            $doc['views'][0]['root']['nodes'] = [['tagName' => $tag], ['tagName' => $tag]];
+            $result = $this->validator->validate($doc);
+            self::assertFalse($result['valid'], $tag);
+            self::assertStringContainsString('Trop de '.$tag, $result['errors'][0]['message']);
+        }
+        // Plusieurs horloges, animations ou plein écran : pas de limite de ressource.
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'sonic-clock', 'attributes' => ['dataProvider' => 'c1']],
+            ['tagName' => 'sonic-clock', 'attributes' => ['dataProvider' => 'c2']],
+            ['tagName' => 'sonic-animate', 'attributes' => ['recipe' => 'reveal']],
+            ['tagName' => 'sonic-fullscreen', 'attributes' => ['id' => 'fs']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testCatalogPayloadExplainsAnimationDeviceAndRooms(): void
+    {
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__']);
+        foreach (['animation', 'appareil', 'salons'] as $topic) {
+            self::assertArrayHasKey($topic, $payload['rules'], $topic);
+            self::assertContains($topic, ArtifactDocumentValidator::LONG_RULES);
+        }
+        self::assertStringContainsString('sonic-animate', $payload['rules']['animation']);
+        self::assertStringContainsString('time-source', $payload['rules']['animation']);
+        self::assertStringContainsString('JSON EN CHAÎNE', $payload['rules']['animation']);
+        self::assertStringContainsString('GESTE OBLIGATOIRE', $payload['rules']['appareil']);
+        self::assertStringContainsString('sonic-capabilities', $payload['rules']['appareil']);
+        self::assertStringContainsString('sonic-p2p', $payload['rules']['salons']);
+        self::assertStringContainsString('N’écris NI artifact, NI api', $payload['rules']['salons']);
+        self::assertStringContainsString('textContent', $payload['rules']['donnees']);
+
+        // Demandés un par un, les thèmes sont les seuls règles longues renvoyées.
+        $only = $this->validator->mcpCatalogPayload(true, ['__none__'], ['salons'], false);
+        self::assertArrayHasKey('salons', $only['rules']);
+        self::assertFalse(isset($only['rules']['animation']) || isset($only['rules']['appareil']) || isset($only['rules']['audio']));
+    }
+
+    public function testMediaRuleExplainsCameraTrackSettings(): void
+    {
+        $media = $this->validator->mcpCatalogPayload(true, ['__none__'])['rules']['media'];
+        foreach (['camCapabilities', 'adjust=', 'camSettings', 'applied, jamais desired', 'ptz'] as $needle) {
+            self::assertStringContainsString($needle, $media);
+        }
     }
 }
