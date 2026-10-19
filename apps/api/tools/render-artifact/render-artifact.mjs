@@ -25,8 +25,10 @@
  *     "fps": true,                            // mesure sur 2 s : images/s, durée des images (p50/p95/max), tâches longues, mémoire JS → perf
  *     "outDir": "/tmp/render"                 // dossier des PNG (défaut : ./render-out)
  *   }
- * Sortie JSON : {ok, errors[], warnings[], failedRequests[], assertions[], fps?, perf?, screenshots[], text}
- * `ok` = aucune erreur console/page et aucune assertion en échec.
+ * Sortie JSON : {ok, errors[], warnings[], failedRequests[], assertions[], shaderErrors[], fps?, perf?, screenshots[], text}
+ * `ok` = aucune erreur console/page, aucune erreur de shader et aucune assertion en échec.
+ * shaderErrors : échecs de compilation/liaison WebGL (journal du compilateur GLSL avec numéros de ligne),
+ * relevés directement dans le contexte WebGL, que le viewer les journalise ou non.
  */
 import http from "node:http";
 import fs from "node:fs";
@@ -58,7 +60,7 @@ await new Promise((ok) => server.listen(0, "127.0.0.1", ok));
 const base = `http://127.0.0.1:${server.address().port}`;
 
 const IGNORED = /favicon|GL Driver Message|GPU stall|swiftshader/i;
-const out = {ok: true, errors: [], warnings: [], failedRequests: [], assertions: [], screenshots: [], text: ""};
+const out = {ok: true, errors: [], warnings: [], failedRequests: [], assertions: [], shaderErrors: [], screenshots: [], text: ""};
 const browser = await chromium.launch({
   executablePath: process.env.CHROME_PATH || undefined,
   args: [...(asRoot ? ["--no-sandbox"] : []), "--disable-dev-shm-usage", "--use-gl=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required"],
@@ -74,6 +76,30 @@ try {
   });
   page.on("requestfailed", (rq) => {
     if (!IGNORED.test(rq.url())) out.failedRequests.push(`${rq.url().slice(0, 200)} — ${rq.failure()?.errorText ?? ""}`);
+  });
+  // Compilation GLSL : on enveloppe compileShader / linkProgram pour relever les journaux d'erreur.
+  await page.addInitScript(() => {
+    window.__gl = [];
+    for (const C of [window.WebGLRenderingContext, window.WebGL2RenderingContext]) {
+      if (!C) continue;
+      const compile = C.prototype.compileShader;
+      C.prototype.compileShader = function (sh) {
+        compile.call(this, sh);
+        try {
+          if (!this.getShaderParameter(sh, this.COMPILE_STATUS)) {
+            const kind = this.getShaderParameter(sh, this.SHADER_TYPE) === this.FRAGMENT_SHADER ? "fragment" : "vertex";
+            window.__gl.push(`${kind} : ${(this.getShaderInfoLog(sh) || "").trim().slice(0, 600)}`);
+          }
+        } catch {}
+      };
+      const link = C.prototype.linkProgram;
+      C.prototype.linkProgram = function (p) {
+        link.call(this, p);
+        try {
+          if (!this.getProgramParameter(p, this.LINK_STATUS)) window.__gl.push(`link : ${(this.getProgramInfoLog(p) || "").trim().slice(0, 600)}`);
+        } catch {}
+      };
+    }
   });
   // Tâches longues (> 50 ms) : cumul depuis le chargement, pour le profilage.
   await page.addInitScript(() => {
@@ -158,7 +184,8 @@ try {
   }
   await shot("final");
   out.text = (await pageText()).slice(0, 1500);
-  out.ok = out.errors.length === 0 && out.assertions.length === 0;
+  out.shaderErrors = [...new Set(await page.evaluate(() => window.__gl ?? []))].slice(0, 10);
+  out.ok = out.errors.length === 0 && out.assertions.length === 0 && out.shaderErrors.length === 0;
 } catch (e) {
   out.ok = false;
   out.errors.push(`rendu : ${String(e.message ?? e).slice(0, 400)}`);

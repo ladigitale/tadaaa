@@ -444,7 +444,7 @@ final class ArtifactService
             'title' => $artifact->getTitle(),
             'description' => $artifact->getDescription(),
             'visibility' => $artifact->getVisibility()->value,
-            'document' => $version->getWireDocument(),
+            'document' => ArtifactFiles::expand($version->getWireDocument()), // références @file: résolues pour le viewer
             'scriptAssets' => $scriptAssets,
             'concordeVersion' => $artifact->getConcordeVersion(),
             'version' => $shown,

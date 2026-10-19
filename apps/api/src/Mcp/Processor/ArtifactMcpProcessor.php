@@ -27,6 +27,7 @@ use App\Mcp\Tool\ValidateArtifactTool;
 use App\Mcp\Tool\WriteArtifactDataTool;
 use App\Service\ArtifactDataService;
 use App\Service\ArtifactDocumentValidator;
+use App\Service\ArtifactFiles;
 use App\Service\ArtifactIcons;
 use App\Service\ArtifactKits;
 use App\Service\ArtifactRenderer;
@@ -259,7 +260,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $out['note'] = 'Brouillon : non publié. Vérifier avec render_artifact / simulate_store, puis promote_artifact.';
         }
         if (\is_array($result['document'] ?? null)) {
-            $warnings = [...$this->validator->lint($result['document']), ...$this->simulator->checkJsonata($result['document'])];
+            $expanded = ArtifactFiles::expand(json_decode((string) json_encode($result['document']), true));
+            $warnings = [...$this->validator->lint($expanded), ...$this->simulator->checkJsonata($expanded)];
             if ($warnings !== []) {
                 $out['warnings'] = $warnings;
             }
@@ -277,7 +279,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
     private function validateWithLint(array $document): array
     {
         $result = $this->validator->validate($document);
-        $result['warnings'] = $result['valid'] ? [...$this->validator->lint($document), ...$this->simulator->checkJsonata($document)] : [];
+        $expanded = ArtifactFiles::expand($document);
+        $result['warnings'] = $result['valid'] ? [...$this->validator->lint($expanded), ...$this->simulator->checkJsonata($expanded)] : [];
 
         return $result;
     }
@@ -313,6 +316,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $document = $this->artifacts->getForUser($user, $idOrSlug)['document'];
         }
         $validation = $this->validator->validate($document);
+        $document = ArtifactFiles::expand(json_decode((string) json_encode($document), false));
         if (!$validation['valid']) {
             return ['ok' => false, 'errors' => array_map(static fn (array $e): string => $e['path'].' : '.$e['message'], $validation['errors'])];
         }
@@ -340,6 +344,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             }
             $document = $this->artifacts->getForUser($user, $idOrSlug)['document'];
         }
+        $document = ArtifactFiles::expand(json_decode((string) json_encode($document), false));
         if (!\is_string($tool->store) || $tool->store === '') {
             throw new BadRequestHttpException('store requis.');
         }
