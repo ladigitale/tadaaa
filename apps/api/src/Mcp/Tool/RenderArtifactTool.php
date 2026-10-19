@@ -14,9 +14,9 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
     description: <<<'DESC'
 Rend un artefact dans le vrai viewer (Chromium headless) et renvoie ce que la validation ne voit pas : erreurs console/page (GLSL, JSONata, composants), requêtes en échec, fps, texte affiché, et une capture d'écran (image). Fournir `document` (brouillon) OU `slug`/`id` (artefact enregistré).
 
-Options : `view` (id de vue), `viewport` ({width, height}), `settleMs` (attente avant capture, ≤ 10000), `fps` (true : mesure sur 2 s), `steps` : scénario joué avant la capture, parmi {"wait":ms}, {"press":"Enter"}, {"hold":"Space","ms":300}, {"click":"sélecteur CSS","index":0}, {"shot":"nom"}.
+Options : `view` (id de vue), `viewport` ({width, height}), `settleMs` (attente avant capture, ≤ 10000), `fps` (true : profilage sur 2 s → `perf` : fps, durée des images p50/p95/max, images perdues, tâches longues, mémoire JS), `steps` : scénario joué avant la capture, parmi {"wait":ms}, {"press":"Enter"}, {"hold":"Space","ms":300}, {"click":"sélecteur CSS","index":0}, {"shot":"nom"}, et des assertions : {"waitText":"Game over","timeout":5000} (attend un texte), {"expectText":"Score"}, {"expectNoText":"undefined"}, {"expect":"sonic-shader","count":1} (le sélecteur existe).
 
-Retourne `{ok, errors[], warnings[], failedRequests[], fps?, text, screenshots}` ; `ok` est faux dès qu'une erreur console ou de page est levée. Aucun accès réseau externe depuis la page ; durée max 45 s.
+Retourne `{ok, errors[], warnings[], failedRequests[], assertions[], perf?, text, screenshots}` ; `ok` est faux dès qu'une erreur console/de page est levée ou qu'une assertion échoue. Aucun accès réseau externe depuis la page ; durée max 45 s.
 
 Exemple :
 ```json

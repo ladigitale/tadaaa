@@ -259,7 +259,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $out['note'] = 'Brouillon : non publié. Vérifier avec render_artifact / simulate_store, puis promote_artifact.';
         }
         if (\is_array($result['document'] ?? null)) {
-            $warnings = $this->validator->lint($result['document']);
+            $warnings = [...$this->validator->lint($result['document']), ...$this->simulator->checkJsonata($result['document'])];
             if ($warnings !== []) {
                 $out['warnings'] = $warnings;
             }
@@ -277,7 +277,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
     private function validateWithLint(array $document): array
     {
         $result = $this->validator->validate($document);
-        $result['warnings'] = $result['valid'] ? $this->validator->lint($document) : [];
+        $result['warnings'] = $result['valid'] ? [...$this->validator->lint($document), ...$this->simulator->checkJsonata($document)] : [];
 
         return $result;
     }

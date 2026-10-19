@@ -26,6 +26,63 @@ final class StoreSimulator
     }
 
     /**
+     * Vérifie la syntaxe de toutes les expressions JSONata du document (réducteurs, transforms).
+     * Retourne [] si tout est valide ou si le vérificateur est indisponible (contrôle best-effort).
+     *
+     * @param array<string, mixed> $document
+     *
+     * @return list<array{path: string, message: string}>
+     */
+    public function checkJsonata(array $document): array
+    {
+        $items = [];
+        foreach ((\is_array($document['data']['stores'] ?? null) ? $document['data']['stores'] : []) as $name => $def) {
+            if (\is_array($def) && \is_string($def['reducer'] ?? null)) {
+                $items[] = ['path' => '/data/stores/'.$name.'/reducer', 'expr' => $def['reducer']];
+            }
+        }
+        foreach ((\is_array($document['data']['transforms'] ?? null) ? $document['data']['transforms'] : []) as $name => $def) {
+            if (\is_array($def) && \is_string($def['jsonata'] ?? null)) {
+                $items[] = ['path' => '/data/transforms/'.$name.'/jsonata', 'expr' => $def['jsonata']];
+            }
+        }
+        $walk = static function (mixed $node, string $path) use (&$walk, &$items): void {
+            if (!\is_array($node)) {
+                return;
+            }
+            $attrs = \is_array($node['attributes'] ?? null) ? $node['attributes'] : [];
+            if (($node['tagName'] ?? null) === 'sonic-store' && \is_string($attrs['reducer'] ?? null)) {
+                $items[] = ['path' => $path.'/attributes/reducer', 'expr' => $attrs['reducer']];
+            }
+            foreach (\is_array($node['nodes'] ?? null) ? $node['nodes'] : [] as $i => $child) {
+                $walk($child, $path.'/nodes/'.$i);
+            }
+        };
+        foreach (\is_array($document['views'] ?? null) ? array_values($document['views']) : [] as $i => $view) {
+            if (\is_array($view) && \is_array($view['root'] ?? null)) {
+                $walk($view['root'], '/views/'.$i.'/root');
+            }
+        }
+        if ($items === [] || !is_dir($this->toolDir.'/node_modules/jsonata')) {
+            return [];
+        }
+        $cmd = [$this->nodeBinary ?: 'node', '--permission', '--allow-fs-read='.$this->toolDir, '--max-old-space-size=128', $this->toolDir.'/check-jsonata.mjs'];
+        $run = SubprocessRunner::run($cmd, $this->toolDir, (string) json_encode(['items' => $items], JSON_UNESCAPED_UNICODE), 5, self::MAX_OUTPUT, ['PATH' => (string) getenv('PATH')]);
+        $decoded = $run['status'] === 'ok' ? json_decode($run['stdout'], true) : null;
+        if (!\is_array($decoded)) {
+            return [];
+        }
+        $out = [];
+        foreach ((array) ($decoded['errors'] ?? []) as $e) {
+            if (\is_array($e) && \is_string($e['path'] ?? null)) {
+                $out[] = ['path' => $e['path'], 'message' => 'JSONata invalide : '.($e['message'] ?? '').(isset($e['position']) ? ' (position '.$e['position'].')' : '')];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * @param array<string, mixed> $request {document, store, actions, until?, maxSteps?, snapshots?, tickMs?}
      *
      * @return array<string, mixed>
