@@ -29,6 +29,7 @@ use App\Service\ArtifactKits;
 use App\Service\ArtifactService;
 use App\Service\AuditLogger;
 use App\Service\DatasetAccessService;
+use App\Service\JsonPatch;
 use App\Service\UsageMeter;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
@@ -260,7 +261,30 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             throw new BadRequestHttpException('id ou slug requis.');
         }
 
-        return $this->artifacts->getForUser($user, $idOrSlug, $tool->version);
+        $detail = $this->artifacts->getForUser($user, $idOrSlug, $tool->version);
+        if ($tool->path === null || $tool->path === '') {
+            return $detail;
+        }
+        $doc = json_decode((string) json_encode($detail['document']), false);
+        try {
+            $value = $tool->path === '/' ? $doc : JsonPatch::get($doc, $tool->path);
+        } catch (\InvalidArgumentException $e) {
+            throw new BadRequestHttpException($e->getMessage());
+        }
+        $out = [
+            'id' => $detail['id'],
+            'slug' => $detail['slug'],
+            'version' => $detail['version'],
+            'path' => $tool->path,
+        ];
+        $keys = $value instanceof \stdClass ? array_keys(get_object_vars($value)) : (\is_array($value) ? range(0, max(0, \count($value) - 1)) : null);
+        if ($tool->keysOnly === true) {
+            $out['keys'] = $value === [] ? [] : $keys;
+        } else {
+            $out['value'] = $value;
+        }
+
+        return $out;
     }
 
     /** @return array<string, mixed> */
