@@ -23,6 +23,10 @@ final class ArtifactDocumentValidator
     public const MAX_AUDIO_PATTERN = 16 * 1024;
     public const MAX_AUDIO_SAMPLES = 16 * 1024;
     public const MAX_AUDIO_PARAMS = 4 * 1024;
+    /** Texte brut d'un nœud (`textContent`, rendu sans parsing HTML par Concorde) et descripteur d'une sonic-timeline. */
+    public const MAX_TEXT_CONTENT = 4 * 1024;
+    public const MAX_TIMELINE_DESCRIPTOR = 16 * 1024;
+    private const NODE_ID_PATTERN = '/^[A-Za-z][A-Za-z0-9_-]{0,63}$/';
 
     /** Accès sensibles déclarés par le document (`capabilities`) et composants qui les exigent. */
     public const CAPABILITIES = ['camera', 'microphone', 'midi', 'screen'];
@@ -40,7 +44,13 @@ final class ArtifactDocumentValidator
         'reducer', 'initial', 'keymap', 'palette',
     ];
 
-    private const JSON_ATTRS = ['initial', 'keymap', 'palette', 'payload', 'repeat', 'options', 'bank', 'pattern', 'samples', 'params', 'notes-map', 'choke'];
+    private const JSON_ATTRS = ['initial', 'keymap', 'palette', 'payload', 'repeat', 'options', 'bank', 'pattern', 'samples', 'params', 'notes-map', 'choke', 'descriptor'];
+
+    /**
+     * Clés refusées dans le descripteur d'une sonic-timeline. `prefix` / `suffix` n'y figurent pas :
+     * ce sont des champs légitimes des nœuds `text` (compteur), contrairement aux nœuds SDUI.
+     */
+    private const TIMELINE_FORBIDDEN_KEYS = ['js', 'css', 'innerHTML', 'markup'];
 
     /** Mémo du format son pour l'agent (addon `sound` de @supersoniks/creative-stack). */
     private const SOUND_RULE = 'sonic-sound (1 par page) : tout est synthétisé, aucun fichier. '
@@ -58,6 +68,9 @@ final class ArtifactDocumentValidator
     private const MEDIA_RULE = 'Caméra / micro / MIDI / écran : déclarer "capabilities": ["camera"] / ["microphone"] / ["midi"] / ["screen"] à la racine du document (sinon refusé ; le viewer prévient l’utilisateur). Aucun accès au chargement : démarrer par un clic. '
         .'BOUTON : sonic-media-start for="cam mic" label="Activer la caméra" (caché une fois prêt, affiche un refus) ; ou sonic-audio-unlock start="mic" (son + micro en un clic). '
         .'CAMÉRA : sonic-camera id="cam" (hidden-preview si elle ne sert que de source, facing user|environment, mirror auto|true|false, fit, width/height/fps) control="dp.cam" ({active, facing, deviceId, snapshot: compteur}) snapshot-provider="gallery.channel0" (photo SonicMediaRef écrite là) ; état camState {status: idle|requesting|ready|paused|denied|error|unsupported, error, width, height, snapshot, snapshots}. Dans un shader : channel0="#cam". '
+        .'RÉGLAGES CAMÉRA (zoom, torche, mise au point, exposition, balance des blancs, image ; sans redémarrer le flux) : 1) LIRE camCapabilities ({status: unavailable|ready, controls:{clé:{kind: range|enum|boolean, label, unit, min, max, step, values, value}}, list:[…mêmes descripteurs en tableau], unsupported:[…]}) : n’existe qu’une fois la caméra ouverte, ne propose que les clés de controls (sonic-if dataProvider="camCapabilities" key="status" equals="ready" pour n’afficher les commandes qu’alors) ; '
+        .'2) DEMANDER par adjust="dp.adj" (objet, seules les clés présentes changent, null oublie une clé) : {zoom: 2, torch: true, focusMode: "manual", focusDistance: 0.4} ; les modes passent avant les valeurs (focusMode avant focusDistance), revenir en auto = remettre le mode "continuous" ; '
+        .'3) LIRE camSettings {desired, applied, pending, errors:{clé: message}} : afficher applied, jamais desired (le navigateur arrondit ou refuse). ptz (attribut booléen) ajoute pan/tilt/zoom motorisés et une permission supplémentaire : seulement si nécessaire. Surtout Chrome / Android : Firefox et Safari exposent peu ou rien (pas de torche sur iPhone), une webcam d’ordinateur n’offre souvent que luminosité, contraste, saturation, netteté ; toujours se fonder sur controls. Une seule sonic-camera par appareil. '
         .'Photo : incrémenter control.snapshot dans le reducer ; l’afficher avec un sonic-shader dataProvider="gallery" (texture(iChannel0, uv)). '
         .'MICRO : sonic-mic id="mic" (monitor pour l’entendre, sinon muet) control="dp.mic" ({active, monitor, gain}) ; état micState {status, error, rms, db} ; sonic-audio-analyser source="#mic" (pitch pour la hauteur, onsetCount pour les attaques). '
         .'VIDÉO : sonic-video id="clip" src="https://…webm|mp4" (https ou relative) loop muted autoplay hidden-preview preload="blob" audio-out="master" (son → moteur audio, analysable par sonic-audio-analyser source="#clip") control="dp.player" ({playing, seek: {t, n}, rate, volume, muted, loopStart, loopEnd}) ; état clipState {status: loading|ready|playing|paused|ended|needs-gesture|error, timeS, durationS, progress}. Shader : channel0="#clip". Autoplay avec son refusé par le navigateur → démarre muette (needs-gesture) : prévoir sonic-media-start for="clip". '
@@ -103,6 +116,32 @@ final class ArtifactDocumentValidator
         'zero-shot' => 'Xenova/mobilebert-uncased-mnli : classement de texte anglais, ≈ 25 Mo',
     ];
 
+    /** Mémo de l'addon `animation` (sonic-animate, sonic-clock, sonic-timeline). */
+    private const ANIMATION_RULE = 'ANIMATION sans JS : le temps est une valeur de DataProvider. COMMENCE PAR sonic-animate recipe="reveal|fade|slide-up|count-up|typewriter" trigger="viewport|load|data|manual" (défaut viewport) stagger="0.12" duration once="true|false" ease="linear|easeIn|easeOut|easeInOut" : il enveloppe ses enfants DIRECTS et les anime, sans horloge ni JSON ; '
+        .'count-up : from to decimals text-prefix text-suffix (le nombre s’écrit dans le texte de l’enfant) ; trigger="data" + watch="dp.chemin" ; time-source="dp.t" remplace l’horloge locale. '
+        .'CHORÉGRAPHIE SUR MESURE : sonic-clock dataProvider="clock" duration="4" mode="once|loop|pingpong" rate autoplay="true" écrit clock.t (0..1), time, duration, playing, rate, direction ; écrire playing, rate ou t le pilote (un t écrit de l’extérieur le met en pause = scrub). '
+        .'sonic-timeline time-source="clock.t" descriptor=\'{"duration":3,"root":{"type":"seq","nodes":[{"type":"tween","targets":["titre"],"props":{"opacity":[0,1],"y":[24,0]},"duration":0.8,"ease":"easeOut"}]}}\' (descriptor = JSON EN CHAÎNE, 16 Ko max ; nœuds : seq | par | stagger{each} | tween{targets, props{prop:[de, à]}, duration, delay, ease} | text{mode count|type, targets, from, to, decimals, prefix, suffix} | set{at, path, value ; jamais dans le DP du temps} | label{name, at} ; '
+        .'targets : "id", "children:id", "group:nom" (éléments data-anim-group="nom"), "@self" ; smooth="0.08" lisse un temps venu du réseau ; out-of-range clamp|wrap). Sans time-source une timeline ne bouge jamais. '
+        .'UN SEUL écrivain par DP de temps : une horloge OU un slider (sonic-input type="range" min="0" max="1" step="0.001" name="t" formDataProvider="scrub" puis time-source="scrub.t") OU une sortie sonic-p2p OU un analyseur audio (audio-fx.rms). '
+        .'RÈGLES : chaque élément animé porte attributes.id (et nodeId si utile) ; propriétés animables opacity, x, y, scale, rotate, blur (nombres SANS unité) et variables CSS --nom, jamais width / height / top / left ; texte animé = textContent du nœud (écrit en texte brut) ; prefers-reduced-motion respecté (état final direct) ; '
+        .'un descripteur invalide rend la timeline muette (état out-data-provider : status error + issues {path, field, message, fix}). Limites : arbre de 8 niveaux, 200 cibles par tween, 600 s au total.';
+
+    /** Mémo de l'addon `device` (API navigateur en DataProviders). */
+    private const DEVICE_RULE = 'API NAVIGATEUR EN DATAPROVIDERS (composants sans rendu, sans JS) : sonic-fullscreen (target="#id", control {enter, exit, toggle}) ; sonic-pointer-lock (souris verrouillée, visée : control {lock, unlock, toggle, reset}, état dx dy x y raw, rate) ; sonic-wake-lock (écran allumé : control {acquire, release, toggle}, auto) ; '
+        .'sonic-orientation (control {lock{type: landscape|portrait|…}, unlock, sensors, stop} ; état type angle alpha beta gamma ax ay az ra rb rg, smoothing, rate) ; sonic-clipboard (control {copy{text}, read}) ; sonic-share (control {share{title, text, url http(s)}}, repli par copie) ; sonic-vibrate (control {vibrate{pattern:"100,50,100"}, stop} ; absent sous iOS) ; '
+        .'sonic-page-state (visible, focus, connexion, taille, préférences : sans permission ni commande) ; sonic-capabilities (capsState {status, embedded, secureContext, fullscreen, wakeLock, pointerLock, orientation, clipboard, share, vibrate, gamepad, midi, camera, microphone, audio, screen, chacun {supported, allowed, permission}} : à lire pour n’afficher que les commandes utilisables). '
+        .'Chaque composant publie <id>State (ou out-data-provider) {status: idle|requesting|ready|denied|error|unsupported, error, supported, allowed, active, …} et se pilote par COMPTEURS dans control : {toggle: 3} puis {toggle: 4} déclenche une fois (la 1re valeur vue sert de référence) ; avec arguments {share: {n: 2, text: "…"}}. '
+        .'GESTE OBLIGATOIRE : plein écran, pointer lock, vibration, partage et capteurs iOS exigent un clic. Utilise for="idDuBouton" (l’action part dans le clic même) ou un compteur écrit par un bouton (sonic-action → reducer, fenêtre de quelques secondes) ; une commande lancée par un minuteur, au chargement ou par un agent est refusée (status denied). '
+        .'Aucune entrée à déclarer dans capabilities. Prévoir un repli quand supported vaut false ou status denied. En intégration (iframe hôte) la fonction doit être autorisée par la page : allowed le dit.';
+
+    /** Mémo de l'addon `p2p` (salons temps réel). */
+    private const ROOMS_RULE = 'SALONS TEMPS RÉEL (jeux, tableau blanc ; visiteurs d’un même artefact, sans compte) : UN SEUL sonic-p2p par page : <sonic-p2p id="net" pseudo="Ana" share="game.local" rate="20" control="net.ctl" store="jeu" message-action="net-msg">. N’écris NI artifact, NI api, NI link-token : le viewer les impose (toute valeur du document est ignorée). '
+        .'share = DP dont la valeur locale est diffusée aux autres (rate envois par seconde, 20 par défaut, 60 max, la plus récente l’emporte) ; les valeurs des autres arrivent dans netPeers {idMembre: valeur} (peers-data-provider) : à lire dans un composant à part, c’est de la haute fréquence ; '
+        .'état netState {status: idle|connecting|pending|ready|rejected|kicked|closed|error, error, rooms, room{id, name, access, hasCode, members, max, full, code? (créateur seulement)}, me{id, pseudo, host}, members[], pending[], received}. '
+        .'COMMANDES : control = {cmd: {n: compteur, type, …}} exécutée à chaque HAUSSE de n : refresh (liste les salons publics → netState.rooms) | create {name, access: open|approval, code: true (généré) ou "mot" de 3 à 24 lettres/chiffres, listed, max 2..32 (8)} | join {roomId} ou {code}, pseudo facultatif | approve / reject / kick {id} (hôte) | leave (l’hôte qui part ferme le salon) | send {data} (message libre → action {type: message-action, payload: {from, pseudo, data}} au store). '
+        .'Un salon avec code n’est pas listé ; access approval met chaque arrivant en attente (status pending) jusqu’à la décision de l’hôte. Prévoir l’interface : liste des salons, création, saisie de code, attente, salon complet (room.full). '
+        .'LIMITES : message ≤ 64 Ko, pensé pour de l’état (quelques dizaines de Hz), pas du flux média ; un salon vit 6 h au plus et se ferme quand l’hôte part ou après 10 min d’inactivité ; ni chiffré ni authentifié au-delà du pseudo : AUCUN secret dans les messages. Temps partagé : time-source d’une sonic-timeline = valeur des pairs, avec smooth="0.08".';
+
     private const HF_RULE = 'INFÉRENCE LOCALE (Transformers.js, le calcul reste dans le navigateur) : <sonic-hugging-face-infer model="org/nom" inputProvider="dp.entree" outputProvider="dp.sortie" statusProvider="dp.statut" load="consent|first-use" trigger="mutation|demand" triggerProvider="dp.clic" options=\'{"call":{…}}\'>. '
         .'`model` : identifiant Hugging Face `org/nom` (ou https://huggingface.co/org/nom) d\'un modèle PUBLIC avec poids ONNX (ex. Xenova/…, onnx-community/…), ou un raccourci : %s. '
         .'Le viewer lit sa fiche sur le Hub : la tâche vient de son pipeline_tag. Tâches supportées : feature-extraction, text-classification, zero-shot-classification, translation, token-classification, fill-mask, question-answering, image-classification, zero-shot-image-classification, object-detection, zero-shot-object-detection, image-feature-extraction, image-segmentation, depth-estimation, image-to-text, audio-classification, automatic-speech-recognition. Pas de génération libre (text-generation, text-to-image, 3D…), pas de modèle gated, 600 Mo max. Un modèle refusé laisse le composant inactif (raison dans la console). '
@@ -128,7 +167,7 @@ final class ArtifactDocumentValidator
     private const DEFAULT_CONCORDE_VERSION = '5.1.0';
 
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
-    public const LONG_RULES = ['a2ui', 'son', 'audio', 'media', 'physique', 'ia', 'collecte'];
+    public const LONG_RULES = ['a2ui', 'son', 'audio', 'media', 'physique', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
 
     private readonly ArtifactA2uiValidator $a2uiValidator;
 
@@ -257,7 +296,7 @@ final class ArtifactDocumentValidator
                     .'ou, dans une vue, <sonic-store id="nom" initial="<JSON en chaîne>" reducer="…"> ; (b) data.transforms.<nom> = {jsonata} : publie le résultat, peut lire les data.sources par leur nom ; (c) data.sources.<nom> = {collection} : publie {member:[…]}. '
                     .'LIRE : sur le composant d’affichage, dataProvider="nom" + key="chemin.pointé" (ex. "cur.answers.0") : sonic-value (affiche le texte), sonic-if (+ equals="valeur", comparée en chaîne : equals="false"), sonic-matrix (key = tableau de cellules), sonic-shader (le DP fournit les uParam). '
                     .'ÉCRIRE : <sonic-action target="nom du store" type="nom-action" payload=\'{"a":1}\'> enveloppe le bouton ; le reducer reçoit $action.type et $action.payload (objets en chaîne JSON dans les attributs). '
-                    .'TEXTES : un nœud SDUI n’a pas de contenu texte ; tout texte affiché vient d’un sonic-value lisant un store (reducer "$state" pour des textes fixes) ou une transform. '
+                    .'TEXTES : texte FIXE = "textContent" du nœud (texte brut, 4 Ko max, ignoré si le nœud a des enfants ; jamais de HTML), ex. {"tagName":"h2","textContent":"Bienvenue"} ; texte QUI CHANGE = sonic-value lisant un store (reducer "$state" pour des valeurs initiales) ou une transform. "nodeId" (lettre puis lettres, chiffres, _ ou -, 64 max) nomme un nœud sans toucher à son id DOM. '
                     .'PIÈGES : (1) le nom d’un dataProvider ou d’un target n’est pas vérifié par la validation : une faute de frappe donne un composant vide sans erreur, relis chaque nom contre data.stores / data.transforms / data.sources / sonic-store id ; '
                     .'(2) pas de textes dans le store relié par dataProvider à un composant qui en recopie les clés en propriétés (sonic-shader) : mets-les dans un store séparé ; '
                     .'(3) une liste de longueur variable (cartes, lignes) se fait en vue A2UI (children {path, componentId}), pas en SDUI. '
@@ -266,6 +305,9 @@ final class ArtifactDocumentValidator
                 'audio' => self::AUDIO_RULE,
                 'media' => self::MEDIA_RULE,
                 'physique' => self::PHYSICS_RULE,
+                'animation' => self::ANIMATION_RULE,
+                'appareil' => self::DEVICE_RULE,
+                'salons' => self::ROOMS_RULE,
                 'ia' => $this->huggingFaceRule(),
                 'a2ui' => 'Vue A2UI v0.9 (alternative à root) : views[].a2ui = liste de messages {"version":"v0.9", createSurface|updateComponents|updateDataModel|deleteSurface}. Catalogue de base uniquement (catalogId '.ArtifactA2uiValidator::BASIC_CATALOG_ID.'). Composants : '.implode(', ', ArtifactA2uiValidator::SUPPORTED_COMPONENTS).'. Props : littéraux ou {"path":"/abs"} ; pas de call. CheckBox (value booléen), ChoicePicker (options [{label, value}], value = liste de chaînes, variant mutuallyExclusive|multipleSelection), Slider (min, max, value nombre), DateTimeInput (enableDate, enableTime, value ISO), Tabs (tabs [{title, child}]), Modal (trigger, content) ; libellés en texte littéral. Liste à gabarit : "children": {"path":"/items","componentId":"item"} — le sous-arbre "item" est répété par élément, chemins relatifs ("name") résolus sur l’élément ; imbrication possible. Composants dans n’importe quel ordre, "root" obligatoire. views[].actionStore = id d’un data.stores : un clic sur action.event devient {type: name, payload: {...context résolu, surfaceId, sourceComponentId}} dispatché au store (reducer, sinks). views[].a2uiBindings = {"/booking": "booking"} : l’état du store est recopié dans le data model des surfaces à ce chemin à chaque changement (lire avec {"path":"/booking/count"}). Gabarits SDUI chat:answer / chat:result-card / chat:confirm / chat:short-form / chat:actions et a2ui:<Composant> disponibles en libraryKey dans les vues root.',
                 'shader' => 'sonic-shader (format ShaderToy, GLSL ES 3) : image="void mainImage(out vec4 o, in vec2 f){…}". '
@@ -781,7 +823,20 @@ final class ArtifactDocumentValidator
             }
         }
 
-        $allowedKeys = ['tagName' => true, 'attributes' => true, 'nodes' => true, 'libraryKey' => true, 'contentElementSelector' => true, 'parentElementSelector' => true];
+        // textContent : texte brut (Concorde l'écrit via textContent, jamais parsé en HTML ; ignoré si le nœud a des enfants).
+        if (\array_key_exists('textContent', $node)) {
+            if (!\is_string($node['textContent'])) {
+                $errors[] = ['path' => $path.'/textContent', 'message' => 'textContent doit être une chaîne.'];
+            } elseif (\strlen($node['textContent']) > self::MAX_TEXT_CONTENT) {
+                $errors[] = ['path' => $path.'/textContent', 'message' => sprintf('textContent trop long (max %d Ko).', self::MAX_TEXT_CONTENT / 1024)];
+            }
+        }
+        // nodeId : identifiant logique (cibles d'animation, sourceNodeId des actions), distinct de l'attribut DOM `id`.
+        if (\array_key_exists('nodeId', $node) && (!\is_string($node['nodeId']) || preg_match(self::NODE_ID_PATTERN, $node['nodeId']) !== 1)) {
+            $errors[] = ['path' => $path.'/nodeId', 'message' => 'nodeId : lettre puis lettres, chiffres, _ ou - (64 max).'];
+        }
+
+        $allowedKeys = ['tagName' => true, 'attributes' => true, 'nodes' => true, 'libraryKey' => true, 'contentElementSelector' => true, 'parentElementSelector' => true, 'textContent' => true, 'nodeId' => true];
         foreach (array_keys($node) as $key) {
             if (!isset($allowedKeys[$key]) && !\in_array($key, self::FORBIDDEN_NODE_KEYS, true)) {
                 $errors[] = ['path' => $path.'/'.$key, 'message' => 'Clé de nœud non autorisée.'];
@@ -959,6 +1014,19 @@ final class ArtifactDocumentValidator
             if (isset($audioMax[$attrLower]) && \strlen($value) > $audioMax[$attrLower]) {
                 return sprintf('%s trop volumineux (max %d Ko).', $attr, $audioMax[$attrLower] / 1024);
             }
+            if ($tagName === 'sonic-timeline' && $attrLower === 'descriptor') {
+                if (\strlen($value) > self::MAX_TIMELINE_DESCRIPTOR) {
+                    return sprintf('descriptor trop volumineux (max %d Ko).', self::MAX_TIMELINE_DESCRIPTOR / 1024);
+                }
+                $decoded = json_decode($value, true);
+                if (!\is_array($decoded)) {
+                    return 'descriptor : objet JSON attendu ({"root": …}).';
+                }
+                $bad = $this->findForbiddenKey($decoded, self::TIMELINE_FORBIDDEN_KEYS);
+                if ($bad !== null) {
+                    return sprintf('descriptor : clé "%s" interdite (sécurité).', $bad);
+                }
+            }
             if ($tagName === 'sonic-sampler' && $attrLower === 'samples') {
                 $msg = $this->validateSampleUrls($value);
                 if ($msg !== null) {
@@ -1038,12 +1106,40 @@ final class ArtifactDocumentValidator
                 $errors[] = ['path' => '/capabilities', 'message' => sprintf('%s utilisé : ajouter "%s" à capabilities.', $tag, $cap)];
             }
         }
-        $limits = ['sonic-camera' => 2, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2, 'sonic-midi' => 2, 'sonic-screen' => 1, 'sonic-physics' => 4, 'sonic-controller' => 2];
+        $limits = ['sonic-camera' => 2, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2, 'sonic-midi' => 2, 'sonic-screen' => 1, 'sonic-physics' => 4, 'sonic-controller' => 2,
+            // Un seul salon (connexion Mercure) et un seul verrou par page (même liste que le garde du viewer).
+            'sonic-p2p' => 1, 'sonic-pointer-lock' => 1, 'sonic-wake-lock' => 1, 'sonic-orientation' => 1];
         foreach ($limits as $tag => $max) {
             if (($this->seenTags[$tag] ?? 0) > $max) {
                 $errors[] = ['path' => '/views', 'message' => sprintf('Trop de %s (max %d).', $tag, $max)];
             }
         }
+    }
+
+    /**
+     * Première clé interdite rencontrée dans une structure décodée (objets et listes imbriqués).
+     *
+     * @param array<mixed> $data
+     * @param list<string> $forbidden
+     */
+    private function findForbiddenKey(array $data, array $forbidden, int $depth = 0): ?string
+    {
+        if ($depth > 32) {
+            return null;
+        }
+        foreach ($data as $key => $value) {
+            if (\is_string($key) && \in_array($key, $forbidden, true)) {
+                return $key;
+            }
+            if (\is_array($value)) {
+                $found = $this->findForbiddenKey($value, $forbidden, $depth + 1);
+                if ($found !== null) {
+                    return $found;
+                }
+            }
+        }
+
+        return null;
     }
 
     /** URLs des samples : https ou relatives (pas de http, data:, blob:, javascript:). */

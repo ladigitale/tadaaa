@@ -1,7 +1,7 @@
 {
   "concordeVersion": "5.1.0",
   "creativeStackVersion": "0.1.0",
-  "generatedFrom": "@supersoniks/concorde 5.1.0 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (3d, audio, controller, hugging-face-infer, interactive, media, physics, shader, sound, webgpu)",
+  "generatedFrom": "@supersoniks/concorde 5.1.0 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (3d, animation, audio, controller, device, hugging-face-infer, interactive, media, p2p, physics, shader, sound, webgpu)",
   "components": [
     {
       "name": "sonic-3d",
@@ -148,6 +148,65 @@
           "default": "false"
         }
       }
+    },
+    {
+      "name": "sonic-animate",
+      "props": {
+        "recipe": {
+          "type": "string",
+          "description": "reveal | fade | slide-up | count-up | typewriter (obligatoire)."
+        },
+        "trigger": {
+          "type": "string",
+          "description": "viewport (défaut) | load | data (changement du chemin watch) | manual (appel de start())."
+        },
+        "duration": {
+          "type": "number",
+          "description": "Durée d'un effet en secondes (défaut propre à la recette)."
+        },
+        "stagger": {
+          "type": "number",
+          "description": "Décalage en secondes entre enfants."
+        },
+        "once": {
+          "type": "boolean",
+          "description": "true (défaut) : joue une fois ; false : rejoue à chaque entrée dans l'écran."
+        },
+        "time-source": {
+          "type": "string",
+          "description": "Chemin DataProvider d'un temps 0..1 (ex. scrub.t) qui remplace l'horloge locale."
+        },
+        "watch": {
+          "type": "string",
+          "description": "Chemin DataProvider surveillé par trigger=data."
+        },
+        "from": {
+          "type": "number",
+          "description": "count-up : valeur de départ."
+        },
+        "to": {
+          "type": "number",
+          "description": "count-up : valeur d'arrivée."
+        },
+        "decimals": {
+          "type": "number",
+          "description": "count-up : nombre de décimales."
+        },
+        "text-prefix": {
+          "type": "string",
+          "description": "count-up : texte avant le nombre."
+        },
+        "text-suffix": {
+          "type": "string",
+          "description": "count-up : texte après le nombre."
+        },
+        "ease": {
+          "type": "string",
+          "description": "linear | easeIn | easeOut | easeInOut."
+        }
+      },
+      "addon": "animation",
+      "description": "Applique une recette d'animation aux enfants directs (horloge locale, ou temps lu dans un DataProvider avec time-source). Le plus simple : commence par lui."
     },
     {
       "name": "sonic-audio-analyser",
@@ -633,10 +692,41 @@
         },
         "out-data-provider": {
           "type": "string"
+        },
+        "ptz": {
+          "type": "boolean",
+          "description": "demande aussi pan / tilt / zoom motorisés à l'ouverture : permission supplémentaire dans Chrome, à n'activer que si nécessaire"
+        },
+        "adjust": {
+          "type": "string",
+          "description": "DP d'entrée des réglages {zoom, torch, focusMode, focusDistance, exposureMode, exposureCompensation, exposureTime, iso, whiteBalanceMode, colorTemperature, brightness, contrast, saturation, sharpness, pan, tilt} ; null oublie une clé ; lire d'abord les capacités"
+        },
+        "capabilities-provider": {
+          "type": "string",
+          "description": "DP de sortie des capacités (défaut <id>Capabilities)"
+        },
+        "settings-provider": {
+          "type": "string",
+          "description": "DP de sortie des réglages demandés / appliqués (défaut <id>Settings)"
         }
       },
       "addon": "media",
-      "description": "Caméra : aperçu, source d'images (#id) pour sonic-shader, photos (control.snapshot compteur → snapshot-provider) ; démarrage sur geste ; état {status, error, width, height, snapshot, snapshots}"
+      "description": "Caméra : aperçu, source d'images (#id) pour sonic-shader, photos (control.snapshot compteur → snapshot-provider) ; démarrage sur geste ; état {status, error, width, height, snapshot, snapshots} ; réglages de la piste (zoom, torche, focus, exposition, balance des blancs…) : capacités publiées dans <id>Capabilities {status, controls, list[{key, kind, label, min, max, step, values}], unsupported}, demandes par le DP adjust {zoom: 2, torch: true, focusMode: \"manual\"}, résultat dans <id>Settings {desired, applied, pending, errors} (lire applied, jamais desired)"
+    },
+    {
+      "name": "sonic-capabilities",
+      "props": {
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        }
+      },
+      "addon": "device",
+      "description": "Ce que l'environnement autorise, en un DataProvider, sans ouvrir de demande de permission : pour fullscreen, pointerLock, wakeLock, gamepad, midi, orientation, clipboard, share, vibrate, camera, microphone, audio, screen → {supported, allowed (Permissions Policy), permission}, plus embedded (iframe) et secureContext. À lire pour dégrader proprement. control {refresh:n} relit. État <id>State {status:\"ready\", embedded, secureContext, fullscreen:{…}, …}"
     },
     {
       "name": "sonic-captcha",
@@ -777,6 +867,60 @@
       },
       "addon": "audio",
       "description": "Chorus"
+    },
+    {
+      "name": "sonic-clipboard",
+      "props": {
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance la commande par défaut, dans le geste"
+        },
+        "text": {
+          "type": "string",
+          "description": "texte copié par défaut"
+        }
+      },
+      "addon": "device",
+      "description": "Presse-papiers texte. Commandes control {copy:{n, text}, read:n} ; for = copie l'attribut text. La lecture n'a lieu que sur commande, jamais seule (permission du navigateur). État <id>State {status, error, supported, allowed, active, copied, text}. Iframe : allow=\"clipboard-write; clipboard-read\""
+    },
+    {
+      "name": "sonic-clock",
+      "props": {
+        "dataProvider": {
+          "type": "string",
+          "description": "DataProvider où l'horloge publie son état (obligatoire, un seul écrivain par DataProvider)."
+        },
+        "duration": {
+          "type": "number",
+          "description": "Durée d'un tour en secondes (défaut 1)."
+        },
+        "mode": {
+          "type": "string",
+          "description": "once (défaut) | loop | pingpong."
+        },
+        "rate": {
+          "type": "number",
+          "description": "Vitesse : 1 = temps réel, négatif = à rebours."
+        },
+        "autoplay": {
+          "type": "boolean",
+          "description": "Démarre à la connexion."
+        },
+        "on-hidden": {
+          "type": "string",
+          "description": "freeze (défaut) | catch-up : comportement au retour d'un onglet masqué."
+        }
+      },
+      "addon": "animation",
+      "description": "Produit du temps, n'anime rien : écrit t (0..1), time, duration, playing, rate, direction, origin dans son DataProvider. Se pilote en écrivant playing, rate ou t."
     },
     {
       "name": "sonic-comp",
@@ -1193,6 +1337,33 @@
           "default": "false"
         }
       }
+    },
+    {
+      "name": "sonic-fullscreen",
+      "props": {
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance la commande par défaut, dans le geste"
+        },
+        "target": {
+          "type": "string",
+          "description": "sélecteur CSS de l'élément (défaut page entière)"
+        },
+        "navigation-ui": {
+          "type": "string",
+          "description": "auto, hide ou show"
+        }
+      },
+      "addon": "device",
+      "description": "Plein écran (sans rendu). Commandes control {enter:n, exit:n, toggle:n}, ou for=\"idBouton\" (clic = bascule, geste exigé). target = sélecteur CSS (défaut toute la page). État <id>State {status, error, supported, allowed, active, element, supportsVideoOnly}. Événement sonic-fullscreen-change. iPhone : seulement sur une <video>. Iframe : allow=\"fullscreen\""
     },
     {
       "name": "sonic-gamepad",
@@ -2399,6 +2570,37 @@
       "description": "Bruit blanc / rose / brun"
     },
     {
+      "name": "sonic-orientation",
+      "props": {
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance la commande par défaut, dans le geste"
+        },
+        "rate": {
+          "type": "number",
+          "description": "publications par seconde au plus (30)"
+        },
+        "sensors": {
+          "type": "boolean",
+          "description": "écoute les capteurs dès que possible"
+        },
+        "smoothing": {
+          "type": "number",
+          "description": "lissage 0..0.95 des capteurs (0 = brut)"
+        }
+      },
+      "addon": "device",
+      "description": "Orientation de l'écran (lecture, verrouillage) et capteurs de mouvement (inclinaison alpha/beta/gamma, accélération ax/ay/az, rotation ra/rb/rg ; null tant que rien n'arrive). Commandes control {lock:{n,type}, unlock:n, sensors:n, stop:n} ; for = démarre les capteurs (iOS : permission dans le clic). État <id>State {status, error, supported, allowed, active, type, angle, locked, sensors, permission, alpha, beta, gamma, ax, ay, az, ra, rb, rg}. Verrouiller exige souvent le plein écran. Iframe : allow=\"accelerometer; gyroscope; magnetometer\""
+    },
+    {
       "name": "sonic-osc",
       "props": {
         "name": {
@@ -2441,6 +2643,61 @@
       },
       "addon": "audio",
       "description": "Oscillateur (sine square sawtooth triangle pulse, harmonics) ; freq-hz = voice.pitch par défaut ; sync=\"m\" : synchro dure sur l'oscillateur m (PolyBLEP, AudioWorklet)"
+    },
+    {
+      "name": "sonic-p2p",
+      "props": {
+        "api": {
+          "type": "string"
+        },
+        "artifact": {
+          "type": "string"
+        },
+        "link-token": {
+          "type": "string"
+        },
+        "pseudo": {
+          "type": "string"
+        },
+        "share": {
+          "type": "string"
+        },
+        "rate": {
+          "type": "number"
+        },
+        "control": {
+          "type": "string"
+        },
+        "store": {
+          "type": "string"
+        },
+        "message-action": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        },
+        "peers-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "p2p",
+      "description": "Salons temps réel : share=\"game.local\" diffuse cette valeur aux autres (rate fois/s max) ; les valeurs des autres arrivent dans <id>Peers {idMembre: valeur} ; control DP {cmd:{n: compteur, type: refresh|create|join|leave|approve|reject|kick|send, …}} ; état <id>State {status: idle|connecting|pending|ready|rejected|kicked|closed|error, error, rooms, room, me, members, pending, received}. create {name, access: open|approval, code: true|\"mot\", listed, max 2..32} ; join {roomId, code} ; approve/reject/kick {id}. Besoin : artifact (slug) et api (origine de l'API)."
+    },
+    {
+      "name": "sonic-page-state",
+      "props": {
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "rate": {
+          "type": "number",
+          "description": "publications par seconde au plus (30)"
+        }
+      },
+      "addon": "device",
+      "description": "État de la page en DataProvider, sans permission : visible (onglet), focused, online, width, height, dpr, reducedMotion, colorScheme (light|dark), touch, hover. Sert à suspendre rendu et son quand visible vaut false. État <id>State {status, active, visible, focused, online, width, height, dpr, reducedMotion, colorScheme, touch, hover}"
     },
     {
       "name": "sonic-pan",
@@ -2669,6 +2926,37 @@
       },
       "addon": "physics",
       "description": "Monde 2D (px, y vers le bas) : enfants sonic-body / sonic-joint, bodies=DP liste de corps (ajout / retrait suivis), input=DP {nom: {vx, vy, fx, fy, spin, torque, impulse:{n,x,y}, set:{n,x,y,vx,vy,angle}}} (n = compteur), control=DP {running, reset: compteur, gravity:[x,y], timeScale}, store=id reçoit collide {a,b,tagsA,tagsB,impulse,x,y} / enter / leave {sensor, body, tags} / out {body, side} / tap {x,y,body} ; état <id>State {bodies:{nom:{x,y,angle,vx,vy}}, collisions, time} ; source d'images #id pour sonic-shader"
+    },
+    {
+      "name": "sonic-pointer-lock",
+      "props": {
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance la commande par défaut, dans le geste"
+        },
+        "rate": {
+          "type": "number",
+          "description": "publications par seconde au plus (30)"
+        },
+        "target": {
+          "type": "string",
+          "description": "sélecteur CSS de l'élément verrouillé (défaut body)"
+        },
+        "unadjusted-movement": {
+          "type": "boolean",
+          "description": "mouvement brut sans accélération (repli automatique)"
+        }
+      },
+      "addon": "device",
+      "description": "Pointer Lock : souris verrouillée, déplacements relatifs (visée, caméra orbitale, potentiomètre infini). Commandes control {lock:n, unlock:n, toggle:n, reset:n} ou for. État <id>State {status, error, supported, allowed, active, element, dx, dy, x, y, raw} (dx/dy = somme depuis la publication précédente, x/y = cumul depuis le verrouillage). Événements sonic-pointerlock-change, sonic-pointerlock-move {dx,dy}. Iframe : sandbox allow-pointer-lock. Échap rend la souris"
     },
     {
       "name": "sonic-pop",
@@ -3375,6 +3663,39 @@
       "description": "Saturation / wavefold"
     },
     {
+      "name": "sonic-share",
+      "props": {
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance la commande par défaut, dans le geste"
+        },
+        "title": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "url": {
+          "type": "url",
+          "description": "http(s) seulement"
+        },
+        "fallback": {
+          "type": "string",
+          "description": "copy (défaut) ou none"
+        }
+      },
+      "addon": "device",
+      "description": "Partage natif (titre, texte, URL http(s)) avec repli par copie. Commandes control {share:{n, title, text, url}} ; for = partage les attributs. Annulation = cancelled, pas une erreur. État <id>State {status, error, supported, allowed, active, canShare, shared, cancelled, via}. Iframe : allow=\"web-share\""
+    },
+    {
       "name": "sonic-sound",
       "props": {
         "id": {
@@ -3733,6 +4054,41 @@
       "description": "Horloge tick -> store"
     },
     {
+      "name": "sonic-timeline",
+      "props": {
+        "descriptor": {
+          "type": "object",
+          "description": "Descripteur JSON en chaîne : {timeSource, duration?, outOfRange?, smooth?, root}."
+        },
+        "descriptor-dp": {
+          "type": "string",
+          "description": "DataProvider qui contient le descripteur (remplace descriptor)."
+        },
+        "time-source": {
+          "type": "string",
+          "description": "Chemin DataProvider du temps 0..1 (remplace timeSource du descripteur)."
+        },
+        "out-of-range": {
+          "type": "string",
+          "description": "clamp (défaut) | wrap : comportement hors de 0..1."
+        },
+        "smooth": {
+          "type": "number",
+          "description": "Lissage du temps en secondes (0 = aucun), utile pour un temps reçu par p2p."
+        },
+        "duration": {
+          "type": "number",
+          "description": "Durée totale en secondes (sinon déduite des nœuds)."
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DataProvider où publier status, progress, time, duration, currentLabel, issues."
+        }
+      },
+      "addon": "animation",
+      "description": "Lit un temps normalisé 0..1 dans un DataProvider (time-source) et anime des éléments par leur id : arbre de nœuds seq, par, stagger, tween, text, set, label."
+    },
+    {
       "name": "sonic-toast",
       "props": {
         "toasts": {
@@ -3845,6 +4201,29 @@
       "description": "Ampli ; gain=\"<env>\" pour une enveloppe"
     },
     {
+      "name": "sonic-vibrate",
+      "props": {
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance la commande par défaut, dans le geste"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "motif par défaut, ex. \"100,50,100\" (200)"
+        }
+      },
+      "addon": "device",
+      "description": "Vibration (Android ; absente sous iOS : supported false). Commandes control {vibrate:{n, pattern}, stop:n} ; pattern = 200, \"100,50,100\" ou liste (vibration, pause, vibration…), borné à 20 éléments de 5 s ; for = fait vibrer. État <id>State {status, error, supported, allowed, active, count}"
+    },
+    {
       "name": "sonic-video",
       "props": {
         "src": {
@@ -3920,6 +4299,29 @@
       },
       "addon": "audio",
       "description": "Portée « par note » d'un patch ; sample=\"kick\" / note=\"C2\" pour un kit"
+    },
+    {
+      "name": "sonic-wake-lock",
+      "props": {
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance la commande par défaut, dans le geste"
+        },
+        "auto": {
+          "type": "boolean",
+          "description": "prend le verrou dès que possible"
+        }
+      },
+      "addon": "device",
+      "description": "Garde l'écran allumé (séquenceur, live, présentation). Commandes control {acquire:n, release:n, toggle:n} ou for. auto : essaie au chargement puis au premier geste. Repris au retour de l'onglet tant que wanted. État <id>State {status, error, supported, allowed, active, wanted, reacquired}. Iframe : allow=\"screen-wake-lock\""
     },
     {
       "name": "sonic-webgpu",
@@ -4020,5 +4422,5 @@
     "i",
     "u"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 3d (sonic-3d) [requires: three]; audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-matrix); media (sonic-camera, sonic-video, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); physics (sonic-physics, sonic-body, sonic-joint); shader (sonic-shader); sound (sonic-sound, sonic-sfx); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-matrix); media (sonic-camera, sonic-video, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); shader (sonic-shader); sound (sonic-sound, sonic-sfx); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
