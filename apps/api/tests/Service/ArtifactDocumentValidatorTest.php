@@ -227,6 +227,42 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertTrue($result['valid'], json_encode($result['errors']));
     }
 
+    public function testAcceptsSonic3dEmbeddedGlb(): void
+    {
+        $glb = base64_encode('glTF'.str_repeat("\0", 60));
+        foreach ([['glb' => $glb], ['src' => 'data:model/gltf-binary;base64,'.$glb]] as $attrs) {
+            $doc = $this->minimalDoc();
+            $doc['views'][0]['root']['nodes'][0] = [
+                'tagName' => 'sonic-3d',
+                'attributes' => $attrs + ['pick' => 'true', 'target' => 'jeu'],
+            ];
+            $result = $this->validator->validate($doc);
+            self::assertTrue($result['valid'], json_encode($result['errors']));
+        }
+    }
+
+    public function testRejectsSonic3dBadEmbeddedGlb(): void
+    {
+        foreach ([
+            ['glb' => '!!!notbase64'],
+            ['glb' => base64_encode('PNG not a glb at all')],
+            ['glb' => str_repeat('A', ArtifactDocumentValidator::MAX_GLB_BASE64 + 4)],
+            ['src' => 'data:text/html;base64,PHNjcmlwdD4='],
+        ] as $attrs) {
+            $doc = $this->minimalDoc();
+            $doc['views'][0]['root']['nodes'][0] = ['tagName' => 'sonic-3d', 'attributes' => $attrs];
+            self::assertFalse($this->validator->validate($doc)['valid'], json_encode(array_keys($attrs)));
+        }
+    }
+
+    public function testCatalogHas3dSceneRule(): void
+    {
+        self::assertContains('3d', ArtifactDocumentValidator::LONG_RULES);
+        $payload = $this->validator->mcpCatalogPayload(true);
+        self::assertStringContainsString('nodes', $payload['rules']['3d']);
+        self::assertStringContainsString('pick-names', $payload['rules']['3d']);
+    }
+
     public function testRejectsSonic3dHttp(): void
     {
         $doc = $this->minimalDoc();
@@ -570,7 +606,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertNotFalse($encodedFiltered);
         self::assertLessThan(9_000, strlen($encodedFiltered));
 
-        // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, animation, appareil,
+        // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, 3d, animation, appareil,
         // salons, ia, collecte). Plafond large, pour repérer une dérive de taille.
         $payload = $this->validator->mcpCatalogPayload(true);
         $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE);
