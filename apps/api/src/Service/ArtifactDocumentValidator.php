@@ -18,6 +18,8 @@ final class ArtifactDocumentValidator
     public const MAX_JSONATA = 4096;
     public const MAX_REDUCER = 32 * 1024;
     public const MAX_SHADER_SOURCE = 32 * 1024;
+    /** GLB embarqué en base64 (attribut `glb` / `src` data:model/gltf-binary de sonic-3d). */
+    public const MAX_GLB_BASE64 = 300 * 1024;
     public const MAX_HF_TEXT = 8 * 1024;
     public const MAX_SOUND_BANK = 64 * 1024;
     public const MAX_AUDIO_PATTERN = 16 * 1024;
@@ -86,6 +88,17 @@ final class ArtifactDocumentValidator
         .'PILOTAGE input = {"paddle": {"vx": -650}, "ship": {"fx": 0, "fy": -20}, "ball": {"impulse": {"n": compteur, "x": 10, "y": -34}, "set": {"n": compteur, "x": 400, "y": 396}}} (vx/vy imposés à chaque pas, fx/fy forces, impulse/set déclenchés quand n augmente). control = {running, reset: compteur, gravity: [x, y]}. '
         .'ÉVÉNEMENTS vers le store : collide {a, b, tagsA, tagsB, impulse, x, y}, enter/leave {sensor, body, tags}, out {body, side} (balle perdue), tap {x, y, body} ; mettre budget-ms="50" sur le store. État worldState {bodies: {nom: {x, y, angle, vx, vy}}, collisions}. Image du monde : sonic-shader channel0="#world" (lueur, déformations) ; hidden-preview si le shader seul s’affiche. '
         .'MANETTES : sonic-controller id="pad" store="jeu" keymap=\'{"a":"launch","start":"pause","left":"left"}\' release (envoie aussi "left:up") analog-action="stick" (→ {type:"stick", payload:{pad, lx, ly, rx, ry, lt, rt}}) control="jeu.padCtl" ({rumble: {n: compteur, ms}}) ; état padState {status: idle|ready, count, pads}. Clavier tenu : sonic-keyboard keyup (actions "left" puis "left:up").';
+
+    /** Mémo de l'addon `3d` : scène pilotée par les données (jeux, plateaux). */
+    private const SCENE3D_RULE = 'SCÈNE 3D PILOTÉE PAR LES DONNÉES (jeux de plateau, objets à manipuler) : <sonic-3d dataProvider="jeu" target="jeu" pick pick-names="^(m_|hole_)" min-polar="0.6" max-polar="1.25" min-distance="9" max-distance="17" fit="false">. '
+        .'Le DP « jeu » est celui d’un store dont le reducer publie : glb = modèle GLB en base64 (aucun réseau ; 300 Ko base64 max, 64 Ko par fichier : le mettre dans "files" et référencer "@file:plateau.b64" dans data.stores.jeu.initial ; un glTF JSON avec buffers data: ne marche pas, exporter en GLB) '
+        .'et nodes = {nomDeNoeud: {x,y,z (position locale), rx,ry,rz (rad), scale (n ou [x,y,z]), visible, color "#rrggbb", emissive (0..1), emissiveColor, opacity, ease:{ms,curve:linear|in|out|inOut}, lift (hauteur d’un arc en y pendant ease.ms, ex. saut de bille)}, "$reset": true}. '
+        .'nodes est un PATCH : un champ absent reste tel quel, un nœud absent de l’objet n’est pas remis à zéro (utiliser "$reset": true pour revenir à l’état du fichier, puis redonner l’état voulu) ; republier la même valeur ne fait rien ; 200 nœuds max par publication ; nom inconnu ignoré. Les noms sont ceux du GLB (le générateur doit les rendre uniques). '
+        .'Les couleurs ne sont pas animées (immédiates) ; x/y/z/rotation/scale/emissive/opacity le sont avec ease. Sans ease les changements sont immédiats. '
+        .'TAP : un tap (pointeur < 6 px et < 400 ms ; un glissé fait tourner la caméra, il n’envoie rien) sur un nœud visible envoie au store {type: pick-action-type (défaut "pick"), payload:{objectId: nom du nœud, x, y, z}} ; le reducer lit $action.payload.objectId. pick-names (regex sur le nom) ignore le décor ; pick-empty envoie payload {objectId:null} pour un tap dans le vide (désélection). '
+        .'Orbite : min/max-distance, min/max-polar en degrés (limiter le polar évite de passer sous le plateau). '
+        .'PIÈGES : (1) nodes ne s’applique qu’une fois le GLB chargé (réappliqué automatiquement après chaque chargement) ; (2) donner les positions finales des nœuds dans le reducer, pas des deltas ; (3) pas de $random / $now dans le reducer : c’est ease qui anime ; (4) sans GLB (glb absent) la scène montre un cube de démo. '
+        .'Sortie (out-data-provider) : yaw pitch distance hitObjectId hitX/Y/Z moving ready nodesMissing (nombre de noms de nodes introuvables : à 0 en régime normal).';
 
     /** Mémo de l'addon `audio` (synthèse modulaire, séquenceur, sampler, analyseur). */
     private const AUDIO_RULE = 'Un seul moteur audio par page, démarré au premier geste (sonic-audio-unlock = bouton d’invite). '
@@ -167,7 +180,7 @@ final class ArtifactDocumentValidator
     private const DEFAULT_CONCORDE_VERSION = '5.1.0';
 
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
-    public const LONG_RULES = ['a2ui', 'son', 'audio', 'media', 'physique', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
+    public const LONG_RULES = ['a2ui', 'son', 'audio', 'media', 'physique', '3d', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
 
     private readonly ArtifactA2uiValidator $a2uiValidator;
 
@@ -305,6 +318,7 @@ final class ArtifactDocumentValidator
                 'audio' => self::AUDIO_RULE,
                 'media' => self::MEDIA_RULE,
                 'physique' => self::PHYSICS_RULE,
+                '3d' => self::SCENE3D_RULE,
                 'animation' => self::ANIMATION_RULE,
                 'appareil' => self::DEVICE_RULE,
                 'salons' => self::ROOMS_RULE,
@@ -984,6 +998,27 @@ final class ArtifactDocumentValidator
         }
     }
 
+    /** GLB embarqué : base64 valide, taille bornée, en-tête « glTF ». */
+    private function validateGlbBase64(string $b64): ?string
+    {
+        $b64 = preg_replace('/\s+/', '', $b64) ?? '';
+        if ($b64 === '') {
+            return null;
+        }
+        if (\strlen($b64) > self::MAX_GLB_BASE64) {
+            return sprintf('glb trop volumineux (max %d Ko en base64).', self::MAX_GLB_BASE64 / 1024);
+        }
+        if (preg_match('#^[A-Za-z0-9+/]+={0,2}$#', $b64) !== 1) {
+            return 'glb : base64 invalide.';
+        }
+        $head = base64_decode(substr($b64, 0, 16), false);
+        if ($head === false || !str_starts_with($head, 'glTF')) {
+            return 'glb : fichier GLB attendu (en-tête glTF).';
+        }
+
+        return null;
+    }
+
     private function validateAttributeValue(string $tagName, string $attr, string $value): ?string
     {
         $attrLower = strtolower($attr);
@@ -1048,8 +1083,14 @@ final class ArtifactDocumentValidator
                 return 'model HF : org/nom, https://huggingface.co/org/nom, ou raccourci ('.implode(', ', array_keys(self::HF_MODEL_ALIASES)).').';
             }
         }
+        if ($tagName === 'sonic-3d' && $attrLower === 'glb') {
+            return $this->validateGlbBase64(preg_replace('#^data:model/gltf-binary(?:;[^,]*)?;base64,#i', '', trim($value)) ?? '');
+        }
         if ($tagName === 'sonic-3d' && $attrLower === 'src') {
             $trim = trim($value);
+            if (preg_match('#^data:model/gltf-binary(?:;[^,]*)?;base64,#i', $trim, $m) === 1) {
+                return $this->validateGlbBase64(substr($trim, \strlen($m[0])));
+            }
             if ($trim === '' || str_starts_with($trim, '/')) {
                 return null;
             }
