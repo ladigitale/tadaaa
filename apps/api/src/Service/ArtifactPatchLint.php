@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+
 /**
  * Contrôle d'un `sonic-patch` (creative-stack, addon audio) avant publication.
  *
@@ -24,8 +26,10 @@ final class ArtifactPatchLint
     /** @var list<string> */
     private array $voiceSources = [];
 
-    public function __construct(string $specPath)
-    {
+    public function __construct(
+        #[Autowire('%kernel.project_dir%/config/artifacts/audio-patch.json')]
+        string $specPath,
+    ) {
         $data = is_file($specPath) ? json_decode((string) file_get_contents($specPath), true) : null;
         if (\is_array($data)) {
             $this->modules = \is_array($data['modules'] ?? null) ? $data['modules'] : [];
