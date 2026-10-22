@@ -72,6 +72,8 @@ services:
       MAIL_FROM: ${MAIL_FROM:-app@tadaaa.space}
       APP_PUBLIC_URL: ${APP_PUBLIC_URL:-https://app.example.com}
       ARTIFACTS_PUBLIC_URL: ${ARTIFACTS_PUBLIC_URL:-https://artifacts.tadaaa.space}
+      # Viewer Artefacts construit (outil MCP render_artifact) : monté ci-dessous, rebuild par update-prod.
+      RENDER_VIEWER_DIST: /srv/artifacts-dist
       # Required when config/jwt/private.pem is encrypted (Lexik); image .env may be empty.
       JWT_PASSPHRASE: ${JWT_PASSPHRASE:-}
       DEFAULT_STORAGE_QUOTA_BYTES: ${DEFAULT_STORAGE_QUOTA_BYTES:-5242880}
@@ -90,6 +92,7 @@ services:
       LEGAL_PRIVACY_EMAIL: ${LEGAL_PRIVACY_EMAIL:-}
     volumes:
       - jwt_keys:/app/config/jwt
+      - ${ARTIFACTS_DIST:-./apps/artifacts/dist}:/srv/artifacts-dist:ro
     expose:
       - "80"
     # Unique upstream name for the edge: the bare `php` alias is shared by every

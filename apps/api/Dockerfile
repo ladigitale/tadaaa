@@ -47,8 +47,9 @@ COPY --from=simulate_store_deps /usr/local/bin/node /usr/local/bin/node
 COPY --from=simulate_store_deps /tools/simulate-store/node_modules /app/tools/simulate-store/node_modules
 COPY --from=simulate_store_deps /tools/render-artifact/node_modules /app/tools/render-artifact/node_modules
 
-# Rendu headless (outil MCP render_artifact) : Chromium système ; RENDER_VIEWER_DIST doit pointer
-# vers le dist/ du viewer (ladigitale/artifacts), p. ex. monté en volume.
+# Rendu headless (outil MCP render_artifact) : Chromium système ; RENDER_VIEWER_DIST (défini par
+# compose.prod.yaml) pointe vers le dist/ du viewer (ladigitale/artifacts), monté en volume
+# depuis ARTIFACTS_DIST (défaut apps/artifacts/dist), reconstruit par scripts/update-prod.sh.
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends chromium fonts-liberation \
 	&& rm -rf /var/lib/apt/lists/*
