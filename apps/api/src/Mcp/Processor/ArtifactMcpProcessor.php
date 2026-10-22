@@ -27,6 +27,7 @@ use App\Mcp\Tool\ValidateArtifactTool;
 use App\Mcp\Tool\WriteArtifactDataTool;
 use App\Service\ArtifactDataService;
 use App\Service\ArtifactDocumentValidator;
+use App\Service\ArtifactFileFetcher;
 use App\Service\ArtifactFiles;
 use App\Service\ArtifactIcons;
 use App\Service\ArtifactKits;
@@ -62,6 +63,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         private readonly ArtifactIcons $icons,
         private readonly StoreSimulator $simulator,
         private readonly ArtifactRenderer $renderer,
+        private readonly ArtifactFileFetcher $fetcher,
     ) {
     }
 
@@ -227,7 +229,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
 
         $hasOps = \is_array($tool->ops) && $tool->ops !== [];
         $hasEdits = \is_array($tool->edits) && $tool->edits !== [];
-        if ($hasOps || $hasEdits) {
+        $setFiles = $this->fetchFiles($tool->fetch);
+        if ($hasOps || $hasEdits || $setFiles !== []) {
             if (\is_array($tool->document) && $tool->document !== []) {
                 throw new BadRequestHttpException('document est exclusif avec ops/edits.');
             }
@@ -242,11 +245,12 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 $this->emptyToNull($tool->note),
                 null,
                 $tool->draft === true,
+                $setFiles,
             );
         }
 
         if ($result === null) {
-            throw new BadRequestHttpException('Rien à mettre à jour (document, ops, edits, title, visibility ou description).');
+            throw new BadRequestHttpException('Rien à mettre à jour (document, ops, edits, fetch, title, visibility ou description).');
         }
 
         $out = [
@@ -255,7 +259,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             'url' => $result['url'],
             'version' => $result['version'] ?? $result['currentVersion'],
         ];
-        if ($tool->draft === true && (\is_array($tool->document) || $hasOps || $hasEdits)) {
+        if ($tool->draft === true && (\is_array($tool->document) || $hasOps || $hasEdits || $setFiles !== [])) {
             $out['draft'] = true;
             $out['note'] = 'Brouillon : non publié. Vérifier avec render_artifact / simulate_store, puis promote_artifact.';
         }
@@ -268,6 +272,29 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         }
 
         return $out;
+    }
+
+    /**
+     * @param list<mixed>|null $fetch [{name, url, encoding?, sha256?}]
+     *
+     * @return array<string, string> nom => contenu
+     */
+    private function fetchFiles(?array $fetch): array
+    {
+        $files = [];
+        foreach ($fetch ?? [] as $i => $item) {
+            $item = \is_array($item) ? $item : (array) $item;
+            $name = $item['name'] ?? null;
+            $url = $item['url'] ?? null;
+            if (!\is_string($name) || !preg_match('/^[a-z0-9][a-z0-9._-]{0,63}$/', $name) || !\is_string($url)) {
+                throw new BadRequestHttpException(sprintf('fetch[%d] : {name, url} attendus (name : a-z, 0-9, . _ -).', $i));
+            }
+            $encoding = \is_string($item['encoding'] ?? null) ? $item['encoding'] : 'text';
+            $sha = \is_string($item['sha256'] ?? null) ? $item['sha256'] : null;
+            $files[$name] = $this->fetcher->fetch($url, $encoding, $sha);
+        }
+
+        return $files;
     }
 
     /** @return array<string, mixed> */

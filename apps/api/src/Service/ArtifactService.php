@@ -288,7 +288,10 @@ final class ArtifactService
      *
      * @return array<string, mixed>
      */
-    public function patchDocument(User $user, string $idOrSlug, array $ops, array $edits = [], ?string $note = null, ?string $ip = null, bool $draft = false): array
+    /**
+     * @param array<string, string> $setFiles fichiers (`files`) à poser avant les ops/edits (nom => contenu)
+     */
+    public function patchDocument(User $user, string $idOrSlug, array $ops, array $edits = [], ?string $note = null, ?string $ip = null, bool $draft = false, array $setFiles = []): array
     {
         $artifact = $this->requireWritableArtifact($user, $idOrSlug);
         $version = $this->versions->findOneForArtifactVersion($artifact, $artifact->getCurrentVersion());
@@ -296,6 +299,14 @@ final class ArtifactService
             throw new NotFoundHttpException('Version introuvable.');
         }
         $current = json_decode((string) json_encode($version->getWireDocument()), false);
+        if ($setFiles !== [] && $current instanceof \stdClass) {
+            if (!($current->files ?? null) instanceof \stdClass) {
+                $current->files = new \stdClass();
+            }
+            foreach ($setFiles as $name => $content) {
+                $current->files->{$name} = $content;
+            }
+        }
         try {
             $doc = $ops === [] ? $current : JsonPatch::apply($current, $ops);
             foreach (array_values($edits) as $i => $edit) {
