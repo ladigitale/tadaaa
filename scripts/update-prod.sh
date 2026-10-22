@@ -235,6 +235,10 @@ elif [[ -n "${BELTS_DIST:-}" ]]; then
   warn "BELTS_DIST set but no BELTS_SRC/BELTS_GIT_URL — skip Belts build (using existing dist)."
 fi
 
+# --pull : récupère l'image de base à jour (correctifs de sécurité PHP, ex. PHP2Shell CVE-2026-109618/109619).
+# Sans lui, `up --build` réutilise l'image FrankenPHP déjà en cache, donc un PHP non corrigé.
+info "Building images (base images pulled)…"
+"${COMPOSE[@]}" build --pull
 info "Recreating stack…"
 "${COMPOSE[@]}" up -d --build
 ok "Containers up."
