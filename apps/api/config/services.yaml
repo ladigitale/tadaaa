@@ -31,6 +31,8 @@ parameters:
     env(LEGAL_HOST_CONTACT): ''
     env(LEGAL_PRIVACY_EMAIL): ''
     env(ARTIFACTS_PUBLIC_URL): 'http://localhost:3300'
+    # Hôtes https autorisés pour update_artifact `fetch` (liste séparée par des virgules) ; vide = GitHub raw/gist.
+    env(ARTIFACT_FETCH_HOSTS): ''
     # Agent intégré (POST /api/agent/run). Chaque utilisateur règle son fournisseur / sa clé
     # (page « Assistant IA ») ; AGENT_LLM_* = clé du serveur, pour les admins (ou tous si SHARED=1).
     env(AGENT_LLM_API_KEY): ''
@@ -48,6 +50,10 @@ services:
     _defaults:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    App\Service\ArtifactFileFetcher:
+        arguments:
+            $allowedHosts: '%env(ARTIFACT_FETCH_HOSTS)%'
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
