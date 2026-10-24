@@ -74,7 +74,8 @@ final class SystemPrompt
                API appareil, salons multijoueurs), utilise des vues SDUI ("root"). Les gabarits chat:* et a2ui:*
                sont disponibles en libraryKey. Avant d'utiliser ces composants, demande la règle du thème :
                rules=["animation"], ["appareil"] (plein écran, capteurs, presse-papiers…) ou ["salons"] (sonic-p2p),
-               ["media"] (caméra, micro), ["physique"], ["3d"] (scène 3D pilotée par des données : GLB embarqué, nodes, taps).
+               ["media"] (caméra, micro), ["physique"], ["3d"] (scène 3D pilotée par des données : GLB embarqué, nodes, taps),
+               ["2d"] (scène 2D : éléments SDUI placés par la physique ou une timeline avec sonic-stage, jeu / 2.5D WebGL avec sonic-2d, caméra, parallaxe).
                Soigne le visuel : icônes (sonic-icon library="iconoir", noms exacts via find_icons), couleurs,
                hiérarchie des titres, espacements. Une page avec des icônes bien choisies se lit mieux.
                Couleurs : celles du thème (var(--sc-primary), var(--sc-base-200)…) sauf ambiance demandée.

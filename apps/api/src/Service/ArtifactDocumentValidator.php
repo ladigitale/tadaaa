@@ -20,6 +20,8 @@ final class ArtifactDocumentValidator
     public const MAX_SHADER_SOURCE = 32 * 1024;
     /** GLB embarqué en base64 (attribut `glb` / `src` data:model/gltf-binary de sonic-3d). */
     public const MAX_GLB_BASE64 = 300 * 1024;
+    /** Image embarquée d'un sonic-sprite (data:image/…;base64). */
+    public const MAX_SPRITE_IMAGE = 64 * 1024;
     public const MAX_HF_TEXT = 8 * 1024;
     public const MAX_SOUND_BANK = 64 * 1024;
     public const MAX_AUDIO_PATTERN = 16 * 1024;
@@ -86,12 +88,14 @@ final class ArtifactDocumentValidator
         .'CORPS : sonic-body name type="dynamic|static|kinematic" shape="circle (r)|box (w h)|polygon|edge|chain (points=\'x,y x,y\' relatifs au centre)" x y angle vx vy restitution friction density sensor bullet fixed-rotation tags="brick" clamp-x="60 740" fill stroke label. La même description en liste JSON dans le store (bodies="jeu.bricks") : le monde suit ajouts et retraits (retirer une brique = la filtrer dans le reducer). '
         .'JOINTS : sonic-joint type="revolute (motor °/s, lower/upper)|distance (frequency = ressort)|rope|weld|prismatic" a b at="x y" (b="ground" = décor). '
         .'PILOTAGE input = {"paddle": {"vx": -650}, "ship": {"fx": 0, "fy": -20}, "ball": {"impulse": {"n": compteur, "x": 10, "y": -34}, "set": {"n": compteur, "x": 400, "y": 396}}} (vx/vy imposés à chaque pas, fx/fy forces, impulse/set déclenchés quand n augmente). control = {running, reset: compteur, gravity: [x, y]}. '
-        .'ÉVÉNEMENTS vers le store : collide {a, b, tagsA, tagsB, impulse, x, y}, enter/leave {sensor, body, tags}, out {body, side} (balle perdue), tap {x, y, body} ; mettre budget-ms="50" sur le store. État worldState {bodies: {nom: {x, y, angle, vx, vy}}, collisions}. Image du monde : sonic-shader channel0="#world" (lueur, déformations) ; hidden-preview si le shader seul s’affiche. '
+        .'ÉVÉNEMENTS vers le store : collide {a, b, tagsA, tagsB, impulse, x, y}, enter/leave {sensor, body, tags}, out {body, side} (balle perdue), tap {x, y, body}, rest {bodies: {nom: {x, y, angle}}} (UNE fois quand le dernier corps dynamique s’immobilise : fin de coup, tour suivant) ; mettre budget-ms="50" sur le store. État worldState {bodies: {nom: {x, y, angle, vx, vy}}, collisions}. Image du monde : sonic-shader channel0="#world" (lueur, déformations) ; hidden-preview si le shader seul s’affiche. '
+        .'AFFICHER LES CORPS AILLEURS, SANS ADAPTATEUR : nodes-plane="screen" (2D, pour sonic-2d / sonic-stage) | "xz" (sol 3D) | "xy" (mur 3D) ajoute nodes {nom: {x, y, rz}} à worldState ; le rendu se branche directement : dataProvider="worldState" (sprites / éléments / nœuds glTF du même nom que les corps). nodes-scale (unités du rendu par px ; 1 pour screen, 0.01 en 3D), nodes-origin="x y", nodes-y (hauteur 3D), nodes-ease (lissage, défaut 1000/rate ms). Jamais de JSONata entre la physique et le rendu (30 publications/s). Voir la règle « 2d ». '
         .'MANETTES : sonic-controller id="pad" store="jeu" keymap=\'{"a":"launch","start":"pause","left":"left"}\' release (envoie aussi "left:up") analog-action="stick" (→ {type:"stick", payload:{pad, lx, ly, rx, ry, lt, rt}}) control="jeu.padCtl" ({rumble: {n: compteur, ms}}) ; état padState {status: idle|ready, count, pads}. Clavier tenu : sonic-keyboard keyup (actions "left" puis "left:up").';
 
     /** Mémo de l'addon `3d` : scène pilotée par les données (jeux, plateaux). */
     private const SCENE3D_RULE = 'SCÈNE 3D PILOTÉE PAR LES DONNÉES (jeux de plateau, objets à manipuler) : <sonic-3d dataProvider="jeu" target="jeu" pick pick-names="^(m_|hole_)" min-polar="0.6" max-polar="1.25" min-distance="9" max-distance="17" fit="false">. '
         .'Le DP « jeu » est celui d’un store dont le reducer publie : glb = modèle GLB en base64 (aucun réseau ; 300 Ko base64 max, 64 Ko par fichier : le mettre dans "files" et référencer "@file:plateau.b64" dans data.stores.jeu.initial ; un glTF JSON avec buffers data: ne marche pas, exporter en GLB) '
+        .'(nodes peut aussi venir directement d’un sonic-physics nodes-plane="xz" via dataProvider="worldState", ou d’une sonic-timeline nodes-out) '
         .'et nodes = {nomDeNoeud: {x,y,z (position locale), rx,ry,rz (rad), scale (n ou [x,y,z]), visible, color "#rrggbb", emissive (0..1), emissiveColor, opacity, ease:{ms,curve:linear|in|out|inOut}, lift (hauteur d’un arc en y pendant ease.ms, ex. saut de bille)}, "$reset": true}. '
         .'nodes est un PATCH : un champ absent reste tel quel, un nœud absent de l’objet n’est pas remis à zéro (utiliser "$reset": true pour revenir à l’état du fichier, puis redonner l’état voulu) ; republier la même valeur ne fait rien ; 200 nœuds max par publication ; nom inconnu ignoré. Les noms sont ceux du GLB (le générateur doit les rendre uniques). '
         .'Les couleurs ne sont pas animées (immédiates) ; x/y/z/rotation/scale/emissive/opacity le sont avec ease. Sans ease les changements sont immédiats. '
@@ -99,6 +103,16 @@ final class ArtifactDocumentValidator
         .'Orbite : min/max-distance, min/max-polar en degrés (limiter le polar évite de passer sous le plateau). '
         .'PIÈGES : (1) nodes ne s’applique qu’une fois le GLB chargé (réappliqué automatiquement après chaque chargement) ; (2) donner les positions finales des nœuds dans le reducer, pas des deltas ; (3) pas de $random / $now dans le reducer : c’est ease qui anime ; (4) sans GLB (glb absent) la scène montre un cube de démo. '
         .'Sortie (out-data-provider) : yaw pitch distance hitObjectId hitX/Y/Z moving ready nodesMissing (nombre de noms de nodes introuvables : à 0 en régime normal).';
+
+    /** Mémo des addons `stage` et `2d` : scènes 2D pilotées par le format nodes. */
+    private const SCENE2D_RULE = 'SCÈNES 2D PILOTÉES PAR LES DONNÉES. FORMAT nodes (le même pour sonic-3d, sonic-stage, sonic-2d) : clé nodes d’un DataProvider = {nom: {x, y, rz (RADIANS), scale (n ou [x,y]), opacity, visible, z (ordre d’empilement), color, ease: {ms, curve: linear|in|out|inOut}}, "$reset": true} ; PATCH (champ absent inchangé), republier la même valeur ne fait rien, 200 nœuds max. '
+        .'PRODUCTEURS (un par DataProvider) : sonic-physics nodes-plane="screen" (→ worldState.nodes), reducer d’un store, sonic-timeline nodes-out="anim", sonic-p2p. Le SDUI crée les éléments, le producteur décide où ils sont, le rendu les place. '
+        .'A) DOM : <sonic-stage dataProvider="worldState" width="800" height="450" target="jeu" pick-names="^b[0-9]$"> + enfants SDUI avec attributes.id = nom du nœud : (x, y) = CENTRE de l’élément dans la scène (mêmes width/height que le sonic-physics : les éléments HTML sont exactement les corps) ; layout="offset" = simple décalage depuis la mise en page. Le style vient du SDUI (la scène ne touche qu’à transform, opacity, visibility, z-index, color) ; un élément qui apparaît (sonic-if, sonic-states) reçoit l’état de son nœud. '
+        .'B) WebGL (PixiJS : jeux, beaucoup d’objets, 2.5D) : <sonic-2d dataProvider="worldState" camera="jeu.camera" width="800" height="450" background="#0b1020" layers="ciel:0 decor:0.35 monde:1 hud:0" target="jeu" pick-empty pick-names="^b"> + enfants <sonic-sprite name shape="box (w h radius)|circle (r)|polygon (points=\'x,y …\' relatifs au centre)|text (text font-size font ; emoji acceptés)|image (src data:image/…;base64 ou https://, w h)" fill stroke line x y angle (°, position DE DÉPART) opacity layer z hidden> '
+        .'(vocabulaire de sonic-body) ou sprites="jeu.decor" (liste du store, ajouts/retraits suivis, 500 max). layers : nom:parallaxe[:y] du fond vers l’avant, 1 suit la caméra (monde), 0 fixe à l’écran (score, aide), entre les deux = décor lointain, :y trie par y (vue de 3/4) ; défaut un calque "monde". '
+        .'CAMÉRA {x, y, zoom, ease} : point du monde au centre de l’écran, écrite par le reducer (attribut camera="jeu.camera" ou clé camera du dataProvider) ; un monde plus large que la vue se parcourt en la déplaçant. '
+        .'TAPS (les deux rendus, comme sonic-3d) : {type: pick-action-type (défaut "pick"), payload: {objectId: nom, x, y}} (coordonnées du monde) vers le store target ; pick-names = regex des noms acceptés ; pick-empty envoie aussi {objectId: null, x, y}. '
+        .'PIÈGES : (1) le mouvement vient de nodes, jamais d’un changement de x/y du sprite ; (2) les noms des sprites / id des éléments = noms des corps ; (3) pas de JSONata entre producteur et rendu ; (4) sonic-2d : 4 par page (WebGL) ; out-data-provider {status loading|ready|error, count, missing (nœuds sans sprite), errors} ; (5) SVG non déclarable en SDUI : utiliser sonic-2d (polygon) ou du HTML.';
 
     /** Mémo de l'addon `audio` (synthèse modulaire, séquenceur, sampler, analyseur). */
     private const AUDIO_RULE = 'Un seul moteur audio par page, démarré au premier geste (sonic-audio-unlock = bouton d’invite). '
@@ -137,6 +151,7 @@ final class ArtifactDocumentValidator
         .'targets : "id", "children:id", "group:nom" (éléments data-anim-group="nom"), "@self" ; smooth="0.08" lisse un temps venu du réseau ; out-of-range clamp|wrap). Sans time-source une timeline ne bouge jamais. '
         .'UN SEUL écrivain par DP de temps : une horloge OU un slider (sonic-input type="range" min="0" max="1" step="0.001" name="t" formDataProvider="scrub" puis time-source="scrub.t") OU une sortie sonic-p2p OU un analyseur audio (audio-fx.rms). '
         .'RÈGLES : chaque élément animé porte attributes.id (et nodeId si utile) ; propriétés animables opacity, x, y, scale, rotate, blur (nombres SANS unité) et variables CSS --nom, jamais width / height / top / left ; texte animé = textContent du nœud (écrit en texte brut) ; prefers-reduced-motion respecté (état final direct) ; '
+        .'MODE nodes : nodes-out="anim" publie l’état des cibles dans anim.nodes (format nodes : x, y, scale, opacity ; rotate en degrés devient rz en radians) au lieu du DOM ; les cibles sont alors des NOMS de nœuds (élément de <sonic-stage dataProvider="anim">, sprite de sonic-2d, nœud glTF de sonic-3d) ; pas de children:/group: dans ce mode. '
         .'un descripteur invalide rend la timeline muette (état out-data-provider : status error + issues {path, field, message, fix}). Limites : arbre de 8 niveaux, 200 cibles par tween, 600 s au total.';
 
     /** Mémo de l'addon `device` (API navigateur en DataProviders). */
@@ -180,7 +195,7 @@ final class ArtifactDocumentValidator
     private const DEFAULT_CONCORDE_VERSION = '5.1.0';
 
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
-    public const LONG_RULES = ['a2ui', 'son', 'audio', 'media', 'physique', '3d', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
+    public const LONG_RULES = ['a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
 
     private readonly ArtifactA2uiValidator $a2uiValidator;
 
@@ -319,6 +334,7 @@ final class ArtifactDocumentValidator
                 'media' => self::MEDIA_RULE,
                 'physique' => self::PHYSICS_RULE,
                 '3d' => self::SCENE3D_RULE,
+                '2d' => self::SCENE2D_RULE,
                 'animation' => self::ANIMATION_RULE,
                 'appareil' => self::DEVICE_RULE,
                 'salons' => self::ROOMS_RULE,
@@ -1113,6 +1129,26 @@ final class ArtifactDocumentValidator
                 return 'Domaine modele 3D hors liste blanche.';
             }
         }
+        if ($tagName === 'sonic-sprite' && $attrLower === 'src') {
+            $trim = trim($value);
+            if (preg_match('#^data:image/(png|jpe?g|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=\s]+$#i', $trim) === 1) {
+                if (\strlen($trim) > self::MAX_SPRITE_IMAGE) {
+                    return sprintf('src du sprite trop volumineux (max %d Ko ; le mettre dans "files").', self::MAX_SPRITE_IMAGE / 1024);
+                }
+            } elseif (preg_match('#^https://[^\s"\'<>]+$#i', $trim) !== 1) {
+                return 'src d’un sonic-sprite : image data:image/…;base64 ou URL https://.';
+            }
+        }
+        if ($tagName === 'sonic-2d' && $attrLower === 'layers') {
+            foreach (preg_split('/\s+/', trim($value)) ?: [] as $tok) {
+                if ($tok !== '' && preg_match('/^[A-Za-z][A-Za-z0-9_-]*(:\d*\.?\d+)?(:y)?$/', $tok) !== 1) {
+                    return sprintf('layers : "%s" invalide (nom:parallaxe[:y], ex. "ciel:0 monde:1:y hud:0").', $tok);
+                }
+            }
+        }
+        if ($tagName === 'sonic-physics' && $attrLower === 'nodes-plane' && !\in_array(strtolower(trim($value)), ['', 'screen', 'xz', 'xy'], true)) {
+            return 'nodes-plane : screen (2D), xz (sol 3D) ou xy (mur 3D).';
+        }
         if ($this->isUnsafeUrl($attr, $value)) {
             return 'URL non autorisee (https uniquement ; pas de javascript:/data: hors image).';
         }
@@ -1147,7 +1183,7 @@ final class ArtifactDocumentValidator
                 $errors[] = ['path' => '/capabilities', 'message' => sprintf('%s utilisé : ajouter "%s" à capabilities.', $tag, $cap)];
             }
         }
-        $limits = ['sonic-camera' => 2, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2, 'sonic-midi' => 2, 'sonic-screen' => 1, 'sonic-physics' => 4, 'sonic-controller' => 2,
+        $limits = ['sonic-camera' => 2, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2, 'sonic-midi' => 2, 'sonic-screen' => 1, 'sonic-physics' => 4, 'sonic-2d' => 4, 'sonic-controller' => 2,
             // Un seul salon (connexion Mercure) et un seul verrou par page (même liste que le garde du viewer).
             'sonic-p2p' => 1, 'sonic-pointer-lock' => 1, 'sonic-wake-lock' => 1, 'sonic-orientation' => 1];
         foreach ($limits as $tag => $max) {

@@ -22,6 +22,9 @@ final class ArtifactDocumentValidatorTest extends TestCase
                 ['name' => 'sonic-caption'],
                 ['name' => 'sonic-shader'],
                 ['name' => 'sonic-3d'],
+                ['name' => 'sonic-2d'],
+                ['name' => 'sonic-sprite'],
+                ['name' => 'sonic-stage'],
                 ['name' => 'sonic-jsonata'],
                 ['name' => 'sonic-hugging-face-infer'],
                 ['name' => 'sonic-store'],
@@ -606,12 +609,12 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertNotFalse($encodedFiltered);
         self::assertLessThan(9_000, strlen($encodedFiltered));
 
-        // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, 3d, animation, appareil,
+        // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, 3d, 2d, animation, appareil,
         // salons, ia, collecte). Plafond large, pour repérer une dérive de taille.
         $payload = $this->validator->mcpCatalogPayload(true);
         $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE);
         self::assertNotFalse($encoded);
-        self::assertLessThan(40_000, strlen($encoded));
+        self::assertLessThan(44_000, strlen($encoded));
         self::assertArrayHasKey('commonProps', $payload['catalog']);
     }
 
@@ -1055,5 +1058,53 @@ final class ArtifactDocumentValidatorTest extends TestCase
         foreach (['camCapabilities', 'adjust=', 'camSettings', 'applied, jamais desired', 'ptz'] as $needle) {
             self::assertStringContainsString($needle, $media);
         }
+    }
+
+    public function testScenes2dSpritesLayersAndNodesPlane(): void
+    {
+        $doc = $this->minimalDoc();
+        $ok = [
+            ['tagName' => 'sonic-physics', 'attributes' => ['id' => 'monde', 'nodes-plane' => 'screen']],
+            ['tagName' => 'sonic-stage', 'attributes' => ['dataProvider' => 'mondeState', 'width' => '800', 'height' => '450'], 'nodes' => [['tagName' => 'div', 'attributes' => ['id' => 'b1']]]],
+            ['tagName' => 'sonic-2d', 'attributes' => ['dataProvider' => 'mondeState', 'layers' => 'ciel:0 decor:0.35 monde:1:y hud:0'], 'nodes' => [
+                ['tagName' => 'sonic-sprite', 'attributes' => ['name' => 'b1', 'r' => '20']],
+                ['tagName' => 'sonic-sprite', 'attributes' => ['name' => 'img', 'shape' => 'image', 'src' => 'data:image/png;base64,iVBORw0KGgo=']],
+                ['tagName' => 'sonic-sprite', 'attributes' => ['name' => 'web', 'shape' => 'image', 'src' => 'https://exemple.org/a.png']],
+            ]],
+        ];
+        $doc['views'][0]['root']['nodes'] = $ok;
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $bad = [
+            [['tagName' => 'sonic-sprite', 'attributes' => ['src' => 'http://exemple.org/a.png']], 'sonic-sprite'],
+            [['tagName' => 'sonic-sprite', 'attributes' => ['src' => 'data:image/png;base64,'.str_repeat('A', 70 * 1024)]], 'trop volumineux'],
+            [['tagName' => 'sonic-2d', 'attributes' => ['layers' => 'ciel:0 monde:un']], 'layers'],
+            [['tagName' => 'sonic-physics', 'attributes' => ['nodes-plane' => 'xyz']], 'nodes-plane'],
+        ];
+        foreach ($bad as [$node, $needle]) {
+            $doc['views'][0]['root']['nodes'] = [$node];
+            $result = $this->validator->validate($doc);
+            self::assertFalse($result['valid'], $needle);
+            self::assertStringContainsString($needle, json_encode($result['errors'], JSON_UNESCAPED_UNICODE));
+        }
+
+        $doc['views'][0]['root']['nodes'] = array_fill(0, 5, ['tagName' => 'sonic-2d']);
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('Trop de sonic-2d', $result['errors'][0]['message']);
+    }
+
+    public function testCatalogPayloadExplains2dScenesAndNodesFormat(): void
+    {
+        self::assertContains('2d', ArtifactDocumentValidator::LONG_RULES);
+        $rules = $this->validator->mcpCatalogPayload(true, ['__none__'], ['2d', 'physique', 'animation', '3d'], false)['rules'];
+        foreach (['sonic-stage', 'sonic-2d', 'sonic-sprite', 'RADIANS', 'layers', 'pick-empty', 'camera="jeu.camera"'] as $needle) {
+            self::assertStringContainsString($needle, $rules['2d']);
+        }
+        self::assertStringContainsString('nodes-plane="screen"', $rules['physique']);
+        self::assertStringContainsString('rest {bodies', $rules['physique']);
+        self::assertStringContainsString('nodes-out', $rules['animation']);
+        self::assertStringContainsString('nodes-plane="xz"', $rules['3d']);
     }
 }
