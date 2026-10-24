@@ -1,8 +1,67 @@
 {
   "concordeVersion": "5.1.0",
   "creativeStackVersion": "0.1.0",
-  "generatedFrom": "@supersoniks/concorde 5.1.0 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (3d, animation, audio, controller, device, hugging-face-infer, interactive, media, p2p, physics, shader, sound, webgpu)",
+  "generatedFrom": "@supersoniks/concorde 5.1.0 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, controller, device, hugging-face-infer, interactive, media, p2p, physics, shader, sound, stage, webgpu)",
   "components": [
+    {
+      "name": "sonic-2d",
+      "props": {
+        "dataProvider": {
+          "type": "string",
+          "description": "DataProvider lu : clés nodes (mouvement) et camera (sinon celui d'un ancêtre)"
+        },
+        "width": {
+          "type": "number",
+          "description": "Largeur logique de la scène (défaut 800)"
+        },
+        "height": {
+          "type": "number",
+          "description": "Hauteur logique (défaut 450)"
+        },
+        "background": {
+          "type": "string",
+          "description": "Couleur de fond CSS (vide ou transparent : transparent)"
+        },
+        "layers": {
+          "type": "string",
+          "description": "Calques du fond vers l'avant, nom:parallaxe[:y] (1 suit la caméra, 0 fixe à l'écran, :y trie par y) ; défaut : un calque monde"
+        },
+        "camera": {
+          "type": "string",
+          "description": "Chemin DataProvider de la caméra {x, y, zoom, ease} (défaut : clé camera du dataProvider)"
+        },
+        "sprites": {
+          "type": "string",
+          "description": "Chemin DataProvider d'une liste de sprites (mêmes clés que sonic-sprite ; ajouts et retraits suivis)"
+        },
+        "target": {
+          "type": "string",
+          "description": "Id du sonic-store qui reçoit les taps"
+        },
+        "pick-action-type": {
+          "type": "string",
+          "description": "Type d'action envoyé à target (défaut pick)"
+        },
+        "pick-names": {
+          "type": "string",
+          "description": "Regex sur le nom du sprite touché ; les autres taps sont ignorés"
+        },
+        "pick-empty": {
+          "type": "boolean",
+          "description": "Envoie aussi {objectId:null, x, y} (coordonnées du monde) pour un tap hors sprite"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DataProvider où publier {status, error, count, missing, errors}"
+        },
+        "max-dpr": {
+          "type": "number",
+          "description": "Densité de pixels maximale (défaut 2)"
+        }
+      },
+      "addon": "2d",
+      "description": "Scène 2D/2.5D : width × height logiques (mise à l'échelle de la largeur) ; enfants sonic-sprite ou sprites=DP liste ; dataProvider : clé nodes {nom:{x, y, rz (radians), scale, opacity, visible, z, color, ease}} et clé camera {x, y, zoom, ease} (ou attribut camera = chemin) ; layers=\"ciel:0 decor:0.4 monde:1:y hud:0\" (parallaxe ; :y = tri par y) ; target reçoit {type:pick, payload:{objectId, x, y}} ; rendu à la demande."
+    },
     {
       "name": "sonic-3d",
       "props": {
@@ -2974,10 +3033,30 @@
         },
         "out-data-provider": {
           "type": "string"
+        },
+        "nodes-plane": {
+          "type": "string",
+          "description": "xz (sol 3D) | xy (mur 3D) | screen (2D, y vers le bas) : publie aussi nodes {nom:{x,y,z,ry|rz}} au format nodes partagé (sonic-3d, sonic-stage)"
+        },
+        "nodes-scale": {
+          "type": "number",
+          "description": "unités du rendu par px (défaut 0,01 ; 1 pour screen)"
+        },
+        "nodes-origin": {
+          "type": "string",
+          "description": "\"x y\" en px du monde placé à l'origine du rendu (défaut : centre ; 0 0 pour screen)"
+        },
+        "nodes-ease": {
+          "type": "number",
+          "description": "ms d'interpolation ajoutés à chaque nœud (défaut : 1000 / rate ; 0 : aucune)"
+        },
+        "nodes-y": {
+          "type": "number",
+          "description": "hauteur 3D fixe des corps (plan xz)"
         }
       },
       "addon": "physics",
-      "description": "Monde 2D (px, y vers le bas) : enfants sonic-body / sonic-joint, bodies=DP liste de corps (ajout / retrait suivis), input=DP {nom: {vx, vy, fx, fy, spin, torque, impulse:{n,x,y}, set:{n,x,y,vx,vy,angle}}} (n = compteur), control=DP {running, reset: compteur, gravity:[x,y], timeScale}, store=id reçoit collide {a,b,tagsA,tagsB,impulse,x,y} / enter / leave {sensor, body, tags} / out {body, side} / tap {x,y,body} ; état <id>State {bodies:{nom:{x,y,angle,vx,vy}}, collisions, time} ; source d'images #id pour sonic-shader"
+      "description": "Monde 2D (px, y vers le bas) : enfants sonic-body / sonic-joint, bodies=DP liste de corps (ajout / retrait suivis), input=DP {nom: {vx, vy, fx, fy, spin, torque, impulse:{n,x,y}, set:{n,x,y,vx,vy,angle}}} (n = compteur), control=DP {running, reset: compteur, gravity:[x,y], timeScale}, store=id reçoit collide {a,b,tagsA,tagsB,impulse,x,y} / enter / leave {sensor, body, tags} / out {body, side} / tap {x,y,body} / rest {bodies:{nom:{x,y,angle}}} (une fois, quand le dernier corps dynamique s'immobilise) ; état <id>State {bodies:{nom:{x,y,angle,vx,vy}}, nodes (si nodes-plane/nodes-scale), collisions, time} ; source d'images #id pour sonic-shader"
     },
     {
       "name": "sonic-pointer-lock",
@@ -3778,6 +3857,140 @@
       "description": "Moteur son : banque JSON (sfx + songs), pilotage par DP control {music, volume, muted, paused, fade, play:{nom:compteur}}, état publié dans out-data-provider"
     },
     {
+      "name": "sonic-sprite",
+      "props": {
+        "name": {
+          "type": "string",
+          "description": "Nom du nœud (nodes, corps physique, taps)"
+        },
+        "shape": {
+          "type": "string",
+          "description": "box (défaut) | circle | polygon | text | image"
+        },
+        "x": {
+          "type": "number",
+          "description": "Position de départ (le mouvement vient ensuite de nodes)"
+        },
+        "y": {
+          "type": "number",
+          "description": "Position de départ"
+        },
+        "angle": {
+          "type": "number",
+          "description": "Angle de départ en degrés"
+        },
+        "w": {
+          "type": "number",
+          "description": "Largeur (box, image)"
+        },
+        "h": {
+          "type": "number",
+          "description": "Hauteur (box, image)"
+        },
+        "r": {
+          "type": "number",
+          "description": "Rayon (circle)"
+        },
+        "radius": {
+          "type": "number",
+          "description": "Coins arrondis (box)"
+        },
+        "points": {
+          "type": "string",
+          "description": "Points \"x,y x,y …\" relatifs au centre (polygon)"
+        },
+        "fill": {
+          "type": "string",
+          "description": "Couleur de remplissage (texte : couleur du texte)"
+        },
+        "stroke": {
+          "type": "string",
+          "description": "Couleur du contour"
+        },
+        "line": {
+          "type": "number",
+          "description": "Épaisseur du contour"
+        },
+        "text": {
+          "type": "string",
+          "description": "Texte (shape text ; emoji acceptés)"
+        },
+        "font-size": {
+          "type": "number",
+          "description": "Taille du texte (défaut 24)"
+        },
+        "font": {
+          "type": "string",
+          "description": "Police CSS (défaut system-ui)"
+        },
+        "src": {
+          "type": "string",
+          "description": "Image : data:image/… (base64) ou URL https://"
+        },
+        "opacity": {
+          "type": "number",
+          "description": "Opacité 0..1"
+        },
+        "layer": {
+          "type": "string",
+          "description": "Calque (défaut monde)"
+        },
+        "z": {
+          "type": "number",
+          "description": "Ordre dans le calque"
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "Caché au départ"
+        }
+      },
+      "addon": "2d",
+      "description": "Sprite déclaratif d'un sonic-2d (aucun rendu propre) : shape box (w h radius) | circle (r) | polygon (points \"x,y …\") | text (text font-size font) | image (src data:image/… ou https://, w h) ; fill stroke line ; x y angle (°) de départ ; opacity layer z hidden. Le nom relie le sprite à son nœud (et au corps de même nom)."
+    },
+    {
+      "name": "sonic-stage",
+      "props": {
+        "dataProvider": {
+          "type": "string",
+          "description": "DataProvider dont la clé nodes place les éléments (sinon celui d'un ancêtre)"
+        },
+        "width": {
+          "type": "number",
+          "description": "Largeur logique de la scène (unités de nodes)"
+        },
+        "height": {
+          "type": "number",
+          "description": "Hauteur logique de la scène"
+        },
+        "layout": {
+          "type": "string",
+          "description": "absolute (défaut avec width et height : x, y = centre dans la scène) | offset (décalage depuis la place de mise en page)"
+        },
+        "target": {
+          "type": "string",
+          "description": "Id du sonic-store qui reçoit les taps"
+        },
+        "pick-action-type": {
+          "type": "string",
+          "description": "Type d'action envoyé à target (défaut pick)"
+        },
+        "pick-names": {
+          "type": "string",
+          "description": "Regex sur le nom (id) du nœud tapé ; les autres taps sont ignorés"
+        },
+        "pick-empty": {
+          "type": "boolean",
+          "description": "Envoie aussi {objectId:null, x, y} pour un tap hors nœud"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DataProvider où publier {count, missing} (nœuds sans élément)"
+        }
+      },
+      "addon": "stage",
+      "description": "Scène 2D : enfants SDUI nommés par id ; nodes {nom:{x, y, rz (radians), scale, opacity, visible, z (empilement), color, ease {ms, curve linear|in|out|inOut}}} lu dans dataProvider (patch, $reset) ; width + height = taille logique, mise à l'échelle de la largeur, (x, y) = centre de l'élément ; layout=offset = décalage depuis la mise en page ; target = store qui reçoit {type:pick, payload:{objectId, x, y}}. Ne crée ni ne retire d'éléments (rôle du SDUI, de sonic-list, sonic-states, sonic-if)."
+    },
+    {
       "name": "sonic-states",
       "props": {
         "state": {
@@ -4132,6 +4345,10 @@
           "type": "number",
           "description": "Durée totale en secondes (sinon déduite des nœuds)."
         },
+        "nodes-out": {
+          "type": "string",
+          "description": "Mode nodes : publie l'état des cibles (noms de nœuds) dans <dp>.nodes au format partagé lu par sonic-stage et sonic-3d (x, y, rotate → rz radians, scale, opacity), au lieu d'écrire dans le DOM."
+        },
         "out-data-provider": {
           "type": "string",
           "description": "DataProvider où publier status, progress, time, duration, currentLabel, issues."
@@ -4474,5 +4691,5 @@
     "i",
     "u"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-matrix); media (sonic-camera, sonic-video, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); shader (sonic-shader); sound (sonic-sound, sonic-sfx); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-matrix); media (sonic-camera, sonic-video, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); shader (sonic-shader); sound (sonic-sound, sonic-sfx); stage (sonic-stage); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
