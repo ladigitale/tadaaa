@@ -320,6 +320,7 @@ final class ArtifactDocumentValidator
                 'interdit' => ['markup', 'innerHTML', 'js', 'css', 'prefix', 'suffix', 'javascript:', 'URL libre de script'],
                 'scripts' => 'Optionnel: tableau d’IDs du catalogue scripts (voir scripts.libraries[].id). Ex: ["chartjs","leaflet"]. Pas d’URL, pas de balise <script>.',
                 'tagName' => 'Uniquement composants Concorde (sonic-*) ou balises HTML sûres du catalogue.',
+                'page' => 'Optionnel : cadre de la page, "page": {"padding": "none"|"compact"|"normal" (défaut normal : marge du viewer ; none = plein cadre, pour un jeu ou une scène), "background": couleur CSS du fond de toute la page (#hex, rgb(), hsl(), nom ou var(--sc-…))}.',
                 'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent. views[].hidden = true : vue absente des onglets (accessible par son #id).',
                 'interactive' => 'sonic-store + keyboard/gamepad/gesture/action/ticker + sonic-matrix. Câblage des données : voir la règle « donnees ».',
                 'donnees' => 'Un DataProvider (DP) est un nom : les composants le lisent avec dataProvider="nom", les actions l’écrivent avec target="nom". '
@@ -632,14 +633,50 @@ final class ArtifactDocumentValidator
             'data' => true,
             'fonts' => true,
             'capabilities' => true,
+            'page' => true,
         ];
         foreach (array_keys($document) as $key) {
             if (!isset($allowedTop[$key])) {
                 $errors[] = ['path' => '/'.$key, 'message' => 'Clé non autorisée.'];
             }
         }
+        if (\array_key_exists('page', $document)) {
+            $errors = [...$errors, ...self::validatePage($document['page'])];
+        }
 
         return ['valid' => $errors === [], 'errors' => $errors];
+    }
+
+    /** Couleur CSS sûre pour page.background (même forme que le viewer, src/app/page-frame.ts). */
+    private const PAGE_COLOR = '/^(#[0-9a-f]{3,8}|(?:rgb|rgba|hsl|hsla)\\([0-9.,%\\s\\/deg+-]{1,60}\\)|[a-z]{3,24}|var\\(--sc-[a-z0-9-]{1,40}\\))$/i';
+
+    /**
+     * Cadre de page : {padding?: none|compact|normal, background?: couleur CSS}.
+     *
+     * @return list<array{path: string, message: string}>
+     */
+    private static function validatePage(mixed $page): array
+    {
+        if (!\is_array($page) || array_is_list($page) && $page !== []) {
+            return [['path' => '/page', 'message' => 'page doit être un objet {padding, background}.']];
+        }
+        $errors = [];
+        foreach (array_keys($page) as $k) {
+            if (!\in_array($k, ['padding', 'background'], true)) {
+                $errors[] = ['path' => '/page/'.$k, 'message' => 'Clé non autorisée (padding, background).'];
+            }
+        }
+        if (isset($page['padding']) && !\in_array($page['padding'], ['none', 'compact', 'normal'], true)) {
+            $errors[] = ['path' => '/page/padding', 'message' => 'padding : none, compact ou normal.'];
+        }
+        if (isset($page['background'])) {
+            $bg = $page['background'];
+            if (!\is_string($bg) || \strlen($bg) > 80 || preg_match(self::PAGE_COLOR, trim($bg)) !== 1) {
+                $errors[] = ['path' => '/page/background', 'message' => 'background : couleur CSS (#hex, rgb(), hsl(), nom ou var(--sc-…)), sans url() ni dégradé.'];
+            }
+        }
+
+        return $errors;
     }
 
     /**
