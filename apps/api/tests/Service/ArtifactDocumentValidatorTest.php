@@ -109,6 +109,19 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertTrue($result['valid'], json_encode($result['errors']));
     }
 
+    public function testPageFrame(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['page'] = ['padding' => 'none', 'background' => '#06070a'];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        foreach ([['padding' => 'huge'], ['background' => 'url(https://x.test/a.png)'], ['background' => 'red;color:blue'], ['margin' => 0], 'plein'] as $bad) {
+            $doc['page'] = $bad;
+            self::assertFalse($this->validator->validate($doc)['valid'], json_encode($bad));
+        }
+    }
+
     public function testRejectsUnknownComponent(): void
     {
         $doc = $this->minimalDoc();
