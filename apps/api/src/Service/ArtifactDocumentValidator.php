@@ -105,6 +105,9 @@ final class ArtifactDocumentValidator
         .'Sortie (out-data-provider) : yaw pitch distance hitObjectId hitX/Y/Z moving ready nodesMissing (nombre de noms de nodes introuvables : à 0 en régime normal).';
 
     /** Mémo des addons `stage` et `2d` : scènes 2D pilotées par le format nodes. */
+    private const PROCGEN_RULE = 'SCÈNES PROCÉDURALES GPU (sonic-procgen, 2 par page). <sonic-procgen dataProvider="decor" style="display:block;aspect-ratio:1100/680"> rend une scène 2D WebGL2 (sol, rues, mer, personnages, signalétique…) animée sans recomposition. LU dans le DP : scene (nom), seed, params, style (jetons, en direct : night 0..1, lamps 0..1, palette {hue, saturation, contrast, mode}, grain, vignette, outline, depth, lightAngle), view {zoom, cx, cy} (coordonnées de scène, 1100×680 par défaut), anim {play, speed, time}, patch {canvas:{width,height}, root, seed, style, defs} (scène composée). ÉCRIT : selection, status {composing, items, fps, error}, view. target="store" reçoit {type:"select", payload:{objectId, pointer, def}} au clic. '
+        .'SCÈNES : port vivant (animé), bivouac de nuit (animé), rue vivante (animé), rue (scène déclarative), allée forestière, plaine des montgolfières, personnages, rue à vapeur, espace profond, fond marin, port au phare, désert, donjon (vu du dessus), inventaire de jeu, insignes et blasons, signalétique, foule et robots, motifs et matières, bestiaire, bourg isométrique, bourg oblique, carte, forêt de nuit, ruines, marais, paysage, ville néon, ville à vapeur (ancienne). '
+        .'PIÈGES : (1) un sonic-store qui publie dans le même DP réécrit tout son état à chaque action (selection/status effacés) : passer par target ; (2) changer view à chaque image redessine toute la scène : préférer des cadrages fixes ; (3) un personnage piloté au clavier se pose PAR-DESSUS (sonic-stage même width/height que la scène), pas dans la scène.';
     private const SCENE2D_RULE = 'SCÈNES 2D PILOTÉES PAR LES DONNÉES. FORMAT nodes (le même pour sonic-3d, sonic-stage, sonic-2d) : clé nodes d’un DataProvider = {nom: {x, y, rz (RADIANS), scale (n ou [x,y]), opacity, visible, z (ordre d’empilement), color, ease: {ms, curve: linear|in|out|inOut}}, "$reset": true} ; PATCH (champ absent inchangé), republier la même valeur ne fait rien, 200 nœuds max. '
         .'PRODUCTEURS (un par DataProvider) : sonic-physics nodes-plane="screen" (→ worldState.nodes), reducer d’un store, sonic-timeline nodes-out="anim", sonic-p2p. Le SDUI crée les éléments, le producteur décide où ils sont, le rendu les place. '
         .'A) DOM : <sonic-stage dataProvider="worldState" width="800" height="450" target="jeu" pick-names="^b[0-9]$"> + enfants SDUI avec attributes.id = nom du nœud : (x, y) = CENTRE de l’élément dans la scène (mêmes width/height que le sonic-physics : les éléments HTML sont exactement les corps) ; layout="offset" = simple décalage depuis la mise en page. Le style vient du SDUI (la scène ne touche qu’à transform, opacity, visibility, z-index, color) ; un élément qui apparaît (sonic-if, sonic-states) reçoit l’état de son nœud. '
@@ -195,7 +198,7 @@ final class ArtifactDocumentValidator
     private const DEFAULT_CONCORDE_VERSION = '5.1.0';
 
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
-    public const LONG_RULES = ['a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
+    public const LONG_RULES = ['a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
 
     private readonly ArtifactA2uiValidator $a2uiValidator;
 
@@ -335,6 +338,7 @@ final class ArtifactDocumentValidator
                 'physique' => self::PHYSICS_RULE,
                 '3d' => self::SCENE3D_RULE,
                 '2d' => self::SCENE2D_RULE,
+                'procgen' => self::PROCGEN_RULE,
                 'animation' => self::ANIMATION_RULE,
                 'appareil' => self::DEVICE_RULE,
                 'salons' => self::ROOMS_RULE,
@@ -1183,7 +1187,7 @@ final class ArtifactDocumentValidator
                 $errors[] = ['path' => '/capabilities', 'message' => sprintf('%s utilisé : ajouter "%s" à capabilities.', $tag, $cap)];
             }
         }
-        $limits = ['sonic-camera' => 2, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2, 'sonic-midi' => 2, 'sonic-screen' => 1, 'sonic-physics' => 4, 'sonic-2d' => 4, 'sonic-controller' => 2,
+        $limits = ['sonic-camera' => 2, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2, 'sonic-midi' => 2, 'sonic-screen' => 1, 'sonic-physics' => 4, 'sonic-2d' => 4, 'sonic-procgen' => 2, 'sonic-controller' => 2,
             // Un seul salon (connexion Mercure) et un seul verrou par page (même liste que le garde du viewer).
             'sonic-p2p' => 1, 'sonic-pointer-lock' => 1, 'sonic-wake-lock' => 1, 'sonic-orientation' => 1];
         foreach ($limits as $tag => $max) {

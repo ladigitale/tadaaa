@@ -1,7 +1,7 @@
 {
   "concordeVersion": "5.1.0",
   "creativeStackVersion": "0.1.0",
-  "generatedFrom": "@supersoniks/concorde 5.1.0 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, controller, device, hugging-face-infer, interactive, media, p2p, physics, shader, sound, stage, webgpu)",
+  "generatedFrom": "@supersoniks/concorde 5.1.0 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, controller, device, hugging-face-infer, interactive, media, p2p, physics, procgen, shader, sound, stage, webgpu)",
   "components": [
     {
       "name": "sonic-2d",
@@ -3056,7 +3056,7 @@
         }
       },
       "addon": "physics",
-      "description": "Monde 2D (px, y vers le bas) : enfants sonic-body / sonic-joint, bodies=DP liste de corps (ajout / retrait suivis), input=DP {nom: {vx, vy, fx, fy, spin, torque, impulse:{n,x,y}, set:{n,x,y,vx,vy,angle}}} (n = compteur), control=DP {running, reset: compteur, gravity:[x,y], timeScale}, store=id reçoit collide {a,b,tagsA,tagsB,impulse,x,y} / enter / leave {sensor, body, tags} / out {body, side} / tap {x,y,body} / rest {bodies:{nom:{x,y,angle}}} (une fois, quand le dernier corps dynamique s'immobilise) ; état <id>State {bodies:{nom:{x,y,angle,vx,vy}}, nodes (si nodes-plane/nodes-scale), collisions, time} ; source d'images #id pour sonic-shader"
+      "description": "Monde 2D (px, y vers le bas) : enfants sonic-body / sonic-joint, bodies=DP liste de corps (ajout / retrait suivis), input=DP {nom: {vx, vy, fx, fy, spin, torque, impulse:{n,x,y | toward:{x,y},power}, set:{n,x,y,vx,vy,angle}}} (n = compteur), control=DP {running, reset: compteur, gravity:[x,y], timeScale}, store=id reçoit collide {a,b,tagsA,tagsB,impulse,x,y} / enter / leave {sensor, body, tags} / out {body, side} / tap {x,y,body} / rest {bodies:{nom:{x,y,angle}}} (une fois, quand le dernier corps dynamique s'immobilise) ; état <id>State {bodies:{nom:{x,y,angle,vx,vy}}, nodes (si nodes-plane/nodes-scale), collisions, time} ; source d'images #id pour sonic-shader"
     },
     {
       "name": "sonic-pointer-lock",
@@ -3136,6 +3136,41 @@
           "default": "new ResizeObserver(() => this.computePosition(this.placement), )"
         }
       }
+    },
+    {
+      "name": "sonic-procgen",
+      "props": {
+        "dataProvider": {
+          "type": "string",
+          "description": "Chemin DataProvider lu et écrit (scene, patch, seed, params, style, view, select, anim / selection, status, view)"
+        },
+        "scene": {
+          "type": "string",
+          "description": "Nom d'une scène de la bibliothèque (valeur initiale si le DataProvider n'a pas de scene)"
+        },
+        "seed": {
+          "type": "string",
+          "description": "Graine (valeur initiale)"
+        },
+        "scene-style": {
+          "type": "string",
+          "description": "Nom d'un style de la bibliothèque (valeur initiale)"
+        },
+        "interactive": {
+          "type": "boolean",
+          "description": "false : pas de pan, zoom ni sélection (défaut true)"
+        },
+        "target": {
+          "type": "string",
+          "description": "Id du sonic-store qui reçoit la sélection"
+        },
+        "select-action-type": {
+          "type": "string",
+          "description": "Type d'action envoyé à target (défaut select)"
+        }
+      },
+      "addon": "procgen",
+      "description": "Scène procédurale GPU. Attributs : dataProvider (chemin lu/écrit : scene, seed, params, style, view, select, anim ; écrit : selection, status, view), scene (nom, valeur initiale), seed, scene-style (nom de style initial), interactive=\"false\" (pas de pan/zoom/clic), target (id d'un sonic-store qui reçoit {type:select, payload:{objectId, pointer, copy, type, def}}), select-action-type. Scènes : port vivant (animé), bivouac de nuit (animé), rue vivante (animé), rue (scène déclarative), allée forestière, plaine des montgolfières, personnages, rue à vapeur, espace profond, fond marin, port au phare, désert, donjon (vu du dessus), inventaire de jeu, insignes et blasons, signalétique, foule et robots, motifs et matières, bestiaire, bourg isométrique, bourg oblique, carte, forêt de nuit, ruines, marais, paysage, ville néon, ville à vapeur (ancienne). Styles : laiton, gravure sépia, nuit vapeur, nocturne, braise, brume, papier, encre, néon, aquarelle, brutaliste, crypte, réverbères, bivouac, cosmos, abysses, bande dessinée, trame, gouache, pixel art. Donner une hauteur (style height ou conteneur) ; 2 par document au maximum."
     },
     {
       "name": "sonic-progress",
@@ -4691,5 +4726,5 @@
     "i",
     "u"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-matrix); media (sonic-camera, sonic-video, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); shader (sonic-shader); sound (sonic-sound, sonic-sfx); stage (sonic-stage); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-matrix); media (sonic-camera, sonic-video, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); procgen (sonic-procgen); shader (sonic-shader); sound (sonic-sound, sonic-sfx); stage (sonic-stage); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
