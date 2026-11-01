@@ -18,6 +18,7 @@ Par défaut `compact=true` (props communes une fois, puis props spécifiques ave
 `compact=false` pour le catalogue complet (avec descriptions des props et valeurs par défaut).
 `components` : filtre optionnel (ex. ["sonic-store","sonic-shader"]).
 `rules` : filtre optionnel des règles longues (ex. ["a2ui"], ["son","audio"], ["scripts"]) ; les règles courtes sont toujours là.
+Compétences de conception, à demander AVANT d'écrire une interface visible : `rules=["design"]` (brief, direction, états, checklist), `["multivue"]` (onglets, liste + détail, modal, état partagé), `["carte"]` (sonic-map). Elles arrivent dans `skills`, jamais par défaut.
 `examples=false` : sans les exemples de documents.
 À appeler avant de composer un artefact SDUI.
 DESC,

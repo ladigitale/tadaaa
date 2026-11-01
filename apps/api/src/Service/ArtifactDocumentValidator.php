@@ -218,6 +218,8 @@ final class ArtifactDocumentValidator
     private const DEFAULT_CONCORDE_VERSION = '5.1.3';
 
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
+    /** Compétences (config/artifacts/skills/*.md) : servies à la demande par rules=["design"], jamais par défaut. */
+    public const SKILLS = ['design', 'multivue', 'carte'];
     public const LONG_RULES = ['listes', 'a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
 
     private readonly ArtifactA2uiValidator $a2uiValidator;
@@ -398,11 +400,48 @@ final class ArtifactDocumentValidator
                 unset($payload['scripts']);
             }
         }
+        if ($rules !== null && $rules !== []) {
+            $skills = $this->skills();
+            foreach ($rules as $name) {
+                if (\is_string($name) && isset($skills[$name])) {
+                    $payload['skills'][$name] = $skills[$name]['body'];
+                }
+            }
+        }
         if (!$withExamples) {
             unset($payload['examples']);
         }
 
         return $payload;
+    }
+
+    /**
+     * Compétences de conception : fichiers Markdown à en-tête (name, description) dans config/artifacts/skills.
+     * Source unique : l'atelier (sommaire du prompt) et le MCP (get_artifact_catalog rules=[…]) les lisent ici.
+     *
+     * @return array<string, array{description: string, body: string}>
+     */
+    public function skills(): array
+    {
+        $dir = \dirname($this->catalogPath).'/skills';
+        $out = [];
+        foreach (self::SKILLS as $name) {
+            $file = $dir.'/'.$name.'.md';
+            if (!is_file($file)) {
+                continue;
+            }
+            $text = (string) file_get_contents($file);
+            $description = '';
+            if (preg_match('/\A---\R(.*?)\R---\R(.*)\z/s', $text, $m) === 1) {
+                if (preg_match('/^description:\s*(.+)$/m', $m[1], $d) === 1) {
+                    $description = trim($d[1]);
+                }
+                $text = $m[2];
+            }
+            $out[$name] = ['description' => $description, 'body' => trim($text)];
+        }
+
+        return $out;
     }
 
     /**
@@ -426,6 +465,13 @@ final class ArtifactDocumentValidator
         $payload = $this->mcpCatalogPayload(true, ['__none__'], null, false);
         $lines[] = 'Balises HTML sûres : '.implode(', ', $payload['catalog']['safeHtmlTags'] ?? []).'.';
         $lines[] = 'Règles longues (rules) : '.implode(', ', self::LONG_RULES).', scripts (détail des bibliothèques).';
+        $skillLines = [];
+        foreach ($this->skills() as $name => $skill) {
+            $skillLines[] = sprintf('%s (%s)', $name, $skill['description']);
+        }
+        if ($skillLines !== []) {
+            $lines[] = 'Compétences (à demander avec rules=[…] AVANT d\'écrire l\'interface) : '.implode(' ; ', $skillLines).'.';
+        }
         $short = array_diff_key($payload['rules'], array_fill_keys(self::LONG_RULES, true));
         $lines[] = 'Règles courtes : '.json_encode($short, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES);
         $lines[] = 'Bibliothèques scripts (ids) : '.implode(', ', array_map(
