@@ -29,6 +29,10 @@ final class ArtifactRenderer
         private readonly ?string $chrome = null,
         #[Autowire('%env(default::SIMULATE_STORE_NODE)%')]
         private readonly ?string $nodeBinary = null,
+        private readonly ?ArtifactScriptsCatalog $scriptsCatalog = null,
+        /** Hôtes https que le navigateur de rendu peut joindre (vide = liste par défaut de l'outil). */
+        #[Autowire('%env(default::RENDER_ALLOWED_HOSTS)%')]
+        private readonly ?string $allowedHosts = null,
     ) {
     }
 
@@ -60,11 +64,20 @@ final class ArtifactRenderer
         }
         try {
             $request['outDir'] = $dir;
+            // Bibliothèques du catalogue déclarées par le document ("scripts": ["maplibre"]…) : résolues ici,
+            // comme pour le viewer public, et seules ces URL CDN exactes sont autorisées par l'outil de rendu.
+            $doc = $request['document'] ?? null;
+            $request['scriptAssets'] = $this->scriptsCatalog && \is_array($doc)
+                ? $this->scriptsCatalog->resolve($doc['scripts'] ?? null)['assets']
+                : [];
             $payload = json_encode($request, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             if ($payload === false || \strlen($payload) > self::MAX_REQUEST) {
                 return ['result' => ['ok' => false, 'errors' => ['Requête illisible ou trop volumineuse.']], 'png' => null];
             }
             $env = ['PATH' => (string) getenv('PATH'), 'HOME' => $dir, 'RENDER_VIEWER_DIST' => (string) $this->viewerDist];
+            if ($this->allowedHosts !== null && trim($this->allowedHosts) !== '') {
+                $env['RENDER_ALLOWED_HOSTS'] = $this->allowedHosts;
+            }
             $chrome = $this->chrome ?: (is_file('/usr/bin/chromium') ? '/usr/bin/chromium' : '');
             if ($chrome !== '') {
                 $env['CHROME_PATH'] = $chrome;

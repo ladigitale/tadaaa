@@ -116,7 +116,12 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             )),
         };
 
-        $content = [new TextContent($payload)];
+        // JSON compact, accents et « / » non échappés : TextContent encoderait un tableau en JSON indenté
+        // avec \u00e9 et \/ (le catalogue passait de ~97 Ko à ~195 Ko, autant de jetons pour l'agent).
+        $text = \is_string($payload)
+            ? $payload
+            : (string) json_encode($payload, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_INVALID_UTF8_SUBSTITUTE);
+        $content = [new TextContent($text)];
         if (\is_string($png) && class_exists(ImageContent::class)) {
             try {
                 $content[] = new ImageContent($png, 'image/png');

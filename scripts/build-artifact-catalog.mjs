@@ -180,7 +180,8 @@ const catalog = {
   creativeStackVersion: creativePkg.version,
   generatedFrom: `@supersoniks/concorde ${concordePkg.version} component-catalog.json + @supersoniks/creative-stack ${creativePkg.version} manifests (${addons.sort().join(", ")})`,
   components: sorted,
-  safeHtmlTags: previous.safeHtmlTags ?? [],
+  // `template` : gabarits de ligne de sonic-list / sonic-queue (SDUI, voir la règle « listes »).
+  safeHtmlTags: [...new Set([...(previous.safeHtmlTags ?? []), "template"])],
   notes:
     "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. " +
     "Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). " +

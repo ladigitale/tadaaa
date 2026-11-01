@@ -55,8 +55,28 @@ final class ArtifactDocumentValidator
      * ce sont des champs légitimes des nœuds `text` (compteur), contrairement aux nœuds SDUI.
      */
     private const TIMELINE_FORBIDDEN_KEYS = ['js', 'css', 'innerHTML', 'markup'];
+    /**
+     * Liaisons de données Concorde (`data-bind` + attributs `::prop`) : `::prop` écrit la
+     * PROPRIÉTÉ DOM `prop` (tirets → camelCase, `x-html` → `xHTML`) avec la valeur où `$chemin`
+     * est remplacé par la donnée. Propriétés qui insèrent du HTML ou du code : interdites.
+     */
+    private const BINDING_FORBIDDEN_PROP = '/^(.*-html|on.*|srcdoc|formaction|action|style|attributes)$/i';
+    /** Propriétés d'URL : la valeur doit commencer par une URL https littérale (ou #, /). */
+    private const BINDING_URL_PROPS = ['href', 'src', 'poster', 'action', 'formaction', 'data', 'srcset'];
+    private const BINDING_PROP_PATTERN = '/^[a-z][a-z0-9-]{0,40}$/';
+    private const MAX_BINDING = 1024;
 
     /** Mémo du format son pour l'agent (addon `sound` de @supersoniks/creative-stack). */
+    private const LIST_RULE = 'LISTES (voie par défaut, SDUI + Concorde ; A2UI seulement pour une interface qui dialogue avec un agent) : '
+        .'{"tagName":"sonic-list","attributes":{"dataProvider":"liste"},"nodes":[{"tagName":"template","nodes":[ …gabarit d’UNE ligne… ]}]}. '
+        .'Le DP de la liste doit ÊTRE le tableau (pas de chemin pointé "etat.items", pas de key) : une data.transforms (lit les data.sources) ou, pour dériver d’un store, '
+        .'{"tagName":"sonic-jsonata","attributes":{"inputProvider":"etat","outputProvider":"liste","formDataProvider":"filtres","expression":"$input.all[$contains(nom, $q)]"}} (champs du formulaire = $q…, recalcul à chaque saisie). '
+        .'Plusieurs <template data-value="nom"> + templateKey="type" choisissent le gabarit selon item.type ; <template data-value="no-item"> = liste vide. '
+        .'DANS LA LIGNE : sonic-value key="champ" (texte) et sonic-if key="champ" lisent la ligne sans dataProvider ; sur une balise HTML, "data-bind":"" + "::prop":"gabarit" écrit la propriété prop avec $champ remplacé : '
+        .'"::text-content":"$ville ($dep)", "::href":"https://www.google.com/maps/search/?api=1&query=$adresse" (URL https LITTÉRALE en tête), "::src", "::title", "::class":"ligne $etat", "::aria-label". '
+        .'INTERDIT : ::inner-html et tout ::…-html, ::on…, ::style, valeurs commençant par "|" ou contenant "js|". '
+        .'CLIC SUR UNE LIGNE : {"tagName":"sonic-action","attributes":{"target":"etat","type":"select","data-bind":"","::payload":"$id"}, "nodes":[…]} envoie au réducteur $action.payload = la valeur id de la ligne. '
+        .'Filtrer / trier / paginer : dans la transform ou le réducteur qui publie le tableau (la liste ne fait que l’afficher). ';
     private const SOUND_RULE = 'sonic-sound (1 par page) : tout est synthétisé, aucun fichier. '
         .'bank = JSON {"sfx":{nom: preset | {preset?, wave:sine|square|triangle|sawtooth|noise, freq, slide(demi-tons), dur, attack, decay, sustain, release, vol, arp:[0,4,7], arpRate, vibrato:{rate,depth}, filter:{type,freq,q,to}, repeat, jitter, layers:[…], bus:sfx|ui, cooldown}}, '
         .'"songs":{nom:{bpm, steps(4), loop(true), loopFrom, swing, vol, instruments:{nom: preset | SynthDef}, patterns:{A:{instrument:"C4 - . E4+G4 x X G4! |"}}, sequence:["A","B"]}}}. '
@@ -195,10 +215,10 @@ final class ArtifactDocumentValidator
     /** @var array<string, true> */
     private array $allowedTagSet;
 
-    private const DEFAULT_CONCORDE_VERSION = '5.1.0';
+    private const DEFAULT_CONCORDE_VERSION = '5.1.3';
 
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
-    public const LONG_RULES = ['a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
+    public const LONG_RULES = ['listes', 'a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
 
     private readonly ArtifactA2uiValidator $a2uiValidator;
 
@@ -331,8 +351,9 @@ final class ArtifactDocumentValidator
                     .'TEXTES : texte FIXE = "textContent" du nœud (texte brut, 4 Ko max, ignoré si le nœud a des enfants ; jamais de HTML), ex. {"tagName":"h2","textContent":"Bienvenue"} ; texte QUI CHANGE = sonic-value lisant un store (reducer "$state" pour des valeurs initiales) ou une transform. "nodeId" (lettre puis lettres, chiffres, _ ou -, 64 max) nomme un nœud sans toucher à son id DOM. '
                     .'PIÈGES : (1) le nom d’un dataProvider ou d’un target n’est pas vérifié par la validation : une faute de frappe donne un composant vide sans erreur, relis chaque nom contre data.stores / data.transforms / data.sources / sonic-store id ; '
                     .'(2) pas de textes dans le store relié par dataProvider à un composant qui en recopie les clés en propriétés (sonic-shader) : mets-les dans un store séparé ; '
-                    .'(3) une liste de longueur variable (cartes, lignes) se fait en vue A2UI (children {path, componentId}), pas en SDUI. '
+                    .'(3) une liste de longueur variable (cartes, lignes, résultats filtrés) se fait en SDUI avec sonic-list et un gabarit <template> : voir la règle « listes ». '
                     .'DONNÉES RÉELLES : l’atelier récupère des données avec search_public_apis / fetch_public_api (catalogue d’APIs publiques, pas d’URL libre) et les copie dans data.stores.<nom>.initial : la page publiée affiche un instantané, elle n’appelle pas ces APIs.',
+                'listes' => self::LIST_RULE,
                 'son' => self::SOUND_RULE,
                 'audio' => self::AUDIO_RULE,
                 'media' => self::MEDIA_RULE,
@@ -857,6 +878,13 @@ final class ArtifactDocumentValidator
                         $errors[] = ['path' => $path.'/attributes/'.$attr, 'message' => 'Attribut événement / srcdoc interdit.'];
                         continue;
                     }
+                    if (str_starts_with($attr, '::')) {
+                        $msg = $this->validateBinding(substr($attr, 2), $value);
+                        if ($msg !== null) {
+                            $errors[] = ['path' => $path.'/attributes/'.$attr, 'message' => $msg];
+                        }
+                        continue;
+                    }
                     if (\is_string($value)) {
                         $msg = $this->validateAttributeValue(\is_string($tagName) ? $tagName : 'div', $attr, $value);
                         if ($msg !== null) {
@@ -1071,6 +1099,41 @@ final class ArtifactDocumentValidator
         $head = base64_decode(substr($b64, 0, 16), false);
         if ($head === false || !str_starts_with($head, 'glTF')) {
             return 'glb : fichier GLB attendu (en-tête glTF).';
+        }
+
+        return null;
+    }
+
+    /**
+     * Liaison `::prop` (data-bind de Concorde). La valeur est un gabarit où `$chemin` est
+     * remplacé par la donnée de la ligne ou du DataProvider ancêtre (ex. "$nom", "https://…?q=$adresse").
+     */
+    private function validateBinding(string $prop, mixed $value): ?string
+    {
+        if (!\is_string($value)) {
+            return 'Liaison : valeur texte attendue (ex. "$nom").';
+        }
+        $p = strtolower($prop);
+        if (preg_match(self::BINDING_PROP_PATTERN, $p) !== 1) {
+            return 'Liaison : nom de propriété invalide.';
+        }
+        if (preg_match(self::BINDING_FORBIDDEN_PROP, $p) === 1) {
+            return sprintf('Liaison ::%s interdite (HTML, événement ou style). Pour du texte : ::text-content ; pour une couleur : ::class.', $prop);
+        }
+        if (\strlen($value) > self::MAX_BINDING) {
+            return 'Liaison trop longue (max 1 Ko).';
+        }
+        $trim = ltrim($value);
+        // Formats Concorde : "|expr" et "js|expr" évaluent du JavaScript (Function), interdits.
+        if (str_starts_with($trim, '|') || preg_match('/(^|[^A-Za-z0-9_])js\|/', $trim) === 1) {
+            return 'Liaison : les formats "|…" et "js|…" exécutent du code, interdits.';
+        }
+        if (str_contains(strtolower($value), 'javascript:')) {
+            return 'Valeur javascript: interdite.';
+        }
+        if (\in_array($p, self::BINDING_URL_PROPS, true)
+            && preg_match('#^(https://[^\s$]+|/[^/\s$]|\#)#i', $trim) !== 1) {
+            return sprintf('Liaison ::%s : la valeur doit commencer par une URL https littérale (ex. "https://www.google.com/maps/search/?api=1&query=$adresse"), jamais par une donnée.', $prop);
         }
 
         return null;

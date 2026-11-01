@@ -68,11 +68,11 @@ final class SystemPrompt
                Son (sonic-patch, synthé, LFO, modulation) : demande toujours rules=["audio"] AVANT d'écrire le patch : une seule
                erreur de câblage fait refuser tout le patch (plus aucun son). Profondeur d'un LFO réglable : sonic-mod name="…"
                puis sonic-param to="nom.amount". Corrige les erreurs « sonic-patch : … » renvoyées par la validation.
-            3. Compose le document complet. Pour un quiz, un formulaire, une liste ou un tableau de bord simple,
-               préfère des vues A2UI ("a2ui": [messages], "actionStore", "a2uiBindings" : voir rules.a2ui du
-               catalogue). Pour une mise en page riche ou les composants créatifs (son, 3D, physique, animation,
-               API appareil, salons multijoueurs), utilise des vues SDUI ("root"). Les gabarits chat:* et a2ui:*
-               sont disponibles en libraryKey. Avant d'utiliser ces composants, demande la règle du thème :
+            3. Compose le document complet en vues SDUI ("root") avec les composants Concorde : c'est la voie par
+               défaut, y compris pour un quiz, un formulaire, une liste filtrable ou un tableau de bord. Les listes de
+               longueur variable passent par sonic-list + <template> (demande rules=["listes"]). Réserve les vues
+               A2UI ("a2ui": [messages], voir rules.a2ui) aux interfaces qui dialoguent avec un agent. Les gabarits
+               chat:* et a2ui:* restent disponibles en libraryKey. Avant d'utiliser ces composants, demande la règle du thème :
                rules=["animation"], ["appareil"] (plein écran, capteurs, presse-papiers…) ou ["salons"] (sonic-p2p),
                ["media"] (caméra, micro), ["physique"], ["3d"] (scène 3D pilotée par des données : GLB embarqué, nodes, taps),
                ["2d"] (scène 2D : éléments SDUI placés par la physique ou une timeline avec sonic-stage, jeu / 2.5D WebGL avec sonic-2d, caméra, parallaxe).

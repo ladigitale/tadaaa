@@ -15,9 +15,13 @@ final class ArtifactDocumentValidatorTest extends TestCase
     protected function setUp(): void
     {
         $catalog = [
-            'safeHtmlTags' => ['div', 'span', 'p', 'a', 'img'],
+            'safeHtmlTags' => ['div', 'span', 'p', 'a', 'img', 'template'],
             'components' => [
                 ['name' => 'sonic-button'],
+                ['name' => 'sonic-list'],
+                ['name' => 'sonic-value'],
+                ['name' => 'sonic-subscriber'],
+                ['name' => 'sonic-action'],
                 ['name' => 'sonic-badge'],
                 ['name' => 'sonic-caption'],
                 ['name' => 'sonic-shader'],
@@ -1119,5 +1123,81 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('rest {bodies', $rules['physique']);
         self::assertStringContainsString('nodes-out', $rules['animation']);
         self::assertStringContainsString('nodes-plane="xz"', $rules['3d']);
+    }
+
+    /** @param list<array<string, mixed>> $nodes */
+    private function docWithNodes(array $nodes): array
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root'] = ['nodes' => $nodes];
+
+        return $doc;
+    }
+
+    public function testAcceptsListTemplateWithSafeBindings(): void
+    {
+        $doc = $this->docWithNodes([[
+            'tagName' => 'sonic-list',
+            'attributes' => ['dataProvider' => 'vue'],
+            'nodes' => [[
+                'tagName' => 'template',
+                'nodes' => [[
+                    'tagName' => 'sonic-action',
+                    'attributes' => ['target' => 'etat', 'type' => 'select', 'data-bind' => '', '::payload' => '$id'],
+                    'nodes' => [
+                        ['tagName' => 'sonic-value', 'attributes' => ['key' => 'nom']],
+                        ['tagName' => 'span', 'attributes' => ['data-bind' => '', '::text-content' => '$ville ($dep)', '::class' => 'ligne $etat']],
+                        ['tagName' => 'a', 'attributes' => ['data-bind' => '', '::href' => 'https://www.google.com/maps/search/?api=1&query=$adresse', 'target' => '_blank'], 'textContent' => 'Carte'],
+                    ],
+                ]],
+            ]],
+        ]]);
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testRejectsHtmlEventAndStyleBindings(): void
+    {
+        foreach (['::inner-html', '::outer-html', '::onclick', '::style', '::srcdoc'] as $attr) {
+            $doc = $this->docWithNodes([[
+                'tagName' => 'sonic-subscriber',
+                'attributes' => ['dataProvider' => 'etat'],
+                'nodes' => [['tagName' => 'div', 'attributes' => ['data-bind' => '', $attr => '$q']]],
+            ]]);
+            $result = $this->validator->validate($doc);
+            self::assertFalse($result['valid'], $attr);
+            self::assertStringContainsString('interdite', json_encode($result['errors'], JSON_UNESCAPED_UNICODE), $attr);
+        }
+    }
+
+    public function testRejectsBindingFormatsThatEvaluateCode(): void
+    {
+        foreach (['|$q', ' |alert(1)', 'js|$q', 'x js|1'] as $value) {
+            $doc = $this->docWithNodes([['tagName' => 'span', 'attributes' => ['data-bind' => '', '::text-content' => $value]]]);
+            $result = $this->validator->validate($doc);
+            self::assertFalse($result['valid'], $value);
+            self::assertStringContainsString('code', json_encode($result['errors'], JSON_UNESCAPED_UNICODE), $value);
+        }
+    }
+
+    public function testRejectsUrlBindingStartingWithData(): void
+    {
+        foreach (['$url', 'http://x.test/$a', '  $u', 'javascript:$u'] as $value) {
+            $doc = $this->docWithNodes([['tagName' => 'a', 'attributes' => ['data-bind' => '', '::href' => $value]]]);
+            $result = $this->validator->validate($doc);
+            self::assertFalse($result['valid'], $value);
+        }
+    }
+
+    public function testListRuleSteersToSdui(): void
+    {
+        $rules = json_encode($this->validator->mcpCatalogPayload(true, null, null, false)["rules"] ?? [], JSON_UNESCAPED_UNICODE);
+        self::assertStringContainsString('sonic-list', $rules);
+        self::assertStringNotContainsStringCompat('se fait en vue A2UI', $rules);
+    }
+
+    private static function assertStringNotContainsStringCompat(string $needle, string $haystack): void
+    {
+        self::assertFalse(str_contains($haystack, $needle), $needle);
     }
 }

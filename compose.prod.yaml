@@ -74,6 +74,8 @@ services:
       ARTIFACTS_PUBLIC_URL: ${ARTIFACTS_PUBLIC_URL:-https://artifacts.tadaaa.space}
       # Viewer Artefacts construit (outil MCP render_artifact) : monté ci-dessous, rebuild par update-prod.
       RENDER_VIEWER_DIST: /srv/artifacts-dist
+      # Hôtes https joignables par render_artifact (CDN des bibliothèques, polices, fonds de carte).
+      RENDER_ALLOWED_HOSTS: ${RENDER_ALLOWED_HOSTS:-cdn.jsdelivr.net cdnjs.cloudflare.com fonts.googleapis.com fonts.gstatic.com tiles.openfreemap.org}
       # Required when config/jwt/private.pem is encrypted (Lexik); image .env may be empty.
       JWT_PASSPHRASE: ${JWT_PASSPHRASE:-}
       DEFAULT_STORAGE_QUOTA_BYTES: ${DEFAULT_STORAGE_QUOTA_BYTES:-5242880}
