@@ -2,7 +2,7 @@
 name: vitrine
 description: Site vitrine, landing, one-page qui défile, page d'événement, portfolio, CV, récit éditorial, diaporama. Structure de sections, héros, typographie expressive, révélations au défilement, fonds shader ou procéduraux.
 ---
-Prérequis : rules=["design"]. Une vitrine se juge en 5 secondes sur téléphone : qui, quoi, pourquoi maintenant, que faire.
+Prérequis : la compétence `design` (demande `rules=["design","vitrine"]` ensemble), puis les règles du catalogue utiles (`["listes","animation"]`). Une vitrine se juge en 5 secondes sur téléphone : qui, quoi, pourquoi maintenant, que faire.
 
 ## 1. Squelette
 - `page: {"padding":"none","background":"<fond>"}` puis un conteneur racine qui porte la palette (design §1). Une seule vue (pas d'onglets du viewer) ; d'autres vues seulement pour des pages vraiment séparées (mentions, programme détaillé), cachées (`hidden:true`) et atteintes par `sonic-button href="#programme"`.
@@ -13,7 +13,7 @@ Prérequis : rules=["design"]. Une vitrine se juge en 5 secondes sur téléphone
 
 ## 2. Héros (l'objet principal de la page)
 Choisis UN modèle :
-- **Typographique** : titre énorme `font-size:clamp(44px,9vw,128px);line-height:.92;letter-spacing:-.035em;max-width:12ch;text-wrap:balance`, sur-titre en petites capitales, une phrase, 1 bouton primaire + 1 ghost. Aligné à gauche, ancré en bas (`min-height:min(92svh,820px);display:grid;align-items:end`).
+- **Typographique** : titre énorme `font-size:clamp(44px,9vw,128px);line-height:.92;letter-spacing:-.035em;max-width:12ch;text-wrap:balance`, sur-titre en petites capitales, une phrase, 1 bouton primaire + 1 secondaire `variant="outline"` (un ghost n'a pas d'affordance sur fond sombre) ; le secondaire mène à une vue cachée (`href="#programme"`), pas à une ancre. Aligné à gauche, ancré en bas (`min-height:min(92svh,820px);display:grid;align-items:end`).
 - **Fond vivant** : `sonic-shader` en `position:absolute;inset:0;z-index:-1;width:100%;height:100%` (le parent : `position:relative;isolation:isolate;overflow:hidden`) + voile `linear-gradient(to top,<fond> 5%,transparent 60%)` pour la lisibilité. Shader lent (`iTime*.1–.2`), 2–3 couleurs de la palette, contraste bas derrière le texte.
 - **Scène illustrée** : `sonic-procgen` (scènes : port, rue vivante, plaine des montgolfières, forêt de nuit, ville néon, fond marin, désert, espace profond…) avec `style="display:block;aspect-ratio:1100/680;width:100%"` et `style` du DP (`night`, `palette.hue`, `grain`, `vignette`) accordé à la palette ; texte à côté (grille 2 colonnes `repeat(auto-fit,minmax(20rem,1fr))`) ou dessous, jamais dessus sans voile.
 - **Objet 3D** : `sonic-3d` avec GLB en asset (`@asset:objet.glb`), `auto-rotate`, `fit`, petites `min/max-polar` ; pour produit, maquette, pièce.
@@ -22,7 +22,7 @@ Choisis UN modèle :
 ## 3. Sections qui ne font pas « template »
 - **Chiffres-preuves** : 3–4 grands nombres `sonic-animate recipe="count-up" from="0" to="1200" text-suffix=" spectateurs"` (enfant = `p` avec le texte final), étiquette dessous. Vrais chiffres uniquement.
 - **Offre** : grille asymétrique (un bloc 2× plus large) plutôt que 3 cartes égales ; ou liste numérotée éditoriale (`01`, `02` en mono, filets `border-top:1px solid color-mix(in oklab,var(--sc-base-content) 15%,transparent)`).
-- **Programme / horaires** : `sonic-list` + gabarit (heure en tabulaire à gauche, titre, lieu) ; filtrage par jour = store + `sonic-jsonata` (voir rules.listes).
+- **Programme / horaires** : `sonic-list` + gabarit (heure en tabulaire à gauche, titre, lieu) ; filtrage par jour = store + `sonic-jsonata` (voir rules.listes). Onglets de jours : une `sonic-list` des jours dont la transform calcule `t` (`primary` pour le jour actif, `default` sinon) et `v` (`default` / `outline`), liés par `"::type":"$t","::variant":"$v"` sur le `sonic-button` ; un `variant="default"` sans `type` est presque invisible sur fond sombre.
 - **Tarifs** : 2–3 colonnes, une mise en avant par `sonic-card type="primary"` ou bordure accent, prix en très gros, liste d'inclus avec `sonic-icon name="check"`.
 - **Témoignages** : vrai texte en `blockquote` serif grand corps, nom en petites capitales ; jamais de citation inventée.
 - **FAQ** : questions en `h3` + réponses courtes en deux colonnes (`grid-template-columns:repeat(auto-fit,minmax(18rem,1fr))`) ; 5–8 max.
@@ -32,7 +32,7 @@ Choisis UN modèle :
 - **Appel final** : grande phrase + un bouton ; fond accent (`background:var(--sc-primary);color:var(--sc-primary-content)`).
 
 ## 4. Mouvement au défilement
-- `sonic-animate recipe="reveal"` (ou `slide-up`) `trigger="viewport"` `stagger="0.08"` sur les groupes d'enfants d'une section ; `once="true"`. Une section sur deux au plus, jamais le texte courant.
+- `sonic-animate recipe="reveal"` (ou `slide-up`) `trigger="viewport"` `stagger="0.08"` sur les groupes d'enfants d'une section (joue une seule fois par défaut : n'écris pas `once`, refusé par les validateurs antérieurs au correctif). Une section sur deux au plus, jamais le texte courant.
 - `typewriter` réservé à un seul titre. `count-up` pour les chiffres.
 - Un « moment signature » unique : timeline (`sonic-clock` + `sonic-timeline`) au chargement du héros, ou shader qui réagit à la souris (`mouse`).
 - Pas de lien scroll → animation disponible (pas de DP de défilement) : pour un récit « scrollytelling », passe en diaporama (§5) ou en scrub par curseur (rules.animation).
@@ -48,5 +48,9 @@ Choisis UN modèle :
 - **Doux/associatif** : fond #fff8f1, texte #2a2320, accent #2f7d6d ; Fredoka + Nunito ; rayons 20–28 px, ombres larges et pâles.
 - **Brut/tech** : fond #f2f2f2, texte #0a0a0a, accent #0047ff ; Space Grotesk + JetBrains Mono ; bordures 2 px noires, zéro arrondi.
 
-## 7. Contrôle spécifique
+## 7. Échapper au gabarit « landing »
+L'ordre type du §1 produit une page correcte mais attendue. Ajoute toujours UN motif signature décliné dans toute la page : une forme (pastille, découpe en biais par `clip-path:polygon(…)`, trame en `repeating-linear-gradient`), un jeu typographique (programme composé comme une affiche : horaires énormes en mono, noms en capitales serrées, ruptures d'alignement), ou une rupture de grille (un bloc qui déborde, `grid-column:1/-1`, une image décalée). Le motif réapparaît dans au moins 3 sections.
+Images : une vitrine sans aucune image réelle reste abstraite. Si l'utilisateur a des photos, demande-les (assets) ; sinon utilise une scène `sonic-procgen` ou un shader comme matière, jamais de fausse photo.
+
+## 8. Contrôle spécifique
 Captures 390 px et 1280 px : le titre tient sans césure laide, le bouton primaire est visible sans défiler sur téléphone, le contraste texte/fond vivant reste lisible sur toute la hauteur, chaque section a une raison d'exister.

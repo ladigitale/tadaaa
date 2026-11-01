@@ -2,7 +2,7 @@
 name: jeu
 description: Jeux vidéo plein écran (arcade, plateau, puzzle, physique, 2.5D, 3D, multijoueur) : choix du moteur de rendu, machine à états, écrans titre/pause/fin, HUD, commandes clavier/tactile/manette, son, « juice », tests par simulate_store et render_artifact.
 ---
-Prérequis : rules=["design"], puis la règle du moteur choisi (["2d"], ["physique"], ["3d"], ["son"], ["procgen"]). Un jeu se juge à la sensation dans les 10 premières secondes : on comprend, on bouge, ça répond.
+Prérequis : la compétence `design` (demande `rules=["design","jeu"]` ensemble), puis la règle du moteur choisi (["2d"], ["physique"], ["3d"], ["son"], ["procgen"]). Un jeu se juge à la sensation dans les 10 premières secondes : on comprend, on bouge, ça répond.
 
 ## 1. Choisir le rendu (le plus simple qui suffit)
 | Jeu | Rendu | Mouvement |

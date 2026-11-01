@@ -2,7 +2,7 @@
 name: outil
 description: Interfaces expertes et multi-pages (back-office, catalogue filtrable, recherche, CRUD, configurateur, formulaire long, gestion de stock ou de planning) : densité, barre d'outils, filtres, liste/détail, tables, raccourcis, formulaires. À combiner avec multivue.
 ---
-Prérequis : rules=["design"] et ["multivue"] (mécanique onglets, modal, état partagé), ["listes"] (sonic-list, gabarits, filtres). Un outil se juge à la vitesse d'une tâche répétée : trouver, comparer, modifier, recommencer.
+Prérequis : les compétences `design` et `multivue` (demande `rules=["design","outil","multivue","listes"]` ensemble : mécanique onglets, modal, état partagé), la règle `listes` (sonic-list, gabarits, filtres). Un outil se juge à la vitesse d'une tâche répétée : trouver, comparer, modifier, recommencer.
 
 ## 1. Partis pris
 - Suit le thème du lecteur (jetons uniquement). Densité « standard » à « dense » : corps 14–15 px, interlignes 1.4, espacements 8/12/16.

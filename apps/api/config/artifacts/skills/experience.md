@@ -2,7 +2,7 @@
 name: experience
 description: Expériences créatives et immersives (art génératif, visuels audio-réactifs, caméra et effets, IA locale, instruments et séquenceurs, enregistreurs, installations et bornes, scrub/timeline) : une scène plein cadre, des commandes discrètes, le bon composant de la creative-stack pour chaque idée.
 ---
-Prérequis : rules=["design"] puis les règles des briques utilisées (["shader"] est courte, ["audio"], ["son"], ["media"], ["ia"], ["animation"], ["procgen"], ["appareil"]). Une expérience se juge à son premier geste : en un clic, il se passe quelque chose de beau et de compréhensible.
+Prérequis : la compétence `design` (demande `rules=["design","experience"]` ensemble) puis les règles des briques utilisées (["shader"] est courte, ["audio"], ["son"], ["media"], ["ia"], ["animation"], ["procgen"], ["appareil"]). Une expérience se juge à son premier geste : en un clic, il se passe quelque chose de beau et de compréhensible.
 
 ## 1. Composition type
 - `page.padding:"none"`, fond sombre ou papier selon l'œuvre, palette de zone.

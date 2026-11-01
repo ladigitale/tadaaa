@@ -929,7 +929,8 @@ final class ArtifactDocumentValidator
                         $errors[] = ['path' => $path.'/attributes', 'message' => 'Nom d’attribut invalide.'];
                         continue;
                     }
-                    if (preg_match('/^on/i', $attr) || strcasecmp($attr, 'srcdoc') === 0) {
+                    // `once` (sonic-animate) n'est pas un gestionnaire d'événement.
+                    if ((preg_match('/^on/i', $attr) && strcasecmp($attr, 'once') !== 0) || strcasecmp($attr, 'srcdoc') === 0) {
                         $errors[] = ['path' => $path.'/attributes/'.$attr, 'message' => 'Attribut événement / srcdoc interdit.'];
                         continue;
                     }
