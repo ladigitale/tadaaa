@@ -635,6 +635,34 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertArrayHasKey('commonProps', $payload['catalog']);
     }
 
+    public function testSkillsAreServedOnDemandOnly(): void
+    {
+        $dir = \dirname(__DIR__, 2).'/config/artifacts';
+        $validator = new ArtifactDocumentValidator(
+            $dir.'/catalog.json',
+            $dir.'/sdui.schema.json',
+            new \App\Service\ArtifactScriptsCatalog($dir.'/scripts-catalog.json'),
+            [],
+        );
+
+        // Jamais par défaut (le plafond de taille du catalogue ne bouge pas).
+        self::assertArrayNotHasKey('skills', $validator->mcpCatalogPayload(true, ['__none__'], null, false));
+        self::assertArrayNotHasKey('skills', $validator->mcpCatalogPayload(true, ['__none__'], ['listes'], false));
+
+        // Sur demande : le corps Markdown, sans l'en-tête.
+        $payload = $validator->mcpCatalogPayload(true, ['__none__'], ['design', 'multivue'], false);
+        self::assertSame(['design', 'multivue'], array_keys($payload['skills']));
+        self::assertStringNotContainsString('---', substr($payload['skills']['design'], 0, 4));
+        self::assertStringContainsString('visA', $payload['skills']['multivue']);
+
+        // Le sommaire du prompt de l'atelier les annonce, avec leur description.
+        $index = $validator->catalogIndex();
+        foreach (ArtifactDocumentValidator::SKILLS as $name) {
+            self::assertStringContainsString($name.' (', $index);
+        }
+        self::assertCount(\count(ArtifactDocumentValidator::SKILLS), $validator->skills());
+    }
+
     public function testShippedCatalogMatchesTheViewer(): void
     {
         $dir = \dirname(__DIR__, 2).'/config/artifacts';

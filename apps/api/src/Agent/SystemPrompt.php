@@ -78,6 +78,9 @@ final class SystemPrompt
                ["2d"] (scène 2D : éléments SDUI placés par la physique ou une timeline avec sonic-stage, jeu / 2.5D WebGL avec sonic-2d, caméra, parallaxe).
                Soigne le visuel : icônes (sonic-icon library="iconoir", noms exacts via find_icons), couleurs,
                hiérarchie des titres, espacements. Une page avec des icônes bien choisies se lit mieux.
+               Compétences (même contenu que dans le MCP) : pour toute interface visible demande rules=["design"] AVANT d'écrire
+               (brief, direction, états, checklist) ; onglets, liste + détail, modal ou état partagé : ["multivue"] ;
+               carte : ["carte"]. Applique leur checklist avant de publier.
                Couleurs : celles du thème (var(--sc-primary), var(--sc-base-200)…) sauf ambiance demandée.
                Données : applique la règle « donnees » du catalogue. Un texte fixe s'écrit en "textContent" du nœud ;
                tout texte qui change ou état partagé passe par un store ou une transform déclarés dans "data", lus
