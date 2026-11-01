@@ -5,13 +5,16 @@ description: Interfaces à plusieurs panneaux ou vues (onglets, liste + détail,
 ## Principe : un store `etat`, des vues qui le lisent
 Un store (`data.stores.etat = {initial, reducer}`) porte l'état d'interface ; les actions sont envoyées par `sonic-action` (`target:"etat"`, `type`, `payload`). Le réducteur est le seul endroit qui change l'état. Ne stocke que des identifiants (`sel`) ; les fiches se retrouvent par filtre JSONata (sonic-jsonata, outputProvider "fiche").
 
+## Boutons d'interface : au clic, jamais au pointerdown
+`sonic-action` émet par défaut au `pointerdown` (réactivité des manettes tactiles et des jeux) : ce n'est pas le comportement d'un bouton Concorde (pas d'annulation en quittant le bouton, déclenchement au début d'un défilement tactile). Pour tout bouton d'interface, ajoute `trigger="click"`. Pour un choix simple sans réducteur, un `sonic-button` (ou `sonic-menu-item`) avec `formDataProvider`, `name`, `value` et `radio` écrit directement dans un DataProvider ; vérifie au rendu (render_artifact) que le clic est bien pris en compte dans une liste générée par template.
+
 ## Onglets (une vue, plusieurs panneaux)
-- Barre : `sonic-subscriber dataProvider="etat"` > `sonic-menu direction="row"` > par onglet `sonic-action type="tab" payload={"tab":"carte"}` > `sonic-menu-item type="primary" data-bind "::variant":"$vCarte"`. Le réducteur écrit `vCarte`/`vListe` = "default" (actif) ou "ghost".
+- Barre : `sonic-subscriber dataProvider="etat"` > `sonic-menu direction="row"` > par onglet `sonic-action trigger="click" type="tab" payload={"tab":"carte"}` > `sonic-menu-item type="primary" data-bind "::variant":"$vCarte"`. Le réducteur écrit `vCarte`/`vListe` = "default" (actif) ou "ghost".
 - Panneau : `sonic-if dataProvider="etat" key="onglet" equals="carte"`. ATTENTION : sonic-if garde son contenu dans le DOM (il ne le détruit pas). Un composant à état interne (modal, carte) y garde cet état.
 - Plusieurs vraies vues (hash URL) : `views[]` ; une vue `hidden:true` reste accessible par son #id.
 
 ## Liste + détail
-- Une ligne de liste ne sélectionne pas : elle contient un bouton « Détails » (`sonic-action type="select" data-bind "::payload":"$id"`). Ajoute « Voir sur la carte » (`type="locate"`) si une carte existe.
+- Une ligne de liste ne sélectionne pas : elle contient un bouton « Détails » (`sonic-action trigger="click" type="select" data-bind "::payload":"$id"`). Ajoute « Voir sur la carte » (`type="locate"`) si une carte existe.
 - Le détail est un `sonic-modal` ; titre en `sonic-modal-title`, champs en `sonic-modal-content`. La croix est intégrée : pas de bouton Fermer en double.
 
 ## Modal rouvrable (piège classique)
