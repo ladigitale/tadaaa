@@ -342,7 +342,8 @@ final class ArtifactDocumentValidator
                 'tagName' => 'Uniquement composants Concorde (sonic-*) ou balises HTML sûres du catalogue.',
                 'page' => 'Optionnel : cadre de la page, "page": {"padding": "none"|"compact"|"normal" (défaut normal : marge du viewer ; none = plein cadre, pour un jeu ou une scène), "background": couleur CSS du fond de toute la page (#hex, rgb(), hsl(), nom ou var(--sc-…))}.',
                 'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent. views[].hidden = true : vue absente des onglets (accessible par son #id).',
-                'interactive' => 'sonic-store + keyboard/gamepad/gesture/action/ticker + sonic-matrix. Câblage des données : voir la règle « donnees ».',
+                'interactive' => 'sonic-store + keyboard/gamepad/gesture/action/ticker + sonic-matrix. Câblage des données : voir la règle « donnees ». '
+                    .'sonic-gesture : pan (dx,dy px), pinch (dScale, cx, cy), wheel, drag (fraction cumulée).',
                 'donnees' => 'Un DataProvider (DP) est un nom : les composants le lisent avec dataProvider="nom", les actions l’écrivent avec target="nom". '
                     .'DÉCLARER : (a) data.stores.<nom> = {initial: objet, reducer: JSONata ($state, $action = {type, payload}), dataProvider?: défaut = nom}, présent quelle que soit la vue ; '
                     .'ou, dans une vue, <sonic-store id="nom" initial="<JSON en chaîne>" reducer="…"> ; (b) data.transforms.<nom> = {jsonata} : publie le résultat, peut lire les data.sources par leur nom ; (c) data.sources.<nom> = {collection} : publie {member:[…]}. '
