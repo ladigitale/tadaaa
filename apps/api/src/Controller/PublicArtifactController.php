@@ -95,6 +95,7 @@ final class PublicArtifactController extends AbstractController
             $request->query->getString('k') ?: null,
             $user instanceof User ? $user : null,
             $request->query->getBoolean('draft'),
+            $request->getSchemeAndHttpHost(),
         );
 
         // Objets vides du document (`\stdClass`) gardés en `{}`.
@@ -106,6 +107,64 @@ final class PublicArtifactController extends AbstractController
         // Brouillon (réservé aux membres) : jamais en cache partagé.
         $response->headers->set('Cache-Control', ($result['body']['draft'] ?? false) ? 'private, no-store' : 'public, max-age=30');
         $response->headers->set('ETag', $result['etag']);
+
+        return $response;
+    }
+
+    /**
+     * Asset binaire d'un artefact (image, son, modèle 3D, JSON…) : mêmes droits de lecture que l'artefact.
+     * Servi avec son type vérifié, `nosniff` et une CSP verrouillée ; `?v=<empreinte>` = cache immuable.
+     */
+    #[Route('/{slug}/assets/{name}', name: 'api_public_artifact_asset', methods: ['GET'], requirements: ['slug' => '[a-z0-9][a-z0-9-]{2,63}', 'name' => '[a-z0-9][a-z0-9._-]{0,63}'])]
+    public function asset(string $slug, string $name, Request $request): Response
+    {
+        $this->consumeRate($request);
+        $user = $this->getUser();
+        $asset = $this->artifacts->readPublicAsset(
+            $slug,
+            $name,
+            $request->query->getString('k') ?: null,
+            $user instanceof User ? $user : null,
+        );
+
+        $response = new Response();
+        $response->setEtag($asset['sha256']);
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        $response->headers->set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+        $response->headers->set('Cross-Origin-Resource-Policy', 'cross-origin');
+        $response->headers->set('Accept-Ranges', 'bytes');
+        // URL versionnée (?v=empreinte) d'un artefact public : l'asset ne change plus à cette adresse.
+        $immutable = $asset['visibility'] === 'public' && $request->query->has('v') && str_starts_with($asset['sha256'], $request->query->getString('v')) && $request->query->getString('v') !== '';
+        $response->headers->set('Cache-Control', $immutable ? 'public, max-age=31536000, immutable' : ($asset['visibility'] === 'public' ? 'public, max-age=60' : 'private, max-age=60'));
+        if ($response->isNotModified($request)) {
+            return $response;
+        }
+
+        $data = $asset['data'];
+        $total = \strlen($data);
+        $response->headers->set('Content-Type', $asset['contentType']);
+        $range = $request->headers->get('Range');
+        if ($range !== null && preg_match('/^bytes=(\d*)-(\d*)$/', trim($range), $m) && ($m[1] !== '' || $m[2] !== '')) {
+            if ($m[1] === '') { // derniers N octets
+                $start = max(0, $total - (int) $m[2]);
+                $end = $total - 1;
+            } else {
+                $start = (int) $m[1];
+                $end = $m[2] === '' ? $total - 1 : min((int) $m[2], $total - 1);
+            }
+            if ($start > $end || $start >= $total) {
+                $response->setStatusCode(Response::HTTP_REQUESTED_RANGE_NOT_SATISFIABLE);
+                $response->headers->set('Content-Range', 'bytes */'.$total);
+
+                return $response;
+            }
+            $response->setStatusCode(Response::HTTP_PARTIAL_CONTENT);
+            $response->headers->set('Content-Range', sprintf('bytes %d-%d/%d', $start, $end, $total));
+            $response->setContent(substr($data, $start, $end - $start + 1));
+
+            return $response;
+        }
+        $response->setContent($data);
 
         return $response;
     }

@@ -33,6 +33,8 @@ parameters:
     env(ARTIFACTS_PUBLIC_URL): 'http://localhost:3300'
     # Hôtes https autorisés pour update_artifact `fetch` (liste séparée par des virgules) ; vide = GitHub raw/gist.
     env(ARTIFACT_FETCH_HOSTS): ''
+    # URL publique de l'API pour les assets d'artefacts (@asset:) ; vide = hôte de la requête.
+    env(ARTIFACT_ASSETS_BASE_URL): ''
     # Agent intégré (POST /api/agent/run). Chaque utilisateur règle son fournisseur / sa clé
     # (page « Assistant IA ») ; AGENT_LLM_* = clé du serveur, pour les admins (ou tous si SHARED=1).
     env(AGENT_LLM_API_KEY): ''

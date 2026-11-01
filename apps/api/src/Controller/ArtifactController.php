@@ -242,6 +242,40 @@ final class ArtifactController extends AbstractController
         return $this->json(null, 204);
     }
 
+    /** @return JsonResponse {member: [{name, contentType, sizeBytes, sha256, ref}]} */
+    #[Route('/{id}/assets', name: 'api_artifacts_assets_list', methods: ['GET'], requirements: ['id' => '[A-Za-z0-9-]+'])]
+    public function listAssets(string $id): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        return $this->json(['member' => $this->artifacts->listAssets($user, $id)]);
+    }
+
+    /**
+     * Envoi d'un asset : corps = octets bruts du fichier (le type est déduit du nom et vérifié sur le contenu).
+     * Pratique depuis un script ou la CI : `curl -T logo.png -H "Authorization: Bearer …" …/assets/logo.png`.
+     */
+    #[Route('/{id}/assets/{name}', name: 'api_artifacts_assets_put', methods: ['PUT'], requirements: ['id' => '[A-Za-z0-9-]+', 'name' => '[a-z0-9][a-z0-9._-]{0,63}'])]
+    public function putAsset(string $id, string $name, Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $meta = $this->artifacts->putAsset($user, $id, $name, $request->getContent(), $request->getClientIp());
+
+        return $this->json($meta, 201);
+    }
+
+    #[Route('/{id}/assets/{name}', name: 'api_artifacts_assets_delete', methods: ['DELETE'], requirements: ['id' => '[A-Za-z0-9-]+', 'name' => '[a-z0-9][a-z0-9._-]{0,63}'])]
+    public function deleteAsset(string $id, string $name, Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $this->artifacts->deleteAsset($user, $id, $name, $request->getClientIp());
+
+        return $this->json(null, 204);
+    }
+
     /** @return array<string, mixed> */
     private function jsonBody(Request $request): array
     {

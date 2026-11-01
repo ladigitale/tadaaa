@@ -12,9 +12,11 @@ use App\Mcp\RawToolArguments;
 use App\Mcp\Tool\BuildArtifactFromKitTool;
 use App\Mcp\Tool\CloseArtifactIntakeTool;
 use App\Mcp\Tool\FindIconsTool;
+use App\Mcp\Tool\DeleteArtifactAssetTool;
 use App\Mcp\Tool\DeleteArtifactTool;
 use App\Mcp\Tool\GetArtifactCatalogTool;
 use App\Mcp\Tool\GetArtifactTool;
+use App\Mcp\Tool\ListArtifactAssetsTool;
 use App\Mcp\Tool\ListArtifactsTool;
 use App\Mcp\Tool\OpenArtifactIntakeTool;
 use App\Mcp\Tool\PromoteArtifactTool;
@@ -23,8 +25,10 @@ use App\Mcp\Tool\ReadArtifactDataTool;
 use App\Mcp\Tool\RenderArtifactTool;
 use App\Mcp\Tool\SimulateStoreTool;
 use App\Mcp\Tool\UpdateArtifactTool;
+use App\Mcp\Tool\UploadArtifactAssetTool;
 use App\Mcp\Tool\ValidateArtifactTool;
 use App\Mcp\Tool\WriteArtifactDataTool;
+use App\Service\ArtifactAssets;
 use App\Service\ArtifactDataService;
 use App\Service\ArtifactDocumentValidator;
 use App\Service\ArtifactFileFetcher;
@@ -108,6 +112,9 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 'records' => $this->data->readForUser($user, $data->slug, $data->collection, $this->emptyToNull($data->sort), $data->limit),
             ],
             $data instanceof WriteArtifactDataTool => $this->writeData($user, $data),
+            $data instanceof UploadArtifactAssetTool => $this->uploadAsset($user, $data),
+            $data instanceof ListArtifactAssetsTool => ['assets' => $this->artifacts->listAssets($user, $this->artifactRef($data->id, $data->slug))],
+            $data instanceof DeleteArtifactAssetTool => $this->deleteAsset($user, $data),
             $data instanceof OpenArtifactIntakeTool => $this->openIntake($user, $data),
             $data instanceof CloseArtifactIntakeTool => $this->closeIntake($user, $data),
             default => throw new \InvalidArgumentException(sprintf(
@@ -461,6 +468,51 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         return ['action' => 'created', 'record' => $created];
     }
 
+    private function artifactRef(?string $id, ?string $slug): string
+    {
+        $ref = $this->emptyToNull($slug) ?? $this->emptyToNull($id);
+        if ($ref === null) {
+            throw new BadRequestHttpException('slug ou id requis.');
+        }
+
+        return $ref;
+    }
+
+    /** @return array<string, mixed> */
+    private function uploadAsset(User $user, UploadArtifactAssetTool $tool): array
+    {
+        $ref = $this->artifactRef($tool->id, $tool->slug);
+        $hasB64 = $tool->contentBase64 !== null && $tool->contentBase64 !== '';
+        $hasFetch = \is_array($tool->fetch) && $tool->fetch !== [];
+        if ($hasB64 === $hasFetch) {
+            throw new BadRequestHttpException('Fournir exactement une source : contentBase64 ou fetch {url, sha256?}.');
+        }
+        if ($hasFetch) {
+            $fetch = (array) $tool->fetch;
+            $url = $fetch['url'] ?? null;
+            if (!\is_string($url)) {
+                throw new BadRequestHttpException('fetch.url requis.');
+            }
+            $sha = \is_string($fetch['sha256'] ?? null) ? $fetch['sha256'] : null;
+            $bytes = $this->fetcher->fetchBytes($url, ArtifactAssets::MAX_FILE_BYTES, $sha);
+        } else {
+            $bytes = base64_decode((string) $tool->contentBase64, true);
+            if ($bytes === false) {
+                throw new BadRequestHttpException('contentBase64 invalide.');
+            }
+        }
+
+        return $this->artifacts->putAsset($user, $ref, $tool->name, $bytes);
+    }
+
+    /** @return array<string, mixed> */
+    private function deleteAsset(User $user, DeleteArtifactAssetTool $tool): array
+    {
+        $this->artifacts->deleteAsset($user, $this->artifactRef($tool->id, $tool->slug), $tool->name);
+
+        return ['ok' => true, 'name' => $tool->name];
+    }
+
     /** @return array<string, mixed> */
     private function openIntake(User $user, OpenArtifactIntakeTool $tool): array
     {
@@ -533,6 +585,9 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof DeleteArtifactTool => 'delete_artifact',
             $data instanceof ReadArtifactDataTool => 'read_artifact_data',
             $data instanceof WriteArtifactDataTool => 'write_artifact_data',
+            $data instanceof UploadArtifactAssetTool => 'upload_artifact_asset',
+            $data instanceof ListArtifactAssetsTool => 'list_artifact_assets',
+            $data instanceof DeleteArtifactAssetTool => 'delete_artifact_asset',
             $data instanceof OpenArtifactIntakeTool => 'open_artifact_intake',
             $data instanceof CloseArtifactIntakeTool => 'close_artifact_intake',
             default => get_debug_type($data),

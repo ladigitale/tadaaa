@@ -379,6 +379,7 @@ final class ArtifactDocumentValidator
                 'icones' => $this->icons->rule(),
                 'polices' => 'Optionnel : "fonts": ["Patrick Hand", "Fredoka:wght@400;700"] (4 max, noms Google Fonts, pas d’URL). Le viewer les charge ; utiliser ensuite font-family:\'Patrick Hand\',cursive dans les styles. Toujours prévoir une police de repli.',
                 'fichiers' => 'Gros shader / réducteur / texte : déclarer "files": {"jeu.jsonata": "…", "scene.glsl": "…"} au niveau du document et y renvoyer par la valeur exacte "@file:jeu.jsonata" (attribut image d’un sonic-shader, reducer d’un store, jsonata d’une transform…). Le serveur remplace les références avant validation et affichage ; retoucher un fichier = update_artifact avec edits sur /files/jeu.jsonata (chemin court, pas besoin de renvoyer le document). Noms a-z0-9._-, 24 fichiers max, 64 Ko chacun.',
+                'assets' => 'Images, sons, vidéos, modèles 3D (.glb), JSON volumineux : fichiers binaires propres à l’artefact (20 Mo max chacun, 200 max ; png jpg webp gif avif svg ogg mp3 wav flac webm mp4 glb json). Les envoyer avec upload_artifact_asset (contentBase64 pour un petit fichier, ou fetch {url, sha256} depuis un hôte autorisé) AVANT de publier, puis les référencer dans le document par la valeur exacte "@asset:nom.ext" partout où une URL est attendue (src d’un sonic-sprite ou d’une image, source d’un sampler…) : le serveur la remplace par l’URL publique de l’asset. Une référence vers un asset absent reste telle quelle. Le stockage compte dans le quota du propriétaire (list_artifact_assets, delete_artifact_asset).',
                 'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée (24 h max) ; intake.permanent:true = toujours ouverte (pas de session, garde au plus maxRecords en évinçant le pire ou le plus ancien, minInterval 3 s par défaut) ; intake.unique:{field:"nom",keep:"max:score"} = un seul record par valeur de field (keep : max:<champ>|min:<champ>|last), idéal pour un classement (meilleur score par pseudo). Lecture triée/bornée côté serveur : data.sources.<x> accepte sort (\"-score\") et limit (5) ; l’API accepte ?sort=-score&limit=5 et read_artifact_data aussi. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
             ],
             'scripts' => $this->scriptsCatalog->mcpSummary(),
@@ -526,6 +527,12 @@ final class ArtifactDocumentValidator
             return ['valid' => false, 'errors' => $fileErrors];
         }
         $document = ArtifactFiles::expand($document);
+
+        // Références d'assets (`@asset:nom`) : syntaxe seulement (l'existence dépend de l'artefact).
+        $assetErrors = ArtifactAssetRefs::check($document);
+        if ($assetErrors !== []) {
+            return ['valid' => false, 'errors' => $assetErrors];
+        }
 
         $encoded = json_encode($document, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($encoded === false) {

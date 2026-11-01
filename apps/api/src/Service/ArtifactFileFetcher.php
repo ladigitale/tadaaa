@@ -68,6 +68,36 @@ final class ArtifactFileFetcher
         return $encoding === 'base64' ? base64_encode($bytes) : $bytes;
     }
 
+    /**
+     * Octets bruts d'une URL https d'un hôte autorisé (mêmes garde-fous que {@see fetch()}), pour les
+     * assets d'artefact : taille bornée par `$maxBytes`, empreinte sha256 optionnelle vérifiée.
+     */
+    public function fetchBytes(string $url, int $maxBytes, ?string $sha256 = null): string
+    {
+        $this->assertUrl($url);
+        try {
+            $response = $this->http->request('GET', $url, ['max_redirects' => 0, 'timeout' => 15, 'max_duration' => 60]);
+            if ($response->getStatusCode() !== 200) {
+                throw new BadRequestHttpException(sprintf('fetch %s : HTTP %d.', $url, $response->getStatusCode()));
+            }
+            $bytes = '';
+            foreach ($this->http->stream($response) as $chunk) {
+                $bytes .= $chunk->getContent();
+                if (\strlen($bytes) > $maxBytes) {
+                    $response->cancel();
+                    throw new BadRequestHttpException(sprintf('fetch %s : fichier trop gros (%d Mo max).', $url, intdiv($maxBytes, 1024 * 1024)));
+                }
+            }
+        } catch (ExceptionInterface $e) {
+            throw new BadRequestHttpException(sprintf('fetch %s : %s', $url, $e->getMessage()));
+        }
+        if ($sha256 !== null && $sha256 !== '' && !hash_equals(strtolower($sha256), hash('sha256', $bytes))) {
+            throw new BadRequestHttpException(sprintf('fetch %s : empreinte sha256 différente (reçu %s).', $url, hash('sha256', $bytes)));
+        }
+
+        return $bytes;
+    }
+
     private function assertUrl(string $url): void
     {
         $url = trim($url);
