@@ -655,6 +655,12 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringNotContainsString('---', substr($payload['skills']['design'], 0, 4));
         self::assertStringContainsString('visA', $payload['skills']['multivue']);
 
+        // Fondations + un archétype, dans l'ordre demandé.
+        $payload = $validator->mcpCatalogPayload(true, ['__none__'], ['design', 'jeu'], false);
+        self::assertSame(['design', 'jeu'], array_keys($payload['skills']));
+        self::assertStringContainsString('budgetMs', $payload['skills']['jeu']);
+        self::assertStringContainsString('--sc-input-bg', $payload['skills']['design']);
+
         // Le sommaire du prompt de l'atelier les annonce, avec leur description.
         $index = $validator->catalogIndex();
         foreach (ArtifactDocumentValidator::SKILLS as $name) {

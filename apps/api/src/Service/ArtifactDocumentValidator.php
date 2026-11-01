@@ -219,8 +219,8 @@ final class ArtifactDocumentValidator
     private const DEFAULT_CONCORDE_VERSION = '5.1.3';
 
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
-    /** Compétences (config/artifacts/skills/*.md) : servies à la demande par rules=["design"], jamais par défaut. */
-    public const SKILLS = ['design', 'multivue', 'carte'];
+    /** Compétences (config/artifacts/skills/*.md) : servies à la demande par rules=["design", "<archétype>"], jamais par défaut. */
+    public const SKILLS = ['design', 'vitrine', 'jeu', 'outil', 'dashboard', 'experience', 'multivue', 'carte'];
     public const LONG_RULES = ['listes', 'a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
 
     private readonly ArtifactA2uiValidator $a2uiValidator;

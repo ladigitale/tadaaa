@@ -10,7 +10,7 @@
         "nodes": [
           {
             "tagName": "div",
-            "attributes": { "class": "flex flex-col gap-4 p-4" },
+            "attributes": { "style": "display:flex;flex-direction:column;gap:16px;padding:16px" },
             "nodes": [
               {
                 "tagName": "sonic-caption",
