@@ -34,8 +34,12 @@ final class ArtifactService
         private readonly EntityManagerInterface $em,
         private readonly ArtifactDataService $artifactData,
         private readonly ArtifactScriptsCatalog $scriptsCatalog,
+        private readonly ArtifactAssets $assets,
         #[Autowire('%env(ARTIFACTS_PUBLIC_URL)%')]
         private readonly string $publicBaseUrl,
+        /** Hôte public de l'API pour les URL d'assets ; vide = celui de la requête. */
+        #[Autowire('%env(ARTIFACT_ASSETS_BASE_URL)%')]
+        private readonly string $assetsBaseUrl = '',
     ) {
     }
 
@@ -437,7 +441,7 @@ final class ArtifactService
      *
      * @return array{body: array<string, mixed>, etag: string}
      */
-    public function publicRead(string $slug, ?string $linkToken, ?User $user, bool $draft = false): array
+    public function publicRead(string $slug, ?string $linkToken, ?User $user, bool $draft = false, ?string $requestBaseUrl = null): array
     {
         $artifact = $this->resolveReadableArtifact($slug, $linkToken, $user);
 
@@ -460,13 +464,27 @@ final class ArtifactService
         $scriptIds = \is_array($document) ? ($document['scripts'] ?? null) : null;
         $scriptAssets = $this->scriptsCatalog->resolve($scriptIds)['assets'];
 
+        // Références @file: puis @asset: résolues pour le viewer (une clé de lien est jointe aux URL d'assets
+        // d'un artefact « lien » : l'image ou le son chargés par le navigateur n'ont ni session ni en-tête).
+        $document = ArtifactFiles::expand($version->getWireDocument());
+        $assetBase = $this->assetsBaseUrl !== '' ? $this->assetsBaseUrl : ($requestBaseUrl ?? '');
+        if ($assetBase !== '') {
+            $document = ArtifactAssetRefs::expand(
+                $document,
+                $assetBase,
+                $artifact->getSlug(),
+                $this->assets->hashes($artifact),
+                $artifact->getVisibility() === ArtifactVisibility::Link ? $artifact->getLinkToken() : null,
+            );
+        }
+
         $body = [
             'id' => $artifact->getId()->toRfc4122(),
             'slug' => $artifact->getSlug(),
             'title' => $artifact->getTitle(),
             'description' => $artifact->getDescription(),
             'visibility' => $artifact->getVisibility()->value,
-            'document' => ArtifactFiles::expand($version->getWireDocument()), // références @file: résolues pour le viewer
+            'document' => $document,
             'scriptAssets' => $scriptAssets,
             'concordeVersion' => $artifact->getConcordeVersion(),
             'version' => $shown,
@@ -504,6 +522,62 @@ final class ArtifactService
         }
 
         return $url;
+    }
+
+    /**
+     * Ajoute ou remplace un asset binaire de l'artefact (écriture dans le jeu de données requise).
+     *
+     * @return array{name: string, contentType: string, sizeBytes: int, sha256: string, ref: string}
+     */
+    public function putAsset(User $user, string $idOrSlug, string $name, string $bytes, ?string $ip = null): array
+    {
+        $artifact = $this->requireWritableArtifact($user, $idOrSlug);
+        $meta = $this->assets->put($artifact, $name, $bytes);
+        $this->audit->log($artifact->getDataset()->getOwner(), AuditLog::CATEGORY_ARTIFACT, 'artifact.asset_put', [
+            'artifactId' => $artifact->getId()->toRfc4122(),
+            'slug' => $artifact->getSlug(),
+            'name' => $name,
+            'sizeBytes' => $meta['sizeBytes'],
+        ], $ip);
+
+        return $meta + ['ref' => '@asset:'.$name];
+    }
+
+    /** @return list<array{name: string, contentType: string, sizeBytes: int, sha256: string, ref: string}> */
+    public function listAssets(User $user, string $idOrSlug): array
+    {
+        $artifact = $this->requireReadableArtifact($user, $idOrSlug);
+
+        return array_map(static fn (array $a): array => $a + ['ref' => '@asset:'.$a['name']], $this->assets->list($artifact));
+    }
+
+    public function deleteAsset(User $user, string $idOrSlug, string $name, ?string $ip = null): void
+    {
+        $artifact = $this->requireWritableArtifact($user, $idOrSlug);
+        if (!$this->assets->delete($artifact, $name)) {
+            throw new NotFoundHttpException('Asset introuvable.');
+        }
+        $this->audit->log($artifact->getDataset()->getOwner(), AuditLog::CATEGORY_ARTIFACT, 'artifact.asset_delete', [
+            'artifactId' => $artifact->getId()->toRfc4122(),
+            'slug' => $artifact->getSlug(),
+            'name' => $name,
+        ], $ip);
+    }
+
+    /**
+     * Lecture publique d'un asset (mêmes droits que la lecture de l'artefact : public, clé de lien ou membre).
+     *
+     * @return array{contentType: string, sizeBytes: int, sha256: string, data: string, visibility: string}
+     */
+    public function readPublicAsset(string $slug, string $name, ?string $linkToken, ?User $user): array
+    {
+        $artifact = $this->resolveReadableArtifact($slug, $linkToken, $user);
+        $asset = $this->assets->read($artifact, $name);
+        if ($asset === null) {
+            throw new NotFoundHttpException('Asset introuvable.');
+        }
+
+        return $asset + ['visibility' => $artifact->getVisibility()->value];
     }
 
     public function findArtifactEntity(string $idOrSlug): Artifact

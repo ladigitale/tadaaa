@@ -20,16 +20,17 @@ final class StorageQuota
 
     public function effectiveQuotaBytes(User $user): ?int
     {
+        // Les administrateurs ne sont jamais limités, même avec un quota personnalisé posé sur le compte.
+        if (\in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+            return null;
+        }
+
         $override = $user->getStorageQuotaBytes();
         if ($override === 0) {
             return null; // unlimited
         }
         if ($override !== null) {
             return $override;
-        }
-
-        if (\in_array('ROLE_ADMIN', $user->getRoles(), true)) {
-            return null; // les administrateurs ne sont pas limités
         }
 
         return max(0, $this->defaultQuotaBytes);
@@ -64,6 +65,14 @@ final class StorageQuota
             WHERE d.owner_id = :owner
         SQL;
 
+        $sqlAssets = <<<'SQL'
+            SELECT COALESCE(SUM(s.size_bytes + 256), 0)::bigint AS bytes
+            FROM artifact_assets s
+            INNER JOIN artifacts a ON a.id = s.artifact_id
+            INNER JOIN datasets d ON d.id = a.dataset_id
+            WHERE d.owner_id = :owner
+        SQL;
+
         $owner = $user->getId()->toRfc4122();
         $todos = (int) $this->connection->fetchOne($sqlTodos, ['owner' => $owner]);
         try {
@@ -71,8 +80,13 @@ final class StorageQuota
         } catch (\Throwable) {
             $artifacts = 0;
         }
+        try {
+            $assets = (int) $this->connection->fetchOne($sqlAssets, ['owner' => $owner]);
+        } catch (\Throwable) {
+            $assets = 0;
+        }
 
-        return $todos + $artifacts;
+        return $todos + $artifacts + $assets;
     }
 
     /**
