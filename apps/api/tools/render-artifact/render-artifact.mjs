@@ -37,6 +37,21 @@ import {chromium} from "playwright-core";
 
 const req = JSON.parse(fs.readFileSync(process.argv[2] ?? 0, "utf8"));
 const doc = req.document ?? JSON.parse(fs.readFileSync(req.documentFile, "utf8"));
+// Bibliothèques résolues par l'API depuis le catalogue (document.scripts) : URL CDN exactes autorisées.
+const scriptAssets = Array.isArray(req.scriptAssets) ? req.scriptAssets : [];
+const allowedCdn = new Set(scriptAssets.flatMap((a) => [a?.src, ...(a?.css ?? [])]).filter((u) => typeof u === "string" && u.startsWith("https://cdn.jsdelivr.net/")));
+// Réseau externe : https seulement, en GET/HEAD, vers une liste blanche d'hôtes (RENDER_ALLOWED_HOSTS,
+// séparés par des virgules ou des espaces ; « .exemple.org » autorise aussi les sous-domaines).
+// Jamais d'adresse IP littérale ni d'hôte interne : l'outil tourne côté serveur (protection SSRF).
+const DEFAULT_ALLOWED_HOSTS = "cdn.jsdelivr.net cdnjs.cloudflare.com fonts.googleapis.com fonts.gstatic.com tiles.openfreemap.org";
+const allowedHosts = (process.env.RENDER_ALLOWED_HOSTS ?? DEFAULT_ALLOWED_HOSTS).split(/[\s,]+/).map((h) => h.trim().toLowerCase()).filter(Boolean);
+const IP_LITERAL = /^(\d{1,3}(\.\d{1,3}){3}|\[.*\])$/;
+function externalAllowed(url, method) {
+  if (url.protocol !== "https:" || !["GET", "HEAD"].includes(method)) return false;
+  const host = url.hostname.toLowerCase();
+  if (IP_LITERAL.test(host) || host === "localhost" || !host.includes(".")) return false;
+  return allowedHosts.some((h) => (h.startsWith(".") ? host === h.slice(1) || host.endsWith(h) : host === h));
+}
 const DIST = path.resolve(process.env.RENDER_VIEWER_DIST ?? path.join(process.cwd(), "dist"));
 const outDir = path.resolve(req.outDir ?? "render-out");
 const asRoot = typeof process.getuid === "function" && process.getuid() === 0;
@@ -45,11 +60,15 @@ fs.mkdirSync(outDir, {recursive: true});
 const MIME = {".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".wasm": "application/wasm", ".json": "application/json"};
 const server = http.createServer((q, r) => {
   const u = new URL(q.url, "http://x");
+  if (u.pathname.startsWith("/api/appearance")) {
+    r.writeHead(200, {"Content-Type": "application/json"});
+    return r.end("{}");
+  }
   if (u.pathname.startsWith("/api/public/artifacts/")) {
     r.writeHead(200, {"Content-Type": "application/json"});
     if (u.pathname.includes("/collections/")) return r.end('{"member":[]}');
     return r.end(JSON.stringify({id: "preview", slug: "preview", title: doc.title ?? "", description: "", visibility: "public", document: doc,
-      scriptAssets: [], version: 1, updatedAt: new Date().toISOString(), collections: [], canWrite: false}));
+      scriptAssets, version: 1, updatedAt: new Date().toISOString(), collections: [], canWrite: false}));
   }
   let f = path.join(DIST, u.pathname);
   if (!f.startsWith(DIST) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) f = path.join(DIST, "index.html");
@@ -60,7 +79,7 @@ await new Promise((ok) => server.listen(0, "127.0.0.1", ok));
 const base = `http://127.0.0.1:${server.address().port}`;
 
 const IGNORED = /favicon|GL Driver Message|GPU stall|swiftshader/i;
-const out = {ok: true, errors: [], warnings: [], failedRequests: [], assertions: [], shaderErrors: [], screenshots: [], text: ""};
+const out = {ok: true, errors: [], warnings: [], failedRequests: [], blockedRequests: [], assertions: [], shaderErrors: [], screenshots: [], text: ""};
 const browser = await chromium.launch({
   executablePath: process.env.CHROME_PATH || undefined,
   args: [...(asRoot ? ["--no-sandbox"] : []), "--disable-dev-shm-usage", "--use-gl=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist", "--autoplay-policy=no-user-gesture-required"],
@@ -108,11 +127,22 @@ try {
       new PerformanceObserver((l) => l.getEntries().forEach((e) => { window.__lt.count++; window.__lt.total += e.duration; })).observe({type: "longtask", buffered: true});
     } catch {}
   });
-  // Aucun accès réseau externe (SSRF) : CDN d'icônes / polices simulés vides, le reste refusé.
-  await page.route((url) => !/^(127\.0\.0\.1|localhost)$/.test(url.hostname) && !["data:", "blob:"].includes(url.protocol), (route) =>
-    /cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|fonts\.(googleapis|gstatic)\.com/.test(route.request().url())
+  // Réseau externe limité à la liste blanche (voir externalAllowed) ; CDN hors liste simulés vides, le reste refusé.
+  await page.route((url) => !/^(127\.0\.0\.1|localhost)$/.test(url.hostname) && !["data:", "blob:"].includes(url.protocol), async (route) => {
+    const target = route.request().url();
+    const {pathname, search} = new URL(target);
+    // Le viewer construit appelle son API en URL absolue (VITE_API_BASE_URL, ex. https://api.tadaaa.space) :
+    // on sert ces chemins depuis le serveur local au lieu de les bloquer (sinon « Impossible de joindre … »).
+    if (pathname.startsWith("/api/public/artifacts/") || pathname.startsWith("/api/appearance")) {
+      const res = await fetch(`${base}${pathname}${search}`);
+      return route.fulfill({status: res.status, body: Buffer.from(await res.arrayBuffer()), contentType: res.headers.get("content-type") ?? "application/json"});
+    }
+    if (allowedCdn.has(target) || externalAllowed(new URL(target), route.request().method())) return route.continue();
+    out.blockedRequests.push(target.slice(0, 200));
+    return /cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|fonts\.(googleapis|gstatic)\.com/.test(target)
       ? route.fulfill({status: 200, body: "", contentType: "text/plain"})
-      : route.abort());
+      : route.abort();
+  });
 
   await page.goto(`${base}/preview${req.view ? `#${req.view}` : ""}`, {waitUntil: "load"});
   await page.waitForTimeout(600);
