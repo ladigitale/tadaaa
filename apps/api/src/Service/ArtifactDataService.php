@@ -52,8 +52,8 @@ final class ArtifactDataService
         }
 
         foreach ($sources as $sourceKey => $src) {
-            if (!\is_array($src)) {
-                continue;
+            if (!\is_array($src) || \array_key_exists('asset', $src)) {
+                continue; // une source « asset » (JSON stocké) n'est pas une collection
             }
             $name = $src['collection'] ?? (is_string($sourceKey) ? $sourceKey : null);
             if (!\is_string($name) || !preg_match('/^[a-z][a-z0-9_]{0,63}$/', $name)) {

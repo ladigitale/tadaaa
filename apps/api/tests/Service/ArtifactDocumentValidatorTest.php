@@ -627,11 +627,11 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertLessThan(9_000, strlen($encodedFiltered));
 
         // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, 3d, 2d, animation, appareil,
-        // salons, ia, collecte). Plafond large, pour repérer une dérive de taille.
+        // salons, ia, collecte) et la règle courte « assets ». Plafond large, pour repérer une dérive de taille.
         $payload = $this->validator->mcpCatalogPayload(true);
         $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE);
         self::assertNotFalse($encoded);
-        self::assertLessThan(44_000, strlen($encoded));
+        self::assertLessThan(45_000, strlen($encoded));
         self::assertArrayHasKey('commonProps', $payload['catalog']);
     }
 
@@ -694,6 +694,40 @@ final class ArtifactDocumentValidatorTest extends TestCase
         ];
         $result = $this->validator->validate($doc);
         self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testAcceptsAssetSource(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['data'] = [
+            'sources' => [
+                'entreprises' => ['asset' => '@asset:entreprises.json', 'key' => 'items'],
+                'plain' => ['asset' => '@asset:liste.json'],
+            ],
+            'transforms' => ['total' => ['jsonata' => '$count(entreprises.member)']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testRejectsBadAssetSources(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['data'] = [
+            'sources' => [
+                'a' => ['asset' => 'entreprises.json'],
+                'b' => ['asset' => '@asset:image.png'],
+                'c' => ['asset' => '@asset:ok.json', 'collection' => 'c', 'refresh' => 30],
+                'd' => ['asset' => '@asset:ok.json', 'key' => 'a b'],
+                'e' => ['asset' => 12],
+            ],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        $paths = array_column($result['errors'], 'path');
+        foreach (['a', 'b', 'c', 'd', 'e'] as $name) {
+            self::assertContains('/data/sources/'.$name, $paths);
+        }
     }
 
     public function testRejectsSinkWithoutIntakeAndBadIntake(): void

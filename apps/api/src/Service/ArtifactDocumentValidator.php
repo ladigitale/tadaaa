@@ -379,7 +379,7 @@ final class ArtifactDocumentValidator
                 'icones' => $this->icons->rule(),
                 'polices' => 'Optionnel : "fonts": ["Patrick Hand", "Fredoka:wght@400;700"] (4 max, noms Google Fonts, pas d’URL). Le viewer les charge ; utiliser ensuite font-family:\'Patrick Hand\',cursive dans les styles. Toujours prévoir une police de repli.',
                 'fichiers' => 'Gros shader / réducteur / texte : déclarer "files": {"jeu.jsonata": "…", "scene.glsl": "…"} au niveau du document et y renvoyer par la valeur exacte "@file:jeu.jsonata" (attribut image d’un sonic-shader, reducer d’un store, jsonata d’une transform…). Le serveur remplace les références avant validation et affichage ; retoucher un fichier = update_artifact avec edits sur /files/jeu.jsonata (chemin court, pas besoin de renvoyer le document). Noms a-z0-9._-, 24 fichiers max, 64 Ko chacun.',
-                'assets' => 'Images, sons, vidéos, modèles 3D (.glb), JSON volumineux : fichiers binaires propres à l’artefact (20 Mo max chacun, 200 max ; png jpg webp gif avif svg ogg mp3 wav flac webm mp4 glb json). Les envoyer avec upload_artifact_asset (contentBase64 pour un petit fichier, ou fetch {url, sha256} depuis un hôte autorisé) AVANT de publier, puis les référencer dans le document par la valeur exacte "@asset:nom.ext" partout où une URL est attendue (src d’un sonic-sprite ou d’une image, source d’un sampler…) : le serveur la remplace par l’URL publique de l’asset. Une référence vers un asset absent reste telle quelle. Le stockage compte dans le quota du propriétaire (list_artifact_assets, delete_artifact_asset).',
+                'assets' => 'Fichiers binaires de l’artefact (images, sons, vidéos, .glb, JSON ; 20 Mo, 200 max ; png jpg webp gif avif svg ogg mp3 wav flac webm mp4 glb json) : les envoyer AVANT de publier avec upload_artifact_asset (fetch {url,sha256} sur GitHub raw, ou contentBase64 si petit), puis les référencer par la valeur exacte "@asset:nom.ext" là où une URL est attendue. Un JSON devient un DataProvider : data.sources.<x> = {"asset":"@asset:donnees.json", "key"?:"chemin"} → {member:[…]}.',
                 'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée (24 h max) ; intake.permanent:true = toujours ouverte (pas de session, garde au plus maxRecords en évinçant le pire ou le plus ancien, minInterval 3 s par défaut) ; intake.unique:{field:"nom",keep:"max:score"} = un seul record par valeur de field (keep : max:<champ>|min:<champ>|last), idéal pour un classement (meilleur score par pseudo). Lecture triée/bornée côté serveur : data.sources.<x> accepte sort (\"-score\") et limit (5) ; l’API accepte ?sort=-score&limit=5 et read_artifact_data aussi. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
             ],
             'scripts' => $this->scriptsCatalog->mcpSummary(),
@@ -967,6 +967,13 @@ final class ArtifactDocumentValidator
                 $errors[] = ['path' => $path.'/sources', 'message' => 'sources doit être un objet.'];
             } else {
                 foreach ($data['sources'] as $name => $src) {
+                    // Source « asset » : un JSON stocké comme asset de l'artefact, lu une fois par le viewer.
+                    if (\is_array($src) && \array_key_exists('asset', $src)) {
+                        foreach ($this->validateAssetSource($src) as $msg) {
+                            $errors[] = ['path' => $path.'/sources/'.$name, 'message' => $msg];
+                        }
+                        continue;
+                    }
                     if (!\is_array($src) || !isset($src['collection']) || !\is_string($src['collection'])
                         || !preg_match('/^[a-z][a-z0-9_]{0,63}$/', $src['collection'])) {
                         $errors[] = ['path' => $path.'/sources/'.$name, 'message' => 'source.collection invalide.'];
@@ -1089,6 +1096,34 @@ final class ArtifactDocumentValidator
                 $errors[] = ['path' => $p.'/ack', 'message' => 'ack : id du sonic-store à notifier.'];
             }
         }
+    }
+
+    /**
+     * `data.sources.<x> = {"asset": "@asset:donnees.json", "key"?: "chemin.pointé"}` : lit un fichier JSON
+     * de l'artefact (voir ArtifactAssets) et le publie comme DataProvider `<x>` (`{member: [...]}` si le
+     * JSON, ou sa partie `key`, est un tableau). Pas de tri, filtre ni écriture côté serveur : utiliser
+     * une data.transforms (JSONata) pour filtrer ou trier.
+     *
+     * @param array<string, mixed> $src
+     *
+     * @return list<string>
+     */
+    private function validateAssetSource(array $src): array
+    {
+        $errors = [];
+        if (!\is_string($src['asset']) || !preg_match('/^@asset:[a-z0-9][a-z0-9._-]{0,58}\.json$/', $src['asset'])) {
+            $errors[] = 'source.asset : « @asset:nom.json » attendu (fichier JSON envoyé avec upload_artifact_asset).';
+        }
+        foreach (['collection', 'writeMode', 'publicRead', 'intake', 'sort', 'limit', 'refresh'] as $unsupported) {
+            if (\array_key_exists($unsupported, $src)) {
+                $errors[] = sprintf('source.%s n’existe pas pour une source asset (réservé aux collections).', $unsupported);
+            }
+        }
+        if (isset($src['key']) && (!\is_string($src['key']) || !preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,31}(\.[A-Za-z0-9_]{1,32}){0,5}$/', $src['key']))) {
+            $errors[] = 'source.key : chemin pointé dans le JSON (ex. "entreprises" ou "data.items").';
+        }
+
+        return $errors;
     }
 
     /** GLB embarqué : base64 valide, taille bornée, en-tête « glTF ». */

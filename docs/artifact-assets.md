@@ -50,8 +50,25 @@ Toute valeur de chaîne **exactement égale** à `@asset:<nom>` est remplacée �
 
 Un artefact **privé** n'est lisible que par un membre connecté (session) : une balise `<img>` d'un autre domaine ne peut pas s'authentifier. Pour des assets visibles du public, utiliser la visibilité « lien » ou « public ».
 
+## Un JSON comme source de données
+
+Un fichier `.json` envoyé comme asset peut alimenter un DataProvider, sans passer par une collection :
+
+```json
+{"data": {
+  "sources": {"entreprises": {"asset": "@asset:entreprises.json", "key": "items"}},
+  "transforms": {"actives": {"jsonata": "entreprises.member[actif]"}}
+}}
+```
+
+- `asset` : `@asset:nom.json` (le serveur le remplace par l'URL à la lecture) ; `key` (optionnel) : chemin pointé vers la partie utile du JSON.
+- Le viewer lit le fichier une fois. Si la valeur est un tableau, le DataProvider porte `{member: [...]}`, comme une collection ; si c'est un objet, il est publié tel quel.
+- Pas de tri, de filtre ni d'écriture côté serveur : filtrer ou trier avec une `data.transforms` (JSONata). `collection`, `writeMode`, `publicRead`, `intake`, `sort`, `limit` et `refresh` sont refusés sur une source asset.
+- Remplacer l'asset change son URL (empreinte) : republier n'est pas nécessaire, un rechargement de la page suffit.
+- Asset absent, erreur réseau ou aperçu (atelier) : source vide.
+- Une source asset ne crée pas de collection.
+
 ## Non couvert pour l'instant
 
 - Polices (`font-src` de la CSP du viewer n'autorise pas l'hôte de l'API).
-- `data.sources.x = {asset: "…"}` : lecture d'un gros JSON comme source de données (l'asset `.json` est déjà stocké et servi ; le branchement côté `data.sources` reste à faire).
 - Bibliothèque d'assets partagée entre artefacts.
