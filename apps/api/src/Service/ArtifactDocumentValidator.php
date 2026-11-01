@@ -76,7 +76,8 @@ final class ArtifactDocumentValidator
         .'"::text-content":"$ville ($dep)", "::href":"https://www.google.com/maps/search/?api=1&query=$adresse" (URL https LITTÉRALE en tête), "::src", "::title", "::class":"ligne $etat", "::aria-label". '
         .'INTERDIT : ::inner-html et tout ::…-html, ::on…, ::style, valeurs commençant par "|" ou contenant "js|". '
         .'CLIC SUR UNE LIGNE : {"tagName":"sonic-action","attributes":{"target":"etat","type":"select","data-bind":"","::payload":"$id"}, "nodes":[…]} envoie au réducteur $action.payload = la valeur id de la ligne. '
-        .'Filtrer / trier / paginer : dans la transform ou le réducteur qui publie le tableau (la liste ne fait que l’afficher). ';
+        .'Filtrer / trier / paginer : dans la transform ou le réducteur qui publie le tableau (la liste ne fait que l’afficher). '
+        .'Un filtre JSONata à 1 seul résultat renvoie un OBJET, pas un tableau : enveloppez-le avec $append([], …). ';
     private const SOUND_RULE = 'sonic-sound (1 par page) : tout est synthétisé, aucun fichier. '
         .'bank = JSON {"sfx":{nom: preset | {preset?, wave:sine|square|triangle|sawtooth|noise, freq, slide(demi-tons), dur, attack, decay, sustain, release, vol, arp:[0,4,7], arpRate, vibrato:{rate,depth}, filter:{type,freq,q,to}, repeat, jitter, layers:[…], bus:sfx|ui, cooldown}}, '
         .'"songs":{nom:{bpm, steps(4), loop(true), loopFrom, swing, vol, instruments:{nom: preset | SynthDef}, patterns:{A:{instrument:"C4 - . E4+G4 x X G4! |"}}, sequence:["A","B"]}}}. '
