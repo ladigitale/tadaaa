@@ -8,7 +8,7 @@ Prérequis : la compétence `design` (demande `rules=["design","experience"]` en
 - `page.padding:"none"`, fond sombre ou papier selon l'œuvre, palette de zone.
 - **Scène** plein cadre (`position:relative;height:100svh` ou `aspect-ratio` fixe) ; **commandes** dans un panneau compact qui flotte (`position:absolute;right:16px;bottom:16px;max-width:min(92vw,22rem)`, surface translucide `rgb(0 0 0/.45)` + `backdrop-filter:blur(12px)`, rayon 14–18) ; sur téléphone, sous la scène.
 - **Écran d'invite** tant que le média n'est pas actif : titre de l'œuvre, une phrase, UN bouton (`sonic-audio-unlock`, `sonic-media-start for="cam mic"`) ; afficher refus et non-support (`<id>State.status` = denied|unsupported) avec une alternative.
-- 3–6 réglages maximum, nommés par leur effet (« Densité », « Chaleur »), avec valeurs lisibles ; un bouton « Hasard » et un « Réinitialiser ». Le reste se cache dans un `sonic-pop` « Avancé ».
+- 3–6 réglages maximum, nommés par leur effet (« Densité », « Chaleur »), avec valeurs lisibles ; un bouton « Hasard » et un « Réinitialiser ». Le reste se cache dans un `sonic-pop` « Avancé » ; un choix dans une liste = `sonic-pop` + `sonic-menu` + `sonic-menu-item`, jamais `sonic-select` (voir `design` §1).
 - Capture : `sonic-media-recorder` (vidéo de la scène + son) et `sonic-media-download`, ou photo de caméra ; c'est souvent ce que les gens veulent garder.
 
 ## 2. Quelle brique pour quelle idée
