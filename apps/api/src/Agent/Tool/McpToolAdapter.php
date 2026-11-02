@@ -60,6 +60,7 @@ final class McpToolAdapter implements AgentTool
                 'array' => match ($listParams[$name] ?? null) {
                     null => ['type' => 'array'],
                     'object' => ['type' => 'object'],
+                    'list-object' => ['type' => 'array', 'items' => ['type' => 'object']],
                     default => ['type' => 'array', 'items' => ['type' => $listParams[$name]]],
                 },
                 default => [],
@@ -125,6 +126,11 @@ final class McpToolAdapter implements AgentTool
         if (preg_match_all('/@param\s+array<string,\s*\w+>(?:\|null)?\s+\$(\w+)/', $doc, $m, PREG_SET_ORDER)) {
             foreach ($m as [, $name]) {
                 $out[$name] = 'object';
+            }
+        }
+        if (preg_match_all('/@param\s+list<array<string,\s*\w+>>(?:\|null)?\s+\$(\w+)/', $doc, $m, PREG_SET_ORDER)) {
+            foreach ($m as [, $name]) {
+                $out[$name] = 'list-object';
             }
         }
         if (preg_match_all('/@param\s+(?:list|array)<(string|int)>(?:\|null)?\s+\$(\w+)/', $doc, $m, PREG_SET_ORDER)) {

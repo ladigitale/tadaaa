@@ -14,7 +14,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
     description: <<<'DESC'
 Rend un artefact dans le vrai viewer (Chromium headless) et renvoie ce que la validation ne voit pas : erreurs console/page (JSONata, composants), erreurs de compilation GLSL avec numéros de ligne (`shaderErrors`), requêtes en échec, fps, texte affiché, et une capture d'écran (image). Fournir `document` (brouillon) OU `slug`/`id` (artefact enregistré).
 
-Options : `view` (id de vue), `viewport` ({width, height}), `settleMs` (attente avant capture, ≤ 10000), `fps` (true : profilage sur 2 s → `perf` : fps, durée des images p50/p95/max, images perdues, tâches longues, mémoire JS), `steps` : scénario joué avant la capture, parmi {"wait":ms}, {"press":"Enter"}, {"hold":"Space","ms":300}, {"click":"sélecteur CSS","index":0}, {"shot":"nom"}, et des assertions : {"waitText":"Game over","timeout":5000} (attend un texte), {"expectText":"Score"}, {"expectNoText":"undefined"}, {"expect":"sonic-shader","count":1} (le sélecteur existe).
+Options : `view` (id de vue), `viewport` ({width, height}), `settleMs` (attente avant capture, ≤ 10000), `fps` (true : profilage sur 2 s → `perf` : fps, durée des images p50/p95/max, images perdues, tâches longues, mémoire JS), `fullPage` (true : capture finale de toute la page, défilement compris), `steps` : scénario joué avant la capture, tableau d'OBJETS (une étape inconnue est signalée dans errors), parmi {"wait":ms}, {"press":"Enter"}, {"hold":"Space","ms":300}, {"click":"sélecteur CSS","index":0}, {"shot":"nom"} (capture intermédiaire renvoyée avant la finale, 3 au plus), et des assertions : {"waitText":"Game over","timeout":5000} (attend un texte), {"expectText":"Score"}, {"expectNoText":"undefined"}, {"expect":"sonic-shader","count":1} (le sélecteur existe).
 
 Retourne `{ok, errors[], warnings[], failedRequests[], assertions[], shaderErrors[], perf?, text, screenshots}` ; `ok` est faux dès qu'une erreur console/de page est levée ou qu'une assertion échoue. Aucun accès réseau externe depuis la page ; durée max 45 s.
 
@@ -30,7 +30,7 @@ final class RenderArtifactTool
     /**
      * @param array<string, mixed>|null $document
      * @param array<string, mixed>|null $viewport
-     * @param list<mixed>|null          $steps
+     * @param list<array<string, mixed>>|null          $steps
      */
     public function __construct(
         public ?string $id = null,
@@ -41,6 +41,7 @@ final class RenderArtifactTool
         public ?array $steps = null,
         public ?int $settleMs = null,
         public ?bool $fps = null,
+        public ?bool $fullPage = null,
     ) {
     }
 }

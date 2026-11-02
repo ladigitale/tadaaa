@@ -29,7 +29,7 @@ final class SimulateStoreTool
 {
     /**
      * @param array<string, mixed>|null $document
-     * @param list<mixed>|null          $actions
+     * @param list<array<string, mixed>>|null          $actions
      * @param list<string>|null         $snapshots
      */
     public function __construct(

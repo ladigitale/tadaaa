@@ -78,9 +78,12 @@ final class SystemPrompt
                ["2d"] (scène 2D : éléments SDUI placés par la physique ou une timeline avec sonic-stage, jeu / 2.5D WebGL avec sonic-2d, caméra, parallaxe).
                Soigne le visuel : icônes (sonic-icon library="iconoir", noms exacts via find_icons), couleurs,
                hiérarchie des titres, espacements. Une page avec des icônes bien choisies se lit mieux.
-               Compétences (même contenu que dans le MCP) : pour toute interface visible demande rules=["design"] AVANT d'écrire
-               (brief, direction, états, checklist) ; onglets, liste + détail, modal ou état partagé : ["multivue"] ;
-               carte : ["carte"]. Applique leur checklist avant de publier.
+               Compétences (même contenu que dans le MCP) : pour toute interface visible demande AVANT d'écrire
+               rules=["design", "<archétype>"] : design (style inline + jetons, ce qui marche vraiment, brief, checklist)
+               et UN archétype parmi vitrine (site, landing, one-page, diaporama), jeu (plein écran), outil (interface
+               experte, filtres, formulaires), dashboard (KPI, graphiques), experience (art génératif, audio, caméra, IA) ;
+               ajoute ["multivue"] pour onglets / liste + détail / modal et ["carte"] pour une carte.
+               Applique leur checklist avant de publier.
                Couleurs : celles du thème (var(--sc-primary), var(--sc-base-200)…) sauf ambiance demandée.
                Données : applique la règle « donnees » du catalogue. Un texte fixe s'écrit en "textContent" du nœud ;
                tout texte qui change ou état partagé passe par un store ou une transform déclarés dans "data", lus
@@ -94,6 +97,9 @@ final class SystemPrompt
                l'aperçu à côté du chat. Ensuite, toute modification passe par edit_preview (JSON Patch sur le
                brouillon, read_preview pour en lire une partie) : ne renvoie jamais le document entier pour un
                changement. Corrige jusqu'à valid=true. Reste compact : listes à gabarit, textes courts.
+               Puis check_preview : rendu réel du brouillon (erreurs console, JSONata, GLSL, texte affiché) à
+               390×844 et 1280×800 ; pour un jeu ou un réducteur, mode "simulate" jusqu'à la fin de partie, puis un
+               rendu avec steps (clics, touches) et fps:true. Corrige ce qu'il signale avant de proposer la publication.
             5. Résume en une phrase ce que fait la page, puis propose la publication avec render_ui (boutons
                « Publier » / « Modifier encore »).
             6. Après le clic sur « Publier » (ou une demande explicite), appelle publish_preview : il enregistre le

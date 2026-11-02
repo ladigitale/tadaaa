@@ -655,6 +655,12 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringNotContainsString('---', substr($payload['skills']['design'], 0, 4));
         self::assertStringContainsString('visA', $payload['skills']['multivue']);
 
+        // Fondations + un archétype, dans l'ordre demandé.
+        $payload = $validator->mcpCatalogPayload(true, ['__none__'], ['design', 'jeu'], false);
+        self::assertSame(['design', 'jeu'], array_keys($payload['skills']));
+        self::assertStringContainsString('budgetMs', $payload['skills']['jeu']);
+        self::assertStringContainsString('--sc-input-bg', $payload['skills']['design']);
+
         // Le sommaire du prompt de l'atelier les annonce, avec leur description.
         $index = $validator->catalogIndex();
         foreach (ArtifactDocumentValidator::SKILLS as $name) {
@@ -1196,6 +1202,16 @@ final class ArtifactDocumentValidatorTest extends TestCase
             self::assertFalse($result['valid'], $attr);
             self::assertStringContainsString('interdite', json_encode($result['errors'], JSON_UNESCAPED_UNICODE), $attr);
         }
+    }
+
+    public function testOnceIsNotAnEventHandler(): void
+    {
+        $ok = $this->docWithNodes([['tagName' => 'sonic-animate', 'attributes' => ['recipe' => 'reveal', 'once' => 'false'], 'nodes' => [['tagName' => 'p', 'textContent' => 'x']]]]);
+        $result = $this->validator->validate($ok);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $bad = $this->docWithNodes([['tagName' => 'div', 'attributes' => ['onclick' => 'x()']]]);
+        self::assertFalse($this->validator->validate($bad)['valid']);
     }
 
     public function testRejectsBindingFormatsThatEvaluateCode(): void

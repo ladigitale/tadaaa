@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Agent;
 
 use App\Agent\Tool\McpToolAdapter;
+use App\Agent\Tool\CheckPreviewTool;
 use App\Agent\Tool\EditPreviewTool;
 use App\Agent\Tool\FetchPublicApiTool;
 use App\Agent\Tool\PreviewArtifactTool;
@@ -63,6 +64,7 @@ final class ToolboxFactory
         private readonly StartFromKitTool $startFromKit,
         private readonly SearchPublicApisTool $searchPublicApis,
         private readonly FetchPublicApiTool $fetchPublicApi,
+        private readonly CheckPreviewTool $checkPreview,
     ) {
     }
 
@@ -80,6 +82,8 @@ final class ToolboxFactory
             $tools[] = $this->previewArtifact;
             $tools[] = $this->editPreview;
             $tools[] = $this->readPreview;
+            // Rendu réel / simulation du brouillon (render_artifact, simulate_store sans renvoyer le document).
+            $tools[] = $this->checkPreview;
             $tools[] = $this->publishPreview;
         } else {
             $tools = array_map(fn (string $class) => new McpToolAdapter($class, $this->todoProcessor), self::MCP_TOOLS);

@@ -19,6 +19,8 @@ final class ArtifactRenderer
     public const MAX_OUTPUT = 262144;
     public const MAX_REQUEST = 2097152;
     private const MAX_SHOT_BYTES = 1500000;
+    /** Captures intermédiaires renvoyées au plus (en plus de la finale). */
+    private const MAX_SHOTS = 3;
 
     public function __construct(
         #[Autowire('%kernel.project_dir%/tools/render-artifact')]
@@ -51,7 +53,9 @@ final class ArtifactRenderer
     /**
      * @param array<string, mixed> $request {document, view?, viewport?, steps?, settleMs?, fps?}
      *
-     * @return array{result: array<string, mixed>, png: ?string} png = capture finale en base64
+     * @return array{result: array<string, mixed>, png: ?string, shots?: list<string>} png = capture finale en
+     *                                                                             base64 ; shots = captures intermédiaires
+     *                                                                             (`{"shot": "nom"}`), dans l'ordre
      */
     public function render(array $request): array
     {
@@ -105,11 +109,28 @@ final class ArtifactRenderer
             if (is_file($final) && filesize($final) <= self::MAX_SHOT_BYTES) {
                 $png = base64_encode((string) file_get_contents($final));
             }
+            // Captures intermédiaires demandées par des étapes {"shot": "nom"} : renvoyées aussi (avant la
+            // finale), dans la limite de MAX_SHOTS ; les noms restent dans le rapport, pas les chemins.
+            $shots = [];
+            $names = [];
+            foreach (\is_array($decoded['screenshots'] ?? null) ? $decoded['screenshots'] : [] as $file) {
+                if (!\is_string($file) || basename($file) === 'final.png' || \count($shots) >= self::MAX_SHOTS) {
+                    continue;
+                }
+                $local = $dir.'/'.basename($file);
+                if (is_file($local) && filesize($local) <= self::MAX_SHOT_BYTES) {
+                    $shots[] = base64_encode((string) file_get_contents($local));
+                    $names[] = basename($file, '.png');
+                }
+            }
             // Les chemins de captures sont locaux au serveur : on ne les expose pas.
             $decoded['screenshots'] = \count($decoded['screenshots'] ?? []);
             $decoded['screenshotIncluded'] = $png !== null;
+            if ($names !== []) {
+                $decoded['shotsIncluded'] = [...$names, ...($png !== null ? ['final'] : [])];
+            }
 
-            return ['result' => $decoded, 'png' => $png];
+            return ['result' => $decoded, 'png' => $png, 'shots' => $shots];
         } finally {
             self::removeTree($dir);
         }

@@ -9,6 +9,7 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Entity\AuditLog;
 use App\Entity\User;
 use App\Mcp\RawToolArguments;
+use App\Service\JsonShape;
 use App\Mcp\Tool\BuildArtifactFromKitTool;
 use App\Mcp\Tool\CloseArtifactIntakeTool;
 use App\Mcp\Tool\FindIconsTool;
@@ -97,8 +98,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 'library' => $data->library,
                 'names' => $this->icons->search($data->query, $data->library !== '' ? $data->library : 'iconoir', 40),
             ],
-            $data instanceof SimulateStoreTool => $this->simulate($user, $data),
-            $data instanceof RenderArtifactTool => $this->render($user, $data, $png),
+            $data instanceof SimulateStoreTool => $this->simulate($user, $data, $context),
+            $data instanceof RenderArtifactTool => $this->render($user, $data, $png, $context),
             $data instanceof ValidateArtifactTool => $this->validateWithLint($data->document ?? []),
             $data instanceof PublishArtifactTool => $this->publish($user, $data, $context),
             $data instanceof UpdateArtifactTool => $this->update($user, $data, $context),
@@ -129,9 +130,13 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             ? $payload
             : (string) json_encode($payload, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_INVALID_UTF8_SUBSTITUTE);
         $content = [new TextContent($text)];
-        if (\is_string($png) && class_exists(ImageContent::class)) {
+        // Captures : intermédiaires ({"shot": "nom"}) puis finale.
+        $images = \is_array($png) ? $png : (\is_string($png) ? [$png] : []);
+        if ($images !== [] && class_exists(ImageContent::class)) {
             try {
-                $content[] = new ImageContent($png, 'image/png');
+                foreach ($images as $image) {
+                    $content[] = new ImageContent($image, 'image/png');
+                }
             } catch (\Throwable) {
                 // Version du SDK MCP sans ce constructeur : le rapport texte suffit.
             }
@@ -343,10 +348,16 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         ];
     }
 
-    /** @return array<string, mixed> */
-    private function render(User $user, RenderArtifactTool $tool, ?string &$png): array
+    /**
+     * @param string|list<string>|null $png     captures en base64 (intermédiaires puis finale)
+     * @param array<string, mixed>     $context
+     *
+     * @return array<string, mixed>
+     */
+    private function render(User $user, RenderArtifactTool $tool, string|array|null &$png, array $context = []): array
     {
         $document = $tool->document;
+        $emptyObjects = $this->draftEmptyObjects($document, $context, 'render_artifact');
         if (!\is_array($document) || $document === []) {
             $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
             if ($idOrSlug === null) {
@@ -355,7 +366,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $document = $this->artifacts->getForUser($user, $idOrSlug)['document'];
         }
         $validation = $this->validator->validate($document);
-        $document = ArtifactFiles::expand(json_decode((string) json_encode($document), false));
+        $document = ArtifactFiles::expand(json_decode((string) json_encode(JsonShape::restore($document, $emptyObjects)), false));
         if (!$validation['valid']) {
             return ['ok' => false, 'errors' => array_map(static fn (array $e): string => $e['path'].' : '.$e['message'], $validation['errors'])];
         }
@@ -363,19 +374,25 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             'document' => $document,
             'view' => $tool->view,
             'viewport' => $tool->viewport,
-            'steps' => $tool->steps,
+            'steps' => self::decodeItems($tool->steps),
             'settleMs' => $tool->settleMs,
             'fps' => $tool->fps,
+            'fullPage' => $tool->fullPage,
         ], static fn (mixed $v): bool => $v !== null));
-        $png = $rendered['png'];
+        $png = [...($rendered['shots'] ?? []), ...(\is_string($rendered['png']) ? [$rendered['png']] : [])];
 
         return $rendered['result'];
     }
 
-    /** @return array<string, mixed> */
-    private function simulate(User $user, SimulateStoreTool $tool): array
+    /**
+     * @param array<string, mixed> $context
+     *
+     * @return array<string, mixed>
+     */
+    private function simulate(User $user, SimulateStoreTool $tool, array $context = []): array
     {
         $document = $tool->document;
+        $emptyObjects = $this->draftEmptyObjects($document, $context, 'simulate_store');
         if (!\is_array($document) || $document === []) {
             $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
             if ($idOrSlug === null) {
@@ -383,23 +400,76 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             }
             $document = $this->artifacts->getForUser($user, $idOrSlug)['document'];
         }
-        $document = ArtifactFiles::expand(json_decode((string) json_encode($document), false));
+        $document = ArtifactFiles::expand(json_decode((string) json_encode(JsonShape::restore($document, $emptyObjects)), false));
         if (!\is_string($tool->store) || $tool->store === '') {
             throw new BadRequestHttpException('store requis.');
         }
-        if (!\is_array($tool->actions) || $tool->actions === []) {
+        $actions = self::decodeItems($tool->actions);
+        if (!\is_array($actions) || $actions === []) {
             throw new BadRequestHttpException('actions requis (liste non vide).');
         }
 
         return $this->simulator->simulate(array_filter([
             'document' => $document,
             'store' => $tool->store,
-            'actions' => $tool->actions,
+            'actions' => $actions,
             'until' => $tool->until,
             'maxSteps' => $tool->maxSteps,
             'snapshots' => $tool->snapshots,
             'tickMs' => $tool->tickMs,
         ], static fn (mixed $v): bool => $v !== null));
+    }
+
+    /**
+     * Objets vides (`{}`) du brouillon passé en argument, à rétablir avant le rendu : le SDK MCP
+     * les décode en `[]`, ce qui cassait les `$merge` des réducteurs (`"play": {}` → `[]`).
+     * Un document enregistré revient déjà rétabli par le service.
+     *
+     * @param array<string, mixed>|null $document
+     * @param array<string, mixed>      $context
+     *
+     * @return list<string>
+     */
+    private function draftEmptyObjects(?array $document, array $context, string $toolName): array
+    {
+        if (!\is_array($document) || $document === []) {
+            return [];
+        }
+
+        return $this->rawArguments->emptyObjects($context, $toolName, 'document');
+    }
+
+    /**
+     * Étapes / actions : objets attendus ; un élément envoyé comme chaîne JSON
+     * (`"{\"press\":\"Enter\"}"`) est décodé au lieu d'être ignoré en silence.
+     *
+     * @param list<mixed>|null $items
+     *
+     * @return list<mixed>|null
+     */
+    private static function decodeItems(?array $items): ?array
+    {
+        if ($items === null) {
+            return null;
+        }
+        $out = [];
+        foreach ($items as $item) {
+            if (\is_string($item)) {
+                $trimmed = trim($item);
+                if ($trimmed !== '' && $trimmed[0] === '{') {
+                    try {
+                        $item = json_decode($trimmed, true, 64, \JSON_THROW_ON_ERROR);
+                    } catch (\JsonException) {
+                        throw new BadRequestHttpException(sprintf('Élément JSON invalide : %s', mb_substr($trimmed, 0, 80)));
+                    }
+                } else {
+                    throw new BadRequestHttpException(sprintf('Élément attendu sous forme d\'objet, reçu la chaîne « %s ».', mb_substr($trimmed, 0, 80)));
+                }
+            }
+            $out[] = $item;
+        }
+
+        return $out;
     }
 
     private function get(User $user, GetArtifactTool $tool): array
