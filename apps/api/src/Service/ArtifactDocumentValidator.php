@@ -35,6 +35,8 @@ final class ArtifactDocumentValidator
     /** Accès sensibles déclarés par le document (`capabilities`) et composants qui les exigent. */
     public const CAPABILITIES = ['camera', 'microphone', 'midi', 'screen'];
     private const CAPABILITY_TAGS = ['sonic-camera' => 'camera', 'sonic-mic' => 'microphone', 'sonic-midi' => 'midi', 'sonic-screen' => 'screen'];
+    /** Origines de modèles ML (`capabilities: [{"ml": ["https://hote/chemin/"]}]`, addon `vision`). */
+    public const MAX_ML_ORIGINS = 8;
 
     /** @var array<string, int> balises rencontrées pendant la validation courante */
     private array $seenTags = [];
@@ -102,7 +104,8 @@ final class ArtifactDocumentValidator
         .'ÉCRAN : sonic-screen id="screen" (hidden-preview, audio pour le son du partage, surface monitor|window|browser) démarré UNIQUEMENT par sonic-media-start for="screen" (clic direct exigé par le navigateur) ; état screenState {status, error ("partage arrêté" si l’utilisateur l’arrête), surface, width, height, audio} ; shader channel0="#screen" ; export video-source="#screen". '
         .'EXPORT : sonic-media-recorder id="export" video-source="#viz" (shader, caméra ou vidéo) audio-source="master|#id|none" control="dp.export" ({recording: true|false}) max-s="30" ; état exportState {status: waiting-source|ready|recording|error|unsupported, elapsedS, last: {url, mime, durS, size, width, height}}. '
         .'TÉLÉCHARGER : sonic-media-download source="exportState.last" filename="ma-creation" (contenu en slot, caché tant qu’il n’y a rien ; blob: uniquement : prises, photos, exports). '
-        .'Compteurs (snapshot, seek.n) : la première valeur sert de référence, chaque hausse déclenche.';
+        .'Compteurs (snapshot, seek.n) : la première valeur sert de référence, chaque hausse déclenche. '
+        .'SUIVI DES MAINS (sans calibration, modèle local) : sonic-hand-tracker id="hand" for="cam" (source : sonic-camera ou sonic-video ; max-hands 1|2, smooth 0..1 lissage, hold-ms, mirror auto|true|false, gestures="false" pour les points seuls, thread auto|worker|main) ; map="cents=right.x*3600; gain=left.present ? 1-left.y : 0" = clés dérivées sans latence (nombres, chemins, + - * / %, comparaisons, && || !, ?:, min max abs clamp mix pow sqrt floor round log2 sign) ; sortie dans le DP "hand" : left / right en repère écran (miroir appliqué) {present 0|1, x, y, z, tipX, tipY, pinch 0..1, openness 0..1, roll 0..1, gesture Closed_Fist|Open_Palm|Pointing_Up|Thumb_Up|Thumb_Down|Victory|ILoveYou, gestureScore}, count, hands.N.landmarks.I.x|y|z (21 points) et les clés de map ; statut handState {phase: idle|awaiting-consent|declined|downloading|loading|ready|error|unsupported, error{code, message}, backend, thread, download{loaded, total}, fps, latencyMs, consent{origin, url}}. Le modèle par défaut est un alias de confiance (rien à déclarer) ; un modèle d’un autre hôte se déclare dans capabilities : {"ml": ["https://hote/chemin/"]} (1 à 8) et attend le consentement (consent-provider="dp.v" valant accepted|declined, bouton dans une sonic-modal quand phase vaut awaiting-consent). Un seul sonic-hand-tracker par document ; inférence locale, aucune image n’est envoyée ; ne rien superposer à la vue caméra.';
 
     /** Mémo des addons `physics` (planck.js) et `controller` (manettes). */
     private const PHYSICS_RULE = 'MONDE 2D (planck.js / Box2D) : <sonic-physics id="world" width="800" height="450" gravity="0 9.8" (m/s², "0 0" vue de dessus) bounds="walls|box (sans sol)|floor|none" store="jeu" bodies="jeu.bricks" input="jeu.input" control="jeu.ctl" drag> + enfants sonic-body / sonic-joint. Unités : px (y vers le bas), degrés, px/s. '
@@ -1329,7 +1332,12 @@ final class ArtifactDocumentValidator
             if (!\is_array($caps) || !array_is_list($caps)) {
                 $errors[] = ['path' => '/capabilities', 'message' => 'capabilities : liste attendue (ex. ["camera"]).'];
             } else {
+                $mlSeen = false;
                 foreach ($caps as $i => $cap) {
+                    if (\is_array($cap) && !array_is_list($cap)) {
+                        $this->validateMlCapability($cap, '/capabilities/'.$i, $mlSeen, $errors);
+                        continue;
+                    }
                     if (!\is_string($cap) || !\in_array($cap, self::CAPABILITIES, true)) {
                         $errors[] = ['path' => '/capabilities/'.$i, 'message' => sprintf('Capacité inconnue (valeurs : %s).', implode(', ', self::CAPABILITIES))];
                         continue;
@@ -1343,7 +1351,7 @@ final class ArtifactDocumentValidator
                 $errors[] = ['path' => '/capabilities', 'message' => sprintf('%s utilisé : ajouter "%s" à capabilities.', $tag, $cap)];
             }
         }
-        $limits = ['sonic-camera' => 2, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2, 'sonic-midi' => 2, 'sonic-screen' => 1, 'sonic-physics' => 4, 'sonic-2d' => 4, 'sonic-procgen' => 2, 'sonic-controller' => 2,
+        $limits = ['sonic-camera' => 2, 'sonic-hand-tracker' => 1, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2, 'sonic-midi' => 2, 'sonic-screen' => 1, 'sonic-physics' => 4, 'sonic-2d' => 4, 'sonic-procgen' => 2, 'sonic-controller' => 2,
             // Un seul salon (connexion Mercure) et un seul verrou par page (même liste que le garde du viewer).
             'sonic-p2p' => 1, 'sonic-pointer-lock' => 1, 'sonic-wake-lock' => 1, 'sonic-orientation' => 1];
         foreach ($limits as $tag => $max) {
@@ -1351,6 +1359,52 @@ final class ArtifactDocumentValidator
                 $errors[] = ['path' => '/views', 'message' => sprintf('Trop de %s (max %d).', $tag, $max)];
             }
         }
+    }
+
+    /**
+     * Entrée `{"ml": [origines https]}` de `capabilities` : origines d'où le suivi ML (sonic-hand-tracker…)
+     * peut télécharger un modèle, avec consentement de l'utilisateur. Une seule entrée par document.
+     *
+     * @param array<mixed> $cap
+     * @param list<array{path: string, message: string}> $errors
+     */
+    private function validateMlCapability(array $cap, string $path, bool &$seen, array &$errors): void
+    {
+        if ($seen) {
+            $errors[] = ['path' => $path, 'message' => 'capabilities : une seule entrée {"ml": [...]} attendue.'];
+
+            return;
+        }
+        $seen = true;
+        $list = $cap['ml'] ?? null;
+        if (array_keys($cap) !== ['ml'] || !\is_array($list) || !array_is_list($list) || [] === $list || \count($list) > self::MAX_ML_ORIGINS) {
+            $errors[] = ['path' => $path, 'message' => sprintf('capabilities : {"ml": [origines https]} attendu (1 à %d origines).', self::MAX_ML_ORIGINS)];
+
+            return;
+        }
+        foreach ($list as $j => $origin) {
+            if (!\is_string($origin) || !self::isValidMlOrigin($origin)) {
+                $errors[] = ['path' => $path.'/ml/'.$j, 'message' => 'Origine de modèle : URL https avec hôte complet, sans identifiants, requête ni fragment (ex. https://hote.example/modeles/).'];
+            }
+        }
+    }
+
+    /** URL https d'un vrai nom d'hôte (ni localhost, ni IP), sans identifiants, requête ni fragment. */
+    public static function isValidMlOrigin(string $value): bool
+    {
+        if (\strlen($value) > 200) {
+            return false;
+        }
+        $parts = parse_url($value);
+        if (!\is_array($parts) || 'https' !== ($parts['scheme'] ?? null) || !isset($parts['host'])) {
+            return false;
+        }
+        if (isset($parts['user']) || isset($parts['pass']) || isset($parts['query']) || isset($parts['fragment'])) {
+            return false;
+        }
+        $host = $parts['host'];
+
+        return str_contains($host, '.') && !str_starts_with($host, '[') && false === filter_var($host, \FILTER_VALIDATE_IP) && 1 !== preg_match('/^[\d.]+$/', $host);
     }
 
     /**

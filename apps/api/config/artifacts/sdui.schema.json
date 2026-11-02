@@ -38,8 +38,25 @@
     "capabilities": {
       "type": "array",
       "uniqueItems": true,
-      "items": { "enum": ["camera", "microphone", "midi", "screen"] },
-      "description": "Accès sensibles que le document peut demander (sonic-camera → camera, sonic-mic → microphone, sonic-midi → midi, sonic-screen → screen). Le viewer les annonce ; rien n'est activé sans clic."
+      "items": {
+        "oneOf": [
+          { "enum": ["camera", "microphone", "midi", "screen"] },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["ml"],
+            "properties": {
+              "ml": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 8,
+                "items": { "type": "string", "pattern": "^https://[^/?#@:\\s]+\\.[^/?#@:\\s]+(/[^?#\\s]*)?$", "maxLength": 200 }
+              }
+            }
+          }
+        ]
+      },
+      "description": "Accès sensibles que le document peut demander (sonic-camera → camera, sonic-mic → microphone, sonic-midi → midi, sonic-screen → screen). Le viewer les annonce ; rien n'est activé sans clic. Une entrée {\"ml\": [origines https]} déclare les hôtes d'où un modèle de suivi (sonic-hand-tracker) peut être téléchargé, avec consentement."
     },
     "data": {
       "type": "object",

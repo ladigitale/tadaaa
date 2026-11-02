@@ -25,6 +25,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
                 ['name' => 'sonic-badge'],
                 ['name' => 'sonic-caption'],
                 ['name' => 'sonic-shader'],
+                ['name' => 'sonic-hand-tracker'],
                 ['name' => 'sonic-3d'],
                 ['name' => 'sonic-2d'],
                 ['name' => 'sonic-sprite'],
@@ -509,6 +510,52 @@ final class ArtifactDocumentValidatorTest extends TestCase
         $result = $this->validator->validate($doc);
         self::assertFalse($result['valid']);
         self::assertStringContainsString('Trop de sonic-mic', $result['errors'][0]['message']);
+    }
+
+    public function testAcceptsHandTrackerWithMlCapability(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['capabilities'] = ['camera', ['ml' => ['https://models.example.org/hands/', 'https://huggingface.co/']]];
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'sonic-camera', 'attributes' => ['id' => 'cam']],
+            ['tagName' => 'sonic-hand-tracker', 'attributes' => ['id' => 'hand', 'for' => 'cam', 'map' => 'cents=right.x*3600']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testRejectsInvalidMlCapabilityAndSecondTracker(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['capabilities'] = ['camera'];
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'sonic-camera', 'attributes' => ['id' => 'cam']],
+            ['tagName' => 'sonic-hand-tracker', 'attributes' => ['for' => 'cam']],
+            ['tagName' => 'sonic-hand-tracker', 'attributes' => ['for' => 'cam']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('Trop de sonic-hand-tracker', $result['errors'][0]['message']);
+
+        $bad = [
+            [['ml' => ['http://models.example.org/']]],
+            [['ml' => ['https://localhost/']]],
+            [['ml' => ['https://127.0.0.1/m']]],
+            [['ml' => ['https://u:p@models.example.org/']]],
+            [['ml' => ['https://models.example.org/?a=1']]],
+            [['ml' => ['https://models.example.org/#f']]],
+            [['ml' => []]],
+            [['ml' => array_fill(0, 9, 'https://models.example.org/')]],
+            [['ml' => 'https://models.example.org/']],
+            [['ml' => ['https://models.example.org/'], 'x' => 1]],
+            [['ml' => ['https://a.example.org/']], ['ml' => ['https://b.example.org/']]],
+        ];
+        foreach ($bad as $caps) {
+            $doc = $this->minimalDoc();
+            $doc['capabilities'] = $caps;
+            $doc['views'][0]['root']['nodes'] = [['tagName' => 'div']];
+            self::assertFalse($this->validator->validate($doc)['valid'], json_encode($caps));
+        }
     }
 
     public function testAcceptsRecordingAndExport(): void
