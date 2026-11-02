@@ -8,12 +8,12 @@ Prérequis : la compétence `design` (demande `rules=["design","vitrine"]` ensem
 - `page: {"padding":"none","background":"<fond>"}` puis un conteneur racine qui porte la palette (design §1). Une seule vue (pas d'onglets du viewer) ; d'autres vues seulement pour des pages vraiment séparées (mentions, programme détaillé), cachées (`hidden:true`) et atteintes par `sonic-button href="#programme"`.
 - Section = `section` pleine largeur, `padding:clamp(48px,8vw,112px) clamp(20px,6vw,72px)`, contenu interne `max-width:72rem;margin:0 auto`. Alterner deux fonds proches (`--sc-base` / `--sc-base-100`) ou une section sombre pour rythmer.
 - Ordre type : héros → preuve (chiffres, logos, citation) → offre/contenu en 2–4 blocs → détail (programme, tarifs, FAQ) → appel final → pied de page. Supprime ce qui n'a pas de contenu réel.
-- Navigation : pas d'ancres internes (elles ne défilent pas). En-tête `position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);background:color-mix(in oklab,var(--sc-base) 80%,transparent)` avec le nom et UNE action (bouton vers l'action clé ou une vue cachée). Si le contenu mérite des pages, utilise des vues.
+- Navigation : ancres internes `sonic-button href="#tarifs"` vers l'`id` d'une section (le viewer fait défiler en douceur ; un id de vue l'emporte). En-tête `position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);background:color-mix(in oklab,var(--sc-base) 80%,transparent)` avec le nom et UNE action (bouton vers l'action clé ou une vue cachée). Si le contenu mérite des pages, utilise des vues.
 - Kit `onepage` (start_from_kit / build_artifact_from_kit) = base honnête ; réécris ensuite le héros et la typographie, sinon le rendu reste générique.
 
 ## 2. Héros (l'objet principal de la page)
 Choisis UN modèle :
-- **Typographique** : titre énorme `font-size:clamp(44px,9vw,128px);line-height:.92;letter-spacing:-.035em;max-width:12ch;text-wrap:balance`, sur-titre en petites capitales, une phrase, 1 bouton primaire + 1 secondaire `variant="outline"` (un ghost n'a pas d'affordance sur fond sombre) ; le secondaire mène à une vue cachée (`href="#programme"`), pas à une ancre. Aligné à gauche, ancré en bas (`min-height:min(92svh,820px);display:grid;align-items:end`).
+- **Typographique** : titre énorme `font-size:clamp(44px,9vw,128px);line-height:.92;letter-spacing:-.035em;max-width:12ch;text-wrap:balance`, sur-titre en petites capitales, une phrase, 1 bouton primaire + 1 secondaire `variant="outline"` (un ghost n'a pas d'affordance sur fond sombre) ; le secondaire mène à une section (`href="#programme"`) ou à une vue cachée. Aligné à gauche, ancré en bas (`min-height:min(92svh,820px);display:grid;align-items:end`).
 - **Fond vivant** : `sonic-shader` en `position:absolute;inset:0;z-index:-1;width:100%;height:100%` (le parent : `position:relative;isolation:isolate;overflow:hidden`) + voile `linear-gradient(to top,<fond> 5%,transparent 60%)` pour la lisibilité. Shader lent (`iTime*.1–.2`), 2–3 couleurs de la palette, contraste bas derrière le texte.
 - **Scène illustrée** : `sonic-procgen` (scènes : port, rue vivante, plaine des montgolfières, forêt de nuit, ville néon, fond marin, désert, espace profond…) avec `style="display:block;aspect-ratio:1100/680;width:100%"` et `style` du DP (`night`, `palette.hue`, `grain`, `vignette`) accordé à la palette ; texte à côté (grille 2 colonnes `repeat(auto-fit,minmax(20rem,1fr))`) ou dessous, jamais dessus sans voile.
 - **Objet 3D** : `sonic-3d` avec GLB en asset (`@asset:objet.glb`), `auto-rotate`, `fit`, petites `min/max-polar` ; pour produit, maquette, pièce.
@@ -32,10 +32,10 @@ Choisis UN modèle :
 - **Appel final** : grande phrase + un bouton ; fond accent (`background:var(--sc-primary);color:var(--sc-primary-content)`).
 
 ## 4. Mouvement au défilement
-- `sonic-animate recipe="reveal"` (ou `slide-up`) `trigger="viewport"` `stagger="0.08"` sur les groupes d'enfants d'une section (joue une seule fois par défaut : n'écris pas `once`, refusé par les validateurs antérieurs au correctif). Une section sur deux au plus, jamais le texte courant.
+- `sonic-animate recipe="reveal"` (ou `slide-up`) `trigger="viewport"` `stagger="0.08"` sur les groupes d'enfants d'une section (joue une seule fois par défaut ; `once="false"` pour rejouer à chaque entrée dans l'écran). Une section sur deux au plus, jamais le texte courant.
 - `typewriter` réservé à un seul titre. `count-up` pour les chiffres.
 - Un « moment signature » unique : timeline (`sonic-clock` + `sonic-timeline`) au chargement du héros, ou shader qui réagit à la souris (`mouse`).
-- Pas de lien scroll → animation disponible (pas de DP de défilement) : pour un récit « scrollytelling », passe en diaporama (§5) ou en scrub par curseur (rules.animation).
+- Pas de lien défilement → animation disponible (pas de DP de défilement) : pour un récit « scrollytelling », passe en diaporama (§5) ou en scrub par curseur (rules.animation).
 
 ## 5. Récit, diaporama, présentation
 - Une vue par chapitre (`views[]`, `hidden:true` sauf la première si tu ne veux pas d'onglets) ; boutons « Suivant / Précédent » = `sonic-button href="#chapitre-2"`.

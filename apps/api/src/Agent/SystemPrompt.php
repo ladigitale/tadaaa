@@ -97,6 +97,9 @@ final class SystemPrompt
                l'aperçu à côté du chat. Ensuite, toute modification passe par edit_preview (JSON Patch sur le
                brouillon, read_preview pour en lire une partie) : ne renvoie jamais le document entier pour un
                changement. Corrige jusqu'à valid=true. Reste compact : listes à gabarit, textes courts.
+               Puis check_preview : rendu réel du brouillon (erreurs console, JSONata, GLSL, texte affiché) à
+               390×844 et 1280×800 ; pour un jeu ou un réducteur, mode "simulate" jusqu'à la fin de partie, puis un
+               rendu avec steps (clics, touches) et fps:true. Corrige ce qu'il signale avant de proposer la publication.
             5. Résume en une phrase ce que fait la page, puis propose la publication avec render_ui (boutons
                « Publier » / « Modifier encore »).
             6. Après le clic sur « Publier » (ou une demande explicite), appelle publish_preview : il enregistre le

@@ -326,6 +326,22 @@ final class AgentRunnerTest extends TestCase
         self::assertSame('private', $schema['properties']['visibility']['default']);
     }
 
+    public function testListOfObjectsParamsGetAnArrayOfObjectsSchema(): void
+    {
+        $tool = new McpToolAdapter(\App\Mcp\Tool\RenderArtifactTool::class, new FakeProcessor());
+        $schema = json_decode(json_encode($tool->inputSchema()), true);
+        self::assertSame(['type' => 'array', 'items' => ['type' => 'object']], $schema['properties']['steps']);
+        self::assertSame(['type' => 'boolean'], $schema['properties']['fullPage']);
+    }
+
+    public function testCheckPreviewWithoutDraftIsAnError(): void
+    {
+        $tool = new \App\Agent\Tool\CheckPreviewTool(new FakeProcessor());
+        self::assertSame('check_preview', $tool->name());
+        $result = $tool->execute([], new \App\Agent\Tool\ToolContext(new ArrayEventSink(), 'r'));
+        self::assertTrue($result->isError);
+    }
+
     private function run(ScriptedLlm $llm, RunInput $input): ArrayEventSink
     {
         $toolbox = new Toolbox([

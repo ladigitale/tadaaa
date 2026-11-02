@@ -51,11 +51,11 @@ Une demande mixte prend l'archétype de son objet principal (un quiz « jeu tél
 Vide (gabarit `no-item` : icône + phrase + action), chargement (`sonic-loader mode="inline"`), erreur (`sonic-alert status="error"` + marche à suivre), sélection, désactivé, zéro résultat, première visite (invite son / caméra / plein écran). Cibles tactiles ≥ 44 px. Chaque champ a un `label`. Ordre du document = ordre de lecture. `aria-label` (via `::aria-label` en liste) sur les boutons-icônes. Respecter `reducedMotion` (les recettes d'animation le font, tes shaders doivent ralentir via un param).
 
 ## 6. Pièges techniques qui cassent le rendu sans erreur
-- Store à réducteur non trivial : `budgetMs` (data.stores) ou `budget-ms` (sonic-store) ≥ 30, 50 pour un jeu. Le défaut (8 ms) rejette en silence les actions lentes, souvent la toute première. Pendant la mise au point, affiche `sonic-value dataProvider="<store>" key="lastError"`.
+- Store à réducteur non trivial : `budgetMs` (data.stores) ou `budget-ms` (sonic-store) ≥ 30, 50 pour un jeu. Au-delà du budget (défaut 8 ms, 60 ms pour les 5 premières actions), l'action est ignorée ; l'avertissement « [sonic-store …] budget … dépassé » apparaît dans les `warnings` du rendu. Pendant la mise au point, affiche `sonic-value dataProvider="<store>" key="lastError"`.
 - Pas d'objet vide `{}` dans un `initial` : il revient en tableau `[]`. Mets au moins une clé (`{"play":{"select":0}}`).
 - `sonic-list` veut un DataProvider qui EST le tableau (`sonic-jsonata` → outputProvider), jamais `ds.items`. Elle ignore un `display:grid/flex` posé sur elle (items dans un conteneur interne) : mets la mise en page dans le gabarit, ou des éléments fixes dans une `div` en grille.
-- Les props de composant se lient dans un gabarit (`"::type"`, `"::variant"`, `"::value"`, `"::payload"`), sauf `format` de `sonic-value`, à écrire en littéral.
-- Ancres internes : `href="#section"` ne fait pas défiler (le hash désigne une VUE et le contenu est dans un shadow DOM) ; un hash inconnu renvoie à `defaultView`.
+- Les props de composant se lient dans un gabarit (`"::type"`, `"::variant"`, `"::value"`, `"::payload"`), et `::format` de `sonic-value` (creative-stack à jour ; sinon écris `format` en littéral).
+- Ancres internes : `href="#id"` désigne d'abord une VUE ; sinon le viewer fait défiler jusqu'à l'élément `attributes.id` de la vue courante (viewer à jour). Donne des id simples (`programme`, `tarifs`) distincts des id de vues.
 - `sonic-if` garde son contenu dans le DOM (masqué) : un test « texte absent » échoue, teste plutôt l'état.
 - Noms de dataProvider / target non vérifiés par la validation : relis-les.
 
@@ -64,6 +64,6 @@ Dégradé violet→bleu, trois cartes identiques à icône ronde, hero centré t
 
 ## 8. Contrôle avant publication
 1. `validate_artifact` (ou `preview_artifact` dans l'atelier) sans erreur.
-2. Si `render_artifact` est disponible : captures à 390×844 ET 1280×800, `settleMs` 1500, puis une capture de page entière avec un viewport très haut (390×3900, 1280×2900) car seule la fenêtre est capturée ; `steps` = tableau d'OBJETS (`{"click":"#id"}`), pas de chaînes ; les chiffres en count-up sous la ligne de flottaison valent encore « 0 » dans `text`. Regarde vraiment (hiérarchie, débordements, contrastes, états). Interactif : `steps` (clics, touches) + `expectText`. Jeu ou réducteur : `simulate_store` jusqu'à la fin de partie, puis `fps:true`.
-3. Sans rendu (atelier) : relis la checklist ligne à ligne et demande à l'utilisateur de vérifier l'aperçu sur téléphone.
+2. Si `render_artifact` est disponible : captures à 390×844 ET 1280×800, `settleMs` 1500, puis `fullPage:true` pour voir toute la page (sinon seule la fenêtre est capturée) ; `steps` = tableau d'OBJETS (`{"click":"#id"}`), une étape inconnue est signalée ; `{"shot":"nom"}` renvoie une capture intermédiaire ; les chiffres en count-up sous la ligne de flottaison valent encore « 0 » dans `text`. Regarde vraiment (hiérarchie, débordements, contrastes, états). Interactif : `steps` (clics, touches) + `expectText`. Jeu ou réducteur : `simulate_store` jusqu'à la fin de partie, puis `fps:true`.
+3. Dans l'atelier : `check_preview` joue le brouillon courant de la même façon (mêmes options, mode `simulate` pour un réducteur) ; il renvoie erreurs, texte affiché et fps mais pas l'image : relis la checklist ligne à ligne et demande à l'utilisateur de regarder l'aperçu sur téléphone.
 Checklist : [ ] brief fait, archétype lu [ ] stratégie de thème tenue (jetons OU palette de zone complète) [ ] aucune classe Tailwind inexistante [ ] objet principal visible sans défiler sur téléphone [ ] une action primaire par zone [ ] tous les états [ ] contraste et cibles tactiles [ ] noms de DP relus, `budgetMs` réglé [ ] aucune donnée inventée.

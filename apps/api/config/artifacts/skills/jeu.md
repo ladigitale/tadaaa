@@ -50,6 +50,7 @@ Le bouton Jouer est aussi le geste qui débloque le son : pas besoin d'invite s�
 - Temps réel : rules=["salons"] (`sonic-p2p`) ; interface obligatoire : liste des salons, créer, code, attente, salon plein ; état partagé ≤ 20 Hz, positions des autres lues dans `netPeers` par un rendu séparé.
 
 ## 7. Vérifier (ne publie pas un jeu non joué)
+Par le MCP : `simulate_store` et `render_artifact` ; dans l'atelier : `check_preview` (mode `simulate`, puis `render`), mêmes options.
 1. `simulate_store` : `[{type:"start"},{type:"tick",repeat:3000}]`, `until:"phase='over'"`, snapshots `["phase","score"]` → la partie se termine, le score monte, `maxMsStep` < 10 ms.
 2. `render_artifact` : `steps` `[{"click":"#jouer"},{"wait":1500},{"press":"ArrowLeft"},{"wait":500}]` puis capture, avec `fps:true` (viser 60, p95 ≤ 20 ms). Donne des `id` aux boutons pour les cliquer.
 3. Vérifie à 390×844 (portrait) et 1280×800 : la scène tient sans défiler, le HUD ne masque rien, les commandes tactiles n'apparaissent que sur écran tactile.

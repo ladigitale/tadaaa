@@ -1204,6 +1204,16 @@ final class ArtifactDocumentValidatorTest extends TestCase
         }
     }
 
+    public function testOnceIsNotAnEventHandler(): void
+    {
+        $ok = $this->docWithNodes([['tagName' => 'sonic-animate', 'attributes' => ['recipe' => 'reveal', 'once' => 'false'], 'nodes' => [['tagName' => 'p', 'textContent' => 'x']]]]);
+        $result = $this->validator->validate($ok);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $bad = $this->docWithNodes([['tagName' => 'div', 'attributes' => ['onclick' => 'x()']]]);
+        self::assertFalse($this->validator->validate($bad)['valid']);
+    }
+
     public function testRejectsBindingFormatsThatEvaluateCode(): void
     {
         foreach (['|$q', ' |alert(1)', 'js|$q', 'x js|1'] as $value) {
