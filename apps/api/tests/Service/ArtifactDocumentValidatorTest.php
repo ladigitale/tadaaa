@@ -26,6 +26,12 @@ final class ArtifactDocumentValidatorTest extends TestCase
                 ['name' => 'sonic-caption'],
                 ['name' => 'sonic-shader'],
                 ['name' => 'sonic-hand-tracker'],
+                ['name' => 'sonic-face-tracker'],
+                ['name' => 'sonic-pose-tracker'],
+                ['name' => 'sonic-object-detector'],
+                ['name' => 'sonic-segmenter'],
+                ['name' => 'sonic-example-classifier'],
+                ['name' => 'sonic-landmarks-overlay'],
                 ['name' => 'sonic-3d'],
                 ['name' => 'sonic-2d'],
                 ['name' => 'sonic-sprite'],
@@ -522,6 +528,35 @@ final class ArtifactDocumentValidatorTest extends TestCase
         ];
         $result = $this->validator->validate($doc);
         self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testAcceptsVisionComponentsAndLimitsEachTracker(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['capabilities'] = ['camera'];
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'sonic-camera', 'attributes' => ['id' => 'cam']],
+            ['tagName' => 'sonic-hand-tracker', 'attributes' => ['id' => 'hand', 'for' => 'cam']],
+            ['tagName' => 'sonic-face-tracker', 'attributes' => ['id' => 'face', 'for' => 'cam']],
+            ['tagName' => 'sonic-pose-tracker', 'attributes' => ['id' => 'body', 'for' => 'cam']],
+            ['tagName' => 'sonic-object-detector', 'attributes' => ['id' => 'obj', 'for' => 'cam']],
+            ['tagName' => 'sonic-segmenter', 'attributes' => ['id' => 'seg', 'for' => 'cam']],
+            ['tagName' => 'sonic-example-classifier', 'attributes' => ['source' => 'hand', 'control' => 'learn']],
+            ['tagName' => 'sonic-landmarks-overlay', 'attributes' => ['source' => 'hand', 'background' => 'cam']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        foreach (['sonic-face-tracker', 'sonic-pose-tracker', 'sonic-object-detector', 'sonic-segmenter'] as $tag) {
+            $doc['views'][0]['root']['nodes'] = [
+                ['tagName' => 'sonic-camera', 'attributes' => ['id' => 'cam']],
+                ['tagName' => $tag, 'attributes' => ['for' => 'cam']],
+                ['tagName' => $tag, 'attributes' => ['for' => 'cam']],
+            ];
+            $result = $this->validator->validate($doc);
+            self::assertFalse($result['valid'], $tag);
+            self::assertStringContainsString('Trop de '.$tag, $result['errors'][0]['message']);
+        }
     }
 
     public function testRejectsInvalidMlCapabilityAndSecondTracker(): void
