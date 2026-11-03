@@ -1338,6 +1338,110 @@
       "description": "Enveloppe ADSR déclenchée par la note (sortie 0..1)"
     },
     {
+      "name": "sonic-example-classifier",
+      "props": {
+        "source": {
+          "type": "string"
+        },
+        "features": {
+          "type": "string"
+        },
+        "hand": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "outputProvider": {
+          "type": "string"
+        },
+        "k": {
+          "type": "number"
+        },
+        "samples": {
+          "type": "number"
+        },
+        "sample-ms": {
+          "type": "number"
+        },
+        "window": {
+          "type": "number"
+        },
+        "min-confidence": {
+          "type": "number"
+        },
+        "max-distance": {
+          "type": "number"
+        },
+        "storage": {
+          "type": "string"
+        }
+      },
+      "addon": "vision",
+      "description": "Apprend à reconnaître des poses de main / de corps ou des expressions de visage à partir d'EXEMPLES enregistrés par l'utilisateur (k plus proches voisins, sans modèle ni réseau), à partir de la sortie d'un tracker (source=\"hand\" ; invariant à la position et à l'échelle) ; pilotage par le DataProvider control {label, record, clear, clearAll} (compteurs : une hausse enregistre `samples` exemples sous `label`, efface `label` ou tout) ; sortie dans output-provider (défaut = id) : present, label (stable, vote des `window` dernières images), raw, confidence, scores.<étiquette>, match.<étiquette> 0|1, counts, total, recording, recordingLabel, samplesLeft ; features auto|hand|pose|face, hand any|left|right, k, sample-ms, min-confidence, max-distance (0 = sans limite), storage = clé de mémoire locale des exemples"
+    },
+    {
+      "name": "sonic-face-tracker",
+      "props": {
+        "for": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "model-sha256": {
+          "type": "string"
+        },
+        "thread": {
+          "type": "string"
+        },
+        "engine": {
+          "type": "string"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "delegate": {
+          "type": "string"
+        },
+        "mirror": {
+          "type": "string"
+        },
+        "smooth": {
+          "type": "number"
+        },
+        "hold-ms": {
+          "type": "number"
+        },
+        "min-score": {
+          "type": "number"
+        },
+        "map": {
+          "type": "string"
+        },
+        "outputProvider": {
+          "type": "string"
+        },
+        "statusProvider": {
+          "type": "string"
+        },
+        "consentProvider": {
+          "type": "string"
+        },
+        "load": {
+          "type": "string"
+        },
+        "max-faces": {
+          "type": "number"
+        },
+        "landmarks": {
+          "type": "string"
+        }
+      },
+      "addon": "vision",
+      "description": "Suit 1 ou 2 visages dans une source d'images (for=\"cam\") ; sortie dans output-provider (défaut = id) : present, count, x, y, z (nez), size, yaw/pitch/roll -1..1, mouthOpen, smile, pucker, browUp, browDown, blinkLeft, blinkRight (côtés écran), gazeX, gazeY, blend.<52 blendshapes MediaPipe> 0..1, faces[].blend ; landmarks=\"true\" ajoute faces[].landmarks (478 points) ; map = clés dérivées sans latence (« cut=300+mouthOpen*5000 ») ; statut dans status-provider (défaut <id>State) : phase idle|awaiting-consent|declined|downloading|loading|ready|error|unsupported, error {code, message}, backend gpu|cpu, thread worker|main, download {loaded, total}, fps, latencyMs, consent {key, origin, url} ; consent-provider accepted|declined ; inférence locale dans un worker (repli fil principal), modèle téléchargé, plafonné et vérifié par model-sha256 ; aucune image n'est envoyée"
+    },
+    {
       "name": "sonic-fetch",
       "props": {
         "loader": {
@@ -2116,6 +2220,52 @@
       "description": "Filtre ladder 24 dB/oct non linéaire (AudioWorklet ; repli : 2 passe-bas natifs) : freq-hz, res 0..1.2 (auto-oscillation vers 1), drive, detune — tous modulables"
     },
     {
+      "name": "sonic-landmarks-overlay",
+      "props": {
+        "source": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "background": {
+          "type": "string"
+        },
+        "mirror": {
+          "type": "string"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "fill": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "color2": {
+          "type": "string"
+        },
+        "line-width": {
+          "type": "number"
+        },
+        "point-radius": {
+          "type": "number"
+        },
+        "points": {
+          "type": "string"
+        },
+        "bones": {
+          "type": "string"
+        }
+      },
+      "addon": "vision",
+      "description": "Dessine sur un canvas la sortie d'un tracker (source=\"hand\" : DataProvider de sortie) : points et squelette des mains, contours du visage (le tracker doit publier landmarks=\"true\"), squelette du corps, boîtes étiquetées d'objets ; kind auto|hands|face|pose|objects ; background=\"cam\" redessine l'image de la caméra (ou d'un sonic-segmenter) dessous ; pensé comme panneau séparé : ne rien superposer à la vue caméra ; color, color2, line-width, point-radius, points, bones, fill, width, height, mirror ; aucun HTML injecté"
+    },
+    {
       "name": "sonic-legend",
       "props": {
         "forceAutoFill": {
@@ -2834,6 +2984,67 @@
       "description": "Bruit blanc / rose / brun"
     },
     {
+      "name": "sonic-object-detector",
+      "props": {
+        "for": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "engine": {
+          "type": "string"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "delegate": {
+          "type": "string"
+        },
+        "mirror": {
+          "type": "string"
+        },
+        "smooth": {
+          "type": "number"
+        },
+        "hold-ms": {
+          "type": "number"
+        },
+        "min-score": {
+          "type": "number"
+        },
+        "map": {
+          "type": "string"
+        },
+        "outputProvider": {
+          "type": "string"
+        },
+        "statusProvider": {
+          "type": "string"
+        },
+        "consentProvider": {
+          "type": "string"
+        },
+        "load": {
+          "type": "string"
+        },
+        "model-sha256": {
+          "type": "string"
+        },
+        "thread": {
+          "type": "string"
+        },
+        "max-results": {
+          "type": "number"
+        },
+        "categories": {
+          "type": "string"
+        }
+      },
+      "addon": "vision",
+      "description": "Détecte des objets (80 classes COCO : personne, tasse, téléphone, chaise…) dans une source d'images (for=\"cam\") ; sortie dans output-provider (défaut = id) : present, count, label/score/x/y/w/h/cx/cy du meilleur objet, labels.<étiquette> = nombre d'objets (étiquette en minuscules, _ pour les séparateurs), objects[] {label, score, x, y, w, h, cx, cy} en 0..1 repère écran ; categories=\"person,cup\" filtre ; max-results ; min-score ; hold-ms ; map = clés dérivées sans latence ; smooth sans effet ; statut dans status-provider (défaut <id>State) : phase idle|awaiting-consent|declined|downloading|loading|ready|error|unsupported, error {code, message}, backend gpu|cpu, thread worker|main, download {loaded, total}, fps, latencyMs, consent {key, origin, url} ; consent-provider accepted|declined ; inférence locale dans un worker (repli fil principal), modèle téléchargé, plafonné et vérifié par model-sha256 ; aucune image n'est envoyée"
+    },
+    {
       "name": "sonic-orientation",
       "props": {
         "control": {
@@ -3291,6 +3502,64 @@
       }
     },
     {
+      "name": "sonic-pose-tracker",
+      "props": {
+        "for": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "model-sha256": {
+          "type": "string"
+        },
+        "thread": {
+          "type": "string"
+        },
+        "engine": {
+          "type": "string"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "delegate": {
+          "type": "string"
+        },
+        "mirror": {
+          "type": "string"
+        },
+        "smooth": {
+          "type": "number"
+        },
+        "hold-ms": {
+          "type": "number"
+        },
+        "min-score": {
+          "type": "number"
+        },
+        "map": {
+          "type": "string"
+        },
+        "outputProvider": {
+          "type": "string"
+        },
+        "statusProvider": {
+          "type": "string"
+        },
+        "consentProvider": {
+          "type": "string"
+        },
+        "load": {
+          "type": "string"
+        },
+        "max-poses": {
+          "type": "number"
+        }
+      },
+      "addon": "vision",
+      "description": "Suit le corps (33 points) dans une source d'images (for=\"cam\") ; sortie dans output-provider (défaut = id) : present, count, x, y (centre des hanches), raiseLeft/raiseRight 0..1 (poignet : hanche 0, épaule 0,5, au-dessus 1), span (écart des poignets / largeur d'épaules), lean -1..1, joints.<nom>.{x,y,z,v} (nose, leftShoulder, rightWrist… 33 noms, côtés écran), poses[].landmarks ; map = clés dérivées sans latence (« cents=raiseRight*3600 ») ; modèles pose-landmarker (léger), pose-landmarker-full, pose-landmarker-heavy ; statut dans status-provider (défaut <id>State) : phase idle|awaiting-consent|declined|downloading|loading|ready|error|unsupported, error {code, message}, backend gpu|cpu, thread worker|main, download {loaded, total}, fps, latencyMs, consent {key, origin, url} ; consent-provider accepted|declined ; inférence locale dans un worker (repli fil principal), modèle téléchargé, plafonné et vérifié par model-sha256 ; aucune image n'est envoyée"
+    },
+    {
       "name": "sonic-procgen",
       "props": {
         "dataProvider": {
@@ -3730,6 +3999,73 @@
         }
       },
       "description": "### sonic-sdui (Server Driven User Interface) est un fetcher chargant un JSON décrivant une interface utilisateur Extends mixins : Fetcher, [Subscriber](./?path=/docs/miscallenous-🔔-subscriber--page) * Si le composant possède un attribut…"
+    },
+    {
+      "name": "sonic-segmenter",
+      "props": {
+        "for": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "engine": {
+          "type": "string"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "delegate": {
+          "type": "string"
+        },
+        "mirror": {
+          "type": "string"
+        },
+        "smooth": {
+          "type": "number"
+        },
+        "hold-ms": {
+          "type": "number"
+        },
+        "min-score": {
+          "type": "number"
+        },
+        "map": {
+          "type": "string"
+        },
+        "outputProvider": {
+          "type": "string"
+        },
+        "statusProvider": {
+          "type": "string"
+        },
+        "consentProvider": {
+          "type": "string"
+        },
+        "load": {
+          "type": "string"
+        },
+        "model-sha256": {
+          "type": "string"
+        },
+        "thread": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "invert": {
+          "type": "string"
+        },
+        "threshold": {
+          "type": "number"
+        },
+        "mask-index": {
+          "type": "string"
+        }
+      },
+      "addon": "vision",
+      "description": "Segmente la personne dans une source d'images (for=\"cam\") : le masque est une SOURCE D'IMAGES lue par sonic-shader (channel1=\"#seg\", mode gray : r=g=b=masque, ou alpha : blanc + alpha = masque ; invert) ; sortie dans output-provider (défaut = id) : present, coverage 0..1, cx, cy, x0, y0, x1, y1 (repère écran, lissés) ; threshold des statistiques ; mask-index si le modèle fournit plusieurs masques (auto : le dernier) ; map = clés dérivées ; modèle par défaut selfie-segmenter ; statut dans status-provider (défaut <id>State) : phase idle|awaiting-consent|declined|downloading|loading|ready|error|unsupported, error {code, message}, backend gpu|cpu, thread worker|main, download {loaded, total}, fps, latencyMs, consent {key, origin, url} ; consent-provider accepted|declined ; inférence locale dans un worker (repli fil principal), modèle téléchargé, plafonné et vérifié par model-sha256 ; aucune image n'est envoyée"
     },
     {
       "name": "sonic-select",
@@ -4880,5 +5216,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); procgen (sonic-procgen); shader (sonic-shader); sound (sonic-sound, sonic-sfx); stage (sonic-stage); vision (sonic-hand-tracker); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); procgen (sonic-procgen); shader (sonic-shader); sound (sonic-sound, sonic-sfx); stage (sonic-stage); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-landmarks-overlay, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
