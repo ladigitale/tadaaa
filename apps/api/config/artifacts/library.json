@@ -1,0 +1,390 @@
+{
+  "schema": "library/1",
+  "creativeStackVersion": "0.1.0",
+  "entries": [
+    {
+      "id": "shader/dither-bayer",
+      "kind": "shader",
+      "version": 1,
+      "license": "MIT",
+      "title": "Tramage de Bayer",
+      "description": "Tramage ordonné 8x8 : taille de point, nombre de niveaux, du noir et blanc à la couleur.",
+      "tags": [
+        "effet",
+        "rétro",
+        "caméra",
+        "image"
+      ],
+      "channels": [
+        "iChannel0 : image / caméra / vidéo"
+      ],
+      "params": [
+        {
+          "name": "uParam0",
+          "label": "Taille du point (px)",
+          "min": 1,
+          "max": 8,
+          "default": 2
+        },
+        {
+          "name": "uParam1",
+          "label": "Niveaux par canal",
+          "min": 2,
+          "max": 8,
+          "default": 2
+        },
+        {
+          "name": "uParam2",
+          "label": "Couleur (0 gris, 1 couleur)",
+          "min": 0,
+          "max": 1,
+          "default": 0
+        }
+      ],
+      "addon": "shader",
+      "sha256": "a6e5ef32c2c17031a6a7ee36d653fe03ace79854a8dad1b30a1dd30da4f1d930",
+      "source": "// Tramage ordonné (matrice de Bayer 8x8) : réduit l'image à quelques niveaux.\nfloat bayer2(vec2 a){ a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }\nfloat bayer4(vec2 a){ return bayer2(0.5 * a) * 0.25 + bayer2(a); }\nfloat bayer8(vec2 a){ return bayer4(0.5 * a) * 0.25 + bayer2(a); }\nfloat lum(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }\nvoid mainImage(out vec4 o, in vec2 p){\n  float size = max(1.0, floor(uParam0 + 0.5));\n  vec2 cell = floor(p / size);\n  vec2 uv = (cell + 0.5) * size / iResolution.xy;\n  vec3 src = texture(iChannel0, uv).rgb;\n  float levels = max(2.0, floor(uParam1 + 0.5));\n  float thr = bayer8(cell) - 0.5;\n  vec3 v = mix(vec3(lum(src)), src, uParam2);\n  vec3 q = floor((v + thr / (levels - 1.0)) * (levels - 1.0) + 0.5) / (levels - 1.0);\n  o = vec4(clamp(q, 0.0, 1.0), 1.0);\n}\n"
+    },
+    {
+      "id": "shader/halftone",
+      "kind": "shader",
+      "version": 1,
+      "license": "MIT",
+      "title": "Similigravure",
+      "description": "Trame de points (halftone) à angle réglable, noir sur blanc ou points colorés.",
+      "tags": [
+        "effet",
+        "rétro",
+        "impression",
+        "caméra",
+        "image"
+      ],
+      "channels": [
+        "iChannel0 : image / caméra / vidéo"
+      ],
+      "params": [
+        {
+          "name": "uParam0",
+          "label": "Taille de cellule (px)",
+          "min": 3,
+          "max": 30,
+          "default": 10
+        },
+        {
+          "name": "uParam1",
+          "label": "Angle (rad)",
+          "min": 0,
+          "max": 1.5708,
+          "default": 0.7854
+        },
+        {
+          "name": "uParam2",
+          "label": "Points colorés (0 noir, 1 couleur)",
+          "min": 0,
+          "max": 1,
+          "default": 0
+        }
+      ],
+      "addon": "shader",
+      "sha256": "e9a75e1ecff90bd73f2e8566acedf6b40d41129b28ae9607eb6e2797de6c3255",
+      "source": "// Similigravure : points dont la taille suit la luminance, grille inclinée.\nfloat lum(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }\nvoid mainImage(out vec4 o, in vec2 p){\n  float s = max(3.0, uParam0);\n  float a = uParam1;\n  mat2 R = mat2(cos(a), -sin(a), sin(a), cos(a));\n  vec2 q = (R * p) / s;\n  vec2 g = floor(q) + 0.5;\n  vec2 f = fract(q) - 0.5;\n  vec2 centre = (g * s) * R;          // R est orthonormale : v * R = transpose(R) * v\n  vec3 src = texture(iChannel0, clamp(centre / iResolution.xy, 0.0, 1.0)).rgb;\n  float r = sqrt(1.0 - lum(src)) * 0.7071;\n  float m = 1.0 - smoothstep(r - 0.1, r, length(f));\n  vec3 ink = mix(vec3(0.0), src, uParam2);\n  o = vec4(mix(vec3(1.0), ink, m), 1.0);\n}\n"
+    },
+    {
+      "id": "shader/harris",
+      "kind": "shader",
+      "version": 1,
+      "license": "MIT",
+      "title": "Coins de Harris",
+      "description": "Réponse du détecteur de coins de Harris superposée à l'image (taches rouges sur les coins). Réglages non calibrés sur une vraie caméra : ajuster gain et seuil.",
+      "tags": [
+        "vision",
+        "coins",
+        "caméra"
+      ],
+      "channels": [
+        "iChannel0 : image / caméra / vidéo"
+      ],
+      "params": [
+        {
+          "name": "uParam0",
+          "label": "Échelle (texels)",
+          "min": 1,
+          "max": 3,
+          "default": 1
+        },
+        {
+          "name": "uParam1",
+          "label": "Gain",
+          "min": 1,
+          "max": 400,
+          "default": 60
+        },
+        {
+          "name": "uParam2",
+          "label": "Seuil",
+          "min": 0,
+          "max": 1,
+          "default": 0.3
+        }
+      ],
+      "addon": "shader",
+      "sha256": "bb34abf904f4cc414a922f90662d6551e5e3cb4fd2823a2bfd2467d2d72a73ec",
+      "source": "// Détecteur de coins de Harris (une passe, fenêtre gaussienne 5x5, k = 0,05).\n// Pas de suppression des non-maxima (il faudrait une seconde passe) : les coins apparaissent comme des taches.\nfloat lum(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }\nfloat L(vec2 uv){ return lum(texture(iChannel0, uv).rgb); }\nvoid mainImage(out vec4 o, in vec2 p){\n  vec2 uv = p / iResolution.xy;\n  vec2 t = max(uParam0, 1.0) / iChannelResolution[0].xy;\n  float sxx = 0.0, syy = 0.0, sxy = 0.0;\n  for (int j = -2; j <= 2; j++) {\n    for (int i = -2; i <= 2; i++) {\n      vec2 q = uv + t * vec2(float(i), float(j));\n      float ix = L(q + vec2(t.x, 0.0)) - L(q - vec2(t.x, 0.0));\n      float iy = L(q + vec2(0.0, t.y)) - L(q - vec2(0.0, t.y));\n      float w = exp(-float(i * i + j * j) / 4.0);\n      sxx += w * ix * ix; syy += w * iy * iy; sxy += w * ix * iy;\n    }\n  }\n  float det = sxx * syy - sxy * sxy;\n  float tr = sxx + syy;\n  float r = (det - 0.05 * tr * tr) * uParam1;\n  float corner = smoothstep(uParam2, uParam2 + 0.25, r);\n  vec3 base = texture(iChannel0, uv).rgb;\n  o = vec4(mix(base * 0.55, vec3(1.0, 0.25, 0.1), corner), 1.0);\n}\n"
+    },
+    {
+      "id": "shader/hough-circles",
+      "kind": "shader",
+      "version": 1,
+      "license": "MIT",
+      "title": "Hough : cercles",
+      "description": "Accumulateur de Hough pour les cercles d'un rayon donné, sur une carte de contours : les pics sont les centres. Une passe.",
+      "tags": [
+        "vision",
+        "hough",
+        "cercles"
+      ],
+      "channels": [
+        "iChannel0 : carte de contours (sobel mode 0, ou dessin blanc sur noir)"
+      ],
+      "params": [
+        {
+          "name": "uParam0",
+          "label": "Rayon (hauteurs d'image)",
+          "min": 0.02,
+          "max": 0.5,
+          "default": 0.15
+        },
+        {
+          "name": "uParam1",
+          "label": "Gain",
+          "min": 1,
+          "max": 12,
+          "default": 3
+        },
+        {
+          "name": "uParam2",
+          "label": "Seuil",
+          "min": 0,
+          "max": 1,
+          "default": 0.4
+        },
+        {
+          "name": "uParam3",
+          "label": "Contours en fond (0/1)",
+          "min": 0,
+          "max": 1,
+          "default": 1
+        }
+      ],
+      "addon": "shader",
+      "sha256": "14f9de9c888306eabb59743adb3df51698f8ccb37c43c334ff3ed1952eab68e0",
+      "source": "// Transformée de Hough des cercles de rayon fixe, en une passe.\n// Entrée (canal 0) : une CARTE DE CONTOURS (sonic-shader sobel en mode 0, channel0=\"#contours\").\n// Chaque pixel de sortie est un centre candidat : son score est la moyenne des contours sur le cercle\n// de rayon uParam0 (en hauteurs d'image) autour de lui. Pic lumineux = centre d'un cercle de ce rayon.\n// Coût : 64 lectures par pixel.\nvoid mainImage(out vec4 o, in vec2 p){\n  vec2 uv = p / iResolution.xy;\n  float asp = iChannelResolution[0].x / iChannelResolution[0].y;\n  vec2 ext = vec2(asp, 1.0);\n  vec2 c = (uv - 0.5) * ext;\n  float r = max(uParam0, 0.01);\n  float acc = 0.0;\n  for (int k = 0; k < 64; k++) {\n    float a = (float(k) + 0.5) / 64.0 * 6.2831853;\n    vec2 q = (c + r * vec2(cos(a), sin(a))) / ext + 0.5;\n    if (q.x >= 0.0 && q.x <= 1.0 && q.y >= 0.0 && q.y <= 1.0) acc += dot(texture(iChannel0, q).rgb, vec3(0.3333));\n  }\n  float v = clamp((acc / 64.0) * uParam1 - uParam2, 0.0, 1.0);\n  vec3 edges = vec3(dot(texture(iChannel0, uv).rgb, vec3(0.3333)));\n  vec3 hot = vec3(clamp(v * 3.0, 0.0, 1.0), clamp(v * 3.0 - 1.0, 0.0, 1.0), clamp(v * 3.0 - 2.0, 0.0, 1.0));\n  o = vec4(max(hot, edges * 0.35 * step(0.5, uParam3)), 1.0);\n}\n"
+    },
+    {
+      "id": "shader/hough-lines",
+      "kind": "shader",
+      "version": 1,
+      "license": "MIT",
+      "title": "Hough : droites",
+      "description": "Espace de Hough (theta, rho) d'une carte de contours : chaque point lumineux est une droite de l'image. Une passe, sans détection de pics.",
+      "tags": [
+        "vision",
+        "hough",
+        "droites"
+      ],
+      "channels": [
+        "iChannel0 : carte de contours (sobel mode 0, ou dessin blanc sur noir)"
+      ],
+      "params": [
+        {
+          "name": "uParam0",
+          "label": "Gain",
+          "min": 1,
+          "max": 20,
+          "default": 6
+        },
+        {
+          "name": "uParam1",
+          "label": "Seuil",
+          "min": 0,
+          "max": 0.95,
+          "default": 0.2
+        }
+      ],
+      "addon": "shader",
+      "sha256": "27ae45c6cb2f5e1bea34532071576fdfe9a9924c040d5ff40a70e19e9c04beca",
+      "source": "// Transformée de Hough des droites, en une passe (force brute le long de chaque droite).\n// Entrée (canal 0) : une CARTE DE CONTOURS, par exemple un sonic-shader sobel en mode 0 (channel0=\"#contours\").\n// Sortie : l'espace de Hough. x = angle theta (0..pi), y = distance rho (-R..R) depuis le centre de l'image.\n// Un point lumineux = une droite de l'image (theta, rho). Pas de détection de pics (il faudrait une seconde passe).\n// Coût : 96 lectures par pixel de sortie : afficher en petit (par ex. 360 x 240).\nvoid mainImage(out vec4 o, in vec2 p){\n  vec2 uv = p / iResolution.xy;\n  float asp = iChannelResolution[0].x / iChannelResolution[0].y;\n  vec2 ext = vec2(asp, 1.0);\n  float rmax = 0.5 * length(ext);\n  float th = uv.x * 3.14159265;\n  float rho = (uv.y * 2.0 - 1.0) * rmax;\n  vec2 n = vec2(cos(th), sin(th));\n  vec2 d = vec2(-n.y, n.x);\n  float acc = 0.0;\n  float cnt = 0.0;\n  for (int k = 0; k < 96; k++) {\n    float s = ((float(k) + 0.5) / 96.0 * 2.0 - 1.0) * rmax;\n    vec2 q = (rho * n + s * d) / ext + 0.5;\n    if (q.x >= 0.0 && q.x <= 1.0 && q.y >= 0.0 && q.y <= 1.0) {\n      acc += dot(texture(iChannel0, q).rgb, vec3(0.3333));\n      cnt += 1.0;\n    }\n  }\n  float v = cnt > 8.0 ? acc / cnt : 0.0;\n  v = clamp((v * uParam0 - uParam1) / max(1.0 - uParam1, 0.001), 0.0, 1.0);\n  vec3 hot = vec3(clamp(v * 3.0, 0.0, 1.0), clamp(v * 3.0 - 1.0, 0.0, 1.0), clamp(v * 3.0 - 2.0, 0.0, 1.0));\n  o = vec4(hot, 1.0);\n}\n"
+    },
+    {
+      "id": "shader/kaleidoscope",
+      "kind": "shader",
+      "version": 1,
+      "license": "MIT",
+      "title": "Kaléidoscope",
+      "description": "Symétrie rotative de l'image du canal 0 (caméra : channel0=\"#cam\").",
+      "tags": [
+        "effet",
+        "caméra",
+        "image"
+      ],
+      "channels": [
+        "iChannel0 : image / caméra / vidéo"
+      ],
+      "params": [
+        {
+          "name": "uParam0",
+          "label": "Branches",
+          "min": 2,
+          "max": 12,
+          "default": 6
+        },
+        {
+          "name": "uParam1",
+          "label": "Rotation",
+          "min": -1,
+          "max": 1,
+          "default": 0.15
+        }
+      ],
+      "addon": "shader",
+      "sha256": "9bff095f2e59a1961f384e1fda9ccdd112c2c5f9136c08c482e90e7edc1cf460",
+      "source": "// Kaléidoscope sur l'image du canal 0 (caméra, vidéo, image).\nvoid mainImage(out vec4 c, in vec2 p){\n  vec2 uv = p / iResolution.xy;\n  vec2 q = uv - 0.5; q.x *= iResolution.x / iResolution.y;\n  float n = max(2.0, floor(uParam0 + 0.5));\n  float a = atan(q.y, q.x) + iTime * uParam1; float r = length(q);\n  a = mod(a, 6.2831853 / n); a = abs(a - 3.1415926 / n);\n  uv = 0.5 + r * vec2(cos(a) * iResolution.y / iResolution.x, sin(a));\n  c = vec4(texture(iChannel0, uv).rgb, 1.0);\n}\n"
+    },
+    {
+      "id": "shader/pixelate",
+      "kind": "shader",
+      "version": 1,
+      "license": "MIT",
+      "title": "Pixels",
+      "description": "Mosaïque de pixels avec joints sur l'image du canal 0.",
+      "tags": [
+        "effet",
+        "caméra",
+        "rétro"
+      ],
+      "channels": [
+        "iChannel0 : image / caméra / vidéo"
+      ],
+      "params": [
+        {
+          "name": "uParam0",
+          "label": "Colonnes",
+          "min": 8,
+          "max": 160,
+          "default": 64
+        }
+      ],
+      "addon": "shader",
+      "sha256": "39c8b715b74dae1ea2931d89104997c0ffa3663e063728c1d864c7157a8e5729",
+      "source": "// Pixels : mosaïque avec joints, résolution réglable.\nvoid mainImage(out vec4 c, in vec2 p){\n  vec2 uv = p / iResolution.xy;\n  float n = max(8.0, uParam0);\n  vec2 cells = vec2(n, n * iResolution.y / iResolution.x);\n  vec2 q = (floor(uv * cells) + 0.5) / cells;\n  vec3 col = texture(iChannel0, q).rgb;\n  vec2 f = fract(uv * cells) - 0.5;\n  col *= 1.0 - smoothstep(0.42, 0.5, max(abs(f.x), abs(f.y)));\n  c = vec4(col, 1.0);\n}\n"
+    },
+    {
+      "id": "shader/plasma",
+      "kind": "shader",
+      "version": 1,
+      "license": "MIT",
+      "title": "Plasma",
+      "description": "Fond animé de type plasma, 3 réglages, le clic déplace le centre des ondes.",
+      "tags": [
+        "fond",
+        "génératif"
+      ],
+      "channels": [],
+      "params": [
+        {
+          "name": "uParam0",
+          "label": "Vitesse",
+          "min": 0,
+          "max": 3,
+          "default": 1
+        },
+        {
+          "name": "uParam1",
+          "label": "Échelle",
+          "min": 1,
+          "max": 12,
+          "default": 4
+        },
+        {
+          "name": "uParam2",
+          "label": "Teinte",
+          "min": 0,
+          "max": 1,
+          "default": 0.6
+        }
+      ],
+      "addon": "shader",
+      "sha256": "7e803283c4853b4413c8b172971a86f130089a8be5c7d0e377cc8b1030857c05",
+      "source": "// Plasma : ondes colorées, le clic déplace le centre.\nvec3 pal(float t){ return 0.5 + 0.5 * cos(6.28318 * (t + vec3(0.0, 0.33, 0.67))); }\nvoid mainImage(out vec4 o, in vec2 f){\n  vec2 p = (2.0 * f - iResolution.xy) / min(iResolution.x, iResolution.y);\n  float t = iTime * uParam0;\n  float s = uParam1;\n  vec2 m = iMouse.z > 0.0 ? (2.0 * iMouse.xy - iResolution.xy) / min(iResolution.x, iResolution.y) : vec2(0.0);\n  float v = sin(p.x * s + t) + sin(p.y * s * 1.3 - t * 1.1)\n          + sin((p.x + p.y) * s * 0.7 + t * 0.7) + sin(length(p - m) * s * 1.6 - t * 1.4);\n  vec3 col = pal(uParam2 + v * 0.15);\n  col *= 0.75 + 0.25 * sin(v * 3.14159);\n  o = vec4(col, 1.0);\n}\n"
+    },
+    {
+      "id": "shader/sobel",
+      "kind": "shader",
+      "version": 1,
+      "license": "MIT",
+      "title": "Sobel",
+      "description": "Détection de contours (gradient de Sobel) : contours seuls, superposés ou direction en couleur. En mode 0, sert de carte de contours à hough-lines / hough-circles.",
+      "tags": [
+        "vision",
+        "contours",
+        "caméra"
+      ],
+      "channels": [
+        "iChannel0 : image / caméra / vidéo"
+      ],
+      "params": [
+        {
+          "name": "uParam0",
+          "label": "Épaisseur (texels)",
+          "min": 1,
+          "max": 4,
+          "default": 1
+        },
+        {
+          "name": "uParam1",
+          "label": "Gain",
+          "min": 0.5,
+          "max": 8,
+          "default": 2
+        },
+        {
+          "name": "uParam2",
+          "label": "Mode (0 contours, 1 superposé, 2 direction)",
+          "min": 0,
+          "max": 2,
+          "default": 0
+        }
+      ],
+      "addon": "shader",
+      "sha256": "872aebc6db37f6e9842fd91b36f756958e957a45f1ee5a8d085d24fa6c31508d",
+      "source": "// Contours de Sobel sur l'image du canal 0.\n// Modes : 0 = contours blancs sur noir (sortie utilisable comme carte de contours\n// par hough-lines / hough-circles), 1 = contours par-dessus l'image, 2 = direction du gradient en couleur.\nfloat lum(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }\nfloat L(vec2 uv){ return lum(texture(iChannel0, uv).rgb); }\nvoid mainImage(out vec4 o, in vec2 p){\n  vec2 uv = p / iResolution.xy;\n  vec2 t = max(uParam0, 1.0) / iChannelResolution[0].xy;\n  float a = L(uv + t * vec2(-1.0, -1.0)), b = L(uv + t * vec2(0.0, -1.0)), c = L(uv + t * vec2(1.0, -1.0));\n  float d = L(uv + t * vec2(-1.0, 0.0)),                                   f = L(uv + t * vec2(1.0, 0.0));\n  float g = L(uv + t * vec2(-1.0, 1.0)),  h = L(uv + t * vec2(0.0, 1.0)),  i = L(uv + t * vec2(1.0, 1.0));\n  float gx = (c + 2.0 * f + i) - (a + 2.0 * d + g);\n  float gy = (g + 2.0 * h + i) - (a + 2.0 * b + c);\n  float m = clamp(length(vec2(gx, gy)) * uParam1, 0.0, 1.0);\n  int mode = int(uParam2 + 0.5);\n  vec3 base = texture(iChannel0, uv).rgb;\n  vec3 col = vec3(m);\n  if (mode == 1) col = mix(base * 0.6, vec3(1.0, 0.9, 0.2), m);\n  if (mode == 2) {\n    float h6 = atan(gy, gx) / 6.2831853 + 0.5;\n    vec3 hue = clamp(abs(mod(h6 * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);\n    col = hue * m;\n  }\n  o = vec4(col, 1.0);\n}\n"
+    },
+    {
+      "id": "shader/thermal",
+      "kind": "shader",
+      "version": 1,
+      "license": "MIT",
+      "title": "Thermique",
+      "description": "Palette thermique sur l'image du canal 0.",
+      "tags": [
+        "effet",
+        "caméra"
+      ],
+      "channels": [
+        "iChannel0 : image / caméra / vidéo"
+      ],
+      "params": [
+        {
+          "name": "uParam0",
+          "label": "Intensité",
+          "min": 0,
+          "max": 1,
+          "default": 1
+        }
+      ],
+      "addon": "shader",
+      "sha256": "fb5ef6bedecd10ba5d612da6dbe29693d9364abc35b41251b05491c4559d3d8c",
+      "source": "// Fausse caméra thermique : luminance -> palette chaud/froid.\nvoid mainImage(out vec4 c, in vec2 p){\n  vec2 uv = p / iResolution.xy;\n  vec3 col = texture(iChannel0, uv).rgb;\n  float l = dot(col, vec3(0.299, 0.587, 0.114));\n  vec3 t = clamp(vec3(1.6 * l - 0.3, sin(3.14159 * l) * 1.1, 1.0 - 1.8 * l), 0.0, 1.0);\n  c = vec4(mix(col, t, uParam0), 1.0);\n}\n"
+    }
+  ]
+}

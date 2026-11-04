@@ -17,7 +17,11 @@ use App\Mcp\Tool\DeleteArtifactAssetTool;
 use App\Mcp\Tool\DeleteArtifactTool;
 use App\Mcp\Tool\GetArtifactCatalogTool;
 use App\Mcp\Tool\GetArtifactTool;
+use App\Mcp\Tool\DeleteResourceTool;
+use App\Mcp\Tool\GetResourceTool;
 use App\Mcp\Tool\ListArtifactAssetsTool;
+use App\Mcp\Tool\SaveResourceTool;
+use App\Mcp\Tool\SearchResourcesTool;
 use App\Mcp\Tool\ListArtifactsTool;
 use App\Mcp\Tool\OpenArtifactIntakeTool;
 use App\Mcp\Tool\PromoteArtifactTool;
@@ -41,6 +45,8 @@ use App\Service\ArtifactService;
 use App\Service\AuditLogger;
 use App\Service\DatasetAccessService;
 use App\Service\JsonPatch;
+use App\Service\ResourceContent;
+use App\Service\Resources;
 use App\Service\StoreSimulator;
 use App\Service\UsageMeter;
 use Mcp\Schema\Content\ImageContent;
@@ -55,6 +61,8 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
  */
 final class ArtifactMcpProcessor implements ProcessorInterface
 {
+    private const MAX_INLINE_BYTES = 262144;
+
     public function __construct(
         private readonly ArtifactService $artifacts,
         private readonly ArtifactDocumentValidator $validator,
@@ -69,6 +77,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         private readonly StoreSimulator $simulator,
         private readonly ArtifactRenderer $renderer,
         private readonly ArtifactFileFetcher $fetcher,
+        private readonly Resources $resources,
     ) {
     }
 
@@ -116,6 +125,10 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof UploadArtifactAssetTool => $this->uploadAsset($user, $data),
             $data instanceof ListArtifactAssetsTool => ['assets' => $this->artifacts->listAssets($user, $this->artifactRef($data->id, $data->slug))],
             $data instanceof DeleteArtifactAssetTool => $this->deleteAsset($user, $data),
+            $data instanceof SearchResourcesTool => ['resources' => $this->resources->search($user, (string) $data->query, $this->emptyToNull($data->kind), $this->emptyToNull($data->tag), $data->includeBase, $data->limit ?? 50, $data->offset ?? 0)],
+            $data instanceof GetResourceTool => $this->getResource($user, $data),
+            $data instanceof SaveResourceTool => $this->saveResource($user, $data),
+            $data instanceof DeleteResourceTool => $this->deleteResource($user, $data),
             $data instanceof OpenArtifactIntakeTool => $this->openIntake($user, $data),
             $data instanceof CloseArtifactIntakeTool => $this->closeIntake($user, $data),
             default => throw new \InvalidArgumentException(sprintf(
@@ -576,6 +589,60 @@ final class ArtifactMcpProcessor implements ProcessorInterface
     }
 
     /** @return array<string, mixed> */
+    private function getResource(User $user, GetResourceTool $tool): array
+    {
+        $res = $this->resources->read($user, $tool->ref, $tool->version);
+        $meta = $res['meta'];
+        $out = ['resource' => $meta];
+        if (ResourceContent::isText((string) $meta['kind'], (string) ($meta['contentType'] ?? 'text/x-glsl')) || ($meta['source'] ?? '') === 'base') {
+            $out['content'] = $res['data'];
+        } elseif (\strlen($res['data']) <= self::MAX_INLINE_BYTES) {
+            $out['contentBase64'] = base64_encode($res['data']);
+        } else {
+            $out['note'] = 'Contenu trop volumineux pour être renvoyé ici (256 Ko max) : fiche seule.';
+        }
+        if ($tool->versions && ($meta['source'] ?? '') === 'mine') {
+            $out['versions'] = $this->resources->versions($user, (string) $meta['slug']);
+        }
+
+        return $out;
+    }
+
+    /** @return array<string, mixed> */
+    private function saveResource(User $user, SaveResourceTool $tool): array
+    {
+        $hasText = $tool->content !== null && $tool->content !== '';
+        $hasB64 = $tool->contentBase64 !== null && $tool->contentBase64 !== '';
+        if ($hasText === $hasB64) {
+            throw new BadRequestHttpException('Fournir exactement une source : content (texte) ou contentBase64.');
+        }
+        $bytes = $hasText ? (string) $tool->content : base64_decode((string) $tool->contentBase64, true);
+        if ($bytes === false) {
+            throw new BadRequestHttpException('contentBase64 invalide.');
+        }
+
+        return $this->resources->save($user, [
+            'kind' => $tool->kind,
+            'name' => $tool->name,
+            'slug' => $tool->slug,
+            'description' => $tool->description,
+            'tags' => $tool->tags,
+            'prompt' => $tool->prompt,
+            'from' => $tool->from,
+            'filename' => $tool->filename,
+            'bytes' => $bytes,
+        ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function deleteResource(User $user, DeleteResourceTool $tool): array
+    {
+        $this->resources->delete($user, $tool->slug);
+
+        return ['ok' => true, 'slug' => $tool->slug];
+    }
+
+    /** @return array<string, mixed> */
     private function deleteAsset(User $user, DeleteArtifactAssetTool $tool): array
     {
         $this->artifacts->deleteAsset($user, $this->artifactRef($tool->id, $tool->slug), $tool->name);
@@ -658,6 +725,10 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof UploadArtifactAssetTool => 'upload_artifact_asset',
             $data instanceof ListArtifactAssetsTool => 'list_artifact_assets',
             $data instanceof DeleteArtifactAssetTool => 'delete_artifact_asset',
+            $data instanceof SearchResourcesTool => 'search_resources',
+            $data instanceof GetResourceTool => 'get_resource',
+            $data instanceof SaveResourceTool => 'save_resource',
+            $data instanceof DeleteResourceTool => 'delete_resource',
             $data instanceof OpenArtifactIntakeTool => 'open_artifact_intake',
             $data instanceof CloseArtifactIntakeTool => 'close_artifact_intake',
             default => get_debug_type($data),
