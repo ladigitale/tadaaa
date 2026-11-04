@@ -58,4 +58,24 @@ final class ArtifactFilesTest extends TestCase
         self::assertSame('@file:jeu.jsonata', $raw->data->stores->jeu->reducer);
         self::assertObjectNotHasProperty('files', $out);
     }
+
+    public function testResourcesProvenanceIsValidatedAndStripped(): void
+    {
+        $sha = str_repeat('a', 64);
+        $d = $this->doc() + ['resources' => ['scene.glsl' => ['ref' => 'base:shader/plasma', 'version' => 2, 'sha256' => $sha]]];
+        self::assertSame([], ArtifactFiles::check($d));
+        self::assertArrayNotHasKey('resources', ArtifactFiles::expand($d));
+        $raw = json_decode((string) json_encode($d), false);
+        self::assertObjectNotHasProperty('resources', ArtifactFiles::expand($raw));
+    }
+
+    public function testResourcesRejectsBadEntries(): void
+    {
+        $base = $this->doc();
+        self::assertNotSame([], ArtifactFiles::check($base + ['resources' => ['absent.glsl' => ['ref' => 'mine:x', 'version' => 1]]]));
+        self::assertNotSame([], ArtifactFiles::check($base + ['resources' => ['scene.glsl' => ['ref' => 'http://x', 'version' => 1]]]));
+        self::assertNotSame([], ArtifactFiles::check($base + ['resources' => ['scene.glsl' => ['ref' => 'mine:x', 'version' => 0]]]));
+        self::assertNotSame([], ArtifactFiles::check($base + ['resources' => ['scene.glsl' => ['ref' => 'mine:x', 'version' => 1, 'extra' => 1]]]));
+        self::assertNotSame([], ArtifactFiles::check($base + ['resources' => ['scene.glsl']]));
+    }
 }

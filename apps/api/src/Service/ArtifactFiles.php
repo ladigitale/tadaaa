@@ -19,6 +19,7 @@ final class ArtifactFiles
     public const MAX_FILE_BYTES = 65536;
     private const NAME = '/^[a-z0-9][a-z0-9._-]{0,63}$/';
     private const REF = '/^@file:([a-z0-9][a-z0-9._-]{0,63})$/';
+    private const RESOURCE_REF = '/^(?:mine:[a-z0-9-]{1,64}|base:[a-z0-9-]{1,64}\/[a-z0-9-]{1,64})$/';
 
     /**
      * Erreurs de structure : `files` bien formé, références existantes.
@@ -47,8 +48,9 @@ final class ArtifactFiles
             }
         }
         $known = \is_array($files) ? $files : [];
+        array_push($errors, ...self::checkResources($document['resources'] ?? null, $known));
         $body = $document;
-        unset($body['files']);
+        unset($body['files'], $body['resources']);
         foreach (self::refs($body, '') as [$path, $name]) {
             if (!\array_key_exists($name, $known)) {
                 $errors[] = ['path' => $path, 'message' => sprintf('Fichier « %s » introuvable dans files.', $name)];
@@ -59,7 +61,57 @@ final class ArtifactFiles
     }
 
     /**
-     * Document avec les références remplacées par le contenu des fichiers ; `files` retiré.
+     * `resources` : provenance des fichiers copiés depuis la bibliothèque de ressources,
+     * {"nom du fichier": {"ref": "base:shader/plasma", "version": 2, "sha256": "…"}}. Sert à signaler
+     * « mise à jour disponible » ; jamais transmis au viewer (retiré par {@see expand()}).
+     *
+     * @param array<string, mixed> $known
+     *
+     * @return list<array{path: string, message: string}>
+     */
+    private static function checkResources(mixed $resources, array $known): array
+    {
+        if ($resources === null) {
+            return [];
+        }
+        if (!\is_array($resources) || ($resources !== [] && array_is_list($resources))) {
+            return [['path' => '/resources', 'message' => 'resources doit être un objet {nom de fichier: {ref, version, sha256?}}.']];
+        }
+        $errors = [];
+        if (\count($resources) > self::MAX_FILES) {
+            $errors[] = ['path' => '/resources', 'message' => sprintf('Trop d’entrées (%d max).', self::MAX_FILES)];
+        }
+        foreach ($resources as $name => $entry) {
+            $at = '/resources/'.$name;
+            if (!\array_key_exists((string) $name, $known)) {
+                $errors[] = ['path' => $at, 'message' => 'Doit correspondre à un fichier de files.'];
+                continue;
+            }
+            if (!\is_array($entry) || array_is_list($entry)) {
+                $errors[] = ['path' => $at, 'message' => 'Objet {ref, version, sha256?} attendu.'];
+                continue;
+            }
+            foreach (array_keys($entry) as $k) {
+                if (!\in_array($k, ['ref', 'version', 'sha256'], true)) {
+                    $errors[] = ['path' => $at.'/'.$k, 'message' => 'Clé non autorisée (ref, version, sha256).'];
+                }
+            }
+            if (!\is_string($entry['ref'] ?? null) || preg_match(self::RESOURCE_REF, $entry['ref']) !== 1) {
+                $errors[] = ['path' => $at.'/ref', 'message' => 'ref invalide (mine:<slug> ou base:<addon>/<id>).'];
+            }
+            if (!\is_int($entry['version'] ?? null) || $entry['version'] < 1) {
+                $errors[] = ['path' => $at.'/version', 'message' => 'version : entier ≥ 1.'];
+            }
+            if (isset($entry['sha256']) && (!\is_string($entry['sha256']) || preg_match('/^[a-f0-9]{64}$/', $entry['sha256']) !== 1)) {
+                $errors[] = ['path' => $at.'/sha256', 'message' => 'sha256 : 64 caractères hexadécimaux.'];
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Document avec les références remplacées par le contenu des fichiers ; `files` et `resources` retirés.
      * Accepte des tableaux associatifs comme des objets (`\stdClass`, document « wire »).
      * Les références inconnues sont laissées telles quelles (signalées par {@see check()}).
      */
@@ -69,13 +121,13 @@ final class ArtifactFiles
             // Copie profonde (les {} restent des objets) : on ne modifie jamais l'original.
             $copy = json_decode((string) json_encode($document), false);
             $files = (array) ($copy->files ?? []);
-            unset($copy->files);
+            unset($copy->files, $copy->resources);
 
             return self::walk($copy, $files);
         }
         if (\is_array($document)) {
             $files = \is_array($document['files'] ?? null) ? $document['files'] : [];
-            unset($document['files']);
+            unset($document['files'], $document['resources']);
 
             return self::walk($document, $files);
         }

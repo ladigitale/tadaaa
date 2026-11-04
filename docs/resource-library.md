@@ -19,8 +19,17 @@ Source unique : `src/addons/<addon>/library/` de Creative-stack, agrégé dans `
 - REST (`ROLE_USER`) : `GET /api/resources?q=&kind=&tag=&base=`, `GET /api/resources/{ref}`, `GET /api/resources/{ref}/content?version=`, `POST /api/resources`, `DELETE /api/resources/{slug}`.
 - Contenu contrôlé par `ResourceContent` : shader = `mainImage(out vec4, in vec2)`, UTF-8, 64 Ko, sans `#version` ; données = JSON ≤ 1 Mo ; 3D = `.glb` ou JSON ; images / sons : mêmes vérifications d'octets que les assets d'artefact.
 
+## Suivi dans les artefacts
+
+Un fichier copié dans `files` garde sa provenance au niveau du document :
+`"resources": {"scene.glsl": {"ref": "base:shader/plasma", "version": 2, "sha256": "…"}}` (validé par `ArtifactFiles`, jamais transmis au viewer). `ArtifactResourceSync` compare avec la version courante :
+
+- `GET /api/artifacts/{slug}/resource-updates` → `{member: [{file, ref, usedVersion, latestVersion, updateAvailable, modified, missing}]}` ;
+- `POST /api/artifacts/{slug}/resource-updates` `{files?: [nom], force?: bool}` remplace le contenu des fichiers concernés et crée une version de l'artefact. Un fichier modifié dans l'artefact (sha256 différent) n'est écrasé qu'avec `force`.
+
+L'agent renseigne `resources` d'après la fiche renvoyée par `get_resource` (consigne dans l'outil et dans le guide `fichiers`).
+
 ## À faire ensuite
 
-- Page « Ressources » de l'app Artefacts (liste, recherche, filtres, « Reprompter » → atelier) ;
-- état « mise à jour disponible » côté artefact (garder `ref` + `version` de la ressource insérée dans le document) ;
-- ressources de base 3D et données dans Creative-stack.
+- ressources de base 3D et données dans Creative-stack ;
+- badge « ressources à mettre à jour » dans la liste de la bibliothèque (aujourd'hui : bandeau dans l'atelier).
