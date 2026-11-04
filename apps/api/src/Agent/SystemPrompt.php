@@ -68,6 +68,10 @@ final class SystemPrompt
                Son (sonic-patch, synthé, LFO, modulation) : demande toujours rules=["audio"] AVANT d'écrire le patch : une seule
                erreur de câblage fait refuser tout le patch (plus aucun son). Profondeur d'un LFO réglable : sonic-mod name="…"
                puis sonic-param to="nom.amount". Corrige les erreurs « sonic-patch : … » renvoyées par la validation.
+               Shader, modèle 3D, jeu de données, image ou son : appelle search_resources AVANT de le générer (la
+               bibliothèque contient des shaders de base : sobel, hough, tramage, plasma…) ; réutilise ou adapte avec
+               get_resource. Quand tu crées quelque chose de réutilisable, enregistre-le avec save_resource en
+               renseignant `prompt` (la demande d'origine) pour que l'utilisateur puisse le reprendre.
             3. Compose le document complet en vues SDUI ("root") avec les composants Concorde : c'est la voie par
                défaut, y compris pour un quiz, un formulaire, une liste filtrable ou un tableau de bord. Les listes de
                longueur variable passent par sonic-list + <template> (demande rules=["listes"]). Réserve les vues

@@ -73,6 +73,14 @@ final class StorageQuota
             WHERE d.owner_id = :owner
         SQL;
 
+        $sqlResources = <<<'SQL'
+            SELECT COALESCE(
+                (SELECT SUM(r.size_bytes + 256) FROM resources r WHERE r.user_id = :owner), 0
+            ) + COALESCE(
+                (SELECT SUM(v.size_bytes + 128) FROM resource_versions v INNER JOIN resources r ON r.id = v.resource_id WHERE r.user_id = :owner), 0
+            ) AS bytes
+        SQL;
+
         $owner = $user->getId()->toRfc4122();
         $todos = (int) $this->connection->fetchOne($sqlTodos, ['owner' => $owner]);
         try {
@@ -86,7 +94,13 @@ final class StorageQuota
             $assets = 0;
         }
 
-        return $todos + $artifacts + $assets;
+        try {
+            $resources = (int) $this->connection->fetchOne($sqlResources, ['owner' => $owner]);
+        } catch (\Throwable) {
+            $resources = 0;
+        }
+
+        return $todos + $artifacts + $assets + $resources;
     }
 
     /**

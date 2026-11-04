@@ -51,6 +51,10 @@ final class ToolboxFactory
         // Métadonnées (titre, visibilité). Le document passe par le brouillon :
         // preview_artifact / edit_preview / read_preview / publish_preview.
         Tool\UpdateArtifactTool::class,
+        // Bibliothèque de ressources réutilisables (shaders, 3D, données…) : chercher avant de générer.
+        Tool\SearchResourcesTool::class,
+        Tool\GetResourceTool::class,
+        Tool\SaveResourceTool::class,
     ];
 
     public function __construct(
