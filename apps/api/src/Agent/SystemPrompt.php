@@ -28,7 +28,7 @@ final class SystemPrompt
     /**
      * Profil « atelier » d'Artefacts : création et modification d'artefacts par conversation.
      *
-     * @param array{artifactSlug?: string, kits?: bool} $context
+     * @param array{artifactSlug?: string, resourceRef?: string, kits?: bool} $context
      * @param string                       $catalogIndex sommaire du catalogue ({@see \App\Service\ArtifactDocumentValidator::catalogIndex()})
      * @param string                       $kits         kits disponibles ({@see \App\Service\ArtifactKits::summary()}) ;
      *                                                   vide : kits désactivés (composition libre)
@@ -39,6 +39,11 @@ final class SystemPrompt
         $target = isset($context['artifactSlug'])
             ? "L'utilisateur modifie l'artefact « {$context['artifactSlug']} » : le brouillon part de sa version publiée (read_preview pour le plan, edit_preview pour modifier) ; publish_preview en enregistrera une nouvelle version."
             : "L'utilisateur crée un nouvel artefact : publish_preview le publiera (visibility \"private\" sauf demande contraire), puis en enregistrera les versions suivantes.";
+
+        if (isset($context['resourceRef'])) {
+            $ref = $context['resourceRef'];
+            $target = "L'utilisateur reprend la ressource « {$ref} » de la bibliothèque (pas un artefact) : lis-la avec get_resource(ref=\"{$ref}\", versions=true), demande en une question ce qu'il veut changer, puis enregistre le résultat avec save_resource en renseignant `prompt` (sa demande) : même slug pour créer une nouvelle version d'une ressource « mine: » ; pour une ressource « base: », un nouveau name et from=\"{$ref}\" (la base n'est jamais modifiée). Tu peux l'essayer dans un aperçu (preview_artifact) avant de l'enregistrer.";
+        }
 
         $kitStep = $kits !== ''
             ? <<<STEP

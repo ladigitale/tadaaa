@@ -18,7 +18,7 @@ final class RunInput
      * @param array<string, mixed>|null                             $a2uiAction  `{version, action: {…}}`
      * @param array<string, mixed>|null                             $sduiAction  `{name, context, sourceNodeId?}`
      * @param list<array<string, mixed>>                            $a2uiErrors
-     * @param array{artifactSlug?: string, kits?: false}            $appContext  contexte fourni par l'application
+     * @param array{artifactSlug?: string, resourceRef?: string, kits?: false} $appContext  contexte fourni par l'application
      * @param int|null                                              $messageCount nombre de messages texte reçus, avant
      *                                                                            la troncature à MAX_MESSAGES
      */
@@ -79,6 +79,11 @@ final class RunInput
         $slug = \is_array($fp['artifact'] ?? null) ? ($fp['artifact']['slug'] ?? null) : null;
         if (\is_string($slug) && preg_match('/^[a-z0-9][a-z0-9-]{2,63}$/', $slug)) {
             $context['artifactSlug'] = $slug;
+        }
+        // Reprise d'une ressource de la bibliothèque (page « Ressources » → « Reprompter »).
+        $resource = \is_array($fp['resource'] ?? null) ? ($fp['resource']['ref'] ?? null) : null;
+        if (\is_string($resource) && preg_match('#^(?:mine:[a-z0-9][a-z0-9-]{0,63}|base:[a-z0-9-]+/[a-z0-9-]+)$#', $resource)) {
+            $context['resourceRef'] = $resource;
         }
         // Atelier : l'utilisateur peut désactiver les kits (composition libre).
         $kits = \is_array($fp['atelier'] ?? null) ? ($fp['atelier']['kits'] ?? null) : null;
