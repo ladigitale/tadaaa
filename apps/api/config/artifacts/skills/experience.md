@@ -18,6 +18,7 @@ Prérequis : la compétence `design` (demande `rules=["design","experience"]` en
 | paysage, ville, monde illustré qui vit | `sonic-procgen` (scènes animées, `style` night/palette/grain en direct, `select` au clic) |
 | visualiseur de musique | `sonic-audio-analyser source="master|#id"` → `sonic-shader channel0="#spectre"` (spectre/onde en texture) ou `bands[]`/`rms` vers des nodes ; `sonic-video audio-out="master"` ou `sonic-patch` comme source |
 | miroir, filtres, effets caméra | `sonic-camera hidden-preview` → `sonic-shader channel0="#cam"` ; réglages matériels (zoom, torche) via capabilities/adjust |
+| effet qui suit le visage (masque, déformation) sans décalage avec la vidéo | `sonic-camera` + `sonic-face-tracker` + `sonic-frame-sync sync="face"` → `sonic-shader channel0="#synced"` ; `mirror="true"` sur caméra et tracker |
 | reconnaissance, profondeur, classement | `sonic-hugging-face-infer` (consentement, progression du téléchargement, sortie chaînable vers un shader) |
 | instrument, synthé, boîte à rythmes | `sonic-patch` (presets ou patch modulaire) + `sonic-sequencer` (mini-notation) + `sonic-sampler` ; contrôleurs `sonic-midi` (MPE : LinnStrument, Seaboard) |
 | sons de l'environnement, boucles de voix | `sonic-mic`/`sonic-audio-recorder` → `sonic-sampler`/`sonic-grain` |
