@@ -590,6 +590,65 @@
       "description": "Corps : type dynamic|static|kinematic, shape circle (r) | box (w h) | polygon / edge / chain (points \"x,y x,y\" relatifs au centre), x y angle vx vy spin, density friction restitution, sensor, bullet, fixed-rotation, damping, gravity-scale, group / collides (filtres), tags (repris dans les événements), clamp-x / clamp-y \"min max\", rendu fill stroke line label hidden"
     },
     {
+      "name": "sonic-bone",
+      "props": {
+        "name": {
+          "type": "string",
+          "description": "Nom de l'os et du nœud écrit (obligatoire)"
+        },
+        "parent": {
+          "type": "string",
+          "description": "Nom de l'os parent ; vide : racine"
+        },
+        "length": {
+          "type": "number",
+          "description": "Longueur en unités ; 0 : articulation sans segment (100)"
+        },
+        "angle": {
+          "type": "number",
+          "description": "Angle de repos en degrés, relatif au parent (0 = vers le bas)"
+        },
+        "at": {
+          "type": "number",
+          "description": "Position d'attache sur le parent, 0 à l'origine, 1 à l'extrémité (1)"
+        },
+        "offset": {
+          "type": "number",
+          "description": "Décalage latéral perpendiculaire au parent, en unités : épaule, hanche (0)"
+        },
+        "min": {
+          "type": "number",
+          "description": "Limite basse de rotation par rapport au repos, en degrés (-180)"
+        },
+        "max": {
+          "type": "number",
+          "description": "Limite haute de rotation par rapport au repos, en degrés (180)"
+        },
+        "aim": {
+          "type": "string",
+          "description": "Direction mesurée : \"leftShoulder>leftElbow\" ; a+b = moyenne ; | = alternatives (la première disponible)"
+        },
+        "angle-from": {
+          "type": "string",
+          "description": "Chemin DataProvider d'un nombre en degrés : rotation ajoutée au repos (aim l'emporte)"
+        },
+        "angle-scale": {
+          "type": "number",
+          "description": "Facteur appliqué à angle-from (1)"
+        },
+        "angle-offset": {
+          "type": "number",
+          "description": "Décalage en degrés appliqué à angle-from (0)"
+        },
+        "attach": {
+          "type": "string",
+          "description": "Autres noms de nœuds alimentés par cet os, séparés par des espaces ou des virgules"
+        }
+      },
+      "addon": "animation",
+      "description": "Os d'un sonic-skeleton (aucun rendu) : name, parent, length, angle de repos (° relatif au parent ; 0 = vers le bas), at (0..1 le long du parent), offset (décalage latéral : épaule, hanche), min / max (limites par rapport au repos), aim (\"leftShoulder>leftElbow\", a+b moyenne, | alternatives), angle-from (DataProvider d'un nombre en °) avec angle-scale et angle-offset, attach (autres noms de nœuds). Même nom qu'un os du preset : modifie ses attributs."
+    },
+    {
       "name": "sonic-button",
       "props": {
         "type": {
@@ -989,6 +1048,77 @@
       "description": "Chorus"
     },
     {
+      "name": "sonic-click-segmenter",
+      "props": {
+        "for": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "engine": {
+          "type": "string"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "delegate": {
+          "type": "string"
+        },
+        "mirror": {
+          "type": "string"
+        },
+        "smooth": {
+          "type": "number"
+        },
+        "hold-ms": {
+          "type": "number"
+        },
+        "min-score": {
+          "type": "number"
+        },
+        "map": {
+          "type": "string"
+        },
+        "load": {
+          "type": "string"
+        },
+        "model-sha256": {
+          "type": "string"
+        },
+        "thread": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "invert": {
+          "type": "string"
+        },
+        "threshold": {
+          "type": "number"
+        },
+        "point": {
+          "type": "string",
+          "description": "Point d'intérêt \"x,y\" (0..1, repère écran)"
+        },
+        "point-from": {
+          "type": "string",
+          "description": "Chemin DataProvider du point ({x, y} ou \"x,y\", 0..1) ; prime sur point"
+        },
+        "click-on": {
+          "type": "string",
+          "description": "Id d'un élément dont un clic ou toucher désigne le point (position relative à sa boîte)"
+        },
+        "live": {
+          "type": "string",
+          "description": "\"true\" (défaut) : segmente à chaque image ; \"false\" : une seule fois par point"
+        }
+      },
+      "addon": "vision",
+      "description": "Segmente l'objet qui se trouve au point désigné (clic, toucher, DataProvider) : modèle interactif MediaPipe (alias interactive-segmenter), pas de liste de catégories. Même sortie et même contrat que sonic-segmenter (le masque est une SOURCE D'IMAGES : sonic-mask-replace mask=\"#id\", sonic-shader channel1=\"#id\" ; mode gray|alpha, invert, threshold ; present, coverage, cx, cy, x0, y0, x1, y1 ; statut, consentement, worker), plus point {x,y}|null dans la sortie. Le point est en coordonnées d'écran 0..1 (miroir compris) : point=\"0.5,0.4\", point-from=\"chemin\" (DataProvider {x,y} ou \"x,y\"), ou click-on=\"#id\" (un clic / toucher sur cet élément, ex. sonic-mask-replace ou la caméra) ; sans point, aucun masque et aucun calcul. live=\"true\" (défaut) re-segmente ce qui est sous le point à chaque image (pas un suivi d'objet) ; live=\"false\" fige le masque par point. fps 8 par défaut (modèle lourd). Inférence locale, aucune image envoyée"
+    },
+    {
       "name": "sonic-clipboard",
       "props": {
         "control": {
@@ -1344,7 +1474,8 @@
           "type": "string"
         },
         "features": {
-          "type": "string"
+          "type": "string",
+          "description": "embed = vecteur d'un sonic-image-embedder"
         },
         "hand": {
           "type": "string"
@@ -1378,7 +1509,7 @@
         }
       },
       "addon": "vision",
-      "description": "Apprend à reconnaître des poses de main / de corps ou des expressions de visage à partir d'EXEMPLES enregistrés par l'utilisateur (k plus proches voisins, sans modèle ni réseau), à partir de la sortie d'un tracker (source=\"hand\" ; invariant à la position et à l'échelle) ; pilotage par le DataProvider control {label, record, clear, clearAll} (compteurs : une hausse enregistre `samples` exemples sous `label`, efface `label` ou tout) ; sortie dans output-provider (défaut = id) : present, label (stable, vote des `window` dernières images), raw, confidence, scores.<étiquette>, match.<étiquette> 0|1, counts, total, recording, recordingLabel, samplesLeft ; features auto|hand|pose|face, hand any|left|right, k, sample-ms, min-confidence, max-distance (0 = sans limite), storage = clé de mémoire locale des exemples"
+      "description": "Apprend à reconnaître des poses de main / de corps ou des expressions de visage à partir d'EXEMPLES enregistrés par l'utilisateur (k plus proches voisins, sans modèle ni réseau), à partir de la sortie d'un tracker (source=\"hand\" ; invariant à la position et à l'échelle) ; pilotage par le DataProvider control {label, record, clear, clearAll} (compteurs : une hausse enregistre `samples` exemples sous `label`, efface `label` ou tout) ; sortie dans output-provider (défaut = id) : present, label (stable, vote des `window` dernières images), raw, confidence, scores.<étiquette>, match.<étiquette> 0|1, counts, total, recording, recordingLabel, samplesLeft ; features auto|hand|pose|face|embed (embed : le vecteur d'un sonic-image-embedder, pour reconnaître des objets ou des scènes), hand any|left|right, k, sample-ms, min-confidence, max-distance (0 = sans limite), storage = clé de mémoire locale des exemples"
     },
     {
       "name": "sonic-face-mesh",
@@ -1986,6 +2117,93 @@
       }
     },
     {
+      "name": "sonic-image-embedder",
+      "props": {
+        "for": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "engine": {
+          "type": "string"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "delegate": {
+          "type": "string"
+        },
+        "mirror": {
+          "type": "string"
+        },
+        "smooth": {
+          "type": "number"
+        },
+        "hold-ms": {
+          "type": "number"
+        },
+        "min-score": {
+          "type": "number"
+        },
+        "map": {
+          "type": "string"
+        },
+        "outputProvider": {
+          "type": "string"
+        },
+        "statusProvider": {
+          "type": "string"
+        },
+        "consentProvider": {
+          "type": "string"
+        },
+        "load": {
+          "type": "string"
+        },
+        "model-sha256": {
+          "type": "string"
+        },
+        "thread": {
+          "type": "string"
+        },
+        "reference": {
+          "type": "string",
+          "description": "DataProvider d'un vecteur de comparaison (tableau, ou sortie d'un autre embedder) : similarity = cosinus"
+        },
+        "head": {
+          "type": "number",
+          "description": "Tête du modèle dont on lit le vecteur (0)"
+        },
+        "crop": {
+          "type": "string",
+          "description": "DataProvider de la sortie d'un sonic-object-detector : seule la meilleure boîte retenue est analysée (rien sans boîte)"
+        },
+        "crop-labels": {
+          "type": "string",
+          "description": "Étiquettes de crop retenues (virgules) ; vide : toutes"
+        },
+        "crop-min-score": {
+          "type": "number",
+          "description": "Score minimal d'une boîte de crop (0.4)"
+        },
+        "crop-pad": {
+          "type": "number",
+          "description": "Marge autour de la boîte, part de sa taille (0.1)"
+        },
+        "region": {
+          "type": "string",
+          "description": "Zone fixe analysée « x,y,w,h » (0..1 de l'image, repère écran) ; ignorée si crop est renseigné"
+        },
+        "crop-id": {
+          "type": "number",
+          "description": "id (sonic-object-detector track=\"true\") de l'objet à analyser ; 0 : la meilleure boîte retenue"
+        }
+      },
+      "addon": "vision",
+      "description": "Empreinte numérique d'une image (MobileNet V3 par défaut, ~1 024 nombres : des images qui se ressemblent ont des vecteurs proches) pour une source d'images (for=\"cam\") ; sortie dans output-provider (défaut = id) : present, dim, vector (unitaire, 4 décimales), norm (norme brute), similarity (cosinus avec reference, 0 sans référence) + frameSeq/frameTime/capturedAt/latencyMs ; crop=<DP d'un sonic-object-detector> (crop-labels, crop-min-score, crop-pad, crop-id = id d'un détecteur en track=\"true\" : suit cet objet précis) analyse seulement l'objet détecté, region=\"x,y,w,h\" une zone fixe ; smooth (0.3) lisse le vecteur, hold-ms (300) ; fps 5 par défaut ; map = clés dérivées ; sonic-example-classifier features=\"embed\" apprend des classes d'objets à partir de ces vecteurs ; statut dans status-provider (défaut <id>State) ; inférence locale, mêmes règles de modèle, consentement et téléchargement que les autres trackers"
+    },
+    {
       "name": "sonic-input",
       "props": {
         "size": {
@@ -2546,6 +2764,84 @@
       },
       "addon": "map",
       "description": "Carte MapLibre pilotée par DP. Entrées : <dp>/points, <dp>/view {center [lon,lat], zoom, bearing, pitch, bounds, fit:\"points\"|\"selection\", mode jump|ease|fly, duration, seq, projection mercator|globe, terrain, interactions, controls, selectedId}, <dp>/style {style, patches, patchSeq, featureStates, pointStyle}. Sortie : <dp>/state. Clic sur un point : target + pick-action-type → {type, payload:{id}}. URL externes du style refusées sauf allowed-hosts."
+    },
+    {
+      "name": "sonic-mask-replace",
+      "props": {
+        "source": {
+          "type": "string"
+        },
+        "mask": {
+          "type": "string"
+        },
+        "detections": {
+          "type": "string"
+        },
+        "labels": {
+          "type": "string"
+        },
+        "min-score": {
+          "type": "number"
+        },
+        "max-objects": {
+          "type": "number"
+        },
+        "shape": {
+          "type": "string"
+        },
+        "pad": {
+          "type": "number"
+        },
+        "target": {
+          "type": "string"
+        },
+        "effect": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "color": {
+          "type": "string"
+        },
+        "image": {
+          "type": "string"
+        },
+        "with-source": {
+          "type": "string"
+        },
+        "feather": {
+          "type": "number"
+        },
+        "smooth": {
+          "type": "number"
+        },
+        "mirror": {
+          "type": "string"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "out-data-provider": {
+          "type": "string"
+        },
+        "crop": {
+          "type": "string",
+          "description": "true : image recadrée sur la zone gardée (avec target background, effect cutout pour un fond transparent) ; false (défaut)"
+        },
+        "object-id": {
+          "type": "number",
+          "description": "id (sonic-object-detector track=\"true\") : seul cet objet est retenu ; 0 : tous"
+        }
+      },
+      "addon": "vision",
+      "description": "Remplace une zone d'une image avec un masque : le fond derrière la personne (mask=\"#seg\", un sonic-segmenter ; mode alpha ou gray) ou les objets détectés (detections = DataProvider d'un sonic-object-detector, labels = étiquettes, min-score, max-objects, object-id (id d'un détecteur en track=\"true\" : seul cet objet), shape ellipse|rect, pad). source = source d'images à modifier (sonic-camera, sonic-frame-sync) ; target background (garde la zone masquée, remplace le reste) | subject (remplace la zone masquée) ; effect blur | pixelate (amount 0..1) | color (color CSS) | image (image = URL https, blob:, data:image, relative) | source (with-source = autre source d'images : vidéo, shader, canvas) | cutout (zone transparente) ; feather adoucit les bords, smooth lisse le masque dans le temps, mirror auto|true|false, fps ; est lui-même une source d'images (getFrameCanvas, frameSeq) ; crop=\"true\" (avec target background) recadre l'image sur la zone gardée : un sprite (la personne, un objet) à recomposer dans sonic-2d via sonic-sprite source=\"#id\" ; out-data-provider publie {ready, effect, target, mask, regions, box {x, y, w, h, cx, cy} (zone gardée, 0..1, lissée), error} ; canvas 2D local, aucun HTML injecté"
     },
     {
       "name": "sonic-matrix",
@@ -3144,10 +3440,22 @@
         },
         "categories": {
           "type": "string"
+        },
+        "track": {
+          "type": "string",
+          "description": "true : id stable par objet entre images, boîte lissée par smooth ; false (défaut)"
+        },
+        "track-iou": {
+          "type": "number",
+          "description": "Recouvrement (IoU) minimal pour reconnaître un objet d'une image à l'autre (0.3)"
+        },
+        "track-max-age-ms": {
+          "type": "number",
+          "description": "Un objet disparu garde son id pendant cette durée en ms (500)"
         }
       },
       "addon": "vision",
-      "description": "Détecte des objets (80 classes COCO : personne, tasse, téléphone, chaise…) dans une source d'images (for=\"cam\") ; sortie dans output-provider (défaut = id) : present, count, label/score/x/y/w/h/cx/cy du meilleur objet, labels.<étiquette> = nombre d'objets (étiquette en minuscules, _ pour les séparateurs), objects[] {label, score, x, y, w, h, cx, cy} en 0..1 repère écran ; categories=\"person,cup\" filtre ; max-results ; min-score ; hold-ms ; map = clés dérivées sans latence ; smooth sans effet ; statut dans status-provider (défaut <id>State) : phase idle|awaiting-consent|declined|downloading|loading|ready|error|unsupported, error {code, message}, backend gpu|cpu, thread worker|main, download {loaded, total}, fps, latencyMs, consent {key, origin, url} ; consent-provider accepted|declined ; inférence locale dans un worker (repli fil principal), modèle téléchargé, plafonné et vérifié par model-sha256 ; aucune image n'est envoyée ; publie aussi frameSeq, frameTime, capturedAt, latencyMs (identité de l'image analysée, pour sonic-frame-sync)"
+      "description": "Détecte des objets (80 classes COCO : personne, tasse, téléphone, chaise…) dans une source d'images (for=\"cam\") ; sortie dans output-provider (défaut = id) : present, count, label/score/x/y/w/h/cx/cy du meilleur objet, labels.<étiquette> = nombre d'objets (étiquette en minuscules, _ pour les séparateurs), objects[] {label, score, x, y, w, h, cx, cy} en 0..1 repère écran ; categories=\"person,cup\" filtre ; max-results ; min-score ; hold-ms ; map = clés dérivées sans latence ; track=\"true\" donne à chaque objet un id stable entre images (objects[].id, ageMs, ids = ids dans l'ordre, id/ageMs du meilleur ; track-iou 0.3 = recouvrement minimal, track-max-age-ms 500 = un objet disparu garde son id) et lisse sa boîte avec smooth (sans track, smooth sans effet) ; statut dans status-provider (défaut <id>State) : phase idle|awaiting-consent|declined|downloading|loading|ready|error|unsupported, error {code, message}, backend gpu|cpu, thread worker|main, download {loaded, total}, fps, latencyMs, consent {key, origin, url} ; consent-provider accepted|declined ; inférence locale dans un worker (repli fil principal), modèle téléchargé, plafonné et vérifié par model-sha256 ; aucune image n'est envoyée ; publie aussi frameSeq, frameTime, capturedAt, latencyMs (identité de l'image analysée, pour sonic-frame-sync)"
     },
     {
       "name": "sonic-orientation",
@@ -4167,10 +4475,22 @@
         },
         "mask-index": {
           "type": "string"
+        },
+        "classes": {
+          "type": "string",
+          "description": "Modèle multi-classes : classes qui forment le masque (noms ou indices, séparés par virgules ou espaces ; ex. \"hair,clothes\"). Vide : tout sauf l'arrière-plan"
+        },
+        "labels": {
+          "type": "string",
+          "description": "Noms des classes d'un modèle perso (autant que de masques, dans l'ordre) ; vide : ceux de l'alias de modèle"
+        },
+        "class-stats": {
+          "type": "string",
+          "description": "\"true\" : publie classes.<nom> = {coverage, cx, cy} pour chaque classe d'un modèle multi-classes"
         }
       },
       "addon": "vision",
-      "description": "Segmente la personne dans une source d'images (for=\"cam\") : le masque est une SOURCE D'IMAGES lue par sonic-shader (channel1=\"#seg\", mode gray : r=g=b=masque, ou alpha : blanc + alpha = masque ; invert) ; sortie dans output-provider (défaut = id) : present, coverage 0..1, cx, cy, x0, y0, x1, y1 (repère écran, lissés) ; threshold des statistiques ; mask-index si le modèle fournit plusieurs masques (auto : le dernier) ; map = clés dérivées ; modèle par défaut selfie-segmenter ; statut dans status-provider (défaut <id>State) : phase idle|awaiting-consent|declined|downloading|loading|ready|error|unsupported, error {code, message}, backend gpu|cpu, thread worker|main, download {loaded, total}, fps, latencyMs, consent {key, origin, url} ; consent-provider accepted|declined ; inférence locale dans un worker (repli fil principal), modèle téléchargé, plafonné et vérifié par model-sha256 ; aucune image n'est envoyée ; publie aussi frameSeq, frameTime, capturedAt, latencyMs (identité de l'image analysée, pour sonic-frame-sync)"
+      "description": "Segmente la personne dans une source d'images (for=\"cam\") : le masque est une SOURCE D'IMAGES lue par sonic-shader (channel1=\"#seg\", mode gray : r=g=b=masque, ou alpha : blanc + alpha = masque ; invert) ; sortie dans output-provider (défaut = id) : present, coverage 0..1, cx, cy, x0, y0, x1, y1 (repère écran, lissés) ; threshold des statistiques ; mask-index si le modèle fournit plusieurs masques (auto : le dernier) ; MULTI-CLASSES (model=\"selfie-multiclass\" : background, hair, body-skin, face-skin, clothes, others ; \"deeplab-v3\" : 21 catégories ; \"hair-segmenter\") : classes=\"hair,clothes\" (noms ou indices) forme le masque par réunion, sans classes : tout sauf l'arrière-plan ; class-stats=\"true\" publie classes.<nom>.{coverage,cx,cy} ; labels pour un modèle perso ; unknownClasses signale un nom inconnu ; map = clés dérivées ; modèle par défaut selfie-segmenter ; statut dans status-provider (défaut <id>State) : phase idle|awaiting-consent|declined|downloading|loading|ready|error|unsupported, error {code, message}, backend gpu|cpu, thread worker|main, download {loaded, total}, fps, latencyMs, consent {key, origin, url} ; consent-provider accepted|declined ; inférence locale dans un worker (repli fil principal), modèle téléchargé, plafonné et vérifié par model-sha256 ; aucune image n'est envoyée ; publie aussi frameSeq, frameTime, capturedAt, latencyMs (identité de l'image analysée, pour sonic-frame-sync)"
     },
     {
       "name": "sonic-select",
@@ -4456,6 +4776,69 @@
       "description": "Partage natif (titre, texte, URL http(s)) avec repli par copie. Commandes control {share:{n, title, text, url}} ; for = partage les attributs. Annulation = cancelled, pas une erreur. État <id>State {status, error, supported, allowed, active, canShare, shared, cancelled, via}. Iframe : allow=\"web-share\""
     },
     {
+      "name": "sonic-skeleton",
+      "props": {
+        "nodes-out": {
+          "type": "string",
+          "description": "DataProvider qui reçoit nodes, bones, rest, present ; celui que lit sonic-2d dataProvider (obligatoire pour écrire)"
+        },
+        "preset": {
+          "type": "string",
+          "description": "humain : 13 os (bassin, torse, tete, bras, avant-bras, mains, cuisses, mollets) ; vide : seulement les sonic-bone"
+        },
+        "source": {
+          "type": "string",
+          "description": "DataProvider de la sortie d'un sonic-pose-tracker (clé joints)"
+        },
+        "root": {
+          "type": "string",
+          "description": "Articulations dont la moyenne place la racine (leftHip+rightHip) ; défaut avec preset humain et source ; sinon position fixe x, y"
+        },
+        "x": {
+          "type": "number",
+          "description": "Position fixe de la racine (unités de la scène ; défaut : centre)"
+        },
+        "y": {
+          "type": "number",
+          "description": "Position fixe de la racine (défaut : 55 % de la hauteur)"
+        },
+        "width": {
+          "type": "number",
+          "description": "Largeur de la scène (800) : l'image de la pose y est étirée pour placer la racine"
+        },
+        "height": {
+          "type": "number",
+          "description": "Hauteur de la scène (450)"
+        },
+        "aspect": {
+          "type": "number",
+          "description": "Largeur / hauteur de l'image analysée (1.333) : angles justes sur une image non carrée"
+        },
+        "scale": {
+          "type": "number",
+          "description": "Échelle de tout le squelette, longueurs et décalages (1)"
+        },
+        "min-visibility": {
+          "type": "number",
+          "description": "Visibilité minimale d'une articulation, 0..1 (0.5)"
+        },
+        "smooth": {
+          "type": "number",
+          "description": "Lissage One Euro des articulations, 0 à 1 (0.4)"
+        },
+        "hold-ms": {
+          "type": "number",
+          "description": "Une mesure perdue garde la dernière direction cette durée en ms, puis l'os retourne au repos (600)"
+        },
+        "ease-ms": {
+          "type": "number",
+          "description": "Durée en ms de l'interpolation du retour au repos, demandée au rendu par ease (300)"
+        }
+      },
+      "addon": "animation",
+      "description": "Squelette 2D à os rigides (marionnette, bras articulé, pendules) : écrit des nodes (format partagé : un nœud par os, x y de l'articulation, rz radians par rapport au repos) dans <nodes-out>.nodes, l'état des os dans <nodes-out>.bones, present et la pose de repos dans <nodes-out>.rest (lue par un sprite sonic-2d shape=\"mesh\" qui déforme une image entre les os) ; ne dessine rien, un élément de même nom que l'os le suit (sprite sonic-2d avec pivot, nœud glTF sonic-3d, élément sonic-stage). Os en enfants sonic-bone ou preset=\"humain\" (13 os branchés sur les articulations de sonic-pose-tracker via source) ; os pilotés par aim (direction mesurée entre deux articulations) ou angle-from (n'importe quelle valeur de DataProvider). Angles en degrés, 0 = vers le bas, positif = sens horaire."
+    },
+    {
       "name": "sonic-sound",
       "props": {
         "id": {
@@ -4494,7 +4877,7 @@
         },
         "shape": {
           "type": "string",
-          "description": "box (défaut) | circle | polygon | text | image"
+          "description": "box (défaut) | circle | polygon | text | image | mesh (image déformable par sonic-skeleton)"
         },
         "x": {
           "type": "number",
@@ -4556,6 +4939,30 @@
           "type": "string",
           "description": "Image : data:image/… (base64) ou URL https://"
         },
+        "source": {
+          "type": "string",
+          "description": "Image vivante : #id d'une source d'images (sonic-camera, sonic-mask-replace…), redessinée à chaque nouvelle image ; la scène redessine alors en continu"
+        },
+        "pivot": {
+          "type": "string",
+          "description": "Point du sprite « x,y » (part de la largeur et de la hauteur depuis le coin haut-gauche) placé sur la position du nœud et centre de sa rotation : \"0.5,0.5\" (centre, défaut), \"0.5,0\" (haut-centre : épaule d'un bras pendant) ; sans effet sur polygon. Utile avec sonic-skeleton"
+        },
+        "grid": {
+          "type": "string",
+          "description": "mesh : maille \"colonnes,lignes\" (2 à 40, défaut \"8,8\")"
+        },
+        "influences": {
+          "type": "number",
+          "description": "mesh : nombre d'os qui influencent un sommet (1 à 4, défaut 3)"
+        },
+        "falloff": {
+          "type": "number",
+          "description": "mesh : exposant de la décroissance des poids avec la distance à l'os (défaut 2 ; grand = jonctions plus nettes)"
+        },
+        "skin-bones": {
+          "type": "string",
+          "description": "mesh : noms des os qui déforment l'image, séparés par des virgules (vide = tous les os du squelette)"
+        },
         "opacity": {
           "type": "number",
           "description": "Opacité 0..1"
@@ -4574,7 +4981,7 @@
         }
       },
       "addon": "2d",
-      "description": "Sprite déclaratif d'un sonic-2d (aucun rendu propre) : shape box (w h radius) | circle (r) | polygon (points \"x,y …\") | text (text font-size font) | image (src data:image/… ou https://, w h) ; fill stroke line ; x y angle (°) de départ ; opacity layer z hidden. Le nom relie le sprite à son nœud (et au corps de même nom)."
+      "description": "Sprite déclaratif d'un sonic-2d (aucun rendu propre) : shape box (w h radius) | circle (r) | polygon (points \"x,y …\") | text (text font-size font) | image (src data:image/… ou https://, ou source=\"#id\" : image vivante d'une source d'images, ex. la personne découpée par sonic-mask-replace effect=\"cutout\" ; w h = boîte où l'image tient, proportions conservées) | mesh (image déformable entre les os d'un sonic-skeleton, dessinée dans la pose de repos : src ou source, w h étirée, grid \"cols,rows\" influences falloff skin-bones) ; fill stroke line ; x y angle (°) de départ ; pivot \"x,y\" (point de rotation, \"0.5,0\" = haut-centre ; pour sonic-skeleton) ; opacity layer z hidden. Le nom relie le sprite à son nœud (et au corps de même nom)."
     },
     {
       "name": "sonic-stage",
@@ -5418,5 +5825,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); procgen (sonic-procgen); shader (sonic-shader); sound (sonic-sound, sonic-sfx); stage (sonic-stage); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-landmarks-overlay, sonic-face-mesh, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); procgen (sonic-procgen); shader (sonic-shader); sound (sonic-sound, sonic-sfx); stage (sonic-stage); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
