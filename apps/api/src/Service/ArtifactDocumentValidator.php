@@ -1351,7 +1351,7 @@ final class ArtifactDocumentValidator
                 $errors[] = ['path' => '/capabilities', 'message' => sprintf('%s utilisé : ajouter "%s" à capabilities.', $tag, $cap)];
             }
         }
-        $limits = ['sonic-camera' => 2, 'sonic-hand-tracker' => 1, 'sonic-face-tracker' => 1, 'sonic-pose-tracker' => 1, 'sonic-object-detector' => 1, 'sonic-segmenter' => 1, 'sonic-example-classifier' => 2, 'sonic-landmarks-overlay' => 4, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-frame-sync' => 2, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2, 'sonic-midi' => 2, 'sonic-screen' => 1, 'sonic-physics' => 4, 'sonic-2d' => 4, 'sonic-procgen' => 2, 'sonic-controller' => 2,
+        $limits = ['sonic-camera' => 2, 'sonic-hand-tracker' => 1, 'sonic-face-tracker' => 1, 'sonic-pose-tracker' => 1, 'sonic-object-detector' => 1, 'sonic-segmenter' => 1, 'sonic-click-segmenter' => 1, 'sonic-image-embedder' => 1, 'sonic-example-classifier' => 2, 'sonic-landmarks-overlay' => 4, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-frame-sync' => 2, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2, 'sonic-midi' => 2, 'sonic-screen' => 1, 'sonic-physics' => 4, 'sonic-2d' => 4, 'sonic-procgen' => 2, 'sonic-controller' => 2,
             // Un seul salon (connexion Mercure) et un seul verrou par page (même liste que le garde du viewer).
             'sonic-p2p' => 1, 'sonic-pointer-lock' => 1, 'sonic-wake-lock' => 1, 'sonic-orientation' => 1];
         foreach ($limits as $tag => $max) {
