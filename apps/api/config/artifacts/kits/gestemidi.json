@@ -1,0 +1,454 @@
+{
+ "id": "gestemidi",
+ "title": "Geste → son / MIDI",
+ "description": "Instrument gestuel : la main devant la caméra joue des notes (son interne et/ou MIDI) ; vitesse = vélocité, position = hauteur, doigts = note.",
+ "use": "jouer ou piloter un synthé par gestes",
+ "params": {
+  "type": "object",
+  "required": [
+   "title"
+  ],
+  "properties": {
+   "preset": {
+    "type": "string",
+    "enum": [
+     "frappe",
+     "doigts",
+     "tenue"
+    ]
+   },
+   "title": {
+    "type": "string",
+    "maxLength": 120
+   },
+   "mode": {
+    "type": "string",
+    "enum": [
+     "hit",
+     "fingers",
+     "hold"
+    ],
+    "default": "hit",
+    "description": "hit : geste rapide ; fingers : doigts tendus ; hold : geste tenu"
+   },
+   "sound": {
+    "type": "string",
+    "enum": [
+     "synth",
+     "midi",
+     "both"
+    ],
+    "default": "synth"
+   },
+   "instrument": {
+    "type": "string",
+    "maxLength": 30,
+    "default": "synth/pluck",
+    "description": "preset sonic-patch"
+   },
+   "side": {
+    "type": "string",
+    "enum": [
+     "right",
+     "left"
+    ],
+    "default": "right"
+   },
+   "range": {
+    "type": "string",
+    "maxLength": 10,
+    "default": "48,72",
+    "description": "notes MIDI bas,haut (hit, hold)"
+   },
+   "scale": {
+    "type": "string",
+    "maxLength": 40,
+    "default": "0,2,4,7,9",
+    "description": "demi-tons depuis le bas ; vide : chromatique"
+   },
+   "notes": {
+    "type": "array",
+    "items": {
+     "type": "integer",
+     "minimum": 0,
+     "maximum": 127
+    },
+    "minItems": 1,
+    "maxItems": 5,
+    "default": [
+     60,
+     62,
+     64,
+     67,
+     69
+    ],
+    "description": "fingers : notes pour 1 à 5 doigts"
+   },
+   "speed": {
+    "type": "number",
+    "minimum": 0.1,
+    "maximum": 10,
+    "default": 1.5,
+    "description": "hit : vitesse mini"
+   },
+   "gesture": {
+    "type": "string",
+    "maxLength": 20,
+    "default": "Open_Palm",
+    "description": "hold : geste qui tient la note"
+   },
+   "channel": {
+    "type": "integer",
+    "minimum": 1,
+    "maximum": 16,
+    "default": 1
+   },
+   "output": {
+    "type": "string",
+    "maxLength": 40,
+    "default": "all",
+    "description": "port MIDI : all, first ou nom"
+   },
+   "preview": {
+    "type": "boolean",
+    "default": false
+   }
+  }
+ },
+ "presets": {
+  "frappe": {
+   "title": "Percussion gestuelle",
+   "mode": "hit",
+   "sound": "synth",
+   "instrument": "synth/pluck"
+  },
+  "doigts": {
+   "title": "Orgue à doigts",
+   "mode": "fingers",
+   "sound": "synth",
+   "instrument": "synth/pad"
+  },
+  "tenue": {
+   "title": "Note tenue à la main",
+   "mode": "hold",
+   "sound": "synth",
+   "instrument": "synth/string"
+  }
+ },
+ "document": {
+  "schema": "artifacts/1",
+  "title": {
+   "$param": "title"
+  },
+  "defaultView": "jeu",
+  "capabilities": [
+   "camera",
+   {
+    "$if": "sound=midi|both",
+    "then": "midi"
+   }
+  ],
+  "views": [
+   {
+    "id": "jeu",
+    "title": {
+     "$param": "title"
+    },
+    "root": {
+     "nodes": [
+      {
+       "tagName": "div",
+       "attributes": {
+        "style": "display:flex;flex-direction:column;gap:.8rem;max-width:36rem;margin:1rem auto;padding:0 1rem"
+       },
+       "nodes": [
+        {
+         "tagName": "h1",
+         "attributes": {
+          "class": "text-xl font-bold m-0"
+         },
+         "textContent": {
+          "$param": "title"
+         }
+        },
+        {
+         "tagName": "div",
+         "attributes": {
+          "style": "display:flex;gap:.6rem;flex-wrap:wrap"
+         },
+         "nodes": [
+          {
+           "$if": "sound=midi|both",
+           "then": {
+            "tagName": "div",
+            "attributes": {
+             "style": "flex:1;min-width:8rem;padding:.8rem 1rem;border-radius:.8rem;background:var(--sc-base-200)"
+            },
+            "nodes": [
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "font-size:.75rem;opacity:.7"
+              },
+              "textContent": "MIDI"
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "font-size:1.6rem;font-weight:700;line-height:1.2"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "midi",
+                 "key": "status"
+                }
+               }
+              ]
+             }
+            ]
+           }
+          },
+          {
+           "$if": "sound=midi|both",
+           "then": {
+            "tagName": "div",
+            "attributes": {
+             "style": "flex:1;min-width:8rem;padding:.8rem 1rem;border-radius:.8rem;background:var(--sc-base-200)"
+            },
+            "nodes": [
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "font-size:.75rem;opacity:.7"
+              },
+              "textContent": "Messages envoyés"
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "font-size:1.6rem;font-weight:700;line-height:1.2"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "midi",
+                 "key": "sent"
+                }
+               }
+              ]
+             }
+            ]
+           }
+          }
+         ]
+        },
+        {
+         "tagName": "sonic-camera",
+         "attributes": {
+          "id": "cam",
+          "facing": "user",
+          "width": 640,
+          "height": 480,
+          "fps": 30,
+          "fit": "cover",
+          "hidden-preview": {
+           "$if": "!preview",
+           "then": true
+          },
+          "style": {
+           "$if": "preview",
+           "then": "aspect-ratio:4/3;border-radius:.8rem;overflow:hidden"
+          }
+         }
+        },
+        {
+         "tagName": "sonic-media-start",
+         "attributes": {
+          "for": "cam",
+          "label": "Activer la caméra"
+         }
+        },
+        {
+         "tagName": "sonic-audio-unlock",
+         "attributes": {
+          "label": "Activer le son"
+         }
+        },
+        {
+         "tagName": "sonic-hand-tracker",
+         "attributes": {
+          "id": "hand",
+          "for": "cam",
+          "fps": 30,
+          "hold-ms": 150,
+          "smooth": 0.3,
+          "outputProvider": "sensor",
+          "statusProvider": "sensorState"
+         }
+        },
+        {
+         "$if": "mode=hit",
+         "then": {
+          "tagName": "sonic-motion",
+          "attributes": {
+           "source": "sensor",
+           "keys": {
+            "$text": "{{side}}.x,{{side}}.y"
+           },
+           "smooth-ms": 40,
+           "speed-max": 4,
+           "peak-ms": 150,
+           "out-data-provider": "motion"
+          }
+         }
+        },
+        {
+         "$if": "mode=hit",
+         "then": {
+          "tagName": "sonic-trigger",
+          "attributes": {
+           "source": "motion",
+           "key": "speed",
+           "gt": {
+            "$text": "{{speed}}"
+           },
+           "cooldown-ms": 120,
+           "mode": "edge",
+           "emit": "note",
+           "note-key": "values.0",
+           "note-range": {
+            "$param": "range"
+           },
+           "scale": {
+            "$param": "scale"
+           },
+           "vel-source": "motion",
+           "vel-key": "peakVel",
+           "dur-s": 0.3,
+           "emit-provider": "gm-ev",
+           "emit-trigger": "gm-go",
+           "vel-min": {
+            "$if": "mode=hit",
+            "then": 0.2,
+            "else": 0.8
+           }
+          }
+         }
+        },
+        {
+         "$if": "mode=hold",
+         "then": {
+          "tagName": "sonic-trigger",
+          "attributes": {
+           "source": "sensor",
+           "key": {
+            "$text": "{{side}}.gesture"
+           },
+           "equals": {
+            "$param": "gesture"
+           },
+           "hold-ms": {
+            "$if": "mode=fingers",
+            "then": 200,
+            "else": 100
+           },
+           "cooldown-ms": 0,
+           "emit": "noteOn",
+           "note-key": {
+            "$text": "{{side}}.x"
+           },
+           "note-range": {
+            "$param": "range"
+           },
+           "scale": {
+            "$param": "scale"
+           },
+           "emit-provider": "gm-ev",
+           "emit-trigger": "gm-go",
+           "vel-min": {
+            "$if": "mode=hit",
+            "then": 0.2,
+            "else": 0.8
+           }
+          }
+         }
+        },
+        {
+         "$each": "notes",
+         "template": {
+          "$if": "mode=fingers",
+          "then": {
+           "tagName": "sonic-trigger",
+           "attributes": {
+            "source": "sensor",
+            "key": {
+             "$text": "{{side}}.fingerCount"
+            },
+            "equals": {
+             "$text": "{{#1}}"
+            },
+            "hold-ms": {
+             "$if": "mode=fingers",
+             "then": 200,
+             "else": 100
+            },
+            "cooldown-ms": 0,
+            "emit": "noteOn",
+            "note": {
+             "$item": ""
+            },
+            "emit-provider": "gm-ev",
+            "emit-trigger": "gm-go",
+            "vel-min": {
+             "$if": "mode=hit",
+             "then": 0.2,
+             "else": 0.8
+            }
+           }
+          }
+         }
+        },
+        {
+         "$if": "sound=synth|both",
+         "then": {
+          "tagName": "sonic-patch",
+          "attributes": {
+           "id": "inst",
+           "preset": {
+            "$param": "instrument"
+           },
+           "events": "gm-ev",
+           "trigger": "gm-go"
+          }
+         }
+        },
+        {
+         "$if": "sound=midi|both",
+         "then": {
+          "tagName": "sonic-midi",
+          "attributes": {
+           "id": "midi",
+           "events": "gm-ev",
+           "trigger": "gm-go",
+           "output": {
+            "$param": "output"
+           },
+           "out-channel": {
+            "$param": "channel"
+           },
+           "autostart": true,
+           "out-data-provider": "midi"
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

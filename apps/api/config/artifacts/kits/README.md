@@ -14,6 +14,7 @@ Le sommaire des kits (une ligne par kit, avec la signature de ses paramètres) e
 | `onepage` | Page de présentation : accroche, sections, cartes, FAQ, pied de page | — |
 | `survey` | Formulaire A2UI dont les réponses partent dans une collecte anonyme (`intake`) | — |
 | `sentinel` | Veille locale : un capteur (objet, visage, geste de la main, son) déclenche alerte, compteur et journal optionnel dans une collecte anonyme, via `sonic-trigger` | `presence`, `bruit`, `geste` |
+| `gestemidi` | Instrument gestuel : la main devant la caméra joue des notes (son interne `sonic-patch` et/ou sortie MIDI), via `sonic-motion` et `sonic-trigger` ; vitesse du geste = vélocité | `frappe`, `doigts`, `tenue` |
 
 ## Format d'un fichier `<id>.json`
 
