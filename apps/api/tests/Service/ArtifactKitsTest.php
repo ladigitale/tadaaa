@@ -76,7 +76,7 @@ final class ArtifactKitsTest extends TestCase
     public function testShippedKitsBuildValidDocuments(): void
     {
         $kits = new ArtifactKits(self::API.'/config/artifacts/kits');
-        self::assertSame(['grid', 'onepage', 'quiz', 'sentinel', 'shader', 'survey'], $kits->ids());
+        self::assertSame(['gestemidi', 'grid', 'onepage', 'quiz', 'sentinel', 'shader', 'survey'], $kits->ids());
         $validator = new ArtifactDocumentValidator(
             self::API.'/config/artifacts/catalog.json',
             self::API.'/config/artifacts/sdui.schema.json',
@@ -94,8 +94,8 @@ final class ArtifactKitsTest extends TestCase
         }
 
         $summary = $kits->summary();
-        self::assertLessThan(5000, \strlen($summary));
-        foreach (['quiz :', 'grid :', 'Presets : snake', 'correct: integer', 'shader :', 'survey :', 'sentinel :', 'Presets : presence, bruit, geste'] as $needle) {
+        self::assertLessThan(6000, \strlen($summary));
+        foreach (['quiz :', 'grid :', 'Presets : snake', 'correct: integer', 'shader :', 'survey :', 'sentinel :', 'Presets : presence, bruit, geste', 'gestemidi :', 'Presets : frappe, doigts, tenue'] as $needle) {
             self::assertStringContainsString($needle, $summary);
         }
     }
@@ -154,6 +154,67 @@ final class ArtifactKitsTest extends TestCase
         self::assertSame('journal', $recorded->data->sources->journal->collection);
         self::assertSame('watch.outbox', $recorded->data->sinks->journal->from);
         self::assertTrue($recorded->data->sources->journal->intake->permanent);
+    }
+
+    public function testGestemidiWiresEachModeToTheInstrument(): void
+    {
+        $kits = new ArtifactKits(self::API.'/config/artifacts/kits');
+        $build = static function (array $params) use ($kits): array {
+            $built = $kits->build('gestemidi', json_decode((string) json_encode($params), false));
+            self::assertSame([], $built['errors']);
+            $tags = [];
+            $walk = static function ($node) use (&$walk, &$tags): void {
+                if (\is_object($node) || \is_array($node)) {
+                    if (\is_object($node) && isset($node->tagName)) {
+                        $tags[$node->tagName][] = (array) ($node->attributes ?? new \stdClass());
+                    }
+                    foreach ((array) $node as $child) {
+                        $walk($child);
+                    }
+                }
+            };
+            $walk($built['document']);
+
+            return [$tags, $built['document']];
+        };
+
+        // frappe : vitesse de la main -> note, vélocité = pic de vitesse, hauteur = position horizontale
+        [$tags, $doc] = $build(['preset' => 'frappe']);
+        self::assertSame(['camera'], $doc->capabilities);
+        self::assertArrayNotHasKey('sonic-midi', $tags);
+        self::assertCount(1, $tags['sonic-patch']);
+        self::assertSame('synth/pluck', $tags['sonic-patch'][0]['preset']);
+        self::assertSame('right.x,right.y', $tags['sonic-motion'][0]['keys']);
+        self::assertCount(1, $tags['sonic-trigger']);
+        $hit = $tags['sonic-trigger'][0];
+        self::assertSame('motion', $hit['source']);
+        self::assertSame('1.5', (string) $hit['gt']);
+        self::assertSame('note', $hit['emit']);
+        self::assertSame('values.0', $hit['note-key']);
+        self::assertSame('48,72', $hit['note-range']);
+        self::assertSame('peakVel', $hit['vel-key']);
+        // le même couple de DataProviders alimente le synthé
+        self::assertSame($hit['emit-provider'], $tags['sonic-patch'][0]['events']);
+        self::assertSame($hit['emit-trigger'], $tags['sonic-patch'][0]['trigger']);
+
+        // doigts : un déclencheur par nombre de doigts, note fixe tenue
+        [$tags] = $build(['preset' => 'doigts', 'notes' => [60, 64, 67], 'side' => 'left']);
+        self::assertArrayNotHasKey('sonic-motion', $tags);
+        self::assertCount(3, $tags['sonic-trigger']);
+        self::assertSame(['1', '2', '3'], array_map(static fn ($t) => (string) $t['equals'], $tags['sonic-trigger']));
+        self::assertSame(['60', '64', '67'], array_map(static fn ($t) => (string) $t['note'], $tags['sonic-trigger']));
+        self::assertSame('left.fingerCount', $tags['sonic-trigger'][0]['key']);
+        self::assertSame('noteOn', $tags['sonic-trigger'][0]['emit']);
+
+        // tenue + MIDI : geste tenu, capacité midi, port de sortie
+        [$tags, $doc] = $build(['preset' => 'tenue', 'sound' => 'midi', 'gesture' => 'Victory', 'output' => 'digitone', 'channel' => 3]);
+        self::assertSame(['camera', 'midi'], $doc->capabilities);
+        self::assertArrayNotHasKey('sonic-patch', $tags);
+        self::assertSame('digitone', $tags['sonic-midi'][0]['output']);
+        self::assertSame('3', (string) $tags['sonic-midi'][0]['out-channel']);
+        self::assertSame('right.gesture', $tags['sonic-trigger'][0]['key']);
+        self::assertSame('Victory', $tags['sonic-trigger'][0]['equals']);
+        self::assertSame('right.x', $tags['sonic-trigger'][0]['note-key']);
     }
 
     public function testSurveyRecordsMatchTheIntakeSchema(): void
