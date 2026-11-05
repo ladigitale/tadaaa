@@ -1,0 +1,516 @@
+{
+ "id": "sentinel",
+ "title": "Capteur → action",
+ "description": "Veille locale : un capteur (objet, visage, geste de la main, son) déclenche alerte, compteur et journal optionnel (collecte).",
+ "use": "surveiller une présence, un bruit, un geste ; commande sans les mains",
+ "params": {
+  "type": "object",
+  "required": [
+   "title",
+   "sensor"
+  ],
+  "properties": {
+   "preset": {
+    "type": "string",
+    "enum": [
+     "presence",
+     "bruit",
+     "geste"
+    ]
+   },
+   "title": {
+    "type": "string",
+    "maxLength": 120
+   },
+   "sensor": {
+    "type": "string",
+    "enum": [
+     "object",
+     "face",
+     "hand",
+     "sound"
+    ]
+   },
+   "what": {
+    "type": "string",
+    "maxLength": 40,
+    "default": "Détection"
+   },
+   "alert": {
+    "type": "string",
+    "maxLength": 60,
+    "default": "Détecté !"
+   },
+   "categories": {
+    "type": "string",
+    "maxLength": 120,
+    "default": "person",
+    "description": "object : classes COCO, virgules"
+   },
+   "face": {
+    "type": "string",
+    "enum": [
+     "present",
+     "smile",
+     "mouthOpen",
+     "browUp"
+    ],
+    "default": "present",
+    "description": "face : présence ou expression > threshold"
+   },
+   "threshold": {
+    "type": "number",
+    "minimum": 0,
+    "maximum": 1,
+    "default": 0.5
+   },
+   "side": {
+    "type": "string",
+    "enum": [
+     "right",
+     "left"
+    ],
+    "default": "right"
+   },
+   "gesture": {
+    "type": "string",
+    "enum": [
+     "Open_Palm",
+     "Closed_Fist",
+     "Victory",
+     "Thumb_Up",
+     "Thumb_Down",
+     "Pointing_Up",
+     "ILoveYou"
+    ],
+    "default": "Open_Palm"
+   },
+   "db": {
+    "type": "number",
+    "minimum": -100,
+    "maximum": 0,
+    "default": -30,
+    "description": "sound : seuil dB (-60 bas, 0 fort)"
+   },
+   "holdMs": {
+    "type": "integer",
+    "minimum": 0,
+    "maximum": 10000,
+    "default": 500
+   },
+   "cooldownMs": {
+    "type": "integer",
+    "minimum": 0,
+    "maximum": 600000,
+    "default": 5000
+   },
+   "preview": {
+    "type": "boolean",
+    "default": false
+   },
+   "record": {
+    "type": "boolean",
+    "default": false
+   }
+  }
+ },
+ "presets": {
+  "presence": {
+   "title": "Veille de présence",
+   "sensor": "object",
+   "categories": "person",
+   "what": "Présence",
+   "alert": "Quelqu'un est là",
+   "holdMs": 800,
+   "cooldownMs": 10000
+  },
+  "bruit": {
+   "title": "Veille sonore",
+   "sensor": "sound",
+   "db": -30,
+   "what": "Bruit",
+   "alert": "Bruit détecté",
+   "holdMs": 300,
+   "cooldownMs": 5000
+  },
+  "geste": {
+   "title": "Commande par geste",
+   "sensor": "hand",
+   "side": "right",
+   "gesture": "Victory",
+   "what": "Geste",
+   "alert": "Geste reconnu",
+   "holdMs": 300,
+   "cooldownMs": 2000
+  }
+ },
+ "document": {
+  "schema": "artifacts/1",
+  "title": {
+   "$param": "title"
+  },
+  "defaultView": "veille",
+  "capabilities": {
+   "$if": "sensor=sound",
+   "then": [
+    "microphone"
+   ],
+   "else": [
+    "camera"
+   ]
+  },
+  "data": {
+   "stores": {
+    "watch": {
+     "initial": {
+      "count": 0,
+      "active": false,
+      "last": "—",
+      "record": {
+       "$param": "record"
+      },
+      "outbox": [],
+      "sent": 0,
+      "failed": 0
+     },
+     "reducer": "(\n  $s := $state; $a := $action; $t := $a.type; $p := $a.payload;\n  $t = \"seen\" ? $merge([$s, {\n    \"count\": $s.count + 1,\n    \"active\": true,\n    \"last\": $p.what,\n    \"outbox\": $s.record ? $append($s.outbox, [{\"id\": $string($round($a.t)), \"data\": {\"event\": $substring($string($p.what), 0, 60), \"detail\": $substring($string($p.value), 0, 100)}}]) : $s.outbox\n  }]) :\n  $t = \"gone\" ? $merge([$s, {\"active\": false}]) :\n  $t = \"sink:ok\" ? $merge([$s, {\"outbox\": [$filter($s.outbox, function($o) { $o.id != $p.id })], \"sent\": $s.sent + 1}]) :\n  $t = \"sink:error\" ? $merge([$s, {\"outbox\": [$filter($s.outbox, function($o) { $o.id != $p.id })], \"failed\": $s.failed + 1}]) :\n  $s\n)"
+    }
+   },
+   "sources": {
+    "$if": "record",
+    "then": {
+     "journal": {
+      "collection": "journal",
+      "intake": {
+       "permanent": true,
+       "maxRecords": 200,
+       "minInterval": 3,
+       "fields": {
+        "event": {
+         "type": "string",
+         "max": 60,
+         "required": true
+        },
+        "detail": {
+         "type": "string",
+         "max": 100
+        }
+       }
+      }
+     }
+    }
+   },
+   "sinks": {
+    "$if": "record",
+    "then": {
+     "journal": {
+      "collection": "journal",
+      "from": "watch.outbox",
+      "ack": "watch"
+     }
+    }
+   }
+  },
+  "views": [
+   {
+    "id": "veille",
+    "title": {
+     "$param": "title"
+    },
+    "root": {
+     "nodes": [
+      {
+       "tagName": "div",
+       "attributes": {
+        "style": "display:flex;flex-direction:column;gap:.8rem;max-width:36rem;margin:1rem auto;padding:0 1rem"
+       },
+       "nodes": [
+        {
+         "tagName": "h1",
+         "attributes": {
+          "class": "text-xl font-bold m-0"
+         },
+         "textContent": {
+          "$param": "title"
+         }
+        },
+        {
+         "tagName": "div",
+         "attributes": {
+          "style": "display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;min-height:2rem"
+         },
+         "nodes": [
+          {
+           "tagName": "sonic-if",
+           "attributes": {
+            "dataProvider": "watch",
+            "key": "active",
+            "equals": "true"
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-badge",
+             "attributes": {
+              "textContent": {
+               "$param": "alert"
+              },
+              "type": "danger"
+             }
+            }
+           ]
+          },
+          {
+           "tagName": "sonic-if",
+           "attributes": {
+            "dataProvider": "watch",
+            "key": "active",
+            "equals": "false"
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-badge",
+             "attributes": {
+              "textContent": "Veille active",
+              "type": "info"
+             }
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "tagName": "div",
+         "attributes": {
+          "style": "display:flex;gap:.6rem;flex-wrap:wrap"
+         },
+         "nodes": [
+          {
+           "tagName": "div",
+           "attributes": {
+            "style": "flex:1;min-width:8rem;padding:.8rem 1rem;border-radius:.8rem;background:var(--sc-base-200)"
+           },
+           "nodes": [
+            {
+             "tagName": "div",
+             "attributes": {
+              "style": "font-size:.75rem;opacity:.7"
+             },
+             "textContent": "Déclenchements"
+            },
+            {
+             "tagName": "div",
+             "attributes": {
+              "style": "font-size:1.6rem;font-weight:700;line-height:1.2"
+             },
+             "nodes": [
+              {
+               "tagName": "sonic-value",
+               "attributes": {
+                "dataProvider": "watch",
+                "key": "count"
+               }
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "tagName": "div",
+           "attributes": {
+            "style": "flex:1;min-width:8rem;padding:.8rem 1rem;border-radius:.8rem;background:var(--sc-base-200)"
+           },
+           "nodes": [
+            {
+             "tagName": "div",
+             "attributes": {
+              "style": "font-size:.75rem;opacity:.7"
+             },
+             "textContent": "Dernier événement"
+            },
+            {
+             "tagName": "div",
+             "attributes": {
+              "style": "font-size:1.6rem;font-weight:700;line-height:1.2"
+             },
+             "nodes": [
+              {
+               "tagName": "sonic-value",
+               "attributes": {
+                "dataProvider": "watch",
+                "key": "last"
+               }
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "$if": "sensor=object|face|hand",
+         "then": {
+          "tagName": "sonic-camera",
+          "attributes": {
+           "id": "cam",
+           "facing": "user",
+           "width": 640,
+           "height": 480,
+           "fps": 15,
+           "fit": "cover",
+           "hidden-preview": {
+            "$if": "!preview",
+            "then": true
+           },
+           "style": {
+            "$if": "preview",
+            "then": "aspect-ratio:4/3;border-radius:.8rem;overflow:hidden"
+           }
+          }
+         }
+        },
+        {
+         "$if": "sensor=object|face|hand",
+         "then": {
+          "tagName": "sonic-media-start",
+          "attributes": {
+           "for": "cam",
+           "label": "Activer la caméra"
+          }
+         }
+        },
+        {
+         "$if": "sensor=sound",
+         "then": {
+          "tagName": "sonic-mic",
+          "attributes": {
+           "id": "mic",
+           "out-data-provider": "sensor"
+          }
+         }
+        },
+        {
+         "$if": "sensor=sound",
+         "then": {
+          "tagName": "sonic-audio-unlock",
+          "attributes": {
+           "label": "Activer le micro",
+           "start": "mic"
+          }
+         }
+        },
+        {
+         "$if": "sensor=object",
+         "then": {
+          "tagName": "sonic-object-detector",
+          "attributes": {
+           "id": "det",
+           "for": "cam",
+           "fps": 5,
+           "hold-ms": 300,
+           "categories": {
+            "$param": "categories"
+           },
+           "min-score": 0.5,
+           "outputProvider": "sensor",
+           "statusProvider": "sensorState"
+          }
+         }
+        },
+        {
+         "$if": "sensor=face",
+         "then": {
+          "tagName": "sonic-face-tracker",
+          "attributes": {
+           "id": "face",
+           "for": "cam",
+           "fps": 10,
+           "hold-ms": 300,
+           "smooth": 0.5,
+           "outputProvider": "sensor",
+           "statusProvider": "sensorState"
+          }
+         }
+        },
+        {
+         "$if": "sensor=hand",
+         "then": {
+          "tagName": "sonic-hand-tracker",
+          "attributes": {
+           "id": "hand",
+           "for": "cam",
+           "fps": 15,
+           "hold-ms": 200,
+           "smooth": 0.4,
+           "outputProvider": "sensor",
+           "statusProvider": "sensorState"
+          }
+         }
+        },
+        {
+         "tagName": "sonic-trigger",
+         "attributes": {
+          "source": "sensor",
+          "key": {
+           "$if": "sensor=object",
+           "then": "present",
+           "else": {
+            "$if": "sensor=face",
+            "then": {
+             "$param": "face"
+            },
+            "else": {
+             "$if": "sensor=hand",
+             "then": {
+              "$text": "{{side}}.gesture"
+             },
+             "else": "db"
+            }
+           }
+          },
+          "equals": {
+           "$if": "sensor=hand",
+           "then": {
+            "$param": "gesture"
+           }
+          },
+          "gt": {
+           "$if": "sensor=sound",
+           "then": {
+            "$text": "{{db}}"
+           },
+           "else": {
+            "$if": "sensor=face",
+            "then": {
+             "$if": "face=smile|mouthOpen|browUp",
+             "then": {
+              "$text": "{{threshold}}"
+             }
+            }
+           }
+          },
+          "hold-ms": {
+           "$param": "holdMs"
+          },
+          "cooldown-ms": {
+           "$param": "cooldownMs"
+          },
+          "target": "watch",
+          "type": "seen",
+          "end-type": "gone",
+          "payload": {
+           "$json": {
+            "what": {
+             "$param": "what"
+            }
+           }
+          }
+         }
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

@@ -5051,6 +5051,67 @@
       }
     },
     {
+      "name": "sonic-trigger",
+      "props": {
+        "source": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "equals": {
+          "type": "string"
+        },
+        "not": {
+          "type": "string"
+        },
+        "gt": {
+          "type": "string"
+        },
+        "gte": {
+          "type": "string"
+        },
+        "lt": {
+          "type": "string"
+        },
+        "lte": {
+          "type": "string"
+        },
+        "truthy": {
+          "type": "boolean"
+        },
+        "hold-ms": {
+          "type": "number"
+        },
+        "cooldown-ms": {
+          "type": "number"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "end-type": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "state-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "interactive",
+      "description": "Relie un capteur à une action : surveille une valeur d'un DataProvider (source + key en chemin pointé : labels.person, right.gesture, db, faces.0.blend.jawOpen) et envoie une action au sonic-store target quand la condition tient (equals, not, gt, gte, lt, lte, truthy ; plusieurs opérateurs = ET) pendant hold-ms ; un seul déclenchement par franchissement (mode edge, réarmé au retour à faux) ou à chaque repos (mode repeat), cooldown-ms entre deux ; action {type, payload = payload JSON + value (valeur lue) + count} ; end-type = action au retour à faux ; disabled suspend ; state-provider publie {active, armed, count, value} ; pas d'évaluation de code"
+    },
+    {
       "name": "sonic-value",
       "props": {}
     },
@@ -5293,5 +5354,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); procgen (sonic-procgen); shader (sonic-shader); sound (sonic-sound, sonic-sfx); stage (sonic-stage); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-landmarks-overlay, sonic-face-mesh, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); procgen (sonic-procgen); shader (sonic-shader); sound (sonic-sound, sonic-sfx); stage (sonic-stage); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-landmarks-overlay, sonic-face-mesh, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }

@@ -76,7 +76,7 @@ final class ArtifactKitsTest extends TestCase
     public function testShippedKitsBuildValidDocuments(): void
     {
         $kits = new ArtifactKits(self::API.'/config/artifacts/kits');
-        self::assertSame(['grid', 'onepage', 'quiz', 'shader', 'survey'], $kits->ids());
+        self::assertSame(['grid', 'onepage', 'quiz', 'sentinel', 'shader', 'survey'], $kits->ids());
         $validator = new ArtifactDocumentValidator(
             self::API.'/config/artifacts/catalog.json',
             self::API.'/config/artifacts/sdui.schema.json',
@@ -95,9 +95,65 @@ final class ArtifactKitsTest extends TestCase
 
         $summary = $kits->summary();
         self::assertLessThan(5000, \strlen($summary));
-        foreach (['quiz :', 'grid :', 'Presets : snake', 'correct: integer', 'shader :', 'survey :'] as $needle) {
+        foreach (['quiz :', 'grid :', 'Presets : snake', 'correct: integer', 'shader :', 'survey :', 'sentinel :', 'Presets : presence, bruit, geste'] as $needle) {
             self::assertStringContainsString($needle, $summary);
         }
+    }
+
+    public function testSentinelWiresEachSensorToTheTrigger(): void
+    {
+        $kits = new ArtifactKits(self::API.'/config/artifacts/kits');
+        $trigger = static function (array $params) use ($kits): array {
+            $built = $kits->build('sentinel', json_decode((string) json_encode($params), false));
+            self::assertSame([], $built['errors']);
+            $found = [];
+            $walk = static function ($node) use (&$walk, &$found): void {
+                if (\is_object($node) || \is_array($node)) {
+                    $tag = \is_object($node) ? ($node->tagName ?? null) : null;
+                    if ($tag === 'sonic-trigger') {
+                        $found[] = $node->attributes;
+                    }
+                    foreach ((array) $node as $child) {
+                        $walk($child);
+                    }
+                }
+            };
+            $walk($built['document']);
+            self::assertCount(1, $found, 'un seul déclencheur');
+
+            return [(array) $found[0], $built['document']];
+        };
+
+        [$object] = $trigger(['preset' => 'presence']);
+        self::assertSame('present', $object['key']);
+        self::assertArrayNotHasKey('gt', $object);
+        self::assertArrayNotHasKey('equals', $object);
+        self::assertSame('800', (string) $object['hold-ms']);
+
+        [$smile] = $trigger(['title' => 'S', 'sensor' => 'face', 'face' => 'smile', 'threshold' => 0.6]);
+        self::assertSame('smile', $smile['key']);
+        self::assertSame('0.6', $smile['gt']);
+
+        [$face] = $trigger(['title' => 'S', 'sensor' => 'face']);
+        self::assertSame('present', $face['key']);
+        self::assertArrayNotHasKey('gt', $face);
+
+        [$hand] = $trigger(['preset' => 'geste', 'side' => 'left', 'gesture' => 'Thumb_Up']);
+        self::assertSame('left.gesture', $hand['key']);
+        self::assertSame('Thumb_Up', $hand['equals']);
+
+        [$sound, $doc] = $trigger(['preset' => 'bruit', 'db' => -20]);
+        self::assertSame('db', $sound['key']);
+        self::assertSame('-20', $sound['gt']);
+        self::assertSame(['microphone'], $doc->capabilities);
+        self::assertObjectNotHasProperty('sources', $doc->data);
+        self::assertObjectNotHasProperty('sinks', $doc->data);
+
+        [, $recorded] = $trigger(['preset' => 'presence', 'record' => true]);
+        self::assertSame(['camera'], $recorded->capabilities);
+        self::assertSame('journal', $recorded->data->sources->journal->collection);
+        self::assertSame('watch.outbox', $recorded->data->sinks->journal->from);
+        self::assertTrue($recorded->data->sources->journal->intake->permanent);
     }
 
     public function testSurveyRecordsMatchTheIntakeSchema(): void
