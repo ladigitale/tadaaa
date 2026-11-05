@@ -13,6 +13,7 @@ Le sommaire des kits (une ligne par kit, avec la signature de ses paramètres) e
 | `shader` | Shader GLSL (format ShaderToy) avec jusqu'à 4 réglages reliés à `uParam0…3` | `plasma` |
 | `onepage` | Page de présentation : accroche, sections, cartes, FAQ, pied de page | — |
 | `survey` | Formulaire A2UI dont les réponses partent dans une collecte anonyme (`intake`) | — |
+| `sentinel` | Veille locale : un capteur (objet, visage, geste de la main, son) déclenche alerte, compteur et journal optionnel dans une collecte anonyme, via `sonic-trigger` | `presence`, `bruit`, `geste` |
 
 ## Format d'un fichier `<id>.json`
 
