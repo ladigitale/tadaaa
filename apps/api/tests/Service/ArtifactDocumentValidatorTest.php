@@ -1101,7 +1101,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
             ['nodeId', str_repeat('a', 65), 'nodeId'],
             ['nodeId', ['x'], 'nodeId'],
         ];
-        foreach ($cases as [$key, $value, $needle]) {
+        foreach ($cases as [$key, $value, $needle, 'sonic-still', 'sonic-file-open', 'sonic-tape']) {
             $doc['views'][0]['root']['nodes'] = [['tagName' => 'p', $key => $value]];
             $result = $this->validator->validate($doc);
             self::assertFalse($result['valid'], $key.' '.json_encode($value));
