@@ -1,7 +1,7 @@
 {
   "concordeVersion": "5.1.3",
   "creativeStackVersion": "0.1.0",
-  "generatedFrom": "@supersoniks/concorde 5.1.3 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, controller, device, hugging-face-infer, interactive, map, media, p2p, physics, plot, procgen, shader, sound, stage, tape, vector, vectorize, vision, webgpu)",
+  "generatedFrom": "@supersoniks/concorde 5.1.3 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, controller, device, hugging-face-infer, interactive, map, media, ocr, p2p, physics, plot, procgen, shader, sound, stage, tape, vector, vectorize, vision, webgpu)",
   "components": [
     {
       "name": "sonic-2d",
@@ -3520,6 +3520,34 @@
       "description": "Détecte des objets (80 classes COCO : personne, tasse, téléphone, chaise…) dans une source d'images (for=\"cam\") ; sortie dans output-provider (défaut = id) : present, count, label/score/x/y/w/h/cx/cy du meilleur objet, labels.<étiquette> = nombre d'objets (étiquette en minuscules, _ pour les séparateurs), objects[] {label, score, x, y, w, h, cx, cy} en 0..1 repère écran ; categories=\"person,cup\" filtre ; max-results ; min-score ; hold-ms ; map = clés dérivées sans latence ; track=\"true\" donne à chaque objet un id stable entre images (objects[].id, ageMs, ids = ids dans l'ordre, id/ageMs du meilleur ; track-iou 0.3 = recouvrement minimal, track-max-age-ms 500 = un objet disparu garde son id) et lisse sa boîte avec smooth (sans track, smooth sans effet) ; statut dans status-provider (défaut <id>State) : phase idle|awaiting-consent|declined|downloading|loading|ready|error|unsupported, error {code, message}, backend gpu|cpu, thread worker|main, download {loaded, total}, fps, latencyMs, consent {key, origin, url} ; consent-provider accepted|declined ; inférence locale dans un worker (repli fil principal), modèle téléchargé, plafonné et vérifié par model-sha256 ; aucune image n'est envoyée ; publie aussi frameSeq, frameTime, capturedAt, latencyMs (identité de l'image analysée, pour sonic-frame-sync)"
     },
     {
+      "name": "sonic-ocr",
+      "props": {
+        "source": {
+          "type": "string"
+        },
+        "lang": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "auto": {
+          "type": "boolean"
+        },
+        "max-size": {
+          "type": "number"
+        },
+        "min-confidence": {
+          "type": "number"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "ocr",
+      "description": "OCR d'une source d'images (#id) : lang (eng, fra, fra+eng…), control {n} ou auto, max-size, min-confidence ; état {status, text, confidence, lines[{text, x, y, w, h, words[]}], words, step, progress, ms, error}"
+    },
+    {
       "name": "sonic-orientation",
       "props": {
         "control": {
@@ -6173,5 +6201,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); plot (sonic-plot); procgen (sonic-procgen); shader (sonic-shader); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); plot (sonic-plot); procgen (sonic-procgen); shader (sonic-shader); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
