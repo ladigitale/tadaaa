@@ -1,7 +1,7 @@
 {
   "concordeVersion": "5.1.3",
   "creativeStackVersion": "0.1.0",
-  "generatedFrom": "@supersoniks/concorde 5.1.3 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, controller, device, hugging-face-infer, interactive, map, media, p2p, physics, procgen, shader, sound, stage, vision, webgpu)",
+  "generatedFrom": "@supersoniks/concorde 5.1.3 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, controller, device, hugging-face-infer, interactive, map, media, p2p, physics, procgen, shader, sound, stage, tape, vision, webgpu)",
   "components": [
     {
       "name": "sonic-2d",
@@ -379,6 +379,21 @@
       },
       "addon": "audio",
       "description": "Entrée externe d'un patch (hors sonic-voice) : source=\"#mic\" (défaut) ou #id d'une source audio (vidéo, sampler, autre patch) ; un patch sans sonic-voice devient une chaîne d'effets ; master interdit"
+    },
+    {
+      "name": "sonic-audio-load",
+      "props": {
+        "interval": {
+          "type": "number",
+          "description": "Intervalle de mesure en s (1)"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP de l'état (défaut <id>State, sinon audioLoad)"
+        }
+      },
+      "addon": "audio",
+      "description": "Charge du moteur audio (Render Capacity, Chrome) en DataProvider : { status, average, peak, underrun, updates } ; status unsupported ailleurs"
     },
     {
       "name": "sonic-audio-master",
@@ -1673,6 +1688,34 @@
           "default": "default"
         }
       }
+    },
+    {
+      "name": "sonic-file-open",
+      "props": {
+        "accept": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "drop": {
+          "type": "boolean"
+        },
+        "max-bytes": {
+          "type": "number"
+        },
+        "max-text": {
+          "type": "number"
+        },
+        "ref-provider": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "media",
+      "description": "Ouvre un fichier du disque (clic ou dépôt : image, audio, vidéo, CSV/JSON) et le publie en SonicMediaRef dans ref-provider ; texte exposé dans l'état"
     },
     {
       "name": "sonic-filter",
@@ -3201,6 +3244,9 @@
     {
       "name": "sonic-mod",
       "props": {
+        "name": {
+          "type": "string"
+        },
         "from": {
           "type": "string"
         },
@@ -3215,7 +3261,7 @@
         }
       },
       "addon": "audio",
-      "description": "Câble de modulation : from (module ou voice.pitch|gate|vel|note|rand) → to (module.param), amount, curve=exp"
+      "description": "Câble de modulation : from (module ou voice.pitch|gate|vel|note|rand) → to (module.param), amount, curve=exp ; name : câble pilotable (sonic-param to=\"nom.amount\" ou \"nom.depth\"), plusieurs câbles peuvent partager un nom"
     },
     {
       "name": "sonic-modal",
@@ -3642,10 +3688,18 @@
         },
         "max": {
           "type": "number"
+        },
+        "random": {
+          "type": "number",
+          "description": "Aléa par note, part relative (0.1 = ±10 %) ; modules de sonic-voice"
+        },
+        "random-abs": {
+          "type": "number",
+          "description": "Aléa par note, écart absolu dans les unités du paramètre"
         }
       },
       "addon": "audio",
-      "description": "Paramètre piloté : to (module.param), source (DP), expose, value, ramp-s, min, max"
+      "description": "Paramètre piloté : to (module.param, module.active, ou câble.amount / câble.depth), source (DP), expose, value, ramp-s, min, max ; random (part relative) / random-abs (écart absolu) tirés à chaque note"
     },
     {
       "name": "sonic-password-helper",
@@ -3756,6 +3810,14 @@
         },
         "out-data-provider": {
           "type": "string"
+        },
+        "prune": {
+          "type": "boolean",
+          "description": "Élagage par note : branches muettes (volume 0 sans modulation, câble de profondeur 0, module active=false) non construites"
+        },
+        "seed": {
+          "type": "number",
+          "description": "Graine des tirages aléatoires (random, voice.rand, jitter) : même graine, même suite"
         }
       },
       "addon": "audio",
@@ -4237,10 +4299,16 @@
         },
         "level": {
           "type": "number"
+        },
+        "gains": {
+          "type": "string"
+        },
+        "jitter": {
+          "type": "number"
         }
       },
       "addon": "audio",
-      "description": "Résonateur (banque de passe-bandes natifs) : excité par l'entrée (bruit, micro…), freq-hz = voice.pitch, q, partials \"1 2 3 4.2\", level"
+      "description": "Résonateur modal (banc AudioWorklet, repli natif) : excité par l'entrée (bruit, micro…), freq-hz = voice.pitch, q, partials \"1 2 3 4.2\" et gains modifiables pendant le jeu, jitter (cents aléatoires par partiel et par note), level"
     },
     {
       "name": "sonic-reverb",
@@ -5076,6 +5144,37 @@
       }
     },
     {
+      "name": "sonic-still",
+      "props": {
+        "src": {
+          "type": "string"
+        },
+        "in-data-provider": {
+          "type": "string"
+        },
+        "drop": {
+          "type": "boolean"
+        },
+        "max-size": {
+          "type": "number"
+        },
+        "fit": {
+          "type": "string"
+        },
+        "hidden-preview": {
+          "type": "boolean"
+        },
+        "out-data-provider": {
+          "type": "string"
+        },
+        "ref-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "media",
+      "description": "Image fixe comme source d'images (#id) pour sonic-shader, vision, vectorisation, OCR : URL (https, blob:, data:image), fichier déposé, ou SonicMediaRef d'un DataProvider ; état {status, error, width, height, mime}"
+    },
+    {
       "name": "sonic-store",
       "props": {
         "initial": {
@@ -5201,6 +5300,55 @@
           "type": "string"
         }
       }
+    },
+    {
+      "name": "sonic-tape",
+      "props": {
+        "source": {
+          "type": "string"
+        },
+        "loop": {
+          "type": "boolean"
+        },
+        "loop-start": {
+          "type": "number"
+        },
+        "loop-end": {
+          "type": "number"
+        },
+        "gain": {
+          "type": "number"
+        },
+        "pitch": {
+          "type": "number"
+        },
+        "output": {
+          "type": "string"
+        },
+        "rate-from": {
+          "type": "string"
+        },
+        "rate-mode": {
+          "type": "string"
+        },
+        "rate-scale": {
+          "type": "number"
+        },
+        "rate-deadzone": {
+          "type": "number"
+        },
+        "rate-smooth": {
+          "type": "number"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "tape",
+      "description": "Lecture à vitesse signée d'un son (URL ou SonicMediaRef d'un DataProvider) : control {rate, position 0..1, play, hold}, rate-from (capteur) avec rate-mode rate|omega|accel ; sortie master / none / #id ; état {status, duration, position, rate, playing, reversed}"
     },
     {
       "name": "sonic-tbody",
@@ -5853,5 +6001,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); procgen (sonic-procgen); shader (sonic-shader); sound (sonic-sound, sonic-sfx); stage (sonic-stage); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); procgen (sonic-procgen); shader (sonic-shader); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
