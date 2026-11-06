@@ -762,7 +762,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringStartsWith('5.', $validator->concordeVersion());
         foreach (['sonic-button', 'sonic-alert', 'sonic-radio', 'sonic-switch', 'sonic-store', 'sonic-sound', 'sonic-physics', 'div',
             // Derniers addons de la creative-stack : le catalogue livré doit les connaître (sinon le validateur les refuse).
-            'sonic-animate', 'sonic-clock', 'sonic-timeline', 'sonic-p2p', 'sonic-fullscreen', 'sonic-pointer-lock', 'sonic-wake-lock', 'sonic-orientation', 'sonic-capabilities'] as $tag) {
+            'sonic-animate', 'sonic-clock', 'sonic-timeline', 'sonic-p2p', 'sonic-fullscreen', 'sonic-pointer-lock', 'sonic-wake-lock', 'sonic-orientation', 'sonic-capabilities', 'sonic-still', 'sonic-file-open', 'sonic-tape'] as $tag) {
             self::assertContains($tag, $validator->allowedTags(), $tag);
         }
         self::assertFalse(\in_array('sonic-example', $validator->allowedTags(), true));
@@ -1101,7 +1101,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
             ['nodeId', str_repeat('a', 65), 'nodeId'],
             ['nodeId', ['x'], 'nodeId'],
         ];
-        foreach ($cases as [$key, $value, $needle, 'sonic-still', 'sonic-file-open', 'sonic-tape']) {
+        foreach ($cases as [$key, $value, $needle]) {
             $doc['views'][0]['root']['nodes'] = [['tagName' => 'p', $key => $value]];
             $result = $this->validator->validate($doc);
             self::assertFalse($result['valid'], $key.' '.json_encode($value));
