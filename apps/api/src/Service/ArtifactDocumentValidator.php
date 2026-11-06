@@ -397,9 +397,9 @@ final class ArtifactDocumentValidator
                     .'Plus de 4 réglages : dérive-les dans le GLSL (ex. fract(uParam0 * 7.0)). Sources d’image : channel0…3="#id" d’un composant source (caméra, vidéo, écran, analyseur audio…). '
                     .'Ou pars du kit shader (start_from_kit : shader GLSL + jusqu’à 4 réglages « controls » déjà câblés), puis ajuste avec edit_preview.',
                 'icones' => $this->icons->rule(),
-                'polices' => 'Optionnel : "fonts": ["Patrick Hand", "Fredoka:wght@400;700"] (4 max, noms Google Fonts, pas d’URL). Le viewer les charge ; utiliser ensuite font-family:\'Patrick Hand\',cursive dans les styles. Toujours prévoir une police de repli.',
+                'polices' => 'Optionnel : "fonts": ["Patrick Hand", "Fredoka:wght@400;700"] (4 max, noms Google Fonts, pas d’URL). Le viewer les charge ; utiliser ensuite font-family:\'Patrick Hand\',cursive dans les styles. Toujours prévoir une police de repli. Police à soi (ou variable) : envoyer un .woff2 avec upload_artifact_asset puis déclarer "fontFiles": [{"family": "Mon Titre", "src": "@asset:titre.woff2", "weight": "100 900" (plage = police variable ; ou "400"), "style": "normal|italic"}] (4 max) et utiliser font-family:\'Mon Titre\',sans-serif ; artefact lisible par lien ou public (une police ne s’authentifie pas).',
                 'fichiers' => 'Gros shader / réducteur / texte : déclarer "files": {"jeu.jsonata": "…", "scene.glsl": "…"} au niveau du document et y renvoyer par la valeur exacte "@file:jeu.jsonata" (attribut image d’un sonic-shader, reducer d’un store, jsonata d’une transform…). Le serveur remplace les références avant validation et affichage ; retoucher un fichier = update_artifact avec edits sur /files/jeu.jsonata (chemin court, pas besoin de renvoyer le document). Noms a-z0-9._-, 24 fichiers max, 64 Ko chacun. Fichier copié d’une ressource de la bibliothèque (get_resource) : ajouter au niveau du document "resources": {"scene.glsl": {"ref": "base:shader/plasma", "version": 1, "sha256": "…"}} (ref, version et sha256 renvoyés par get_resource) pour que l’utilisateur soit prévenu quand une version plus récente existe.',
-                'assets' => 'Images, sons, vidéos, modèles 3D (.glb), JSON volumineux : fichiers binaires propres à l’artefact (20 Mo max chacun, 200 max ; png jpg webp gif avif svg ogg mp3 wav flac webm mp4 glb json). Les envoyer avec upload_artifact_asset (contentBase64 pour un petit fichier, ou fetch {url, sha256} depuis un hôte autorisé) AVANT de publier, puis les référencer dans le document par la valeur exacte "@asset:nom.ext" partout où une URL est attendue (src d’un sonic-sprite ou d’une image, source d’un sampler…) : le serveur la remplace par l’URL publique de l’asset. Une référence vers un asset absent reste telle quelle. Le stockage compte dans le quota du propriétaire (list_artifact_assets, delete_artifact_asset).',
+                'assets' => 'Images, sons, vidéos, modèles 3D (.glb), JSON volumineux : fichiers binaires propres à l’artefact (20 Mo max chacun, 200 max ; png jpg webp gif avif svg ogg mp3 wav flac webm mp4 glb woff2 json). Les envoyer avec upload_artifact_asset (contentBase64 pour un petit fichier, ou fetch {url, sha256} depuis un hôte autorisé) AVANT de publier, puis les référencer dans le document par la valeur exacte "@asset:nom.ext" partout où une URL est attendue (src d’un sonic-sprite ou d’une image, source d’un sampler…) : le serveur la remplace par l’URL publique de l’asset. Une référence vers un asset absent reste telle quelle. Le stockage compte dans le quota du propriétaire (list_artifact_assets, delete_artifact_asset).',
                 'collecte' => 'Formulaire / scores anonymes : data.sources.<x> = {collection, intake:{fields:{nom:{type:string,max:20,required:true}, score:{type:integer,min:0,max:9999}}, maxRecords, minInterval, requireCode}}. Fermée par défaut : open_artifact_intake ouvre une session limitée (24 h max) ; intake.permanent:true = toujours ouverte (pas de session, garde au plus maxRecords en évinçant le pire ou le plus ancien, minInterval 3 s par défaut) ; intake.unique:{field:"nom",keep:"max:score"} = un seul record par valeur de field (keep : max:<champ>|min:<champ>|last), idéal pour un classement (meilleur score par pseudo). Lecture triée/bornée côté serveur : data.sources.<x> accepte sort (\"-score\") et limit (5) ; l’API accepte ?sort=-score&limit=5 et read_artifact_data aussi. data.sinks.<x> = {collection, from:"store.outbox", merge:{champ:"dp.cle"}, code?:"dp.cle", ack?:"storeId"} : le viewer poste chaque élément {id, data} ajouté à la boîte d’envoi et renvoie sink:ok / sink:error au store. Lecture non publique : lien secret &rk=<readToken> (get_artifact.collections).',
             ],
             'scripts' => $this->scriptsCatalog->mcpSummary(),
@@ -713,6 +713,10 @@ final class ArtifactDocumentValidator
             $this->validateFonts($document['fonts'], $errors);
         }
 
+        if (\array_key_exists('fontFiles', $document)) {
+            $this->validateFontFiles($document['fontFiles'], $errors);
+        }
+
         $this->validateCapabilities($document['capabilities'] ?? null, \array_key_exists('capabilities', $document), $errors);
 
         // Reject unknown top-level keys beyond envelope
@@ -725,6 +729,7 @@ final class ArtifactDocumentValidator
             'defaultView' => true,
             'data' => true,
             'fonts' => true,
+            'fontFiles' => true,
             'capabilities' => true,
             'page' => true,
         ];
@@ -1538,6 +1543,50 @@ final class ArtifactDocumentValidator
         foreach ($fonts as $i => $font) {
             if (!\is_string($font) || \strlen($font) > 80 || !preg_match(self::FONT_SPEC, $font)) {
                 $errors[] = ['path' => '/fonts/'.$i, 'message' => 'Famille invalide (ex. "Patrick Hand" ou "Fredoka:wght@400;700").'];
+            }
+        }
+    }
+
+    public const MAX_FONT_FILES = 4;
+
+    /**
+     * `fontFiles` : polices fournies en assets `.woff2` (variables comprises). `src` est une référence exacte
+     * `@asset:nom.woff2` (remplacée à la lecture par l'URL de l'asset) ; jamais d'URL libre.
+     *
+     * @param list<array{path: string, message: string}> $errors
+     */
+    private function validateFontFiles(mixed $files, array &$errors): void
+    {
+        if (!\is_array($files) || !array_is_list($files)) {
+            $errors[] = ['path' => '/fontFiles', 'message' => 'fontFiles doit être une liste de {family, src, weight?, style?}.'];
+
+            return;
+        }
+        if (\count($files) > self::MAX_FONT_FILES) {
+            $errors[] = ['path' => '/fontFiles', 'message' => sprintf('%d polices maximum.', self::MAX_FONT_FILES)];
+        }
+        foreach ($files as $i => $f) {
+            $at = '/fontFiles/'.$i;
+            if (!\is_array($f)) {
+                $errors[] = ['path' => $at, 'message' => 'Attendu {family, src, weight?, style?}.'];
+                continue;
+            }
+            foreach (array_keys($f) as $k) {
+                if (!\in_array($k, ['family', 'src', 'weight', 'style'], true)) {
+                    $errors[] = ['path' => $at.'/'.$k, 'message' => 'Clé non autorisée (family, src, weight, style).'];
+                }
+            }
+            if (!\is_string($f['family'] ?? null) || !preg_match('/^[A-Za-z][A-Za-z0-9 ]{0,39}$/', $f['family'])) {
+                $errors[] = ['path' => $at.'/family', 'message' => 'Nom de famille invalide (lettres, chiffres, espaces ; 40 max ; commence par une lettre).'];
+            }
+            if (!\is_string($f['src'] ?? null) || !preg_match('/^@asset:[a-z0-9][a-z0-9._-]{0,57}\.woff2$/', $f['src'])) {
+                $errors[] = ['path' => $at.'/src', 'message' => 'src doit être une référence "@asset:nom.woff2" (asset envoyé avec upload_artifact_asset).'];
+            }
+            if (\array_key_exists('weight', $f) && (!\is_string($f['weight']) || !preg_match('/^[1-9]00( [1-9]00)?$/', $f['weight']))) {
+                $errors[] = ['path' => $at.'/weight', 'message' => 'weight : "400" ou une plage de police variable "100 900".'];
+            }
+            if (\array_key_exists('style', $f) && !\in_array($f['style'], ['normal', 'italic'], true)) {
+                $errors[] = ['path' => $at.'/style', 'message' => 'style : normal ou italic.'];
             }
         }
     }

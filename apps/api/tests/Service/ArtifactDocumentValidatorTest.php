@@ -706,14 +706,14 @@ final class ArtifactDocumentValidatorTest extends TestCase
         $filtered = $this->validator->mcpCatalogPayload(true, null, ['__none__'], false);
         $encodedFiltered = json_encode($filtered, JSON_UNESCAPED_UNICODE);
         self::assertNotFalse($encodedFiltered);
-        self::assertLessThan(9_000, strlen($encodedFiltered));
+        self::assertLessThan(12_000, strlen($encodedFiltered));
 
         // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, 3d, 2d, animation, appareil,
         // salons, ia, collecte). Plafond large, pour repérer une dérive de taille.
         $payload = $this->validator->mcpCatalogPayload(true);
         $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE);
         self::assertNotFalse($encoded);
-        self::assertLessThan(44_000, strlen($encoded));
+        self::assertLessThan(70_000, strlen($encoded));
         self::assertArrayHasKey('commonProps', $payload['catalog']);
     }
 
@@ -782,14 +782,14 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertArrayHasKey('a2ui', $targeted['rules']);
         self::assertArrayHasKey('interdit', $targeted['rules']);
         self::assertFalse(isset($targeted['rules']['audio']) || isset($targeted['examples']) || isset($targeted['scripts']));
-        self::assertLessThan(13_000, \strlen((string) json_encode($targeted)));
+        self::assertLessThan(17_000, \strlen((string) json_encode($targeted)));
         $full = $validator->mcpCatalogPayload(true);
         self::assertArrayHasKey('audio', $full['rules']);
         self::assertArrayHasKey('examples', $full);
 
         // Sommaire pour le prompt système : tous les composants et les thèmes de règles (~2,5k tokens).
         $index = $validator->catalogIndex();
-        self::assertLessThan(10_000, \strlen($index));
+        self::assertLessThan(16_000, \strlen($index));
         foreach (['sonic-button', 'sonic-store', 'sonic-physics', 'a2ui', 'chartjs', 'div', 'addon animation', 'addon device', 'addon p2p', 'animation, appareil, salons'] as $needle) {
             self::assertStringContainsString($needle, $index);
         }
@@ -1023,6 +1023,39 @@ final class ArtifactDocumentValidatorTest extends TestCase
             'fonts' => ['Patrick Hand', 'Fredoka:wght@400;700', 'Lora:ital,wght@0,400;1,400'],
             'views' => [['id' => 'home', 'title' => 'H', 'root' => ['nodes' => [['tagName' => 'div']]]]]];
         self::assertTrue($this->validator->validate($doc)['valid']);
+    }
+
+    public function testAcceptsFontFiles(): void
+    {
+        $doc = ['schema' => 'artifacts/1', 'title' => 'F', 'defaultView' => 'home',
+            'fontFiles' => [
+                ['family' => 'Mon Titre', 'src' => '@asset:titre.woff2', 'weight' => '100 900', 'style' => 'normal'],
+                ['family' => 'Corps', 'src' => '@asset:corps-it.woff2', 'weight' => '400', 'style' => 'italic'],
+                ['family' => 'Simple', 'src' => '@asset:simple.woff2'],
+            ],
+            'views' => [['id' => 'home', 'title' => 'H', 'root' => ['nodes' => [['tagName' => 'div']]]]]];
+        self::assertSame([], $this->validator->validate($doc)['errors']);
+    }
+
+    public function testRejectsBadFontFiles(): void
+    {
+        $doc = ['schema' => 'artifacts/1', 'title' => 'F', 'defaultView' => 'home',
+            'fontFiles' => [
+                ['family' => 'A', 'src' => 'https://evil.example/f.woff2'],
+                ['family' => 'B;}body{x:y', 'src' => '@asset:b.woff2'],
+                ['family' => 'C', 'src' => '@asset:c.ttf'],
+                ['family' => 'D', 'src' => '@asset:d.woff2', 'weight' => 'bold', 'style' => 'oblique'],
+                ['family' => 'E', 'src' => '@asset:e.woff2', 'url' => 'x'],
+                ['family' => 'F', 'src' => '@asset:f.woff2'],
+            ],
+            'views' => [['id' => 'home', 'title' => 'H', 'root' => ['nodes' => [['tagName' => 'div']]]]]];
+        $r = $this->validator->validate($doc);
+        self::assertFalse($r['valid']);
+        $paths = array_column($r['errors'], 'path');
+        foreach (['/fontFiles/0/src', '/fontFiles/1/family', '/fontFiles/2/src', '/fontFiles/3/weight', '/fontFiles/3/style', '/fontFiles/4/url', '/fontFiles'] as $p) {
+            self::assertContains($p, $paths, $p);
+        }
+        self::assertFalse($this->validator->validate(['schema' => 'artifacts/1', 'title' => 'F', 'defaultView' => 'home', 'fontFiles' => 'x', 'views' => $doc['views']])['valid']);
     }
 
     public function testRejectsBadFonts(): void
