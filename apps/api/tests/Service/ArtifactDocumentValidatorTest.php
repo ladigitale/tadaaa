@@ -1058,6 +1058,17 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertFalse($this->validator->validate(['schema' => 'artifacts/1', 'title' => 'F', 'defaultView' => 'home', 'fontFiles' => 'x', 'views' => $doc['views']])['valid']);
     }
 
+    public function testViewTransition(): void
+    {
+        $views = [['id' => 'a', 'title' => 'A', 'root' => ['nodes' => [['tagName' => 'div']]]], ['id' => 'b', 'title' => 'B', 'root' => ['nodes' => [['tagName' => 'div']]]]];
+        foreach (['fade', 'slide', 'zoom'] as $t) {
+            self::assertSame([], $this->validator->validate(['schema' => 'artifacts/1', 'title' => 'T', 'defaultView' => 'a', 'viewTransition' => $t, 'views' => $views])['errors'], $t);
+        }
+        $r = $this->validator->validate(['schema' => 'artifacts/1', 'title' => 'T', 'defaultView' => 'a', 'viewTransition' => 'spin', 'views' => $views]);
+        self::assertFalse($r['valid']);
+        self::assertSame('/viewTransition', $r['errors'][0]['path']);
+    }
+
     public function testRejectsBadFonts(): void
     {
         $doc = ['schema' => 'artifacts/1', 'title' => 'F', 'defaultView' => 'home',
