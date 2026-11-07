@@ -42,6 +42,7 @@ final class ArtifactAssets
         'webm' => 'video/webm',
         'mp4' => 'video/mp4',
         'glb' => 'model/gltf-binary',
+        'woff2' => 'font/woff2',
         'json' => 'application/json',
     ];
 
@@ -95,6 +96,7 @@ final class ArtifactAssets
             'flac' => str_starts_with($b, 'fLaC'),
             'webm' => str_starts_with($b, "\x1A\x45\xDF\xA3"),
             'glb' => str_starts_with($b, 'glTF'),
+            'woff2' => str_starts_with($b, 'wOF2'),
             'mp3' => str_starts_with($b, 'ID3') || (\strlen($b) > 1 && ord($b[0]) === 0xFF && (ord($b[1]) & 0xE0) === 0xE0),
             'json' => self::isJson($b),
             'svg' => self::isSafeSvg($b),
