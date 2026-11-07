@@ -4908,6 +4908,58 @@
       "description": "### sonic-sdui (Server Driven User Interface) est un fetcher chargant un JSON décrivant une interface utilisateur Extends mixins : Fetcher, [Subscriber](./?path=/docs/miscallenous-🔔-subscriber--page) * Si le composant possède un attribut…"
     },
     {
+      "name": "sonic-segment-anything",
+      "props": {
+        "for": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "click-on": {
+          "type": "string"
+        },
+        "points-from": {
+          "type": "string"
+        },
+        "box-from": {
+          "type": "string"
+        },
+        "points": {
+          "type": "string"
+        },
+        "refresh": {
+          "type": "string"
+        },
+        "fps": {
+          "type": "number"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "invert": {
+          "type": "boolean"
+        },
+        "mirror": {
+          "type": "string"
+        },
+        "load": {
+          "type": "string"
+        },
+        "consent-provider": {
+          "type": "string"
+        },
+        "max-side": {
+          "type": "number"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "hugging-face-infer",
+      "description": "Segment Anything (SAM 2) sur une image (for=\"#id\" : sonic-still, img, canvas, caméra, vidéo) : l'image est encodée une fois, puis chaque invite donne un masque en quelques dizaines de ms. Invites : click-on=\"#id\" (clic = nouvelle sélection, Maj+clic = ajouter, Alt+clic ou clic droit = exclure, glisser = boîte), points-from / box-from (DataProvider, 0..1) ou points=\"x,y,1; x,y,0\". Le masque est une source d'images (sonic-mask-replace mask=\"#id\", sonic-shader channelN=\"#id\") ; mode alpha|gray, invert. refresh=\"frames\" ré-encode une source qui change (fps). État en out-data-provider : {phase, progress, backend, encoded, busy, points, box, present, score, coverage, cx, cy, x0, y0, x1, y1, encodeMs, decodeMs, error}. Modèle via la configuration Hugging Face (engine: \"sam\"), consentement par consent-provider ou accept()"
+    },
+    {
       "name": "sonic-segmenter",
       "props": {
         "for": {
@@ -6684,5 +6736,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen); scroll (sonic-scroll); shader (sonic-shader); sketch (sonic-sketch); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen); scroll (sonic-scroll); shader (sonic-shader); sketch (sonic-sketch); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
