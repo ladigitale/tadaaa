@@ -238,6 +238,8 @@
     },
     "q": {},
     "partials": {},
+    "gains": {},
+    "jitter": {},
     "level": {
      "audio": true
     }

@@ -84,8 +84,26 @@ final class ArtifactPatchLintTest extends TestCase
         // Nom de câble égal à un nom de module ; paramètre autre qu'amount sur un câble nommé.
         $dup = self::lint()->check(self::patch([self::voice(self::n('sonic-osc', ['name' => 'o']), self::n('sonic-lfo', ['name' => 'l']), self::n('sonic-mod', ['name' => 'o', 'from' => 'l', 'to' => 'o.detune']))]));
         self::assertStringContainsString('invalide ou déjà pris', implode(' | ', $dup));
-        $depth = self::lint()->check(self::patch([self::voice(self::n('sonic-osc', ['name' => 'o']), self::n('sonic-lfo', ['name' => 'l']), self::n('sonic-mod', ['name' => 'vib', 'from' => 'l', 'to' => 'o.detune'])), self::n('sonic-param', ['to' => 'vib.depth', 'value' => '1'])]));
-        self::assertStringContainsString('que le paramètre « amount »', implode(' | ', $depth));
+        $gain = self::lint()->check(self::patch([self::voice(self::n('sonic-osc', ['name' => 'o']), self::n('sonic-lfo', ['name' => 'l']), self::n('sonic-mod', ['name' => 'vib', 'from' => 'l', 'to' => 'o.detune'])), self::n('sonic-param', ['to' => 'vib.gain', 'value' => '1'])]));
+        self::assertStringContainsString('n\'a que « amount » (quantité) et « depth »', implode(' | ', $gain));
+    }
+
+    public function testSharedCableNamesDepthAndActive(): void
+    {
+        // Matrice d'expression : un nom par case, plusieurs câbles par nom, profondeur pilotée ; module activable.
+        $patch = self::patch([
+            self::voice(
+                self::n('sonic-osc', ['name' => 'o']),
+                self::n('sonic-filter', ['name' => 'f', 'active' => 'false']),
+                self::n('sonic-mod', ['name' => 'pz', 'from' => 'voice.pressure', 'to' => 'f.freq-hz', 'amount' => '24', 'curve' => 'exp']),
+                self::n('sonic-mod', ['name' => 'pz', 'from' => 'voice.pressure', 'to' => 'o.level', 'amount' => '0.5']),
+            ),
+            self::n('sonic-param', ['to' => 'pz.depth', 'source' => 'x.pz']),
+            self::n('sonic-param', ['to' => 'pz.amount', 'value' => '12']),
+            self::n('sonic-param', ['to' => 'f.active', 'source' => 'x.useFilter']),
+            self::n('sonic-param', ['to' => 'f.freq-hz', 'random' => '0.1', 'source' => 'x.cut']),
+        ]);
+        self::assertSame([], self::lint()->check($patch));
     }
 
     public function testAutomaticModuleNamesMatchTheCompiler(): void

@@ -20,6 +20,7 @@ final class ArtifactAssetsTest extends TestCase
         self::assertSame('audio/mpeg', ArtifactAssets::detect('a.mp3', 'ID3x'));
         self::assertSame('audio/mpeg', ArtifactAssets::detect('b.mp3', "\xFF\xFBxx"));
         self::assertSame('model/gltf-binary', ArtifactAssets::detect('m.glb', 'glTF'.'xxxx'));
+        self::assertSame('font/woff2', ArtifactAssets::detect('f.woff2', 'wOF2'.'xxxx'));
         self::assertSame('video/mp4', ArtifactAssets::detect('v.mp4', "\0\0\0\x18ftypisom"));
         self::assertSame('application/json', ArtifactAssets::detect('d.json', '{"a":[1,2]}'));
         self::assertSame('image/svg+xml', ArtifactAssets::detect('i.svg', '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>'));

@@ -10,7 +10,7 @@ Ils s'ajoutent aux `files` (texte inline, 24 × 64 Ko, voir `ArtifactFiles`) san
 |---|---|
 | Taille par asset | 20 Mo |
 | Assets par artefact | 200 |
-| Types | `png jpg jpeg webp gif avif svg ogg mp3 wav flac webm mp4 glb json` |
+| Types | `png jpg jpeg webp gif avif svg ogg mp3 wav flac webm mp4 glb woff2 json` |
 | Nom | `a-z 0-9 . _ -`, 64 caractères max, extension obligatoire |
 | Quota | compte dans le stockage du propriétaire du jeu de données (`StorageQuota`) ; les administrateurs ne sont pas limités |
 
@@ -50,8 +50,21 @@ Toute valeur de chaîne **exactement égale** à `@asset:<nom>` est remplacée �
 
 Un artefact **privé** n'est lisible que par un membre connecté (session) : une balise `<img>` d'un autre domaine ne peut pas s'authentifier. Pour des assets visibles du public, utiliser la visibilité « lien » ou « public ».
 
+## Polices (`.woff2`, variables comprises)
+
+Un `.woff2` envoyé comme asset se déclare au niveau du document :
+
+```json
+"fontFiles": [
+  { "family": "Mon Titre", "src": "@asset:titre.woff2", "weight": "100 900", "style": "normal" }
+]
+```
+
+`weight` accepte une valeur (`"400"`) ou une plage (`"100 900"`, police variable). 4 polices au plus. `src` est toujours une référence `@asset:` (jamais d'URL libre). Le viewer écrit les `@font-face` ; les styles utilisent ensuite `font-family: 'Mon Titre', sans-serif`. Le navigateur charge une police sans authentification : l'artefact doit être lisible par lien ou public.
+
+**Déploiement** : la CSP du viewer (`deploy/cohost/artifacts.caddy`, directive `font-src`) doit autoriser l'hôte de l'API pour que le navigateur charge ces polices. Ce fichier n'est pas modifié par ce changement : à décider au déploiement.
+
 ## Non couvert pour l'instant
 
-- Polices (`font-src` de la CSP du viewer n'autorise pas l'hôte de l'API).
 - `data.sources.x = {asset: "…"}` : lecture d'un gros JSON comme source de données (l'asset `.json` est déjà stocké et servi ; le branchement côté `data.sources` reste à faire).
 - Bibliothèque d'assets partagée entre artefacts.
