@@ -106,6 +106,21 @@ final class ArtifactPatchLintTest extends TestCase
         self::assertSame([], self::lint()->check($patch));
     }
 
+    public function testMultiSourceCable(): void
+    {
+        $voice = static fn (string $from) => self::patch([
+            self::voice(
+                self::n('sonic-osc', ['name' => 'o']),
+                self::n('sonic-lfo', ['name' => 'a']),
+                self::n('sonic-lfo', ['name' => 'b']),
+                self::n('sonic-mod', ['name' => 'row', 'from' => $from, 'to' => 'o.detune', 'amount' => '100']),
+            ),
+            self::n('sonic-param', ['to' => 'row.depth', 'source' => 'x.row']),
+        ]);
+        self::assertSame([], self::lint()->check($voice('a b voice.pressure')));
+        self::assertStringContainsString('source « zz » inconnue', implode(' | ', self::lint()->check($voice('a zz'))));
+    }
+
     public function testAutomaticModuleNamesMatchTheCompiler(): void
     {
         // Sans name, le compilateur nomme `osc1`, `lfo2`… (compteur sur les modules sans name).

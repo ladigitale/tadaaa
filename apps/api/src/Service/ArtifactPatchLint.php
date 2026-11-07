@@ -124,12 +124,15 @@ final class ArtifactPatchLint
                     $cables[$cable] = true;
                 }
             }
-            if (str_starts_with($from, 'voice.')) {
-                if (!\in_array($from, $this->voiceSources, true)) {
-                    $errors[] = sprintf('%s : source « %s » inconnue (%s).', $label, $from, implode(', ', $this->voiceSources));
+            // Câble multi-source : from="sV sZ sY" (un câble par source, depth en liste).
+            foreach (preg_split('/\s+/', $from) ?: [] as $src) {
+                if (str_starts_with($src, 'voice.')) {
+                    if (!\in_array($src, $this->voiceSources, true)) {
+                        $errors[] = sprintf('%s : source « %s » inconnue (%s).', $label, $src, implode(', ', $this->voiceSources));
+                    }
+                } elseif (!isset($names[$src])) {
+                    $errors[] = sprintf('%s : source « %s » inconnue : donne un name au module (modules : %s).', $label, $src, implode(', ', array_keys($names)) ?: 'aucun');
                 }
-            } elseif (!isset($names[$from])) {
-                $errors[] = sprintf('%s : source « %s » inconnue : donne un name au module (modules : %s).', $label, $from, implode(', ', array_keys($names)) ?: 'aucun');
             }
             $this->checkTarget($to, $names, $label, true, $errors);
             if (trim((string) ($a['curve'] ?? '')) === 'exp') {
