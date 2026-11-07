@@ -559,6 +559,20 @@ final class ArtifactDocumentValidatorTest extends TestCase
         }
     }
 
+    public function testSonicPuppetLimitedToOnePerDocument(): void
+    {
+        $puppet = ['tagName' => 'sonic-puppet', 'attributes' => ['source' => '#personne', 'pose' => 'pose', 'nodes-out' => 'rig']];
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [$puppet];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['views'][0]['root']['nodes'] = [$puppet, $puppet];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('Trop de sonic-puppet', $result['errors'][0]['message']);
+    }
+
     public function testRejectsInvalidMlCapabilityAndSecondTracker(): void
     {
         $doc = $this->minimalDoc();
