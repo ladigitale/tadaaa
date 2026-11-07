@@ -1,7 +1,7 @@
 {
   "concordeVersion": "5.1.3",
   "creativeStackVersion": "0.1.0",
-  "generatedFrom": "@supersoniks/concorde 5.1.3 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, controller, device, hugging-face-infer, interactive, map, media, p2p, physics, procgen, shader, sound, stage, vision, webgpu)",
+  "generatedFrom": "@supersoniks/concorde 5.1.3 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, controller, cursor, device, hugging-face-infer, interactive, map, media, ocr, p2p, paint, physics, plot, predict, procgen, scroll, shader, sketch, sound, stage, tape, text, vector, vectorize, vision, webgpu)",
   "components": [
     {
       "name": "sonic-2d",
@@ -379,6 +379,21 @@
       },
       "addon": "audio",
       "description": "Entrée externe d'un patch (hors sonic-voice) : source=\"#mic\" (défaut) ou #id d'une source audio (vidéo, sampler, autre patch) ; un patch sans sonic-voice devient une chaîne d'effets ; master interdit"
+    },
+    {
+      "name": "sonic-audio-load",
+      "props": {
+        "interval": {
+          "type": "number",
+          "description": "Intervalle de mesure en s (1)"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP de l'état (défaut <id>State, sinon audioLoad)"
+        }
+      },
+      "addon": "audio",
+      "description": "Charge du moteur audio (Render Capacity, Chrome) en DataProvider : { status, average, peak, underrun, updates } ; status unsupported ailleurs"
     },
     {
       "name": "sonic-audio-master",
@@ -1244,6 +1259,49 @@
       "description": "Manettes : keymap {\"a\":\"jump\",\"start\":\"pause\",\"ls-left\":\"left\"} → actions au store (release : aussi <type>:up), analog-action=\"stick\" → {type:\"stick\", payload:{pad, lx, ly, rx, ry, lt, rt}} quand un axe bouge ; état <id>State {status, count, pads:[{index, id, lx, ly, rx, ry, lt, rt, pressed}]} ; control DP {rumble:{n: compteur, ms, strong, weak}}. Boutons : a b x y lb rb lt rt select start ls rs up down left right home, ls-left/right/up/down"
     },
     {
+      "name": "sonic-cursor",
+      "props": {
+        "follower": {
+          "type": "string"
+        },
+        "size": {
+          "type": "number"
+        },
+        "color": {
+          "type": "string"
+        },
+        "blend": {
+          "type": "string"
+        },
+        "smooth": {
+          "type": "number"
+        },
+        "hover-scale": {
+          "type": "number"
+        },
+        "hide-native": {
+          "type": "boolean"
+        },
+        "magnetic": {
+          "type": "string"
+        },
+        "magnetic-strength": {
+          "type": "number"
+        },
+        "magnetic-radius": {
+          "type": "number"
+        },
+        "magnetic-max": {
+          "type": "number"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "cursor",
+      "description": "Source de pointeur : état {x, y, nx, ny, smoothX, smoothY, vx, vy, speed, down, inside, touch, hover {name, id}} ; follower=\"dot|ring\" dessine un suiveur lissé (size, color, blend=\"difference\", smooth 0,05..1, hover-scale sur les éléments data-cursor=\"nom\") ; hide-native masque le curseur natif à la souris seulement ; magnetic=\"[data-magnetic]\" attire les éléments du sélecteur vers le pointeur (magnetic-strength, magnetic-radius, magnetic-max) via translate et les variables --mx/--my"
+    },
+    {
       "name": "sonic-date",
       "props": {
         "pageLanguage": {
@@ -1673,6 +1731,34 @@
           "default": "default"
         }
       }
+    },
+    {
+      "name": "sonic-file-open",
+      "props": {
+        "accept": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "drop": {
+          "type": "boolean"
+        },
+        "max-bytes": {
+          "type": "number"
+        },
+        "max-text": {
+          "type": "number"
+        },
+        "ref-provider": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "media",
+      "description": "Ouvre un fichier du disque (clic ou dépôt : image, audio, vidéo, CSV/JSON) et le publie en SonicMediaRef dans ref-provider ; texte exposé dans l'état"
     },
     {
       "name": "sonic-filter",
@@ -3201,6 +3287,9 @@
     {
       "name": "sonic-mod",
       "props": {
+        "name": {
+          "type": "string"
+        },
         "from": {
           "type": "string"
         },
@@ -3215,7 +3304,7 @@
         }
       },
       "addon": "audio",
-      "description": "Câble de modulation : from (module ou voice.pitch|gate|vel|note|rand) → to (module.param), amount, curve=exp"
+      "description": "Câble de modulation : from (module ou voice.pitch|gate|vel|note|rand) → to (module.param), amount, curve=exp ; name : câble pilotable (sonic-param to=\"nom.amount\" ou \"nom.depth\"), plusieurs câbles peuvent partager un nom"
     },
     {
       "name": "sonic-modal",
@@ -3474,6 +3563,34 @@
       "description": "Détecte des objets (80 classes COCO : personne, tasse, téléphone, chaise…) dans une source d'images (for=\"cam\") ; sortie dans output-provider (défaut = id) : present, count, label/score/x/y/w/h/cx/cy du meilleur objet, labels.<étiquette> = nombre d'objets (étiquette en minuscules, _ pour les séparateurs), objects[] {label, score, x, y, w, h, cx, cy} en 0..1 repère écran ; categories=\"person,cup\" filtre ; max-results ; min-score ; hold-ms ; map = clés dérivées sans latence ; track=\"true\" donne à chaque objet un id stable entre images (objects[].id, ageMs, ids = ids dans l'ordre, id/ageMs du meilleur ; track-iou 0.3 = recouvrement minimal, track-max-age-ms 500 = un objet disparu garde son id) et lisse sa boîte avec smooth (sans track, smooth sans effet) ; statut dans status-provider (défaut <id>State) : phase idle|awaiting-consent|declined|downloading|loading|ready|error|unsupported, error {code, message}, backend gpu|cpu, thread worker|main, download {loaded, total}, fps, latencyMs, consent {key, origin, url} ; consent-provider accepted|declined ; inférence locale dans un worker (repli fil principal), modèle téléchargé, plafonné et vérifié par model-sha256 ; aucune image n'est envoyée ; publie aussi frameSeq, frameTime, capturedAt, latencyMs (identité de l'image analysée, pour sonic-frame-sync)"
     },
     {
+      "name": "sonic-ocr",
+      "props": {
+        "source": {
+          "type": "string"
+        },
+        "lang": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "auto": {
+          "type": "boolean"
+        },
+        "max-size": {
+          "type": "number"
+        },
+        "min-confidence": {
+          "type": "number"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "ocr",
+      "description": "OCR d'une source d'images (#id) : lang (eng, fra, fra+eng…), control {n} ou auto, max-size, min-confidence ; état {status, text, confidence, lines[{text, x, y, w, h, words[]}], words, step, progress, ms, error}"
+    },
+    {
       "name": "sonic-orientation",
       "props": {
         "control": {
@@ -3604,6 +3721,91 @@
       "description": "État de la page en DataProvider, sans permission : visible (onglet), focused, online, width, height, dpr, reducedMotion, colorScheme (light|dark), touch, hover. Sert à suspendre rendu et son quand visible vaut false. État <id>State {status, active, visible, focused, online, width, height, dpr, reducedMotion, colorScheme, touch, hover}"
     },
     {
+      "name": "sonic-paint",
+      "props": {
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "background": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "size": {
+          "type": "number"
+        },
+        "hardness": {
+          "type": "number"
+        },
+        "opacity": {
+          "type": "number"
+        },
+        "spacing": {
+          "type": "number"
+        },
+        "smoothing": {
+          "type": "number"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "pressure": {
+          "type": "boolean"
+        },
+        "tip": {
+          "type": "string"
+        },
+        "angle": {
+          "type": "number"
+        },
+        "angle-follow": {
+          "type": "boolean"
+        },
+        "angle-jitter": {
+          "type": "number"
+        },
+        "size-jitter": {
+          "type": "number"
+        },
+        "scatter": {
+          "type": "number"
+        },
+        "roundness": {
+          "type": "number"
+        },
+        "tip-from": {
+          "type": "string"
+        },
+        "brush-from": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "in-data-provider": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        },
+        "undo-levels": {
+          "type": "number"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "hidden-preview": {
+          "type": "boolean"
+        }
+      },
+      "addon": "paint",
+      "description": "Toile de peinture (width, height, background) : réglages color, size, hardness, opacity, spacing, smoothing, tool paint|erase, pressure, pointe personnalisée tip / tip-from (chemin SVG ou forme de sonic-vector-library) avec angle, angle-follow, angle-jitter, size-jitter, scatter, roundness, ou en direct brush-from {color, size, …} ; control {undo, redo, clear, save} compteurs ; in-data-provider image de départ ; source d'images #id pour sonic-shader ; état {strokes, canUndo, canRedo, drawing, last}"
+    },
+    {
       "name": "sonic-pan",
       "props": {
         "name": {
@@ -3642,10 +3844,18 @@
         },
         "max": {
           "type": "number"
+        },
+        "random": {
+          "type": "number",
+          "description": "Aléa par note, part relative (0.1 = ±10 %) ; modules de sonic-voice"
+        },
+        "random-abs": {
+          "type": "number",
+          "description": "Aléa par note, écart absolu dans les unités du paramètre"
         }
       },
       "addon": "audio",
-      "description": "Paramètre piloté : to (module.param), source (DP), expose, value, ramp-s, min, max"
+      "description": "Paramètre piloté : to (module.param, module.active, ou câble.amount / câble.depth), source (DP), expose, value, ramp-s, min, max ; random (part relative) / random-abs (écart absolu) tirés à chaque note"
     },
     {
       "name": "sonic-password-helper",
@@ -3756,6 +3966,14 @@
         },
         "out-data-provider": {
           "type": "string"
+        },
+        "prune": {
+          "type": "boolean",
+          "description": "Élagage par note : branches muettes (volume 0 sans modulation, câble de profondeur 0, module active=false) non construites"
+        },
+        "seed": {
+          "type": "number",
+          "description": "Graine des tirages aléatoires (random, voice.rand, jitter) : même graine, même suite"
         }
       },
       "addon": "audio",
@@ -3850,6 +4068,79 @@
       },
       "addon": "physics",
       "description": "Monde 2D (px, y vers le bas) : enfants sonic-body / sonic-joint, bodies=DP liste de corps (ajout / retrait suivis), input=DP {nom: {vx, vy, fx, fy, spin, torque, impulse:{n,x,y | toward:{x,y},power}, set:{n,x,y,vx,vy,angle}}} (n = compteur), control=DP {running, reset: compteur, gravity:[x,y], timeScale}, store=id reçoit collide {a,b,tagsA,tagsB,impulse,x,y} / enter / leave {sensor, body, tags} / out {body, side} / tap {x,y,body} / rest {bodies:{nom:{x,y,angle}}} (une fois, quand le dernier corps dynamique s'immobilise) ; état <id>State {bodies:{nom:{x,y,angle,vx,vy}}, nodes (si nodes-plane/nodes-scale), collisions, time} ; source d'images #id pour sonic-shader"
+    },
+    {
+      "name": "sonic-plot",
+      "props": {
+        "spec": {
+          "type": "string"
+        },
+        "spec-data-provider": {
+          "type": "string"
+        },
+        "data-provider": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "x": {
+          "type": "string"
+        },
+        "y": {
+          "type": "string"
+        },
+        "series": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "heading": {
+          "type": "string"
+        },
+        "x-label": {
+          "type": "string"
+        },
+        "y-label": {
+          "type": "string"
+        },
+        "curve": {
+          "type": "string"
+        },
+        "aggregate": {
+          "type": "string"
+        },
+        "stack": {
+          "type": "boolean"
+        },
+        "points": {
+          "type": "boolean"
+        },
+        "bins": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "format-x": {
+          "type": "string"
+        },
+        "format-y": {
+          "type": "string"
+        },
+        "format-value": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "plot",
+      "description": "Graphique (line, area, bar, barh, scatter, pie, donut, histogram, heatmap, sparkline) : data-provider (lignes), attributs type/x/y/series/value ou spec JSON ; formats nommés (compact, percent, currency:EUR, date…) ; état {hover, selected, count, error}"
     },
     {
       "name": "sonic-pointer-lock",
@@ -3989,6 +4280,22 @@
       "description": "Suit le corps (33 points) dans une source d'images (for=\"cam\") ; sortie dans output-provider (défaut = id) : present, count, x, y (centre des hanches), raiseLeft/raiseRight 0..1 (poignet : hanche 0, épaule 0,5, au-dessus 1), span (écart des poignets / largeur d'épaules), lean -1..1, elbowLeft/elbowRight/kneeLeft/kneeRight (extension de l'articulation 0 fléchie..1 tendue), squat 0..1 (flexion des genoux), joints.<nom>.{x,y,z,v} (nose, leftShoulder, rightWrist… 33 noms, côtés écran), poses[].landmarks ; map = clés dérivées sans latence (« cents=raiseRight*3600 ») ; modèles pose-landmarker (léger), pose-landmarker-full, pose-landmarker-heavy ; statut dans status-provider (défaut <id>State) : phase idle|awaiting-consent|declined|downloading|loading|ready|error|unsupported, error {code, message}, backend gpu|cpu, thread worker|main, download {loaded, total}, fps, latencyMs, consent {key, origin, url} ; consent-provider accepted|declined ; inférence locale dans un worker (repli fil principal), modèle téléchargé, plafonné et vérifié par model-sha256 ; aucune image n'est envoyée ; publie aussi frameSeq, frameTime, capturedAt, latencyMs (identité de l'image analysée, pour sonic-frame-sync)"
     },
     {
+      "name": "sonic-predict",
+      "props": {
+        "model-from": {
+          "type": "string"
+        },
+        "input-from": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "predict",
+      "description": "Prédit avec un modèle de sonic-train : model-from (DP du modèle), input-from (objet {colonne: valeur} ou tableau de lignes) ; état {status, task, target, inputs [{name, kind, values}], metrics, prediction {value | label, confidence, probabilities, missing}, predictions}"
+    },
+    {
       "name": "sonic-procgen",
       "props": {
         "dataProvider": {
@@ -4065,6 +4372,73 @@
           ]
         }
       }
+    },
+    {
+      "name": "sonic-puppet",
+      "props": {
+        "source": {
+          "type": "string",
+          "description": "#id de la source d'images de la personne découpée (sonic-mask-replace effect=cutout), à la taille de l'image analysée par la pose"
+        },
+        "pose": {
+          "type": "string",
+          "description": "DataProvider de la sortie d'un sonic-pose-tracker (joints, present, frameSeq) qui analyse la même image"
+        },
+        "frame": {
+          "type": "string",
+          "description": "#id de la source figée lue par le tracker et le découpage (sonic-frame-sync) : sa frameSeq doit égaler celle de la pose avant la mesure"
+        },
+        "capture": {
+          "type": "string",
+          "description": "Chemin DataProvider d'un booléen : vrai = mesurer et découper, faux = effacer"
+        },
+        "nodes-out": {
+          "type": "string",
+          "description": "DataProvider qui reçoit sprites, nodes, status (obligatoire pour écrire)"
+        },
+        "drive": {
+          "type": "string",
+          "description": "Chemin DataProvider des nœuds d'animation (par ex. anim.nodes) : <drive>.<drive-prefix><os>.rz en radians"
+        },
+        "drive-prefix": {
+          "type": "string",
+          "description": "Préfixe des clés de drive ; les - du nom d'os y deviennent _ (bras-gauche : d_bras_gauche)"
+        },
+        "width": {
+          "type": "number",
+          "description": "Largeur de la scène en unités (800)"
+        },
+        "height": {
+          "type": "number",
+          "description": "Hauteur de la scène (600)"
+        },
+        "layer": {
+          "type": "string",
+          "description": "Calque des sprites publiés (sonic-2d layers) ; vide : calque par défaut"
+        },
+        "min-visibility": {
+          "type": "number",
+          "description": "Visibilité minimale d'une articulation, 0..1 (0.5)"
+        },
+        "settle-ms": {
+          "type": "number",
+          "description": "Attente minimale après la prise, en ms (350)"
+        },
+        "timeout-ms": {
+          "type": "number",
+          "description": "Attente maximale d'une pose alignée sur l'image, en ms (2500) ; ensuite la dernière pose est utilisée"
+        },
+        "armature": {
+          "type": "string",
+          "description": "Armature libre en JSON : liste d'os {name, parent, from, to, extend, radius, z, cap, sprite}. from / to nomment des points de pose.joints ({x,y,v} normalisés), to peut être une paire (milieu). radius s'exprime en unit. Sans armature : préréglage personne"
+        },
+        "unit": {
+          "type": "string",
+          "description": "Longueur de référence de l'armature libre : « pointA,pointB » (leur distance) ou un nombre de pixels"
+        }
+      },
+      "addon": "animation",
+      "description": "Pantin : découpe une personne (ou un animal, un personnage dessiné : armature libre, voir armature) d'une photo (source = sonic-mask-replace effect=\"cutout\") en pièces rigides montées sur les articulations MESURÉES par un sonic-pose-tracker (tête, tronc, bras, avant-bras, mains, cuisses, mollets, pieds ; seules les parties vues existent, le bassin est déduit sous les épaules pour une photo en buste), avec recouvrement aux jonctions (aucun trou quand un membre tourne). Ne dessine rien : écrit dans <nodes-out> la liste de sprites (sprites, à lire par sonic-2d sprites=\"…\" : image de chaque pièce, pivot sur l'articulation), les nodes (x y de l'articulation, rz radians par rapport au repos) et status. Prise de vue quand capture (chemin d'un booléen) passe à vrai : attend que la pose corresponde à l'image figée (frame), efface quand il repasse à faux. L'animation arrive par drive (nodes d'une sonic-timeline : <drive-prefix><os>.rz en radians, ajouté à la pose ; les enfants suivent ; le bassin peut porter x et y). Noms d'os : bassin, torse, tete, bras-gauche|droit, avant-bras-gauche|droit, main-gauche|droite, cuisse-gauche|droite, mollet-gauche|droit, pied-gauche|droit (gauche = côté gauche de l'écran). Armature libre : armature (JSON, liste d'os {name,parent,from,to,extend,radius,z,cap,sprite} dont from/to nomment des points de pose.joints) et unit (longueur de référence « pointA,pointB » ou pixels) remplacent le préréglage personne ; les clés de pilotage restent <drive-prefix><nom d'os avec _>."
     },
     {
       "name": "sonic-queue",
@@ -4206,6 +4580,58 @@
       }
     },
     {
+      "name": "sonic-ragdoll",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "preset": {
+          "type": "string"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "scale": {
+          "type": "number"
+        },
+        "angle": {
+          "type": "number"
+        },
+        "thickness": {
+          "type": "number"
+        },
+        "density": {
+          "type": "number"
+        },
+        "friction": {
+          "type": "number"
+        },
+        "restitution": {
+          "type": "number"
+        },
+        "damping": {
+          "type": "number"
+        },
+        "angular-damping": {
+          "type": "number"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "self-collide": {
+          "type": "boolean"
+        },
+        "nodes-out": {
+          "type": "string"
+        }
+      },
+      "addon": "physics",
+      "description": "Pantin articulé dans sonic-physics : squelette d'os rigides (preset=\"humain\" ou enfants sonic-bone name/parent/length/angle/offset/min/max) devenu corps physiques reliés par des pivots à limites ; corps nommés <name>.<os> (pilotables par input, glissables) ; pose publiée au format sonic-skeleton dans nodes-out (.nodes, .bones, .present) pour les mêmes sprites ; x/y racine, scale, angle, limit (° de débattement par défaut), thickness, self-collide"
+    },
+    {
       "name": "sonic-redirect",
       "props": {
         "udpateCallBack": {
@@ -4237,10 +4663,16 @@
         },
         "level": {
           "type": "number"
+        },
+        "gains": {
+          "type": "string"
+        },
+        "jitter": {
+          "type": "number"
         }
       },
       "addon": "audio",
-      "description": "Résonateur (banque de passe-bandes natifs) : excité par l'entrée (bruit, micro…), freq-hz = voice.pitch, q, partials \"1 2 3 4.2\", level"
+      "description": "Résonateur modal (banc AudioWorklet, repli natif) : excité par l'entrée (bruit, micro…), freq-hz = voice.pitch, q, partials \"1 2 3 4.2\" et gains modifiables pendant le jeu, jitter (cents aléatoires par partiel et par note), level"
     },
     {
       "name": "sonic-reverb",
@@ -4403,6 +4835,28 @@
       },
       "addon": "media",
       "description": "Capture d'écran (getDisplayMedia, clic direct requis : sonic-media-start for=\"screen\") : source d'images (#id) pour sonic-shader, photos (control.snapshot), son du partage (audio) pour l'analyseur / l'enregistreur, export par sonic-media-recorder ; état {status, error, surface, width, height, audio, snapshot}"
+    },
+    {
+      "name": "sonic-scroll",
+      "props": {
+        "target": {
+          "type": "string"
+        },
+        "sections": {
+          "type": "string"
+        },
+        "smooth": {
+          "type": "number"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "scroll",
+      "description": "Source de défilement (page, ou conteneur target=\"#id\") : sections=\"section\" (sélecteur CSS), smooth (inertie 0,05..1, défaut 0,1) ; control {to: \"#id\"|px, n: compteur} fait défiler ; état {y, max, progress, smoothY, smoothProgress, velocity, direction, atTop, atEnd, active {index, id, progress, pin}, sections [{id, index, progress, pin, visible, inView}]} ; smoothProgress pilote sonic-timeline time-source, pin = avancement d'une section sticky plus haute que l'écran"
     },
     {
       "name": "sonic-sdui",
@@ -4863,6 +5317,91 @@
       "description": "Squelette 2D à os rigides (marionnette, bras articulé, pendules) : écrit des nodes (format partagé : un nœud par os, x y de l'articulation, rz radians par rapport au repos) dans <nodes-out>.nodes, l'état des os dans <nodes-out>.bones, present et la pose de repos dans <nodes-out>.rest (lue par un sprite sonic-2d shape=\"mesh\" qui déforme une image entre les os) ; ne dessine rien, un élément de même nom que l'os le suit (sprite sonic-2d avec pivot, nœud glTF sonic-3d, élément sonic-stage). Os en enfants sonic-bone ou preset=\"humain\" (13 os branchés sur les articulations de sonic-pose-tracker via source) ; os pilotés par aim (direction mesurée entre deux articulations) ou angle-from (n'importe quelle valeur de DataProvider) ; angle-add-from ajoute une rotation par-dessus la pose mesurée ; rest=\"pose\" + fit font de la pose mesurée le repos d'un maillage (photo posable). Angles en degrés, 0 = vers le bas, positif = sens horaire."
     },
     {
+      "name": "sonic-sketch",
+      "props": {
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "background": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "size": {
+          "type": "number"
+        },
+        "size-space": {
+          "type": "string"
+        },
+        "hardness": {
+          "type": "number"
+        },
+        "opacity": {
+          "type": "number"
+        },
+        "spacing": {
+          "type": "number"
+        },
+        "smoothing": {
+          "type": "number"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "pressure": {
+          "type": "boolean"
+        },
+        "tip": {
+          "type": "string"
+        },
+        "angle": {
+          "type": "number"
+        },
+        "angle-follow": {
+          "type": "boolean"
+        },
+        "angle-jitter": {
+          "type": "number"
+        },
+        "size-jitter": {
+          "type": "number"
+        },
+        "scatter": {
+          "type": "number"
+        },
+        "roundness": {
+          "type": "number"
+        },
+        "tip-from": {
+          "type": "string"
+        },
+        "brush-from": {
+          "type": "string"
+        },
+        "view-from": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        },
+        "readonly": {
+          "type": "boolean"
+        },
+        "hidden-preview": {
+          "type": "boolean"
+        }
+      },
+      "addon": "sketch",
+      "description": "Dessin vectoriel à zoom infini (width, height, background) : molette = zoom, Espace / bouton du milieu / tool hand = déplacer, deux doigts = pincer ; pinceau color, size, size-space screen|world, hardness, opacity, spacing, smoothing, pressure, tip / tip-from (forme de sonic-vector-library), angle, angle-follow, angle-jitter, size-jitter, scatter, roundness ; tool paint|erase|hand ; brush-from, view-from {x, y, zoom} ; control {undo, redo, clear, save (SVG), savePng, fit, reset, zoomIn, zoomOut} compteurs ; état {zoom, x, y, strokes, canUndo, canRedo, bbox, last}"
+    },
+    {
       "name": "sonic-sound",
       "props": {
         "id": {
@@ -4891,6 +5430,46 @@
       },
       "addon": "sound",
       "description": "Moteur son : banque JSON (sfx + songs), pilotage par DP control {music, volume, muted, paused, fade, play:{nom:compteur}}, état publié dans out-data-provider"
+    },
+    {
+      "name": "sonic-split-text",
+      "props": {
+        "text": {
+          "type": "string"
+        },
+        "split": {
+          "type": "string"
+        },
+        "effect": {
+          "type": "string"
+        },
+        "progress": {
+          "type": "number"
+        },
+        "progress-source": {
+          "type": "string"
+        },
+        "spread": {
+          "type": "number"
+        },
+        "ease": {
+          "type": "string"
+        },
+        "distance": {
+          "type": "number"
+        },
+        "play": {
+          "type": "boolean"
+        },
+        "duration": {
+          "type": "number"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "text",
+      "description": "Texte cinétique : text (ou le contenu de l'élément), split=\"chars|words|lines\", effect=\"rise|fade|blur|wipe|scale|slide\", spread 0..1 (part de la course consacrée au décalage entre unités, défaut 0,7), ease=\"linear|out|inout\", distance (px, effet slide) ; avancement 0..1 par progress, par progress-source=\"defil.smoothProgress\" (DataProvider) ou lecture automatique avec play et duration (secondes) ; out-data-provider reçoit {progress, units, done} ; le texte complet reste lu par les lecteurs d'écran"
     },
     {
       "name": "sonic-sprite",
@@ -5076,6 +5655,37 @@
       }
     },
     {
+      "name": "sonic-still",
+      "props": {
+        "src": {
+          "type": "string"
+        },
+        "in-data-provider": {
+          "type": "string"
+        },
+        "drop": {
+          "type": "boolean"
+        },
+        "max-size": {
+          "type": "number"
+        },
+        "fit": {
+          "type": "string"
+        },
+        "hidden-preview": {
+          "type": "boolean"
+        },
+        "out-data-provider": {
+          "type": "string"
+        },
+        "ref-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "media",
+      "description": "Image fixe comme source d'images (#id) pour sonic-shader, vision, vectorisation, OCR : URL (https, blob:, data:image), fichier déposé, ou SonicMediaRef d'un DataProvider ; état {status, error, width, height, mime}"
+    },
+    {
       "name": "sonic-store",
       "props": {
         "initial": {
@@ -5201,6 +5811,55 @@
           "type": "string"
         }
       }
+    },
+    {
+      "name": "sonic-tape",
+      "props": {
+        "source": {
+          "type": "string"
+        },
+        "loop": {
+          "type": "boolean"
+        },
+        "loop-start": {
+          "type": "number"
+        },
+        "loop-end": {
+          "type": "number"
+        },
+        "gain": {
+          "type": "number"
+        },
+        "pitch": {
+          "type": "number"
+        },
+        "output": {
+          "type": "string"
+        },
+        "rate-from": {
+          "type": "string"
+        },
+        "rate-mode": {
+          "type": "string"
+        },
+        "rate-scale": {
+          "type": "number"
+        },
+        "rate-deadzone": {
+          "type": "number"
+        },
+        "rate-smooth": {
+          "type": "number"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "tape",
+      "description": "Lecture à vitesse signée d'un son (URL ou SonicMediaRef d'un DataProvider) : control {rate, position 0..1, play, hold}, rate-from (capteur) avec rate-mode rate|omega|accel ; sortie master / none / #id ; état {status, duration, position, rate, playing, reversed}"
     },
     {
       "name": "sonic-tbody",
@@ -5514,6 +6173,55 @@
       }
     },
     {
+      "name": "sonic-train",
+      "props": {
+        "data-provider": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "task": {
+          "type": "string"
+        },
+        "features": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "hidden-units": {
+          "type": "number"
+        },
+        "epochs": {
+          "type": "number"
+        },
+        "learning-rate": {
+          "type": "number"
+        },
+        "test-split": {
+          "type": "number"
+        },
+        "seed": {
+          "type": "number"
+        },
+        "auto-train": {
+          "type": "boolean"
+        },
+        "control": {
+          "type": "string"
+        },
+        "model-data-provider": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "predict",
+      "description": "Entraîne un modèle (data-provider : tableau de lignes ou texte CSV, par exemple sonic-file-open…text) : target (défaut : dernière colonne), task auto|regression|classification, features, kind mlp|linear, hidden-units, epochs, learning-rate, test-split, seed, auto-train ; control {train, stop} compteurs ; modèle JSON dans model-data-provider ; état {status, rows, columns, target, task, epoch, progress, curve [{epoch, train, test}], metrics, importance, confusion [{reel, predit, n}], ignored, model}"
+    },
+    {
       "name": "sonic-trigger",
       "props": {
         "source": {
@@ -5629,6 +6337,105 @@
       },
       "addon": "audio",
       "description": "Ampli ; gain=\"<env>\" pour une enveloppe"
+    },
+    {
+      "name": "sonic-vector-library",
+      "props": {
+        "control": {
+          "type": "string"
+        },
+        "filter": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "vector",
+      "description": "Bibliothèque de formes vectorielles nommées et étiquetées, pilotée par commandes (add, remove, rename, clear, load) à compteur n ; état {shapes, count, error} publié en DataProvider"
+    },
+    {
+      "name": "sonic-vector-op",
+      "props": {
+        "op": {
+          "type": "string"
+        },
+        "a": {
+          "type": "string"
+        },
+        "b": {
+          "type": "string"
+        },
+        "a-d": {
+          "type": "string"
+        },
+        "b-d": {
+          "type": "string"
+        },
+        "delta": {
+          "type": "number"
+        },
+        "tolerance": {
+          "type": "number"
+        },
+        "radius": {
+          "type": "number"
+        },
+        "segments": {
+          "type": "number"
+        },
+        "view": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "vector",
+      "description": "Opération vectorielle (union, intersect, difference, xor, offset, simplify, round, fit, clip) sur des chemins SVG a et b ; résultat {d, polygons, bbox, area, error} publié en DataProvider"
+    },
+    {
+      "name": "sonic-vectorize",
+      "props": {
+        "source": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "auto": {
+          "type": "boolean"
+        },
+        "colors": {
+          "type": "number"
+        },
+        "tolerance": {
+          "type": "number"
+        },
+        "min-area": {
+          "type": "number"
+        },
+        "denoise": {
+          "type": "number"
+        },
+        "curves": {
+          "type": "boolean"
+        },
+        "flat": {
+          "type": "boolean"
+        },
+        "max-size": {
+          "type": "number"
+        },
+        "hidden-preview": {
+          "type": "boolean"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "vectorize",
+      "description": "Image → SVG : source (#id d'une source d'images), control {n} ou auto, colors, tolerance, min-area, denoise, curves, flat, max-size ; état {status, svg, layers, palette, width, height, ms, error}"
     },
     {
       "name": "sonic-vibrate",
@@ -5853,5 +6660,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master); controller (sonic-controller); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download); p2p (sonic-p2p); physics (sonic-physics, sonic-body, sonic-joint); procgen (sonic-procgen); shader (sonic-shader); sound (sonic-sound, sonic-sfx); stage (sonic-stage); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen); scroll (sonic-scroll); shader (sonic-shader); sketch (sonic-sketch); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
