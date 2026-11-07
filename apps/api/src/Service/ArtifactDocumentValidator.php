@@ -1499,6 +1499,10 @@ final class ArtifactDocumentValidator
         if ($trimmed === '' || str_starts_with($trimmed, '#') || str_starts_with($trimmed, '/')) {
             return false;
         }
+        // Asset de l'artefact (`@asset:nom`), remplacé à la lecture par son URL https.
+        if (preg_match('/^@asset:[a-z0-9][a-z0-9._-]{0,63}$/', $trimmed) === 1) {
+            return false;
+        }
         $lower = strtolower($trimmed);
         if (str_starts_with($lower, 'javascript:') || str_starts_with($lower, 'vbscript:')) {
             return true;
