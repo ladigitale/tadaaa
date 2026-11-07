@@ -777,7 +777,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringStartsWith('5.', $validator->concordeVersion());
         foreach (['sonic-button', 'sonic-alert', 'sonic-radio', 'sonic-switch', 'sonic-store', 'sonic-sound', 'sonic-physics', 'div',
             // Derniers addons de la creative-stack : le catalogue livré doit les connaître (sinon le validateur les refuse).
-            'sonic-animate', 'sonic-clock', 'sonic-timeline', 'sonic-p2p', 'sonic-fullscreen', 'sonic-pointer-lock', 'sonic-wake-lock', 'sonic-orientation', 'sonic-capabilities', 'sonic-still', 'sonic-file-open', 'sonic-tape', 'sonic-plot', 'sonic-vector-op', 'sonic-vector-library', 'sonic-vectorize', 'sonic-ocr', 'sonic-ragdoll', 'sonic-sketch', 'sonic-train', 'sonic-predict', 'sonic-scroll', 'sonic-cursor', 'sonic-split-text', 'sonic-segment-anything', 'sonic-paint'] as $tag) {
+            'sonic-animate', 'sonic-clock', 'sonic-timeline', 'sonic-p2p', 'sonic-fullscreen', 'sonic-pointer-lock', 'sonic-wake-lock', 'sonic-orientation', 'sonic-capabilities', 'sonic-still', 'sonic-file-open', 'sonic-tape', 'sonic-plot', 'sonic-vector-op', 'sonic-vector-library', 'sonic-vectorize', 'sonic-blobs', 'sonic-ocr', 'sonic-ragdoll', 'sonic-sketch', 'sonic-train', 'sonic-predict', 'sonic-scroll', 'sonic-cursor', 'sonic-split-text', 'sonic-segment-anything', 'sonic-paint'] as $tag) {
             self::assertContains($tag, $validator->allowedTags(), $tag);
         }
         self::assertFalse(\in_array('sonic-example', $validator->allowedTags(), true));
