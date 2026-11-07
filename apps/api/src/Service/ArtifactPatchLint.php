@@ -18,6 +18,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 final class ArtifactPatchLint
 {
     private const RESERVED = ['voices', 'master', 'voice'];
+    /** Paramètres d'un câble nommé (sonic-mod name). */
+    private const CABLE_PARAMS = ['amount', 'depth'];
 
     /** @var array<string, array{kind: string, params: array<string, array{audio?: bool, values?: list<string>}>}> */
     private array $modules = [];
@@ -113,10 +115,11 @@ final class ArtifactPatchLint
             if (isset($a['amount']) && !is_numeric(trim((string) $a['amount']))) {
                 $errors[] = sprintf('%s : amount doit être un nombre (reçu « %s »). Pour le régler en direct : name sur le sonic-mod + sonic-param to="nom.amount".', $label, $a['amount']);
             }
+            // Plusieurs câbles peuvent partager un nom : un seul sonic-param règle tout le groupe.
             $cable = trim((string) ($a['name'] ?? ''));
             if ($cable !== '') {
-                if (isset($names[$cable]) || isset($cables[$cable]) || \in_array($cable, self::RESERVED, true) || str_contains($cable, '.')) {
-                    $errors[] = sprintf('%s : nom de câble « %s » invalide ou déjà pris (un nom de module ne convient pas).', $label, $cable);
+                if (isset($names[$cable]) || \in_array($cable, self::RESERVED, true) || str_contains($cable, '.') || str_starts_with($cable, 'voice')) {
+                    $errors[] = sprintf('%s : nom de câble « %s » invalide ou déjà pris par un module.', $label, $cable);
                 } else {
                     $cables[$cable] = true;
                 }
@@ -144,9 +147,11 @@ final class ArtifactPatchLint
             $label = sprintf('sonic-param to="%s"', $to);
             [$m, $p] = $this->split($to);
             if (isset($cables[$m])) {
-                if ($p !== 'amount') {
-                    $errors[] = sprintf('%s : un sonic-mod nommé n\'a que le paramètre « amount ».', $label);
+                if (!\in_array($p, self::CABLE_PARAMS, true)) {
+                    $errors[] = sprintf('%s : un sonic-mod nommé n\'a que « amount » (quantité) et « depth » (multiplicateur, défaut 1).', $label);
                 }
+            } elseif ($p === 'active' && isset($names[$m])) {
+                // tout module : 0 / false le retire des notes suivantes
             } else {
                 $this->checkTarget($to, $names, $label, false, $errors);
             }
