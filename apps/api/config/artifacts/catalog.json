@@ -4374,6 +4374,73 @@
       }
     },
     {
+      "name": "sonic-puppet",
+      "props": {
+        "source": {
+          "type": "string",
+          "description": "#id de la source d'images de la personne découpée (sonic-mask-replace effect=cutout), à la taille de l'image analysée par la pose"
+        },
+        "pose": {
+          "type": "string",
+          "description": "DataProvider de la sortie d'un sonic-pose-tracker (joints, present, frameSeq) qui analyse la même image"
+        },
+        "frame": {
+          "type": "string",
+          "description": "#id de la source figée lue par le tracker et le découpage (sonic-frame-sync) : sa frameSeq doit égaler celle de la pose avant la mesure"
+        },
+        "capture": {
+          "type": "string",
+          "description": "Chemin DataProvider d'un booléen : vrai = mesurer et découper, faux = effacer"
+        },
+        "nodes-out": {
+          "type": "string",
+          "description": "DataProvider qui reçoit sprites, nodes, status (obligatoire pour écrire)"
+        },
+        "drive": {
+          "type": "string",
+          "description": "Chemin DataProvider des nœuds d'animation (par ex. anim.nodes) : <drive>.<drive-prefix><os>.rz en radians"
+        },
+        "drive-prefix": {
+          "type": "string",
+          "description": "Préfixe des clés de drive ; les - du nom d'os y deviennent _ (bras-gauche : d_bras_gauche)"
+        },
+        "width": {
+          "type": "number",
+          "description": "Largeur de la scène en unités (800)"
+        },
+        "height": {
+          "type": "number",
+          "description": "Hauteur de la scène (600)"
+        },
+        "layer": {
+          "type": "string",
+          "description": "Calque des sprites publiés (sonic-2d layers) ; vide : calque par défaut"
+        },
+        "min-visibility": {
+          "type": "number",
+          "description": "Visibilité minimale d'une articulation, 0..1 (0.5)"
+        },
+        "settle-ms": {
+          "type": "number",
+          "description": "Attente minimale après la prise, en ms (350)"
+        },
+        "timeout-ms": {
+          "type": "number",
+          "description": "Attente maximale d'une pose alignée sur l'image, en ms (2500) ; ensuite la dernière pose est utilisée"
+        },
+        "armature": {
+          "type": "string",
+          "description": "Armature libre en JSON : liste d'os {name, parent, from, to, extend, radius, z, cap, sprite}. from / to nomment des points de pose.joints ({x,y,v} normalisés), to peut être une paire (milieu). radius s'exprime en unit. Sans armature : préréglage personne"
+        },
+        "unit": {
+          "type": "string",
+          "description": "Longueur de référence de l'armature libre : « pointA,pointB » (leur distance) ou un nombre de pixels"
+        }
+      },
+      "addon": "animation",
+      "description": "Pantin : découpe une personne (ou un animal, un personnage dessiné : armature libre, voir armature) d'une photo (source = sonic-mask-replace effect=\"cutout\") en pièces rigides montées sur les articulations MESURÉES par un sonic-pose-tracker (tête, tronc, bras, avant-bras, mains, cuisses, mollets, pieds ; seules les parties vues existent, le bassin est déduit sous les épaules pour une photo en buste), avec recouvrement aux jonctions (aucun trou quand un membre tourne). Ne dessine rien : écrit dans <nodes-out> la liste de sprites (sprites, à lire par sonic-2d sprites=\"…\" : image de chaque pièce, pivot sur l'articulation), les nodes (x y de l'articulation, rz radians par rapport au repos) et status. Prise de vue quand capture (chemin d'un booléen) passe à vrai : attend que la pose corresponde à l'image figée (frame), efface quand il repasse à faux. L'animation arrive par drive (nodes d'une sonic-timeline : <drive-prefix><os>.rz en radians, ajouté à la pose ; les enfants suivent ; le bassin peut porter x et y). Noms d'os : bassin, torse, tete, bras-gauche|droit, avant-bras-gauche|droit, main-gauche|droite, cuisse-gauche|droite, mollet-gauche|droit, pied-gauche|droit (gauche = côté gauche de l'écran). Armature libre : armature (JSON, liste d'os {name,parent,from,to,extend,radius,z,cap,sprite} dont from/to nomment des points de pose.joints) et unit (longueur de référence « pointA,pointB » ou pixels) remplacent le préréglage personne ; les clés de pilotage restent <drive-prefix><nom d'os avec _>."
+    },
+    {
       "name": "sonic-queue",
       "props": {
         "templates": {
@@ -6593,5 +6660,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen); scroll (sonic-scroll); shader (sonic-shader); sketch (sonic-sketch); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen); scroll (sonic-scroll); shader (sonic-shader); sketch (sonic-sketch); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
