@@ -61,10 +61,18 @@
         "max-dpr": {
           "type": "number",
           "description": "Densité de pixels maximale (défaut 2)"
+        },
+        "monde": {
+          "type": "string",
+          "description": "Monde en primitives (même JSON et mêmes nodes que sonic-3d, voir 3d/monde.md) ; aussi clé DP monde ; vue view2d top|side|front|iso"
+        },
+        "monde-layer": {
+          "type": "string",
+          "description": "Calque du monde (défaut monde)"
         }
       },
       "addon": "2d",
-      "description": "Scène 2D/2.5D : width × height logiques (mise à l'échelle de la largeur) ; enfants sonic-sprite ou sprites=DP liste ; dataProvider : clé nodes {nom:{x, y, rz (radians), scale, opacity, visible, z, color, ease}} et clé camera {x, y, zoom, ease} (ou attribut camera = chemin) ; layers=\"ciel:0 decor:0.4 monde:1:y hud:0\" (parallaxe ; :y = tri par y) ; target reçoit {type:pick, payload:{objectId, x, y}} ; rendu à la demande."
+      "description": "Scène 2D/2.5D : width × height logiques (mise à l'échelle de la largeur) ; enfants sonic-sprite ou sprites=DP liste ; dataProvider : clé nodes {nom:{x, y, rz (radians), scale, opacity, visible, z, color, ease}} et clé camera {x, y, zoom, ease} (ou attribut camera = chemin) ; layers=\"ciel:0 decor:0.4 monde:1:y hud:0\" (parallaxe ; :y = tri par y) ; target reçoit {type:pick, payload:{objectId, x, y}} ; rendu à la demande ; clé monde : monde complet en primitives articulées et animées (monde.md), même JSON et mêmes nodes en 2D et 3D."
     },
     {
       "name": "sonic-3d",
@@ -153,10 +161,14 @@
         "dataProvider": {
           "type": "string",
           "description": "DP d'entrée : glb, nodes, src, fov, yaw, pitch, distance…"
+        },
+        "monde": {
+          "type": "string",
+          "description": "Monde en primitives (JSON : modèles articulés, clips, palette, textures, placement ; voir monde.md) ; aussi clé DP monde. Instances pilotées par nodes (x y z rx ry rz, clip, clipSpeed, clipT, roles)"
         }
       },
       "addon": "3d",
-      "description": "Scène 3D glTF/GLB pilotable par données : glb (base64, sans fetch), nodes (surcharges de nœuds via le DP), target (taps → sonic-store). Détail : règle « 3d » du catalogue ; sinon 3d.md."
+      "description": "Scène 3D glTF/GLB pilotable par données : glb (base64, sans fetch), nodes (surcharges de nœuds via le DP), target (taps → sonic-store). Détail : règle « 3d » du catalogue ; sinon 3d.md ; clé monde : monde complet en primitives articulées et animées (monde.md), même JSON et mêmes nodes en 2D et 3D."
     },
     {
       "name": "sonic-action",
@@ -4436,7 +4448,7 @@
         }
       },
       "addon": "procgen",
-      "description": "Scène procédurale 3D (rendu 2D ou 3D selon caméra et style) pilotée par DataProvider, sans JS. Lit dataProvider : scene (bibliothèque : village, rue, port, foret, bivouac, personnages, marche, montagne, vapeur, neon, blasons, jardin, ferme, bord-de-mer, place-medievale, jardin-japonais) ou recipe (recette JSON : size, ground, paths, layers, zones, actors, view ; générateurs : character, animal (animal.dog, animal.horse…), tree, bush, grass, flowers, plant, rock, building, prop (prop.lamp, prop.bench…), vehicle, wall, emblem), seed, params, render (3d par défaut, ou vector : illustration vectorielle 2D, nette à tout zoom), style (préréglages vectoriels : ligne-claire, flat, gravure, affiche, papier-decoupe, ex. flat/nuit ; préréglages 3D : gouache, doux, encre, bd, pixel, lowpoly, brume, nuit, neon, crepuscule, automne, printemps, desert, neige, papier, abysses, aquarelle ; ou jetons {preset, palette, shading, outline, fog, night…}), view {camera: side|front|iso|oblique|top|perspective|follow, yaw, pitch, zoom, cx, cy, cz, actor}, anim {play, speed}, actors {id: {x, z | target: objet, vx, vz, run, action: idle|walk|run|wave|point|cheer|talk|carry|sit|jump|think|bow, mood}} (intentions, pas 60 Hz), select (id), edit {id, params}, hidden [ids], anchors ['id@ancre'], exportSvg (compteur : publie svg en mode vectoriel). Écrit dans state-out (défaut <dataProvider>State) : status {mode, phase, progress, error, objects, triangles, drawCalls, fps, issues}, selection, view, actors, anchors, nodes, ids, svg. Événements vers target : pick {objectId, layer, x, y, z, actor, zone}, select, arrive {actor, target}, blocked, enter/leave {zone, actor}, actionEnd. Unités : mètres. Donner une hauteur ; 2 scènes au plus par document."
+      "description": "Scène procédurale 3D (rendu 2D ou 3D selon caméra et style) pilotée par DataProvider, sans JS. Lit dataProvider : scene (bibliothèque : village, rue, port, foret, bivouac, personnages, marche, montagne, vapeur, neon, blasons, jardin, ferme, bord-de-mer, aire-de-jeux, place-medievale, jardin-japonais) ou recipe (recette JSON : size, ground, paths, layers, zones, actors, view ; générateurs : character, animal (animal.dog, animal.horse…), tree, bush, grass, flowers, plant, rock, building, prop (prop.lamp, prop.bench…), vehicle, wall, emblem, ball (22 ballons et balles à taille réelle : ball.soccer, ball.tennis, ball.beach…), seat (22 assises par gabarit d'utilisateur : seat.chair, seat.parkbench, seat.sofa, seat.swing…), assembly (objet sur mesure décrit en pièces box/rod/tube/lathe/blob)), seed, params, render (3d par défaut, ou vector : illustration vectorielle 2D, nette à tout zoom), style (préréglages vectoriels : ligne-claire, flat, gravure, affiche, papier-decoupe, ex. flat/nuit ; préréglages 3D : gouache, doux, encre, bd, pixel, lowpoly, brume, nuit, neon, crepuscule, automne, printemps, desert, neige, papier, abysses, aquarelle ; ou jetons {preset, palette, shading, outline, fog, night…}), view {camera: side|front|iso|oblique|top|perspective|follow, yaw, pitch, zoom, cx, cy, cz, actor}, anim {play, speed}, actors {id: {x, z | target: objet ou 'id.sit.N' (s'asseoir), vx, vz, run, action: idle|walk|run|wave|point|cheer|talk|carry|sit|jump|think|bow, mood}} (intentions, pas 60 Hz), select (id), edit {id, params}, hidden [ids], anchors ['id@ancre'], exportSvg (compteur : publie svg en mode vectoriel). Écrit dans state-out (défaut <dataProvider>State) : status {mode, phase, progress, error, objects, triangles, drawCalls, fps, issues}, selection (avec affords, physics, seats si l'objet les publie), view, actors, anchors, nodes, ids, svg. Événements vers target : pick {objectId, layer, x, y, z, actor, zone}, select, arrive {actor, target}, blocked, enter/leave {zone, actor}, actionEnd. Unités : mètres. Donner une hauteur ; 2 scènes au plus par document."
     },
     {
       "name": "sonic-progress",
