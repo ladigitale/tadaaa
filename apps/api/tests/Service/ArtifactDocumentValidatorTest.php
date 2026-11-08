@@ -723,12 +723,12 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertNotFalse($encodedFiltered);
         self::assertLessThan(12_000, strlen($encodedFiltered));
 
-        // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, 3d, 2d, procgen, monde, animation,
+        // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, 3d, 2d, procgen, monde, monde2d, animation,
         // appareil, salons, ia, collecte). Plafond large, pour repérer une dérive de taille.
         $payload = $this->validator->mcpCatalogPayload(true);
         $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE);
         self::assertNotFalse($encoded);
-        self::assertLessThan(80_000, strlen($encoded));
+        self::assertLessThan(90_000, strlen($encoded));
         self::assertArrayHasKey('commonProps', $payload['catalog']);
     }
 
@@ -1229,6 +1229,10 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('bipede', $payload['rules']['monde']);
         self::assertStringContainsString('clipSpeed', $payload['rules']['monde']);
         self::assertStringContainsString('view2d', $payload['rules']['monde']);
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['monde2d'], false);
+        self::assertContains('monde2d', ArtifactDocumentValidator::LONG_RULES);
+        self::assertStringContainsString('personnage', $payload['rules']['monde2d']);
+        self::assertStringContainsString('flip', $payload['rules']['monde2d']);
     }
 
     public function testCatalogPayloadExplainsAnimationDeviceAndRooms(): void

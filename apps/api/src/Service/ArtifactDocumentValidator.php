@@ -158,6 +158,15 @@ final class ArtifactDocumentValidator
         .'TAP : sonic-3d pick pick-names="^(p[0-9]+)$" → objectId = instance ; sonic-2d → {objectId: instance, part}. Sortie : out-data-provider DISTINCT reçoit mondeInfo {models {parts, clips, roles}, instances, decor, issues} (issues = erreurs du JSON, à relire). '
         .'PIÈGES : (1) une seule forme par pièce ; (2) noms de pièces uniques ; (3) le monde se met dans un store (pas dans un attribut sonic-store initial de plus de 32 Ko) ; (4) en 2D les positions des nodes sont en MÈTRES comme en 3D (view2d fait la mise à l’échelle).';
 
+    /** Mémo du format « monde2d » (creative-stack src/shared/monde2d) : mondes 2D natifs dans sonic-2d. */
+    private const MONDE2D_RULE = 'MONDES 2D NATIFS (sonic-2d, clé « monde2d » du DataProvider, ex. data.stores.jeu.initial.monde2d, ou attribut monde2d) : un monde 2D complet DESSINÉ POUR LA 2D (vue de profil, de face ou de dessus) ; pour un jeu 2D, une scène illustrée, des personnages animés, préférer ce format à des sprites un par un. Unités : px de la scène, y vers le bas, rot en DEGRÉS dans le monde, rz en RADIANS dans nodes. '
+        .'Clés : ciel ("#rrggbb" ou ["#haut","#bas"]) ; layers [{name, parallax (0 fixe … 1 monde, >1 premier plan), ysort (tri par y : vue de dessus)}] (appliqués si l’attribut layers est vide) ; style plat|doux|bd|encre|gouache ; outline (px) ; relief ; palette {rôle: couleur} ; textures {rôle: motif} ; texture (tout) ; detail low|mid|high ; models {nom: modèle} ; place [placements]. '
+        .'PRÉRÉGLAGES (models.<nom> = {preset, seed, params}) : personnage (params vue profil|face|dessus — regard vers +x en profil et dessus —, espece humain|chat|renard|ours|lapin|dino|monstre|grenouille|robot, taille px (64), corpulence, grosseTete, tete, oreilles, queue, cornes, cheveux, yeux, museau, numero, peau ; clips idle marche course controle tir passe tacle chute saut joie plongeon), animal (vue profil|dessus ; idle marche course assis saut), arbre (vue, forme rond|sapin|boules|palmier), buisson, rocher, fleur, herbe, nuage, maison (vue profil|dessus), sol et collines (profil), terrain (foot vu de dessus, largeur × hauteur), but (dessus ; flip pour l’autre camp), ballon (clip roule), foule (gradins, clip ola). '
+        .'Pièce : {name, parent, at [x,y] (ARTICULATION dans le parent), rot (°), off (centre de la forme depuis l’articulation), scale, z (ordre dans l’instance), role ou color, grad [clair, foncé], tex, line, stroke, fill:false (tracé seul), relief, glow, opacity, mirror x|y|z (z = profil : copie derrière, assombrie), repeat {n, at, rot}, hidden} + UNE forme : rect [w,h,rayon] | circle r | ellipse [rx,ry] | capsule [r,longueur] | poly [[x,y],…] | blob [[x,y],…] (courbe lisse) | star [n,r1,r2] | arc [r,début°,fin°,épaisseur] | path "M L Q C Z" | trait {pts, smooth} | text {text, size}. '
+        .'Clip : {ms, loop, then, tracks: {pièce: {r (°), x, y (px), s, sx, sy, o : listes de clés, sync, phase}}}. Placement : {model, name (instance pilotable ; sans name = décor dessiné une fois), at [x,y], rot, scale, flip, roles, clip, layer, z, hidden} ; en masse : grid [nx,ny] + step [dx,dy], scatter n + area [x0,y0,x1,y1], jitter, turn, size [min,max], seed. Budgets : 3000 copies, 300 instances. '
+        .'PILOTAGE nodes.<instance> = {x, y, rz, scale, opacity, visible, z, flip (regard à gauche), ease {ms, curve}, lift (saut en arc), clip, clipSpeed, clipT, roles} ; nodes.<instance>_<pièce> = {visible, color, opacity}. Le reducer écrit la destination + ease et le clip (« course »), jamais des images intermédiaires. TAP (target, pick-empty) : {objectId: instance, part, x, y} ou objectId null + x, y (pelouse). Sortie : out-data-provider reçoit monde2dInfo {models, instances, layers, issues} (erreurs du JSON). '
+        .'Formats voisins : la clé « monde » (règle « monde ») est un monde 3D que sonic-2d peut aussi projeter ; monde2d est le choix pour une vraie 2D.';
+
     /** Mémo des addons `stage` et `2d` : scènes 2D pilotées par le format nodes. */
     private const PROCGEN_RULE = 'MONDES PROCÉDURAUX 3D (sonic-procgen, 2 vues 3D par page). <sonic-procgen dataProvider="monde" target="jeu" style="display:block;height:420px"> compose un monde 3D (sol, relief, côte, routes, bâtiments, végétation, objets, personnages et animaux skinnés et animés) ; la 2D n’est qu’une caméra ou un style. Unités : mètres (personnage 1,7 m, étage 3 m). '
         .'LU dans le DP (le composant n’y écrit JAMAIS) : scene, recipe (prioritaire), seed, params, style (préréglage gouache|doux|encre|bd|pixel|lowpoly|brume|nuit|neon|crepuscule|automne|printemps|desert|neige|papier|abysses|aquarelle, ou jetons {preset, palette, hue, contrast, shading flat|toon|soft|lit, bands, outline, lightAzimuth, lightElevation, shadows, fog, night 0..1, grain, vignette, pixel…}), view {camera side|front|iso|oblique|top|perspective|follow, yaw, pitch, zoom, cx, cy, cz, actor}, anim {play, speed}, actors, select, edit {id|layer, params}, hidden [ids], anchors ["heros@head.top", "maisons.2@door"], render 3d|vector, exportSvg (compteur). '
@@ -263,7 +272,7 @@ final class ArtifactDocumentValidator
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
     /** Compétences (config/artifacts/skills/*.md) : servies à la demande par rules=["design", "<archétype>"], jamais par défaut. */
     public const SKILLS = ['design', 'vitrine', 'jeu', 'outil', 'dashboard', 'experience', 'multivue', 'carte'];
-    public const LONG_RULES = ['listes', 'a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'monde', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
+    public const LONG_RULES = ['listes', 'a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'monde', 'monde2d', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
 
     private readonly ArtifactA2uiValidator $a2uiValidator;
 
@@ -408,6 +417,7 @@ final class ArtifactDocumentValidator
                 '2d' => self::SCENE2D_RULE,
                 'procgen' => self::PROCGEN_RULE,
                 'monde' => self::MONDE_RULE,
+                'monde2d' => self::MONDE2D_RULE,
                 'animation' => self::ANIMATION_RULE,
                 'appareil' => self::DEVICE_RULE,
                 'salons' => self::ROOMS_RULE,
