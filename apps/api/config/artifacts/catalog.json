@@ -124,13 +124,15 @@
           "type": "boolean"
         },
         "play": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Boucle de rendu (défaut vrai) ; aussi clé DP play"
         },
         "play-on-hover": {
           "type": "boolean"
         },
         "out-data-provider": {
-          "type": "string"
+          "type": "string",
+          "description": "Sortie : status (idle|loading|ready|error), error (message ou null), ready, loading, cam*, hit*, nodesMissing…"
         },
         "frame-out": {
           "type": "boolean"
@@ -160,11 +162,11 @@
         },
         "damping": {
           "type": "number",
-          "description": "Inertie de l'orbite (défaut 0.08, 0 = aucune)"
+          "description": "Inertie de l'orbite (défaut 0.08, 0 = aucune, max 1) ; aussi clé DP damping"
         },
         "dataProvider": {
           "type": "string",
-          "description": "DP d'entrée : glb, nodes, src, fov, yaw, pitch, distance…"
+          "description": "DP d'entrée : glb, nodes, src, fov, yaw, pitch, distance, play, damping…"
         },
         "monde": {
           "type": "string",
@@ -4361,7 +4363,7 @@
         }
       },
       "addon": "plot",
-      "description": "Graphique (line, area, bar, barh, scatter, pie, donut, histogram, heatmap, sparkline) : data-provider (lignes), attributs type/x/y/series/value ou spec JSON ; formats nommés (compact, percent, currency:EUR, date…) ; état {hover, selected, count, error}"
+      "description": "Graphique (line, area, bar, barh, scatter, pie, donut, histogram, heatmap, sparkline) : data-provider (lignes), attributs type/x/y/series/value ou spec JSON ou spec-data-provider (prioritaire sur les attributs, clé par clé, en direct) ; formats nommés (compact, percent, currency:EUR, date…) ; état {hover, selected, count, status, error}"
     },
     {
       "name": "sonic-pointer-lock",
@@ -5490,7 +5492,11 @@
           "type": "boolean"
         },
         "mouse-mode": {
-          "type": "string"
+          "type": "string",
+          "values": [
+            "direct",
+            "target"
+          ]
         },
         "param0": {
           "type": "number"
@@ -5505,11 +5511,24 @@
           "type": "number"
         },
         "out-data-provider": {
-          "type": "string"
+          "type": "string",
+          "description": "DP de sortie : état {status, error, errors…} + time, frame, mouseX/Y…"
+        },
+        "dpr-max": {
+          "type": "number",
+          "description": "Plafond du devicePixelRatio (défaut 2)"
+        },
+        "dataProvider": {
+          "type": "string",
+          "description": "DP d'entrée (param0…3, canaux) et de sortie par défaut"
+        },
+        "params": {
+          "type": "string",
+          "description": "DP de réglages en direct {play, playOnHover, mouse, mouseMode, mouseSpeed, hoverSpeed, dprMax, image, bufferA…bufferD, common, bufferFormat}"
         }
       },
       "addon": "shader",
-      "description": "Shader fragment Shadertoy"
+      "description": "Shader fragment Shadertoy (passes image, buffer A–D, common ; canaux image/vidéo/#id). dataProvider : param0…3 → uParam0…3, canaux (string | MediaRef) ; params (DP) {play, playOnHover, mouse, mouseMode, mouseSpeed, hoverSpeed, dprMax, image, bufferA…D, common, bufferFormat} prioritaire sur les attributs (sources et bufferFormat recompilent) ; état {status idle|compiling|ready|error, error (passe + ligne), errors[{pass, line, column, message}], passes, activeBufferFormat, playing} dans le DP de sortie (out-data-provider, sinon dataProvider), plus time, frame, mouseX/Y, hovering, sample* (paresseux)"
     },
     {
       "name": "sonic-shaper",
@@ -5919,19 +5938,19 @@
       "props": {
         "dataProvider": {
           "type": "string",
-          "description": "DataProvider dont la clé nodes place les éléments (sinon celui d'un ancêtre)"
+          "description": "DataProvider dont la clé nodes place les éléments (sinon celui d'un ancêtre) ; ses clés width, height, layout l'emportent sur les attributs"
         },
         "width": {
           "type": "number",
-          "description": "Largeur logique de la scène (unités de nodes)"
+          "description": "Largeur logique de la scène (unités de nodes) ; aussi clé DP width"
         },
         "height": {
           "type": "number",
-          "description": "Hauteur logique de la scène"
+          "description": "Hauteur logique de la scène ; aussi clé DP height"
         },
         "layout": {
           "type": "string",
-          "description": "absolute (défaut avec width et height : x, y = centre dans la scène) | offset (décalage depuis la place de mise en page)"
+          "description": "absolute (défaut avec width et height : x, y = centre dans la scène) | offset (décalage depuis la place de mise en page) ; aussi clé DP layout"
         },
         "target": {
           "type": "string",
@@ -5951,7 +5970,7 @@
         },
         "out-data-provider": {
           "type": "string",
-          "description": "DataProvider où publier {count, missing} (nœuds sans élément)"
+          "description": "DataProvider où publier {count, missing, status (idle|ready|error), error} ; error nomme les nœuds sans élément"
         }
       },
       "addon": "stage",
@@ -6688,7 +6707,7 @@
         }
       },
       "addon": "vector",
-      "description": "Bibliothèque de formes vectorielles nommées et étiquetées, pilotée par commandes (add, remove, rename, clear, load) à compteur n ; état {shapes, count, error} publié en DataProvider"
+      "description": "Bibliothèque de formes vectorielles nommées et étiquetées, pilotée par commandes (add, remove, rename, clear, load) à compteur n ; état {status, shapes, count, error} publié en DataProvider"
     },
     {
       "name": "sonic-vector-op",
@@ -6723,12 +6742,18 @@
         "view": {
           "type": "string"
         },
+        "control": {
+          "type": "string"
+        },
+        "params": {
+          "type": "string"
+        },
         "out-data-provider": {
           "type": "string"
         }
       },
       "addon": "vector",
-      "description": "Opération vectorielle (union, intersect, difference, xor, offset, simplify, round, fit, clip) sur des chemins SVG a et b ; résultat {d, polygons, bbox, area, error} publié en DataProvider"
+      "description": "Opération vectorielle (union, intersect, difference, xor, offset, simplify, round, fit, clip) sur des chemins SVG a et b ; op, delta, tolerance, radius, segments pilotables en direct par control / params ; fit garde les coins vifs ; résultat {status, d, polygons, bbox, area, error} publié en DataProvider"
     },
     {
       "name": "sonic-vectorize",
@@ -6912,10 +6937,20 @@
           "type": "string"
         },
         "kernel": {
-          "type": "string"
+          "type": "string",
+          "values": [
+            "",
+            "image",
+            "particles"
+          ]
         },
         "backend": {
-          "type": "string"
+          "type": "string",
+          "values": [
+            "auto",
+            "webgpu",
+            "webgl2"
+          ]
         },
         "channel0": {
           "type": "string"
@@ -6948,17 +6983,30 @@
           "type": "number"
         },
         "out-data-provider": {
-          "type": "string"
+          "type": "string",
+          "description": "DP de sortie : état {status, error, errors…} + time, frame, mouseX/Y…"
         },
         "frame-out": {
           "type": "boolean"
         },
         "aspect-ratio": {
           "type": "string"
+        },
+        "dpr-max": {
+          "type": "number",
+          "description": "Plafond du devicePixelRatio (défaut 2)"
+        },
+        "dataProvider": {
+          "type": "string",
+          "description": "DP d'entrée (param0…3, channel0…3, targetX/Y) et de sortie par défaut"
+        },
+        "params": {
+          "type": "string",
+          "description": "DP de réglages en direct {play, mouse, backend, dprMax, shader}"
         }
       },
       "addon": "webgpu",
-      "description": "Shader / kernel WGSL"
+      "description": "Shader / kernel WGSL (kernel image | particles), repli WebGL2 puis Canvas2D. dataProvider : param0…3, channel0…3, targetX/Y ; params (DP) {play, mouse, backend, dprMax, shader} prioritaire sur les attributs (backend redémarre, shader recompile) ; état {status idle|compiling|ready|error, error (ligne WGSL), errors[{line, column, message}], activeBackend, backendLog, notice, playing} dans le DP de sortie (out-data-provider, sinon dataProvider), plus time, frame, mouseX/Y, hovering"
     }
   ],
   "safeHtmlTags": [
