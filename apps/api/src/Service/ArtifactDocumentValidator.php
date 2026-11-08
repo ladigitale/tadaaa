@@ -142,7 +142,21 @@ final class ArtifactDocumentValidator
         .'TAP : un tap (pointeur < 6 px et < 400 ms ; un glissé fait tourner la caméra, il n’envoie rien) sur un nœud visible envoie au store {type: pick-action-type (défaut "pick"), payload:{objectId: nom du nœud, x, y, z}} ; le reducer lit $action.payload.objectId. pick-names (regex sur le nom) ignore le décor ; pick-empty envoie payload {objectId:null} pour un tap dans le vide (désélection). '
         .'Orbite : min/max-distance, min/max-polar en degrés (limiter le polar évite de passer sous le plateau). '
         .'PIÈGES : (1) nodes ne s’applique qu’une fois le GLB chargé (réappliqué automatiquement après chaque chargement) ; (2) donner les positions finales des nœuds dans le reducer, pas des deltas ; (3) pas de $random / $now dans le reducer : c’est ease qui anime ; (4) sans GLB (glb absent) la scène montre un cube de démo. '
-        .'Sortie (out-data-provider) : yaw pitch distance hitObjectId hitX/Y/Z moving ready nodesMissing (nombre de noms de nodes introuvables : à 0 en régime normal).';
+        .'Sortie (out-data-provider) : yaw pitch distance hitObjectId hitX/Y/Z moving ready nodesMissing (nombre de noms de nodes introuvables : à 0 en régime normal). '
+        .'Personnages, décors, mondes animés sans glb : clé monde (voir la règle « monde »).';
+
+    /** Mémo du format « monde » (creative-stack src/shared/monde) : mondes en primitives pour sonic-3d et sonic-2d. */
+    private const MONDE_RULE = 'MONDES EN PRIMITIVES (sonic-3d ET sonic-2d, même JSON, mêmes nodes) : clé « monde » du DataProvider (ex. data.stores.jeu.initial.monde, objet JSON) ou attribut monde. Pour un jeu, des personnages animés, un décor détaillé, en 3D comme en 2D (vue de dessus, profil, face, iso) : préférer ce format à un glb. '
+        .'Repère : mètres, y vers le haut, sol y=0, avant d’un modèle vers +z ; rot en DEGRÉS dans le monde, rx ry rz en RADIANS dans nodes. '
+        .'Clés : palette {rôle: "#rrggbb"} ; models {nom: modèle} (64 max) ; place [placements] ; textures {rôle: texture} ; texture (défaut de toutes les pièces, "grain" = gouache) ; look doux|toon|brillant ; detail low|mid|high ; shadows ; outline (px, 2D) ; view2d {view: top|side|front|iso, unit: px par m, origin: [x, y]} ; ciel "#rrggbb" et brume 0..1 (3D). '
+        .'Modèle : {preset, seed, params, parts, clips, clip}. PRÉRÉGLAGES : bipede (params espece humain|chat|renard|ours|lapin|dino|monstre|grenouille|robot, taille, corpulence, grosseTete 0.26..0.42, tete, oreilles, queue, cornes, cheveux, yeux, museau, peau ; clips idle marche course controle tir passe tacle chute saut joie plongeon ; pièces bassin torse tete brasL/R avantbrasL/R mainL/R cuisseL/R molletL/R piedL/R…), quadrupede (clips idle marche course assis saut), arbre (forme rond|sapin|palmier|boules), rocher, maison (toit pente|plat|pointu), nuage, ballon (clip roule). '
+        .'Pièce : {name, parent, at (ARTICULATION dans le repère du parent), rot, off (centre de la forme depuis l’articulation : bras pendant off [0,-0.2,0]), scale, role ou color, tex, glow 0..1, mirror:"x" (→ nomL et nomR, enfants dédoublés aussi), repeat {n, at, rot} (→ nom0…), hidden} + UNE forme : box [w,h,d,arrondi] | sphere r ou [rx,ry,rz] | capsule [r,longueur] (axe y) | cylinder [r,h,rHaut] | cone [r,h] | torus [R,r,arc°] | lathe [[r,y],…] | extrude {pts:[[x,y],…], depth} | tube {pts:[[x,y,z],…], r, r2} | plane [w,d] (sol). 160 pièces max ; même name qu’une pièce du préréglage = la remplace. '
+        .'Clip : {ms, loop (défaut true), then (clip suivant), tracks: {pièce: {rx, ry, rz (degrés ajoutés au repos), x, y, z (m), s (échelle) : listes de clés, sync, phase}}} ; une piste au nom d’une paire mirror (« bras ») anime les deux côtés en opposition (sync:true ensemble), « brasR » un seul côté. '
+        .'Placement : {model, name (instance pilotable : nœud name, pièces name_pièce ; sans name = décor statique fusionné, très peu coûteux), at, rot, scale, roles {rôle: couleur}, clip, hidden} ; décor en masse : grid [nx,nz] + step [dx,dy,dz], scatter n + area [x0,z0,x1,z1], jitter, turn (degrés), size [min,max], seed. Budgets : 4000 copies, 400 instances, 40 000 pièces dessinées, 6 000 pièces animées. '
+        .'TEXTURES (procédurales, au mètre, teintées par la couleur) : bois tissu marbre bruit grain rayures damier pois herbe brique carrelage ecailles fourrure metal pierre hachures tricot nuages camouflage, ou {kind, color2, scale (motifs par m), angle, contrast}. '
+        .'PILOTAGE nodes.<instance> = {x, y, z, rx, ry (cap), rz, scale, visible, opacity, ease {ms, curve}, lift, clip, clipSpeed, clipT (0..1 pose figée, null = relâcher), roles {rôle: "#rrggbb"}} ; nodes.<instance>_<pièce> = {visible, color, opacity}. Le reducer écrit des états finaux (position cible + ease), jamais d’images intermédiaires ; changer de clip suffit à animer. '
+        .'TAP : sonic-3d pick pick-names="^(p[0-9]+)$" → objectId = instance ; sonic-2d → {objectId: instance, part}. Sortie : out-data-provider DISTINCT reçoit mondeInfo {models {parts, clips, roles}, instances, decor, issues} (issues = erreurs du JSON, à relire). '
+        .'PIÈGES : (1) une seule forme par pièce ; (2) noms de pièces uniques ; (3) le monde se met dans un store (pas dans un attribut sonic-store initial de plus de 32 Ko) ; (4) en 2D les positions des nodes sont en MÈTRES comme en 3D (view2d fait la mise à l’échelle).';
 
     /** Mémo des addons `stage` et `2d` : scènes 2D pilotées par le format nodes. */
     private const PROCGEN_RULE = 'MONDES PROCÉDURAUX 3D (sonic-procgen, 2 vues 3D par page). <sonic-procgen dataProvider="monde" target="jeu" style="display:block;height:420px"> compose un monde 3D (sol, relief, côte, routes, bâtiments, végétation, objets, personnages et animaux skinnés et animés) ; la 2D n’est qu’une caméra ou un style. Unités : mètres (personnage 1,7 m, étage 3 m). '
@@ -249,7 +263,7 @@ final class ArtifactDocumentValidator
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
     /** Compétences (config/artifacts/skills/*.md) : servies à la demande par rules=["design", "<archétype>"], jamais par défaut. */
     public const SKILLS = ['design', 'vitrine', 'jeu', 'outil', 'dashboard', 'experience', 'multivue', 'carte'];
-    public const LONG_RULES = ['listes', 'a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
+    public const LONG_RULES = ['listes', 'a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'monde', 'animation', 'appareil', 'salons', 'ia', 'collecte'];
 
     private readonly ArtifactA2uiValidator $a2uiValidator;
 
@@ -393,6 +407,7 @@ final class ArtifactDocumentValidator
                 '3d' => self::SCENE3D_RULE,
                 '2d' => self::SCENE2D_RULE,
                 'procgen' => self::PROCGEN_RULE,
+                'monde' => self::MONDE_RULE,
                 'animation' => self::ANIMATION_RULE,
                 'appareil' => self::DEVICE_RULE,
                 'salons' => self::ROOMS_RULE,
