@@ -298,7 +298,7 @@
         },
         "trigger": {
           "type": "string",
-          "description": "viewport (défaut) | load | data (changement du chemin watch) | manual (appel de start())."
+          "description": "viewport (défaut) | load | data (changement du chemin watch) | manual (control ou appel de start())."
         },
         "duration": {
           "type": "number",
@@ -343,10 +343,18 @@
         "ease": {
           "type": "string",
           "description": "linear | easeIn | easeOut | easeInOut."
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage {n} : une hausse de n lance (ou relance) l'animation."
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "Reçoit {status, error, progress, done, runs, duration}."
         }
       },
       "addon": "animation",
-      "description": "Applique une recette d'animation aux enfants directs (horloge locale, ou temps lu dans un DataProvider avec time-source). Le plus simple : commence par lui."
+      "description": "Applique une recette d'animation aux enfants directs (horloge locale, ou temps lu dans un DataProvider avec time-source). Le plus simple : commence par lui. control (DP {n}) : chaque hausse de n lance l'animation (trigger manual sans JS) ; out-data-provider publie {status: idle|running|ready|error, error, progress, done, runs, duration}."
     },
     {
       "name": "sonic-audio-analyser",
@@ -413,7 +421,7 @@
         }
       },
       "addon": "audio",
-      "description": "Charge du moteur audio (Render Capacity, Chrome) en DataProvider : { status, average, peak, underrun, updates } ; status unsupported ailleurs"
+      "description": "Charge du moteur audio (Render Capacity, Chrome) en DataProvider : { status, error, average, peak, underrun, updates } ; status unsupported ailleurs, error si la mesure ne démarre pas"
     },
     {
       "name": "sonic-audio-master",
@@ -1983,7 +1991,7 @@
         },
         "control": {
           "type": "string",
-          "description": "DataProvider de commande { hold: boolean, source: \"#id\" } (un store) : hold prime sur l'attribut hold, source sur for (caméra ou image envoyée, sans doubler les trackers)"
+          "description": "DataProvider de commande { hold: boolean, source: \"#id\", delayMs (0..5000), mode } (un store) : hold prime sur l'attribut hold, source sur for (caméra ou image envoyée, sans doubler les trackers), delayMs sur delay-ms, mode sur mode ; clé retirée = attribut"
         },
         "out-data-provider": {
           "type": "string"
@@ -1994,14 +2002,14 @@
         }
       },
       "addon": "media",
-      "description": "Resynchronise image et effet : garde les dernières images d'une source (#id) et montre celle que le tracker a réellement analysée (sync=<out-data-provider du tracker>, exact via frameSeq), ou une image retardée (delay-ms), ou le direct ; hold=\"true\" (ou control={hold}) fige l'image : placé entre une caméra et ses trackers (for=\"<ce composant>\"), il fige la photo, les trackers gardent leur dernier résultat. Source d'images (#id) pour sonic-shader ; état {mode, matched, seq, delayMs, trackerSeq, filled}"
+      "description": "Resynchronise image et effet : garde les dernières images d'une source (#id) et montre celle que le tracker a réellement analysée (sync=<out-data-provider du tracker>, exact via frameSeq), ou une image retardée (delay-ms), ou le direct ; control {delayMs, mode} prioritaire sur delay-ms / mode ; hold=\"true\" (ou control={hold}) fige l'image : placé entre une caméra et ses trackers (for=\"<ce composant>\"), il fige la photo, les trackers gardent leur dernier résultat. Source d'images (#id) pour sonic-shader ; état {mode, matched, seq, delayMs, trackerSeq, filled}"
     },
     {
       "name": "sonic-fullscreen",
       "props": {
         "control": {
           "type": "string",
-          "description": "DP de pilotage : compteurs {commande: n}"
+          "description": "DP de pilotage : compteurs {commande: n} ; réglage navigationUI"
         },
         "out-data-provider": {
           "type": "string",
@@ -2021,7 +2029,7 @@
         }
       },
       "addon": "device",
-      "description": "Plein écran (sans rendu). Commandes control {enter:n, exit:n, toggle:n}, ou for=\"idBouton\" (clic = bascule, geste exigé). target = sélecteur CSS (défaut toute la page). État <id>State {status, error, supported, allowed, active, element, supportsVideoOnly}. Événement sonic-fullscreen-change. iPhone : seulement sur une <video>. Iframe : allow=\"fullscreen\""
+      "description": "Plein écran (sans rendu). Commandes control {enter:n, exit:n, toggle:n} (forme {n, navigationUI} pour une entrée ponctuelle) + clé de réglage navigationUI (auto|hide|show, prioritaire sur l'attribut), ou for=\"idBouton\" (clic = bascule, geste exigé). target = sélecteur CSS (défaut toute la page). État <id>State {status, error, supported, allowed, active, element, supportsVideoOnly, navigationUI}. Événement sonic-fullscreen-change. iPhone : seulement sur une <video>. Iframe : allow=\"fullscreen\""
     },
     {
       "name": "sonic-gamepad",
@@ -2033,14 +2041,27 @@
           "type": "object"
         },
         "deadzone": {
-          "type": "number"
+          "type": "number",
+          "description": "Seuil du stick pour ls-* (0..0.95, défaut 0.25)"
         },
         "repeat": {
           "type": "object"
+        },
+        "params": {
+          "type": "string",
+          "description": "DP de réglages en direct {deadzone, keymap, repeat}"
+        },
+        "dataProvider": {
+          "type": "string",
+          "description": "Reçoit {status, error, connected, id, deadzone}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "Même état que dataProvider"
         }
       },
       "addon": "interactive",
-      "description": "Manette -> actions store"
+      "description": "Manette (disposition standard, première manette) : boutons et stick gauche poussé à fond (ls-x-, ls-x+, ls-y-, ls-y+) -> actions store ; params (DP) {deadzone, keymap, repeat} en direct ; dataProvider / out-data-provider publie {status: idle|ready|error|unsupported, error, connected, id, deadzone}. Axes analogiques, gâchettes, plusieurs manettes, vibration : voir sonic-controller (addon controller)"
     },
     {
       "name": "sonic-gesture",
@@ -2088,10 +2109,14 @@
         "press": {
           "type": "boolean",
           "description": "press / release par doigt (pointerdown / pointerup)"
+        },
+        "params": {
+          "type": "string",
+          "description": "DP de réglages en direct {swipeThreshold, longPressMs, doubleTapMs, drag, pan, pinch, wheel, press}"
         }
       },
       "addon": "interactive",
-      "description": "Gestes tactiles multipoints -> actions vers target. Toujours : tap / double-tap / long-press {x, y (px dans la zone), u, v (fraction)}, swipe-up|down|left|right. drag : drag {dx, dy} cumulés en fraction de la zone + drag-end. pan : pan {dx, dy, x, y} en px depuis l'action précédente + pan-end {dx, dy, vx, vy}, sans swipe. pinch : pinch-start, pinch {scale, dScale, rotation, dRotation, cx, cy}, pinch-end. wheel : molette -> pinch {source:\"wheel\"}. Continues regroupées par image. press : press {id, x, y, u, v} au contact de chaque doigt, release au lever (jeu instrumental)."
+      "description": "Gestes tactiles multipoints -> actions vers target. Toujours : tap / double-tap / long-press {x, y (px dans la zone), u, v (fraction)}, swipe-up|down|left|right. drag : drag {dx, dy} cumulés en fraction de la zone + drag-end. pan : pan {dx, dy, x, y} en px depuis l'action précédente + pan-end {dx, dy, vx, vy}, sans swipe. pinch : pinch-start, pinch {scale, dScale, rotation, dRotation, cx, cy}, pinch-end. wheel : molette -> pinch {source:\"wheel\"}. Continues regroupées par image. press : press {id, x, y, u, v} au contact de chaque doigt, release au lever (jeu instrumental). params (DP) {swipeThreshold, longPressMs, doubleTapMs, drag, pan, pinch, wheel, press} en direct, prioritaire sur les attributs."
     },
     {
       "name": "sonic-grain",
@@ -2729,10 +2754,30 @@
         },
         "keyup": {
           "type": "boolean"
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Suspend l'écoute"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage {keymap, repeat, keyup, disabled}"
+        },
+        "params": {
+          "type": "string",
+          "description": "DP de réglages en direct {keymap, repeat, keyup, disabled}, prioritaire sur control"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "Reçoit {status, error, held, last, count, keys}"
+        },
+        "dispatch-event": {
+          "type": "boolean",
+          "description": "Émet aussi l'événement DOM sonic-action"
         }
       },
       "addon": "interactive",
-      "description": "Clavier -> actions store"
+      "description": "Clavier -> actions store (keymap code -> type ou {type, payload}, repeat {type: [délai, intervalle]}, keyup -> <type>:up) ; control / params (DP) {keymap, repeat, keyup, disabled} en direct (attributs < control < params) ; out-data-provider publie {status: idle|ready|error, error, held (codes tenus), last {code, type, payload, phase}, count, keys}"
     },
     {
       "name": "sonic-ladder",
@@ -3323,7 +3368,7 @@
         }
       },
       "addon": "audio",
-      "description": "Micro : source audio (#id) pour analyseur / patch ; jamais vers le master sauf monitor ; démarrage sur geste ; DP control {active, monitor, gain, deviceId} ; état {status, error, rms, db, devices}"
+      "description": "Micro : source audio (#id) pour analyseur / patch ; jamais vers le master sauf monitor ; démarrage sur geste ; DP control {active, monitor, gain, deviceId, echoCancellation, noiseSuppression, autoGain, rate} (flux rouvert si le traitement ou le micro change) ; état {status, error, rms, db, devices, settings}"
     },
     {
       "name": "sonic-midi",
@@ -3401,14 +3446,14 @@
         },
         "control": {
           "type": "string",
-          "description": "DP {active, input, output, channel, outChannel, program, panic: compteur}"
+          "description": "DP {active, input, output, channel, outChannel, program, panic: compteur, transpose, bendRange, offsetMs, durS}"
         },
         "out-data-provider": {
           "type": "string"
         }
       },
       "addon": "audio",
-      "description": "Web MIDI (accès sur geste, sans SysEx). Entrée : target=\"#synth\" joue les notes (MPE : bend / pression / timbre par note → voice.bend|pressure|timbre du patch), store=id reçoit {type:\"midi\", payload:{kind, note, name, vel, ch, cc, value}} ; état {status, inputs, held, last, notes, cc, bend, pressure, clock{running,bpm,beat}}. Sortie : instrument (cible d'un sonic-sequencer ou events/trigger) vers output=\"nom\", cc-out (DP {\"74\":0.5}), clock-out=\"#seq\" (horloge 24 ppq + Start/Stop)"
+      "description": "Web MIDI (accès sur geste, sans SysEx). Entrée : target=\"#synth\" joue les notes (MPE : bend / pression / timbre par note → voice.bend|pressure|timbre du patch), store=id reçoit {type:\"midi\", payload:{kind, note, name, vel, ch, cc, value}} ; état {status, inputs, held, last, notes, cc, bend, pressure, clock{running,bpm,beat}, settings{transpose,bendRange,offsetMs,durS}}. Sortie : instrument (cible d'un sonic-sequencer ou events/trigger) vers output=\"nom\", cc-out (DP {\"74\":0.5}), clock-out=\"#seq\" (horloge 24 ppq + Start/Stop)"
     },
     {
       "name": "sonic-mix",
@@ -3622,11 +3667,16 @@
           "type": "number"
         },
         "out-data-provider": {
-          "type": "string"
+          "type": "string",
+          "description": "Reçoit {status, error, value, values, speed, accel, vel, peak, peakVel, moving, settings}"
+        },
+        "params": {
+          "type": "string",
+          "description": "DP de réglages en direct {smoothMs, speedMax, idleMs, peakMs}"
         }
       },
       "addon": "interactive",
-      "description": "Vitesse d'un capteur : suit une ou plusieurs valeurs d'un DataProvider (source + keys en chemins pointés séparés par des virgules ; plusieurs = norme du déplacement) et publie dans out-data-provider {value, values, speed (unités/s, signée avec une seule valeur), accel, vel (|speed|/speed-max, 0..1 : vélocité MIDI), peak (plus grande vitesse des peak-ms dernières ms), peakVel, moving} ; smooth-ms lisse, idle-ms : sans nouvelle valeur la vitesse retombe vers 0 ; pas d'évaluation de code"
+      "description": "Vitesse d'un capteur : suit une ou plusieurs valeurs d'un DataProvider (source + keys en chemins pointés séparés par des virgules ; plusieurs = norme du déplacement) et publie dans out-data-provider {status (idle sans source/keys | ready | error : params refusé), error, value, values, speed (unités/s, signée avec une seule valeur), accel, vel (|speed|/speed-max, 0..1 : vélocité MIDI), peak (plus grande vitesse des peak-ms dernières ms), peakVel, moving} ; smooth-ms lisse, idle-ms : sans nouvelle valeur la vitesse retombe vers 0 ; params (DP) {smoothMs, speedMax, idleMs, peakMs} en direct, prioritaire sur les attributs (clé retirée : retour à l'attribut), settings = réglages effectifs ; pas d'évaluation de code"
     },
     {
       "name": "sonic-noise",
@@ -3762,7 +3812,7 @@
       "props": {
         "control": {
           "type": "string",
-          "description": "DP de pilotage : compteurs {commande: n}"
+          "description": "DP de pilotage : compteurs {commande: n} ; réglage smoothing"
         },
         "out-data-provider": {
           "type": "string",
@@ -3786,7 +3836,7 @@
         }
       },
       "addon": "device",
-      "description": "Orientation de l'écran (lecture, verrouillage) et capteurs de mouvement (inclinaison alpha/beta/gamma, accélération ax/ay/az, rotation ra/rb/rg ; null tant que rien n'arrive). Commandes control {lock:{n,type}, unlock:n, sensors:n, stop:n} ; for = démarre les capteurs (iOS : permission dans le clic). État <id>State {status, error, supported, allowed, active, type, angle, locked, sensors, permission, alpha, beta, gamma, ax, ay, az, ra, rb, rg}. Verrouiller exige souvent le plein écran. Iframe : allow=\"accelerometer; gyroscope; magnetometer\""
+      "description": "Orientation de l'écran (lecture, verrouillage) et capteurs de mouvement (inclinaison alpha/beta/gamma, accélération ax/ay/az, rotation ra/rb/rg ; null tant que rien n'arrive). Commandes control {lock:{n,type}, unlock:n, sensors:n, stop:n} + clé de réglage smoothing (0..0.95, en direct, prioritaire sur l'attribut) ; for = démarre les capteurs (iOS : permission dans le clic). État <id>State {status, error, supported, allowed, active, type, angle, locked, sensors, permission, alpha, beta, gamma, ax, ay, az, ra, rb, rg, smoothing}. Verrouiller exige souvent le plein écran. Iframe : allow=\"accelerometer; gyroscope; magnetometer\""
     },
     {
       "name": "sonic-osc",
@@ -4318,7 +4368,7 @@
       "props": {
         "control": {
           "type": "string",
-          "description": "DP de pilotage : compteurs {commande: n}"
+          "description": "DP de pilotage : compteurs {commande: n} ; réglage unadjustedMovement"
         },
         "out-data-provider": {
           "type": "string",
@@ -4342,7 +4392,7 @@
         }
       },
       "addon": "device",
-      "description": "Pointer Lock : souris verrouillée, déplacements relatifs (visée, caméra orbitale, potentiomètre infini). Commandes control {lock:n, unlock:n, toggle:n, reset:n} ou for. État <id>State {status, error, supported, allowed, active, element, dx, dy, x, y, raw} (dx/dy = somme depuis la publication précédente, x/y = cumul depuis le verrouillage). Événements sonic-pointerlock-change, sonic-pointerlock-move {dx,dy}. Iframe : sandbox allow-pointer-lock. Échap rend la souris"
+      "description": "Pointer Lock : souris verrouillée, déplacements relatifs (visée, caméra orbitale, potentiomètre infini). Commandes control {lock:n, unlock:n, toggle:n, reset:n} (forme {n, unadjustedMovement} pour un verrouillage ponctuel) ou for ; clé de réglage unadjustedMovement (booléen, prioritaire sur l'attribut). État <id>State {status, error, supported, allowed, active, element, dx, dy, x, y, raw, unadjustedMovement} (dx/dy = somme depuis la publication précédente, x/y = cumul depuis le verrouillage). Événements sonic-pointerlock-change, sonic-pointerlock-move {dx,dy}. Iframe : sandbox allow-pointer-lock. Échap rend la souris"
     },
     {
       "name": "sonic-pop",
@@ -4983,12 +5033,16 @@
         "trigger": {
           "type": "string"
         },
+        "control": {
+          "type": "string",
+          "description": "DP {gain (0..4, en direct), choke [[a,b]], chromatic} ; prioritaire sur les attributs, clé retirée = attribut"
+        },
         "out-data-provider": {
           "type": "string"
         }
       },
       "addon": "audio",
-      "description": "Sampler : samples {nom: url https/blob | {url|ref(DP SonicMediaRef), gain, pan, pitch, root, start, end, loop, reverse, gate}} ; événements {sample} ou {note} chromatique ; choke [[a,b]]"
+      "description": "Sampler : samples {nom: url https/blob | {url|ref(DP SonicMediaRef), gain, pan, pitch, root, start, end, loop, reverse, gate}} ; événements {sample} ou {note} chromatique ; choke [[a,b]] ; DP control {gain, choke, chromatic} prioritaire sur les attributs ; état {status, error, loaded, total, samples, empty, voices, played, errors, gain, choke, chromatic}"
     },
     {
       "name": "sonic-scope",
@@ -5362,7 +5416,7 @@
         }
       },
       "addon": "audio",
-      "description": "Horloge musicale : pattern {idInstrument: 'mini-notation' | {notes, scale, pad: 'x..x'}} joué sur des instruments par id ; store=id reçoit {type:step, payload:{step,beat,bar,phase,when,bpm}} ; control DP {playing,bpm,swing,seed,pattern} ; sync=\"#midi\" : suit l'horloge MIDI d'un appareil (Start/Stop, tempo, phase) ; état sync {locked, driftMs}"
+      "description": "Horloge musicale : pattern {idInstrument: 'mini-notation' | {notes, scale, pad: 'x..x'}} joué sur des instruments par id ; store=id reçoit {type:step, payload:{step,beat,bar,phase,when,bpm}} ; control DP {playing,bpm,swing,seed,pattern,beats,stepsPerBeat} ; état {status, playing, bpm, swing, seed, beats, stepsPerBeat, step, beat, bar, phase, sync, errors, warnings} ; sync=\"#midi\" : suit l'horloge MIDI d'un appareil (Start/Stop, tempo, phase) ; état sync {locked, driftMs}"
     },
     {
       "name": "sonic-sfx",
@@ -5517,7 +5571,7 @@
       "props": {
         "nodes-out": {
           "type": "string",
-          "description": "DataProvider qui reçoit nodes, bones, rest, present ; celui que lit sonic-2d dataProvider (obligatoire pour écrire)"
+          "description": "DataProvider qui reçoit nodes, bones, rest, present, status, error, errors ; celui que lit sonic-2d dataProvider (obligatoire pour écrire)"
         },
         "preset": {
           "type": "string",
@@ -5581,7 +5635,7 @@
         }
       },
       "addon": "animation",
-      "description": "Squelette 2D à os rigides (marionnette, bras articulé, pendules) : écrit des nodes (format partagé : un nœud par os, x y de l'articulation, rz radians par rapport au repos) dans <nodes-out>.nodes, l'état des os dans <nodes-out>.bones, present et la pose de repos dans <nodes-out>.rest (lue par un sprite sonic-2d shape=\"mesh\" qui déforme une image entre les os) ; ne dessine rien, un élément de même nom que l'os le suit (sprite sonic-2d avec pivot, nœud glTF sonic-3d, élément sonic-stage). Os en enfants sonic-bone ou preset=\"humain\" (13 os branchés sur les articulations de sonic-pose-tracker via source) ; os pilotés par aim (direction mesurée entre deux articulations) ou angle-from (n'importe quelle valeur de DataProvider) ; angle-add-from ajoute une rotation par-dessus la pose mesurée ; rest=\"pose\" + fit font de la pose mesurée le repos d'un maillage (photo posable). Angles en degrés, 0 = vers le bas, positif = sens horaire."
+      "description": "Squelette 2D à os rigides (marionnette, bras articulé, pendules) : écrit des nodes (format partagé : un nœud par os, x y de l'articulation, rz radians par rapport au repos) dans <nodes-out>.nodes, l'état des os dans <nodes-out>.bones, present et la pose de repos dans <nodes-out>.rest (lue par un sprite sonic-2d shape=\"mesh\" qui déforme une image entre les os) ; ne dessine rien, un élément de même nom que l'os le suit (sprite sonic-2d avec pivot, nœud glTF sonic-3d, élément sonic-stage). Os en enfants sonic-bone ou preset=\"humain\" (13 os branchés sur les articulations de sonic-pose-tracker via source) ; os pilotés par aim (direction mesurée entre deux articulations) ou angle-from (n'importe quelle valeur de DataProvider) ; angle-add-from ajoute une rotation par-dessus la pose mesurée ; rest=\"pose\" + fit font de la pose mesurée le repos d'un maillage (photo posable). État dans <nodes-out>.status (idle | ready | error), .error, .errors (erreurs de déclaration). Angles en degrés, 0 = vers le bas, positif = sens horaire."
     },
     {
       "name": "sonic-sketch",
@@ -5733,10 +5787,13 @@
         },
         "out-data-provider": {
           "type": "string"
+        },
+        "params": {
+          "type": "string"
         }
       },
       "addon": "text",
-      "description": "Texte cinétique : text (ou le contenu de l'élément), split=\"chars|words|lines\", effect=\"rise|fade|blur|wipe|scale|slide\", spread 0..1 (part de la course consacrée au décalage entre unités, défaut 0,7), ease=\"linear|out|inout\", distance (px, effet slide) ; avancement 0..1 par progress, par progress-source=\"defil.smoothProgress\" (DataProvider) ou lecture automatique avec play et duration (secondes) ; out-data-provider reçoit {progress, units, done} ; le texte complet reste lu par les lecteurs d'écran"
+      "description": "Texte cinétique : text (ou le contenu de l'élément), split=\"chars|words|lines\", effect=\"rise|fade|blur|wipe|scale|slide\", spread 0..1 (part de la course consacrée au décalage entre unités, défaut 0,7), ease=\"linear|out|inout\", distance (px, effet slide) ; avancement 0..1 par progress, par progress-source=\"defil.smoothProgress\" (DataProvider) ou lecture automatique avec play et duration (secondes) ; params (DP) {text, split, effect, ease, spread, distance, duration} en direct, prioritaire sur les attributs (clé retirée : retour à l'attribut) ; out-data-provider reçoit {status: idle|ready|error, error, progress, units, done, settings} ; le texte complet reste lu par les lecteurs d'écran"
     },
     {
       "name": "sonic-sprite",
