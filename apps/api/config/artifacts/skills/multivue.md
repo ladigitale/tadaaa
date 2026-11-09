@@ -3,10 +3,10 @@ name: multivue
 description: Interfaces à plusieurs panneaux ou vues (onglets, liste + détail, modal, carte + liste) avec un état partagé. À lire avant d'écrire des onglets, un modal ou une sélection.
 ---
 ## Principe : un store `etat`, des vues qui le lisent
-Un store (`data.stores.etat = {initial, reducer}`) porte l'état d'interface ; les actions sont envoyées par `sonic-action` (`target:"etat"`, `type`, `payload`). Le réducteur est le seul endroit qui change l'état. Ne stocke que des identifiants (`sel`) ; les fiches se retrouvent par filtre JSONata (sonic-jsonata, outputProvider "fiche").
+Un store (`data.stores.etat = {initial, reducer}`) porte l'état d'interface ; les actions sont envoyées par `sonic-action` (`target:"etat"`, `type`, `payload`). Le réducteur gère les événements ; les simples choix (onglet sans modal, filtre, sélection dans une liste) s'écrivent directement dans le même store par des radios Concorde (`formDataProvider="etat" name="…" value="…" radio`, voir `design` §1 bis), dont l'état actif s'affiche seul. Ne stocke que des identifiants (`sel`) ; les fiches se retrouvent par filtre JSONata (sonic-jsonata, outputProvider "fiche").
 
 ## Onglets (une vue, plusieurs panneaux)
-- Barre : `sonic-subscriber dataProvider="etat"` > `sonic-menu direction="row"` > par onglet `sonic-action type="tab" payload={"tab":"carte"}` > `sonic-menu-item type="primary" data-bind "::variant":"$vCarte"`. Le réducteur écrit `vCarte`/`vListe` = "default" (actif) ou "ghost".
+- Barre : `sonic-menu direction="row"` > par onglet `sonic-menu-item radio formDataProvider="etat" name="onglet" value="carte"` (onglet actif rendu par Concorde). Si changer d'onglet doit aussi fermer un modal (patron ci-dessous), garde à la place `sonic-action type="tab"` pour que le réducteur le sache.
 - Panneau : `sonic-if dataProvider="etat" key="onglet" equals="carte"`. ATTENTION : sonic-if garde son contenu dans le DOM (il ne le détruit pas). Un composant à état interne (modal, carte) y garde cet état.
 - Plusieurs vraies vues (hash URL) : `views[]` ; une vue `hidden:true` reste accessible par son #id.
 
