@@ -151,15 +151,17 @@ final class ArtifactDataService
 
     /**
      * Envoi anonyme dans une collecte contrôlée.
+     * Accès : visibilité publique, jeton de lien `k`, ou membre connecté du jeu de données.
      * Refusé si : pas de schéma, session fermée/expirée, code faux, quota atteint,
      * envoi trop rapproché pour cette IP, champ inconnu ou hors format.
      *
      * @return array{id: string}
      */
-    public function createIntakeRecord(string $slug, string $collectionName, ?string $linkToken, mixed $data, ?string $code, string $clientIp): array
+    public function createIntakeRecord(string $slug, string $collectionName, ?string $linkToken, mixed $data, ?string $code, string $clientIp, ?User $user = null): array
     {
         $artifact = $this->resolveArtifact($slug);
-        $this->assertPublicAccess($artifact, $linkToken, null);
+        // Même accès qu'en lecture : un membre connecté envoie aussi sans jeton de lien.
+        $this->assertPublicAccess($artifact, $linkToken, $user);
         $collection = $this->requireCollection($artifact, $collectionName);
         $schema = $collection->getIntakeSchema();
         $now = new \DateTimeImmutable();

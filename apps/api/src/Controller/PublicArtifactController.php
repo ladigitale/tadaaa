@@ -78,6 +78,7 @@ final class PublicArtifactController extends AbstractController
             $body['data'] ?? null,
             \is_string($code) || \is_int($code) ? (string) $code : null,
             $request->getClientIp() ?: 'anon',
+            ($user = $this->getUser()) instanceof User ? $user : null,
         );
         $response = $this->json($result, Response::HTTP_CREATED);
         $response->headers->set('Cache-Control', 'no-store');
