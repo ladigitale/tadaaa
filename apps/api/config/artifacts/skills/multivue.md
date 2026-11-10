@@ -8,7 +8,7 @@ Un store (`data.stores.etat = {initial, reducer}`) porte l'état d'interface ; l
 ## Onglets (une vue, plusieurs panneaux)
 - Barre : `sonic-menu direction="row"` > par onglet `sonic-menu-item radio formDataProvider="etat" name="onglet" value="carte"` (onglet actif rendu par Concorde). Si changer d'onglet doit aussi fermer un modal (patron ci-dessous), garde à la place `sonic-action type="tab"` pour que le réducteur le sache.
 - Panneau : `sonic-if dataProvider="etat" key="onglet" equals="carte"`. ATTENTION : sonic-if garde son contenu dans le DOM (il ne le détruit pas). Un composant à état interne (modal, carte) y garde cet état.
-- Plusieurs vraies vues (hash URL) : `views[]` ; une vue `hidden:true` reste accessible par son #id.
+- Plusieurs vraies vues (hash URL) : `views[]` ; une vue `hidden:true` reste accessible par son #id. Le viewer dessine les onglets (`sonic-menu` de `sonic-menu-item radio` sur le DataProvider `artifactView`, onglet actif rendu par Concorde). Pour des onglets dans la palette de l'artefact (palette de zone, `design` §1) : `"page": {"nav": "none"}` puis, en tête de chaque vue, `sonic-menu direction="row"` > `sonic-menu-item radio formDataProvider="artifactView" name="view" value="<id de vue>"` ; `sonic-value dataProvider="artifactView" key="view"` lit la vue courante.
 
 ## Liste + détail
 - Une ligne de liste ne sélectionne pas : elle contient un bouton « Détails » (`sonic-action type="select" data-bind "::payload":"$id"`). Ajoute « Voir sur la carte » (`type="locate"`) si une carte existe.
