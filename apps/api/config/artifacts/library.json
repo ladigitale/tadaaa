@@ -459,6 +459,58 @@
       "source": "// Kaléidoscope sur l'image du canal 0 (caméra, vidéo, image).\nvoid mainImage(out vec4 c, in vec2 p){\n  vec2 uv = p / iResolution.xy;\n  vec2 q = uv - 0.5; q.x *= iResolution.x / iResolution.y;\n  float n = max(2.0, floor(uParam0 + 0.5));\n  float a = atan(q.y, q.x) + iTime * uParam1; float r = length(q);\n  a = mod(a, 6.2831853 / n); a = abs(a - 3.1415926 / n);\n  uv = 0.5 + r * vec2(cos(a) * iResolution.y / iResolution.x, sin(a));\n  c = vec4(texture(iChannel0, uv).rgb, 1.0);\n}\n"
     },
     {
+      "id": "shader/pile-effets",
+      "kind": "shader",
+      "version": 1,
+      "license": "MIT",
+      "title": "Pile d'effets",
+      "description": "23 effets cumulables en une passe, dans un ordre fixe (géométrie → lumière → couleur → matière), indépendants de la résolution : miroir, kaléido, tourbillon, ondes, pixels ; prisme, halo, flou, encre ; éclat, teinte, bichromie, sépia, aplats, négatif, thermique ; papier, trame, points, hachures, balayage, grain, vignette. uParam0 est un masque : somme de 2^i des effets actifs (ex. riso = 2^11 + 2^16 + 2^18 + 2^21).",
+      "tags": [
+        "effet",
+        "post-traitement",
+        "finition",
+        "export",
+        "image",
+        "pile"
+      ],
+      "channels": [
+        "iChannel0 : image à traiter (toile sonic-sketch / sonic-paint, caméra, export PNG)"
+      ],
+      "params": [
+        {
+          "name": "uParam0",
+          "label": "Effets actifs (masque : somme de 2^i, i de 0 à 22)",
+          "min": 0,
+          "max": 8388607,
+          "default": 2426880
+        },
+        {
+          "name": "uParam1",
+          "label": "Intensité",
+          "min": 0,
+          "max": 1,
+          "default": 0.6
+        },
+        {
+          "name": "uParam2",
+          "label": "Échelle du grain",
+          "min": 0.5,
+          "max": 8,
+          "default": 2
+        },
+        {
+          "name": "uParam3",
+          "label": "Teinte (teinte, bichromie)",
+          "min": 0,
+          "max": 1,
+          "default": 0.6
+        }
+      ],
+      "addon": "shader",
+      "sha256": "b6ad218ce76b2cdd9bdce27bf76e6c562519631bbff261d6c8244a021859642d",
+      "source": "// Pile d'effets cumulables pour finir une image (post-traitement), appliqués dans un ordre fixe :\n// géométrie → lumière → couleur → matière. Indépendant de la résolution : le même réglage donne le même\n// aspect à l'écran et dans un export ×4 (render-size). iChannel0 : l'image à traiter.\n// uParam0 : masque des effets actifs, somme de 2^i pour chaque effet i :\n//   géométrie  0 miroir, 1 kaléido, 2 tourbillon, 3 ondes, 4 pixels\n//   lumière    5 prisme, 6 halo, 7 flou, 8 encre (contours)\n//   couleur    9 éclat, 10 teinte, 11 bichromie, 12 sépia, 13 aplats, 14 négatif, 15 thermique\n//   matière   16 papier, 17 trame, 18 points, 19 hachures, 20 balayage, 21 grain, 22 vignette\n// uParam1 intensité (0..1), uParam2 échelle du grain (millièmes du petit côté, 0.5..8), uParam3 teinte (0..1).\n\nconst float PI = 3.14159265;\n\nbool fxOn(int i) {\n  return mod(floor((uParam0 + 0.5) / exp2(float(i))), 2.0) >= 1.0;\n}\n\nfloat h12(vec2 p) {\n  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nfloat vn(vec2 p) {\n  vec2 i = floor(p);\n  vec2 f = fract(p);\n  vec2 u = f * f * (3.0 - 2.0 * f);\n  return mix(mix(h12(i), h12(i + vec2(1.0, 0.0)), u.x), mix(h12(i + vec2(0.0, 1.0)), h12(i + vec2(1.0, 1.0)), u.x), u.y);\n}\n\nfloat bayer2(vec2 a) { a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }\nfloat bayer4(vec2 a) { return bayer2(0.5 * a) * 0.25 + bayer2(a); }\n\nfloat luma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }\n\n// Rotation de teinte autour de l'axe des gris (formule de Rodrigues).\nvec3 hueTurn(vec3 c, float a) {\n  vec3 k = vec3(0.57735);\n  float ca = cos(a);\n  return c * ca + cross(k, c) * sin(a) + k * dot(k, c) * (1.0 - ca);\n}\n\n// Couleur pure d'une teinte h (0..1).\nvec3 hueColor(float h) {\n  return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);\n}\n\nvec3 tap(vec2 uv) {\n  return texture(iChannel0, clamp(uv, 0.0, 1.0)).rgb;\n}\n\nvoid mainImage(out vec4 o, in vec2 f) {\n  vec2 R = iResolution.xy;\n  float side = min(R.x, R.y);\n  float k = clamp(uParam1, 0.0, 1.0);\n  float scale = clamp(uParam2, 0.5, 8.0);\n  float hue = fract(uParam3);\n  // Grain : en millièmes du petit côté (identique à toute résolution).\n  vec2 g = f / side * 1000.0 / scale;\n  // Un millième du petit côté, en coordonnées de texture.\n  vec2 mil = vec2(side / 1000.0) / R;\n\n  // --- Géométrie : p centré, petit côté = 1.\n  vec2 p = (f / R - 0.5) * R / side;\n  if (fxOn(0)) p.x = -abs(p.x);\n  if (fxOn(1)) {\n    float s = 2.0 * PI / 6.0;\n    float a = mod(atan(p.y, p.x), s);\n    // L'intensité fait tourner le secteur échantillonné ; décalé du centre pour mêler plusieurs formes.\n    a = abs(a - 0.5 * s) + k * 2.0 * PI;\n    p = length(p) * 1.15 * vec2(cos(a), sin(a)) + vec2(-0.12, 0.04);\n  }\n  if (fxOn(2)) {\n    float a = (1.0 - smoothstep(0.0, 0.7, length(p))) * (1.0 + 3.0 * k);\n    p = mat2(cos(a), -sin(a), sin(a), cos(a)) * p;\n  }\n  if (fxOn(3)) p += (0.004 + 0.012 * k) * vec2(sin(p.y * 38.0), sin(p.x * 38.0));\n  if (fxOn(4)) {\n    float cell = mix(0.006, 0.04, k);\n    p = (floor(p / cell) + 0.5) * cell;\n  }\n  vec2 uv = p * side / R + 0.5;\n\n  // --- Lumière.\n  vec3 c = tap(uv);\n  if (fxOn(5)) {\n    vec2 d = (uv - 0.5) * (0.004 + 0.016 * k);\n    c.r = tap(uv + d).r;\n    c.b = tap(uv - d).b;\n  }\n  if (fxOn(6) || fxOn(7)) {\n    vec3 b = vec3(0.0);\n    float rr = 10.0 + 14.0 * k;\n    for (int i = 0; i < 12; i++) {\n      float a = float(i) * PI / 6.0;\n      b += tap(uv + vec2(cos(a), sin(a)) * rr * mil);\n      b += tap(uv + vec2(cos(a + 0.26), sin(a + 0.26)) * rr * 0.45 * mil);\n    }\n    b /= 24.0;\n    if (fxOn(7)) c = mix(c, b, 0.4 + 0.6 * k);\n    if (fxOn(6)) c = 1.0 - (1.0 - c) * (1.0 - b * b * (0.5 + 0.7 * k));\n  }\n  if (fxOn(8)) {\n    vec2 e = 1.6 * mil;\n    float gx = luma(tap(uv + vec2(e.x, 0.0))) - luma(tap(uv - vec2(e.x, 0.0)));\n    float gy = luma(tap(uv + vec2(0.0, e.y))) - luma(tap(uv - vec2(0.0, e.y)));\n    float edge = smoothstep(0.05, 0.2, length(vec2(gx, gy)));\n    c *= 1.0 - edge * (0.5 + 0.45 * k);\n  }\n\n  // --- Couleur.\n  if (fxOn(9)) {\n    float l = luma(c);\n    c = mix(vec3(l), c, 1.2 + 0.8 * k);\n    c = (c - 0.5) * (1.1 + 0.4 * k) + 0.5;\n    c = clamp(c, 0.0, 1.0);\n  }\n  if (fxOn(10)) c = clamp(hueTurn(c, hue * 2.0 * PI), 0.0, 1.0);\n  if (fxOn(11)) {\n    float l = smoothstep(0.05, 0.95, luma(c));\n    vec3 dark = hueColor(hue) * 0.28;\n    vec3 light = mix(vec3(1.0, 0.98, 0.94), hueColor(hue + 0.5), 0.22);\n    c = mix(c, mix(dark, light, l), 0.6 + 0.4 * k);\n  }\n  if (fxOn(12)) {\n    float l = luma(c);\n    c = mix(c, vec3(l * 1.08 + 0.04, l * 0.9 + 0.02, l * 0.68), 0.6 + 0.4 * k);\n  }\n  if (fxOn(13)) {\n    float lv = floor(mix(7.0, 2.0, k) + 0.5);\n    c = floor(c * lv + 0.5) / lv;\n  }\n  if (fxOn(14)) c = 1.0 - c;\n  if (fxOn(15)) {\n    float t = luma(c);\n    vec3 th = t < 0.25 ? mix(vec3(0.02, 0.0, 0.12), vec3(0.25, 0.05, 0.6), t / 0.25)\n      : t < 0.5 ? mix(vec3(0.25, 0.05, 0.6), vec3(0.85, 0.1, 0.45), (t - 0.25) / 0.25)\n      : t < 0.75 ? mix(vec3(0.85, 0.1, 0.45), vec3(1.0, 0.6, 0.05), (t - 0.5) / 0.25)\n      : mix(vec3(1.0, 0.6, 0.05), vec3(1.0, 1.0, 0.8), (t - 0.75) / 0.25);\n    c = mix(c, th, 0.6 + 0.4 * k);\n  }\n\n  // --- Matière.\n  if (fxOn(16)) {\n    float grain = vn(g * 0.9) * 0.5 + vn(g * 3.1) * 0.3 + h12(floor(g * 2.0)) * 0.2;\n    float fibre = vn(vec2(g.x * 0.12, g.y * 2.4));\n    vec3 paper = c * (0.9 + 0.2 * grain) * (0.97 + 0.06 * fibre) * vec3(1.0, 0.985, 0.95);\n    c = mix(c, paper, 0.5 + 0.5 * k);\n  }\n  if (fxOn(17)) {\n    float lv = 4.0;\n    float thr = bayer4(floor(g / 2.5)) - 0.5;\n    vec3 q = floor((c + thr / (lv - 1.0)) * (lv - 1.0) + 0.5) / (lv - 1.0);\n    c = mix(c, clamp(q, 0.0, 1.0), 0.5 + 0.5 * k);\n  }\n  if (fxOn(18)) {\n    float cs = 7.0;\n    vec2 q = mat2(0.7071, -0.7071, 0.7071, 0.7071) * g / cs;\n    float d = length(fract(q) - 0.5);\n    float r = sqrt(clamp(1.0 - luma(c), 0.0, 1.0)) * 0.62;\n    float dotm = 1.0 - smoothstep(r - 0.06, r + 0.06, d);\n    vec3 ink = clamp(c * 0.8, 0.0, 1.0);\n    vec3 ht = mix(vec3(0.98, 0.97, 0.94), ink, dotm);\n    c = mix(c, ht, 0.6 + 0.4 * k);\n  }\n  if (fxOn(19)) {\n    float l = luma(c);\n    float w = 0.16;\n    float h1 = step(fract((g.x + g.y) / 5.0), w) * step(l, 0.78);\n    float h2 = step(fract((g.x - g.y) / 5.0), w) * step(l, 0.52);\n    float h3 = step(fract(g.x / 3.5), w) * step(l, 0.28);\n    float hatch = max(max(h1, h2), h3);\n    vec3 paper = vec3(0.97, 0.95, 0.9);\n    c = mix(c, mix(paper, c * 0.35, hatch), 0.6 + 0.4 * k);\n  }\n  if (fxOn(20)) c *= 1.0 - (0.12 + 0.25 * k) * (0.5 + 0.5 * cos(g.y * PI / 2.0));\n  if (fxOn(21)) c += (h12(floor(g * 2.0) + 0.37) - 0.5) * (0.06 + 0.16 * k);\n  if (fxOn(22)) {\n    float vig = 1.0 - smoothstep(0.3, 0.95, length((f / R - 0.5) * R / side) * 1.15);\n    c *= mix(1.0, 0.35 + 0.65 * vig, 0.5 + 0.5 * k);\n  }\n\n  o = vec4(clamp(c, 0.0, 1.0), 1.0);\n}\n"
+    },
+    {
       "id": "shader/pixelate",
       "kind": "shader",
       "version": 1,
