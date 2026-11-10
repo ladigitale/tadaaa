@@ -162,6 +162,50 @@
       "source": "// Tramage ordonné (matrice de Bayer 8x8) : réduit l'image à quelques niveaux.\nfloat bayer2(vec2 a){ a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }\nfloat bayer4(vec2 a){ return bayer2(0.5 * a) * 0.25 + bayer2(a); }\nfloat bayer8(vec2 a){ return bayer4(0.5 * a) * 0.25 + bayer2(a); }\nfloat lum(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }\nvoid mainImage(out vec4 o, in vec2 p){\n  float size = max(1.0, floor(uParam0 + 0.5));\n  vec2 cell = floor(p / size);\n  vec2 uv = (cell + 0.5) * size / iResolution.xy;\n  vec3 src = texture(iChannel0, uv).rgb;\n  float levels = max(2.0, floor(uParam1 + 0.5));\n  float thr = bayer8(cell) - 0.5;\n  vec3 v = mix(vec3(lum(src)), src, uParam2);\n  vec3 q = floor((v + thr / (levels - 1.0)) * (levels - 1.0) + 0.5) / (levels - 1.0);\n  o = vec4(clamp(q, 0.0, 1.0), 1.0);\n}\n"
     },
     {
+      "id": "shader/finition",
+      "kind": "shader",
+      "version": 1,
+      "license": "MIT",
+      "title": "Finition",
+      "description": "Post-traitement d'une image, indépendant de la résolution (même aspect à l'écran et dans un export render-size) : papier (grain, fibres), trame ordonnée, sérigraphie (repérage décalé, encres posterisées), objectif (aberration chromatique, vignette).",
+      "tags": [
+        "effet",
+        "post-traitement",
+        "finition",
+        "export",
+        "image"
+      ],
+      "channels": [
+        "iChannel0 : image à finir (toile sonic-sketch / sonic-paint, export PNG)"
+      ],
+      "params": [
+        {
+          "name": "uParam0",
+          "label": "Effet (0 aucun, 1 papier, 2 trame, 3 sérigraphie, 4 objectif)",
+          "min": 0,
+          "max": 4,
+          "default": 1
+        },
+        {
+          "name": "uParam1",
+          "label": "Intensité",
+          "min": 0,
+          "max": 1,
+          "default": 0.6
+        },
+        {
+          "name": "uParam2",
+          "label": "Échelle du grain",
+          "min": 0.5,
+          "max": 8,
+          "default": 2
+        }
+      ],
+      "addon": "shader",
+      "sha256": "fecd8142ea341b17e7cc0f28d3b50050e7db23abb0c1b36554383f0a3e62939f",
+      "source": "// Finition d'une image (post-traitement) : effets indépendants de la résolution — le même réglage donne le\n// même aspect à l'écran et dans un export ×4 (render-size). iChannel0 : l'image à finir (toile, export PNG).\n// uParam0 effet : 0 aucun, 1 papier (grain et fibres), 2 trame ordonnée, 3 sérigraphie (repérage décalé,\n// encres posterisées), 4 objectif (aberration chromatique et vignette). uParam1 intensité (0..1).\n// uParam2 échelle du grain (millièmes du petit côté, 0.5..8).\n\nfloat h12(vec2 p) {\n  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n}\n\nfloat vn(vec2 p) {\n  vec2 i = floor(p);\n  vec2 f = fract(p);\n  vec2 u = f * f * (3.0 - 2.0 * f);\n  return mix(mix(h12(i), h12(i + vec2(1.0, 0.0)), u.x), mix(h12(i + vec2(0.0, 1.0)), h12(i + vec2(1.0, 1.0)), u.x), u.y);\n}\n\nfloat bayer2(vec2 a) { a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }\nfloat bayer4(vec2 a) { return bayer2(0.5 * a) * 0.25 + bayer2(a); }\n\nvoid mainImage(out vec4 o, in vec2 f) {\n  vec2 uv = f / iResolution.xy;\n  float side = min(iResolution.x, iResolution.y);\n  float k = clamp(uParam1, 0.0, 1.0);\n  float scale = clamp(uParam2, 0.5, 8.0);\n  // Coordonnées du grain : en millièmes du petit côté, donc identiques à toute résolution.\n  vec2 g = f / side * 1000.0 / scale;\n  int fx = int(uParam0 + 0.5);\n  vec3 c = texture(iChannel0, uv).rgb;\n\n  if (fx == 1) {\n    float grain = vn(g * 0.9) * 0.5 + vn(g * 3.1) * 0.3 + h12(floor(g * 2.0)) * 0.2;\n    float fibre = vn(vec2(g.x * 0.12, g.y * 2.4));\n    vec3 paper = c * (0.9 + 0.2 * grain) * (0.97 + 0.06 * fibre) * vec3(1.0, 0.985, 0.95);\n    c = mix(c, paper, k);\n  } else if (fx == 2) {\n    vec2 cell = floor(g / 2.5);\n    float levels = 4.0;\n    float thr = bayer4(cell) - 0.5;\n    vec3 q = floor((c + thr / (levels - 1.0)) * (levels - 1.0) + 0.5) / (levels - 1.0);\n    c = mix(c, clamp(q, 0.0, 1.0), k);\n  } else if (fx == 3) {\n    vec2 px = vec2(side) / iResolution.xy;\n    float d = 0.004 * k;\n    vec3 s;\n    s.r = texture(iChannel0, uv + vec2(d, 0.6 * d) * px).r;\n    s.g = texture(iChannel0, uv + vec2(-0.7 * d, 0.3 * d) * px).g;\n    s.b = texture(iChannel0, uv + vec2(0.2 * d, -d) * px).b;\n    vec3 ink = floor(s * 5.0 + 0.5) / 5.0;\n    float grain = vn(g * 1.7);\n    ink *= 0.94 + 0.12 * grain;\n    c = mix(c, ink, k);\n  } else if (fx == 4) {\n    vec2 dir = uv - 0.5;\n    float a = 0.012 * k;\n    c.r = texture(iChannel0, uv + dir * a).r;\n    c.b = texture(iChannel0, uv - dir * a).b;\n    float vig = 1.0 - smoothstep(0.35, 0.95, length(dir) * 1.25);\n    c *= mix(1.0, 0.55 + 0.45 * vig, k);\n  }\n  o = vec4(clamp(c, 0.0, 1.0), 1.0);\n}\n"
+    },
+    {
       "id": "shader/formes",
       "kind": "shader",
       "version": 1,
