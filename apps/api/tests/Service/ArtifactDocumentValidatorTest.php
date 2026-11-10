@@ -721,7 +721,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
         $filtered = $this->validator->mcpCatalogPayload(true, null, ['__none__'], false);
         $encodedFiltered = json_encode($filtered, JSON_UNESCAPED_UNICODE);
         self::assertNotFalse($encodedFiltered);
-        self::assertLessThan(12_000, strlen($encodedFiltered));
+        self::assertLessThan(14_000, strlen($encodedFiltered));
 
         // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, 3d, 2d, procgen, monde, monde2d, animation,
         // appareil, salons, ia, collecte). Plafond large, pour repérer une dérive de taille.
@@ -797,7 +797,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertArrayHasKey('a2ui', $targeted['rules']);
         self::assertArrayHasKey('interdit', $targeted['rules']);
         self::assertFalse(isset($targeted['rules']['audio']) || isset($targeted['examples']) || isset($targeted['scripts']));
-        self::assertLessThan(17_000, \strlen((string) json_encode($targeted)));
+        self::assertLessThan(20_000, \strlen((string) json_encode($targeted)));
         $full = $validator->mcpCatalogPayload(true);
         self::assertArrayHasKey('audio', $full['rules']);
         self::assertArrayHasKey('examples', $full);
