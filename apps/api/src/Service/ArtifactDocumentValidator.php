@@ -397,8 +397,9 @@ final class ArtifactDocumentValidator
                 'interdit' => ['markup', 'innerHTML', 'js', 'css', 'prefix', 'suffix', 'javascript:', 'URL libre de script'],
                 'scripts' => 'Optionnel: tableau d’IDs du catalogue scripts (voir scripts.libraries[].id). Ex: ["chartjs","leaflet"]. Pas d’URL, pas de balise <script>.',
                 'tagName' => 'Uniquement composants Concorde (sonic-*) ou balises HTML sûres du catalogue.',
-                'page' => 'Optionnel : cadre de la page, "page": {"padding": "none"|"compact"|"normal" (défaut normal : marge du viewer ; none = plein cadre, pour un jeu ou une scène), "background": couleur CSS du fond de toute la page (#hex, rgb(), hsl(), nom ou var(--sc-…))}.',
-                'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent. views[].hidden = true : vue absente des onglets (accessible par son #id).',
+                'page' => 'Optionnel : cadre de la page, "page": {"padding": "none"|"compact"|"normal" (défaut normal : marge du viewer ; none = plein cadre, pour un jeu ou une scène), "background": couleur CSS du fond de toute la page (#hex, rgb(), hsl(), nom ou var(--sc-…)), "nav": "tabs"|"none" (défaut tabs : barre d’onglets du viewer quand il y a plusieurs vues ; none = le document dessine ses onglets, voir la règle « navigation »)}.',
+                'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent. views[].hidden = true : vue absente des onglets (accessible par son #id). '
+                    .'Onglets : le viewer affiche un sonic-menu de sonic-menu-item radio branchés sur le DataProvider artifactView ({view} = id de la vue affichée), l’onglet actif est rendu par Concorde. Pour des onglets dans la palette de l’artefact : "page": {"nav": "none"} puis, dans les vues, {"tagName":"sonic-menu","attributes":{"direction":"row"},"nodes":[{"tagName":"sonic-menu-item","attributes":{"radio":true,"formDataProvider":"artifactView","name":"view","value":"stats"},"textContent":"Stats"}, …]} (à répéter dans chaque vue, ou dans une vue qui les contient toutes) ; lire la vue courante : sonic-value dataProvider="artifactView" key="view". Jamais de sonic-button à variant calculé pour des onglets.',
                 'interactive' => 'sonic-store + keyboard/gamepad/gesture/action/ticker + sonic-matrix. Câblage des données : voir la règle « donnees ». '
                     .'sonic-gesture : pan (dx,dy px), pinch (dScale, cx, cy), wheel, drag (fraction cumulée).',
                 'donnees' => 'Un DataProvider (DP) est un nom : les composants le lisent avec dataProvider="nom", les actions l’écrivent avec target="nom". '
@@ -795,23 +796,26 @@ final class ArtifactDocumentValidator
     private const PAGE_COLOR = '/^(#[0-9a-f]{3,8}|(?:rgb|rgba|hsl|hsla)\\([0-9.,%\\s\\/deg+-]{1,60}\\)|[a-z]{3,24}|var\\(--sc-[a-z0-9-]{1,40}\\))$/i';
 
     /**
-     * Cadre de page : {padding?: none|compact|normal, background?: couleur CSS}.
+     * Cadre de page : {padding?: none|compact|normal, background?: couleur CSS, nav?: tabs|none}.
      *
      * @return list<array{path: string, message: string}>
      */
     private static function validatePage(mixed $page): array
     {
         if (!\is_array($page) || array_is_list($page) && $page !== []) {
-            return [['path' => '/page', 'message' => 'page doit être un objet {padding, background}.']];
+            return [['path' => '/page', 'message' => 'page doit être un objet {padding, background, nav}.']];
         }
         $errors = [];
         foreach (array_keys($page) as $k) {
-            if (!\in_array($k, ['padding', 'background'], true)) {
-                $errors[] = ['path' => '/page/'.$k, 'message' => 'Clé non autorisée (padding, background).'];
+            if (!\in_array($k, ['padding', 'background', 'nav'], true)) {
+                $errors[] = ['path' => '/page/'.$k, 'message' => 'Clé non autorisée (padding, background, nav).'];
             }
         }
         if (isset($page['padding']) && !\in_array($page['padding'], ['none', 'compact', 'normal'], true)) {
             $errors[] = ['path' => '/page/padding', 'message' => 'padding : none, compact ou normal.'];
+        }
+        if (isset($page['nav']) && !\in_array($page['nav'], ['tabs', 'none'], true)) {
+            $errors[] = ['path' => '/page/nav', 'message' => 'nav : tabs ou none.'];
         }
         if (isset($page['background'])) {
             $bg = $page['background'];
