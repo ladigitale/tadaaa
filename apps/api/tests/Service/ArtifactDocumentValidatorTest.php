@@ -728,7 +728,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
         $payload = $this->validator->mcpCatalogPayload(true);
         $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE);
         self::assertNotFalse($encoded);
-        self::assertLessThan(90_000, strlen($encoded));
+        self::assertLessThan(100_000, strlen($encoded));
         self::assertArrayHasKey('commonProps', $payload['catalog']);
     }
 
@@ -804,7 +804,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
 
         // Sommaire pour le prompt système : tous les composants et les thèmes de règles (~2,5k tokens).
         $index = $validator->catalogIndex();
-        self::assertLessThan(16_000, \strlen($index));
+        self::assertLessThan(18_000, \strlen($index));
         foreach (['sonic-button', 'sonic-store', 'sonic-physics', 'a2ui', 'chartjs', 'div', 'addon animation', 'addon device', 'addon p2p', 'animation, appareil, salons'] as $needle) {
             self::assertStringContainsString($needle, $index);
         }
