@@ -1,7 +1,7 @@
 {
   "concordeVersion": "5.1.3",
   "creativeStackVersion": "0.1.0",
-  "generatedFrom": "@supersoniks/concorde 5.1.3 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, blobs, controller, cursor, device, hugging-face-infer, interactive, map, media, ocr, p2p, paint, physics, plot, predict, procgen, scroll, shader, sketch, sound, stage, tape, text, vector, vectorize, vision, webgpu)",
+  "generatedFrom": "@supersoniks/concorde 5.1.3 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, blobs, color, controller, cursor, device, hugging-face-infer, interactive, map, media, ocr, p2p, paint, physics, plot, predict, procgen, scroll, shader, sketch, sound, stage, tape, text, vector, vectorize, vision, webgpu)",
   "components": [
     {
       "name": "sonic-2d",
@@ -4038,6 +4038,70 @@
       "description": "Toile de peinture (width, height, background) : réglages color, size, hardness, opacity, spacing, smoothing, tool paint|erase, pressure, pointe personnalisée tip / tip-from (chemin SVG ou forme de sonic-vector-library) avec angle, angle-follow, angle-jitter, size-jitter, scatter, roundness, mode de fusion blend (multiply, screen, overlay…), ou en direct brush-from {color, size, …} ; control {undo, redo, clear, save, fit, reset, zoomIn, zoomOut, rotateLeft, rotateRight, straighten} compteurs ; navigable : fenêtre sur l'image avec la navigation de sonic-sketch (molette, Espace / main, deux doigts déplacer-zoomer-tourner, + − 0 R), view-from {x, y, zoom, rotation} ; in-data-provider image de départ ; source d'images #id pour sonic-shader ; état {strokes, canUndo, canRedo, drawing, last, x, y, zoom, rotation}"
     },
     {
+      "name": "sonic-palette",
+      "props": {
+        "base": {
+          "type": "string"
+        },
+        "rule": {
+          "type": "string"
+        },
+        "count": {
+          "type": "number"
+        },
+        "spread": {
+          "type": "number"
+        },
+        "step": {
+          "type": "number"
+        },
+        "selected": {
+          "type": "number"
+        },
+        "target": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "string"
+        },
+        "follow": {
+          "type": "boolean"
+        },
+        "direction": {
+          "type": "string"
+        },
+        "columns": {
+          "type": "number"
+        },
+        "shape": {
+          "type": "string"
+        },
+        "swatch-size": {
+          "type": "number"
+        },
+        "headless": {
+          "type": "boolean"
+        },
+        "params": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "color",
+      "description": "Palette d'harmonie : base (#rrggbb), rule mono|analogous|complementary|split|triadic|tetradic|square, count 1..12 (0 = nombre de teintes de la règle, puis nuances plus claires / plus sombres), spread (° des teintes voisines), step (écart de clarté des nuances) ; pastilles cliquables (direction row|column|grid, columns, shape circle|square, swatch-size ; flèches au clavier) : le choix part vers un store comme sonic-action (target, action défaut set, key défaut color, payload JSON ajouté) ; selected = rang choisi au départ, follow (défaut vrai) renvoie la couleur au même rang quand la palette change ; headless = calcul seul ; params {base, rule, count, spread, step, selected} en direct ; control {random, rotate} compteurs (teinte au hasard, +30°) ; état {base, rule, count, spread, step, colors[], items[{hex, hue, l, c, role}], selected, selectedIndex}"
+    },
+    {
       "name": "sonic-pan",
       "props": {
         "name": {
@@ -5735,6 +5799,9 @@
         "roundness": {
           "type": "number"
         },
+        "blend": {
+          "type": "string"
+        },
         "tip-from": {
           "type": "string"
         },
@@ -5753,12 +5820,18 @@
         "readonly": {
           "type": "boolean"
         },
+        "simplify": {
+          "type": "number"
+        },
+        "merge": {
+          "type": "boolean"
+        },
         "hidden-preview": {
           "type": "boolean"
         }
       },
       "addon": "sketch",
-      "description": "Dessin vectoriel à zoom infini (width, height, background) : molette = zoom, Espace / bouton du milieu / tool hand = déplacer, deux doigts = déplacer, zoomer et tourner ; pinceau color, size, size-space screen|world, hardness, opacity, spacing, smoothing, pressure, tip / tip-from (forme de sonic-vector-library), angle, angle-follow, angle-jitter, size-jitter, scatter, roundness ; tool paint|erase|hand ; brush-from, view-from {x, y, zoom, rotation} ; control {undo, redo, clear, save (SVG), savePng, fit, reset, zoomIn, zoomOut, rotateLeft, rotateRight, straighten} compteurs ; état {zoom, x, y, rotation, strokes, canUndo, canRedo, bbox, last}"
+      "description": "Dessin vectoriel à zoom infini (width, height, background) : molette = zoom, Espace / bouton du milieu / tool hand = déplacer, deux doigts = déplacer, zoomer et tourner ; pinceau color, size, blend (normal|multiply|screen|overlay|darken|lighten|color-dodge|color-burn|hard-light|soft-light|difference|exclusion|hue|saturation|color|luminosity, par trait), size-space screen|world, hardness, opacity, spacing, smoothing, pressure, tip / tip-from (forme de sonic-vector-library), angle, angle-follow, angle-jitter, size-jitter, scatter, roundness ; tool paint|erase|hand ; brush-from, view-from {x, y, zoom, rotation} ; control {undo, redo, clear, save (SVG), savePng, fit, reset, zoomIn, zoomOut, rotateLeft, rotateRight, straighten} compteurs ; simplify (px d'écran, défaut 0.35 : compaction des traits terminés, jointure des points + Ramer–Douglas–Peucker avec la pression ; 0 = aucune) ; merge (défaut vrai : un trait plein qui touche une forme de même couleur et même mode lui est uni par découpage polygonal, une région = une forme ; gomme = forme entière) ; export SVG à tracés joints ; état {rotation, zoom, blend, points, lastStroke {before, after}, shapes, merges, x, y, strokes, canUndo, canRedo, bbox, last}"
     },
     {
       "name": "sonic-sound",
@@ -7072,5 +7145,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; scroll (sonic-scroll); shader (sonic-shader); sketch (sonic-sketch); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); color (sonic-palette); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; scroll (sonic-scroll); shader (sonic-shader); sketch (sonic-sketch); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
