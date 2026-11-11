@@ -3231,10 +3231,13 @@
         },
         "label": {
           "type": "string"
+        },
+        "auto": {
+          "type": "boolean"
         }
       },
       "addon": "media",
-      "description": "Lien de téléchargement d'une prise (blob: uniquement) : source = chemin DP d'un SonicMediaRef (ex. exportState.last) ; caché tant qu'il n'y a rien ; contenu libre en slot"
+      "description": "Lien de téléchargement d'une prise (blob: uniquement) : source = chemin DP d'un SonicMediaRef (ex. exportState.last) ; caché tant qu'il n'y a rien ; contenu libre en slot ; auto : sans lien, télécharge chaque NOUVEAU média publié dans source (un bouton déclenche la production, le fichier part dès qu'il est prêt)"
     },
     {
       "name": "sonic-media-recorder",
