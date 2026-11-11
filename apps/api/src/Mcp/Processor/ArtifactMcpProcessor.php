@@ -29,6 +29,9 @@ use App\Mcp\Tool\PublishArtifactTool;
 use App\Mcp\Tool\ReadArtifactDataTool;
 use App\Mcp\Tool\RenderArtifactTool;
 use App\Mcp\Tool\SimulateStoreTool;
+use App\Mcp\Tool\RunArtifactTool;
+use App\Mcp\Tool\GetArtifactRunTool;
+use App\Mcp\Tool\ListArtifactToolsTool;
 use App\Mcp\Tool\UpdateArtifactTool;
 use App\Mcp\Tool\UploadArtifactAssetTool;
 use App\Mcp\Tool\ValidateArtifactTool;
@@ -41,6 +44,7 @@ use App\Service\ArtifactFiles;
 use App\Service\ArtifactIcons;
 use App\Service\ArtifactKits;
 use App\Service\ArtifactRenderer;
+use App\Service\ArtifactRunService;
 use App\Service\ArtifactService;
 use App\Service\AuditLogger;
 use App\Service\DatasetAccessService;
@@ -78,6 +82,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         private readonly ArtifactRenderer $renderer,
         private readonly ArtifactFileFetcher $fetcher,
         private readonly Resources $resources,
+        private readonly ArtifactRunService $runs,
     ) {
     }
 
@@ -109,6 +114,9 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             ],
             $data instanceof SimulateStoreTool => $this->simulate($user, $data, $context),
             $data instanceof RenderArtifactTool => $this->render($user, $data, $png, $context),
+            $data instanceof RunArtifactTool => $this->runArtifact($user, $data, $context),
+            $data instanceof GetArtifactRunTool => $this->getRun($user, $data),
+            $data instanceof ListArtifactToolsTool => ['tools' => $this->runs->listTools($user, $this->emptyToNull($data->datasetId))],
             $data instanceof ValidateArtifactTool => $this->validateWithLint($data->document ?? []),
             $data instanceof PublishArtifactTool => $this->publish($user, $data, $context),
             $data instanceof UpdateArtifactTool => $this->update($user, $data, $context),
@@ -434,6 +442,39 @@ final class ArtifactMcpProcessor implements ProcessorInterface
     }
 
     /**
+     * @param array<string, mixed> $context
+     *
+     * @return array<string, mixed>
+     */
+    private function runArtifact(User $user, RunArtifactTool $tool, array $context): array
+    {
+        $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
+        if ($idOrSlug === null) {
+            throw new BadRequestHttpException('id ou slug requis.');
+        }
+        // Entrée brute : les objets vides restent des objets (le SDK MCP les décode en []).
+        $input = $this->rawArguments->rawArgument($context, 'run_artifact', 'input')
+            ?? json_decode((string) json_encode($tool->input ?? new \stdClass()), false);
+
+        return $this->runs->run($user, $idOrSlug, $input, $this->emptyToNull($tool->mode));
+    }
+
+    /** @return array<string, mixed> */
+    private function getRun(User $user, GetArtifactRunTool $tool): array
+    {
+        $runId = $this->emptyToNull($tool->runId);
+        if ($runId !== null) {
+            return $this->runs->get($user, $runId);
+        }
+        $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
+        if ($idOrSlug === null) {
+            throw new BadRequestHttpException('runId, id ou slug requis.');
+        }
+
+        return ['runs' => $this->runs->listRuns($user, $idOrSlug, $tool->limit ?? 20)];
+    }
+
+    /**
      * Objets vides (`{}`) du brouillon passé en argument, à rétablir avant le rendu : le SDK MCP
      * les décode en `[]`, ce qui cassait les `$merge` des réducteurs (`"play": {}` → `[]`).
      * Un document enregistré revient déjà rétabli par le service.
@@ -713,6 +754,9 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof FindIconsTool => 'find_icons',
             $data instanceof ValidateArtifactTool => 'validate_artifact',
             $data instanceof SimulateStoreTool => 'simulate_store',
+            $data instanceof RunArtifactTool => 'run_artifact',
+            $data instanceof GetArtifactRunTool => 'get_artifact_run',
+            $data instanceof ListArtifactToolsTool => 'list_artifact_tools',
             $data instanceof RenderArtifactTool => 'render_artifact',
             $data instanceof PublishArtifactTool => 'publish_artifact',
             $data instanceof UpdateArtifactTool => 'update_artifact',

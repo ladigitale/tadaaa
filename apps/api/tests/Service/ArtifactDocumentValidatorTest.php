@@ -121,6 +121,24 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertTrue($result['valid'], json_encode($result['errors']));
     }
 
+    public function testIoContract(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['data'] = ['stores' => ['calc' => ['initial' => ['phase' => 'idle'], 'reducer' => '$state']]];
+        $doc['io'] = [
+            'modes' => ['headless'],
+            'input' => ['schema' => ['type' => 'object', 'properties' => ['n' => ['type' => 'integer']]], 'store' => 'calc'],
+            'output' => ['schema' => ['type' => 'integer'], 'from' => 'calc.n', 'when' => "phase='done'"],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['io']['output']['from'] = 'inconnu.n';
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertContains('/io/output/from', array_column($result['errors'], 'path'));
+    }
+
     public function testPageFrame(): void
     {
         $doc = $this->minimalDoc();
