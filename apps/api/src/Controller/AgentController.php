@@ -73,7 +73,7 @@ final class AgentController extends AbstractController
             $recorder = new RecordingEventSink(new SseEventSink());
             $last = $input->messages !== [] ? $input->messages[\count($input->messages) - 1] : null;
             if ($last !== null && $last['role'] === 'user' && $input->a2uiAction === null && $input->sduiAction === null) {
-                $recorder->user($last['content']);
+                $recorder->user($input->lastUserText, $input->lastUserAttachments);
             }
             try {
                 $history->rehydrate($user, $profile, $input->threadId);

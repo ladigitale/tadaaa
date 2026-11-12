@@ -93,6 +93,33 @@ final class OpenAiLlmClient implements LlmClient
                 $out[] = $entry;
                 continue;
             }
+            // Utilisateur multimodal (images, PDF) : un seul message à fragments.
+            if (self::hasMedia($content)) {
+                $parts = [];
+                foreach ($content as $block) {
+                    $type = $block['type'] ?? null;
+                    if ($type === 'text') {
+                        $parts[] = ['type' => 'text', 'text' => (string) $block['text']];
+                    } elseif ($type === 'image') {
+                        $parts[] = ['type' => 'image_url', 'image_url' => ['url' => 'data:'.$block['source']['media_type'].';base64,'.$block['source']['data']]];
+                    } elseif ($type === 'document') {
+                        $parts[] = ['type' => 'file', 'file' => [
+                            'filename' => (string) ($block['title'] ?? 'document.pdf'),
+                            'file_data' => 'data:'.$block['source']['media_type'].';base64,'.$block['source']['data'],
+                        ]];
+                    } elseif ($type === 'tool_result') {
+                        $out[] = [
+                            'role' => 'tool',
+                            'tool_call_id' => (string) $block['tool_use_id'],
+                            'content' => (!empty($block['is_error']) ? '[erreur] ' : '').(string) $block['content'],
+                        ];
+                    }
+                }
+                if ($parts !== []) {
+                    $out[] = ['role' => 'user', 'content' => $parts];
+                }
+                continue;
+            }
             // Utilisateur : résultats d'outils (rôle tool) et éventuel texte.
             foreach ($content as $block) {
                 if (($block['type'] ?? null) === 'tool_result') {
@@ -108,6 +135,18 @@ final class OpenAiLlmClient implements LlmClient
         }
 
         return $out;
+    }
+
+    /** @param list<array<string, mixed>> $content */
+    private static function hasMedia(array $content): bool
+    {
+        foreach ($content as $block) {
+            if (\in_array($block['type'] ?? null, ['image', 'document'], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @param array<string, mixed> $data */

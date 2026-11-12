@@ -22,6 +22,8 @@ use Symfony\Component\Uid\Uuid;
  */
 final class AgentRunner
 {
+    /** Longueur d'un résultat d'outil relayé au chat (TOOL_CALL_RESULT). */
+    private const RESULT_EXCERPT = 3000;
     public const MAX_STEPS = 12;
     /** Outils dont le succès termine le tour : l'utilisateur a ce qu'il faut, un appel de plus au modèle serait superflu. */
     public const FINAL_TOOLS = ['render_ui'];
@@ -55,6 +57,13 @@ final class AgentRunner
             $sink->emit(['type' => 'RUN_ERROR', 'message' => 'Aucun message à traiter.']);
 
             return;
+        }
+        // Textes joints ou collés : tels quels s'ils sont courts, résumés sinon (une fois par texte).
+        if (PastedTextCompactor::has($messages)) {
+            $messages = (new PastedTextCompactor($this->llm))->resolve(
+                $messages,
+                static fn (string $label) => $sink->emit(['type' => 'CUSTOM', 'name' => 'status', 'value' => $label]),
+            );
         }
         if ($state !== null && $input->messageCount >= $state->messageCount) {
             $context->workspace = $state->workspace;
@@ -147,6 +156,14 @@ final class AgentRunner
                     $stats['sequence'][] = $use['name'].($result->isError ? '!' : '');
                     $stats['toolErrors'] += $result->isError ? 1 : 0;
                     $sink->emit(['type' => 'TOOL_CALL_END', 'toolCallId' => $use['id']]);
+                    // Résultat (tronqué) pour le détail de l'étape dans le chat.
+                    $sink->emit([
+                        'type' => 'TOOL_CALL_RESULT',
+                        'messageId' => Uuid::v4()->toRfc4122(),
+                        'toolCallId' => $use['id'],
+                        'role' => 'tool',
+                        'content' => ($result->isError ? '[erreur] ' : '').self::excerpt($result->content),
+                    ]);
                     $results[] = [
                         'type' => 'tool_result',
                         'tool_use_id' => $use['id'],
@@ -288,13 +305,30 @@ final class AgentRunner
         foreach ($turns as $turn) {
             $last = \count($merged) - 1;
             if ($last >= 0 && $merged[$last]['role'] === $turn['role']) {
-                $merged[$last]['content'] .= "\n\n".$turn['content'];
+                $a = $merged[$last]['content'];
+                $b = $turn['content'];
+                // Contenu multimodal (blocs) d'un côté : on concatène des blocs.
+                $merged[$last]['content'] = \is_string($a) && \is_string($b)
+                    ? $a."\n\n".$b
+                    : [...self::blocks($a), ...self::blocks($b)];
             } else {
                 $merged[] = $turn;
             }
         }
 
         return $merged;
+    }
+
+    /** @return list<array<string, mixed>> */
+    private static function blocks(mixed $content): array
+    {
+        return \is_array($content) ? array_values($content) : [['type' => 'text', 'text' => (string) $content]];
+    }
+
+    /** Résultat d'outil raccourci pour l'affichage (le modèle, lui, reçoit tout). */
+    private static function excerpt(string $content): string
+    {
+        return mb_strlen($content) > self::RESULT_EXCERPT ? mb_substr($content, 0, self::RESULT_EXCERPT).'…' : $content;
     }
 
     /**

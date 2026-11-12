@@ -63,6 +63,12 @@ final class ThreadState
         return new self($messages, $this->messageCount, $this->workspace);
     }
 
+    /** Images et PDF remplacés par une mention : la mémoire du fil reste légère (cache de 1,5 Mo). */
+    public function withoutBinaries(): self
+    {
+        return new self(UserContent::withoutBinaries($this->messages), $this->messageCount, $this->workspace);
+    }
+
     /** Résultats d'outils longs (catalogue, document relu) remplacés par un rappel. */
     public function compacted(int $maxChars = 2000): self
     {

@@ -45,7 +45,7 @@ final class AgentRunnerTest extends TestCase
         $sink = $this->run($llm, self::input([['role' => 'user', 'content' => 'Mes tâches ?']]));
 
         self::assertSame(
-            ['RUN_STARTED', 'TOOL_CALL_START', 'TOOL_CALL_ARGS', 'TOOL_CALL_END', 'TEXT_MESSAGE_START', 'TEXT_MESSAGE_CONTENT', 'TEXT_MESSAGE_END', 'RUN_FINISHED'],
+            ['RUN_STARTED', 'TOOL_CALL_START', 'TOOL_CALL_ARGS', 'TOOL_CALL_END', 'TOOL_CALL_RESULT', 'TEXT_MESSAGE_START', 'TEXT_MESSAGE_CONTENT', 'TEXT_MESSAGE_END', 'RUN_FINISHED'],
             $sink->types(),
         );
         self::assertSame('list_todos', $sink->events[1]['toolCallName']);
