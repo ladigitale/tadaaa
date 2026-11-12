@@ -41,9 +41,14 @@ final class RecordingEventSink implements EventSink
         $this->record($event);
     }
 
-    public function user(string $text): void
+    /** @param list<array{kind: string, name: string, mimeType: string, size: int}> $attachments sans contenu */
+    public function user(string $text, array $attachments = []): void
     {
-        $this->entries[] = ['role' => 'user', 'text' => $text];
+        $entry = ['role' => 'user', 'text' => $text];
+        if ($attachments !== []) {
+            $entry['attachments'] = $attachments;
+        }
+        $this->entries[] = $entry;
     }
 
     /** @return list<array<string, mixed>> */

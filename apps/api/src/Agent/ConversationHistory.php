@@ -56,7 +56,8 @@ final class ConversationHistory
         if ($conversation->getTitle() === '') {
             foreach ($entries as $entry) {
                 if (($entry['role'] ?? null) === 'user') {
-                    $conversation->setTitle(self::titleFrom((string) $entry['text']));
+                    $text = trim((string) $entry['text']);
+                    $conversation->setTitle(self::titleFrom($text !== '' ? $text : (string) ($entry['attachments'][0]['name'] ?? '')));
                     break;
                 }
             }

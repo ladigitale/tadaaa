@@ -31,6 +31,10 @@ final class RunInput
         public readonly array $a2uiErrors = [],
         public readonly array $appContext = [],
         ?int $messageCount = null,
+        /** Texte du dernier message utilisateur (journal de la conversation). */
+        public readonly string $lastUserText = '',
+        /** Pièces jointes du dernier message utilisateur, sans leur contenu : {kind, name, mimeType, size}. */
+        public readonly array $lastUserAttachments = [],
     ) {
         $this->messageCount = $messageCount ?? \count($messages);
     }
@@ -46,8 +50,19 @@ final class RunInput
             throw new \InvalidArgumentException('threadId et runId sont requis.');
         }
         $messages = [];
+        $lastUser = null;
         foreach (\is_array($body['messages'] ?? null) ? $body['messages'] : [] as $m) {
             if (!\is_array($m) || !\in_array($m['role'] ?? null, ['user', 'assistant'], true)) {
+                continue;
+            }
+            if ($m['role'] === 'user') {
+                // Texte, ou fragments multimodaux AG-UI (images, PDF, textes joints ou collés).
+                $parsed = UserContent::parse($m['content'] ?? '');
+                if ($parsed === null) {
+                    continue;
+                }
+                $messages[] = ['role' => 'user', 'content' => $parsed['content']];
+                $lastUser = $parsed;
                 continue;
             }
             $content = $m['content'] ?? '';
@@ -69,6 +84,8 @@ final class RunInput
             \is_array($fp['a2uiErrors'] ?? null) ? array_values(array_filter($fp['a2uiErrors'], 'is_array')) : [],
             self::appContext($fp),
             $count,
+            $lastUser !== null ? $lastUser['text'] : '',
+            $lastUser !== null ? $lastUser['attachments'] : [],
         );
     }
 
