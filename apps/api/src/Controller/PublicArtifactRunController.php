@@ -67,7 +67,7 @@ final class PublicArtifactRunController extends AbstractController
 
     /** Fichier de sortie (io.output.files) : corps brut, `?rt=` ; nom `<clé>.<ext>` (png, jpg, webp, svg, webm, wav…). */
     #[Route('/files/{name}', name: 'api_public_artifact_run_file', methods: ['POST'], requirements: ['name' => '[a-z][a-z0-9_-]{0,31}\\.[a-z0-9]{2,5}'])]
-    public function file(string $slug, string $runId, string $name, Request $request): JsonResponse
+    public function uploadFile(string $slug, string $runId, string $name, Request $request): JsonResponse
     {
         $this->consumeRate($request);
         $length = (int) $request->headers->get('Content-Length', '0');
