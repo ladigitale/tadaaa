@@ -140,4 +140,32 @@ final class ArtifactIoTest extends TestCase
         self::assertSame('object', $contract['inputSchema']['type']);
         self::assertNull(ArtifactIo::describe(['title' => 'x']));
     }
+
+    public function testOpenApi(): void
+    {
+        $contract = ArtifactIo::describe(self::document(self::io(['title' => 'Somme'])));
+        $doc = ArtifactIo::openApi($contract, 'somme', 'https://api.example/');
+
+        self::assertSame('3.1.0', $doc['openapi']);
+        self::assertSame('https://api.example', $doc['servers'][0]['url']);
+        $post = $doc['paths']['/api/artifacts/somme/runs']['post'];
+        self::assertSame('object', $post['requestBody']['content']['application/json']['schema']['properties']['input']['type']);
+        self::assertSame(['headless'], $post['requestBody']['content']['application/json']['schema']['properties']['mode']['enum']);
+        self::assertSame(['type' => 'number'], $doc['components']['schemas']['Run']['properties']['output']);
+        self::assertArrayHasKey('/api/artifacts/somme/runs/{runId}/cancel', $doc['paths']);
+        self::assertArrayHasKey('artifact.run.completed', $doc['webhooks']);
+    }
+
+    public function testOutputFiles(): void
+    {
+        $io = self::io(['modes' => ['interactive'], 'output' => ['schema' => ['type' => 'object'], 'from' => 'calc', 'files' => ['dessin' => 'calc.file']]]);
+        $doc = self::document($io);
+        self::assertSame([], ArtifactIo::validateDeclaration($io, $doc));
+        self::assertSame(['dessin'], ArtifactIo::describe($doc)['outputFiles']);
+
+        foreach ([['Dessin' => 'calc.file'], ['dessin' => 'inconnu.file'], ['a' => 'calc.a', 'b' => 'calc.b', 'c' => 'calc.c', 'd' => 'calc.d', 'e' => 'calc.e']] as $files) {
+            $bad = self::io(['modes' => ['interactive'], 'output' => ['schema' => ['type' => 'object'], 'from' => 'calc', 'files' => $files]]);
+            self::assertNotSame([], ArtifactIo::validateDeclaration($bad, self::document($bad)), json_encode($files));
+        }
+    }
 }

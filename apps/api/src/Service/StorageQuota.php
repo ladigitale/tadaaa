@@ -73,6 +73,15 @@ final class StorageQuota
             WHERE d.owner_id = :owner
         SQL;
 
+        $sqlRunFiles = <<<'SQL'
+            SELECT COALESCE(SUM(f.size_bytes + 256), 0)::bigint AS bytes
+            FROM artifact_run_files f
+            INNER JOIN artifact_runs r ON r.id = f.run_id
+            INNER JOIN artifacts a ON a.id = r.artifact_id
+            INNER JOIN datasets d ON d.id = a.dataset_id
+            WHERE d.owner_id = :owner
+        SQL;
+
         $sqlResources = <<<'SQL'
             SELECT COALESCE(
                 (SELECT SUM(r.size_bytes + 256) FROM resources r WHERE r.user_id = :owner), 0
@@ -100,7 +109,13 @@ final class StorageQuota
             $resources = 0;
         }
 
-        return $todos + $artifacts + $assets + $resources;
+        try {
+            $runFiles = (int) $this->connection->fetchOne($sqlRunFiles, ['owner' => $owner]);
+        } catch (\Throwable) {
+            $runFiles = 0;
+        }
+
+        return $todos + $artifacts + $assets + $resources + $runFiles;
     }
 
     /**

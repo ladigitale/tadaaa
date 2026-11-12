@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Service\ArtifactAssets;
 use App\Service\ArtifactRunService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -64,8 +65,27 @@ final class PublicArtifactRunController extends AbstractController
         return $response;
     }
 
+    /** Fichier de sortie (io.output.files) : corps brut, `?rt=` ; nom `<clé>.<ext>` (png, jpg, webp, svg, webm, wav…). */
+    #[Route('/files/{name}', name: 'api_public_artifact_run_file', methods: ['POST'], requirements: ['name' => '[a-z][a-z0-9_-]{0,31}\\.[a-z0-9]{2,5}'])]
+    public function file(string $slug, string $runId, string $name, Request $request): JsonResponse
+    {
+        $this->consumeRate($request);
+        $length = (int) $request->headers->get('Content-Length', '0');
+        if ($length > ArtifactAssets::MAX_FILE_BYTES) {
+            return $this->json(['error' => 'Fichier trop volumineux.'], Response::HTTP_REQUEST_ENTITY_TOO_LARGE);
+        }
+        $response = $this->json(
+            $this->runs->publicPutFile($slug, $runId, $request->query->getString('rt'), $name, $request->getContent()),
+            Response::HTTP_CREATED,
+        );
+        $response->headers->set('Cache-Control', 'no-store');
+
+        return $response;
+    }
+
     #[Route('', name: 'api_public_artifact_run_options', methods: ['OPTIONS'])]
     #[Route('/output', name: 'api_public_artifact_run_output_options', methods: ['OPTIONS'])]
+    #[Route('/files/{name}', name: 'api_public_artifact_run_file_options', methods: ['OPTIONS'])]
     public function options(): Response
     {
         return new Response('', Response::HTTP_NO_CONTENT);

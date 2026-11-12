@@ -31,6 +31,12 @@ framework:
             limit: 30
             interval: '10 minutes'
             lock_factory: null
+        # Runs d'artefacts (run_artifact, POST …/runs) : par compte ; un headless lance un sous-processus.
+        artifact_runs:
+            policy: sliding_window
+            limit: 60
+            interval: '1 minute'
+            lock_factory: null
         artifacts_public:
             policy: sliding_window
             limit: 120

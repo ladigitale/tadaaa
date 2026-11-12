@@ -151,7 +151,7 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "connectivity.need_account": "Sign in under Account to use this feature.",
     "data.need_account": "Sign in under Account to manage cloud datasets.",
     "webhooks.intro":
-      "Receive HTTPS callbacks when todos, tags or datasets change. Signature header X-Tadaaa-Signature (HMAC-SHA256).",
+      "Receive HTTPS callbacks when todos, tags, datasets or artifact runs change. Signed with Standard Webhooks headers (webhook-id, webhook-timestamp, webhook-signature) and X-Tadaaa-Signature (HMAC-SHA256).",
     "webhooks.url": "Endpoint URL",
     "webhooks.url_ph": "https://example.com/hooks/tadaaa",
     "webhooks.dataset": "Dataset (optional)",
@@ -160,6 +160,7 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "webhooks.create": "Add webhook",
     "webhooks.none": "No webhooks yet.",
     "webhooks.secret_once": "Signing secret (shown once):",
+    "webhooks.standard_secret": "Same secret for Standard Webhooks libraries:",
     "webhooks.delete": "Delete",
     "webhooks.delete_title": "Delete webhook",
     "webhooks.delete_confirm": "Delete webhook for {url}?",
@@ -1011,7 +1012,7 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "connectivity.need_account": "Connectez-vous dans Compte pour utiliser cette fonctionnalité.",
     "data.need_account": "Connectez-vous dans Compte pour gérer les jeux cloud.",
     "webhooks.intro":
-      "Callbacks HTTPS sur les changements todos/tags/datasets. En-tête X-Tadaaa-Signature (HMAC-SHA256).",
+      "Callbacks HTTPS sur les changements todos/tags/datasets et les runs d’artefacts. Signés au format Standard Webhooks (webhook-id, webhook-timestamp, webhook-signature) et par l’en-tête X-Tadaaa-Signature (HMAC-SHA256).",
     "webhooks.url": "URL de l’endpoint",
     "webhooks.url_ph": "https://example.com/hooks/tadaaa",
     "webhooks.dataset": "Jeu (optionnel)",
@@ -1020,6 +1021,7 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "webhooks.create": "Ajouter un webhook",
     "webhooks.none": "Aucun webhook.",
     "webhooks.secret_once": "Secret de signature (affiché une fois) :",
+    "webhooks.standard_secret": "Le même pour les bibliothèques Standard Webhooks :",
     "webhooks.delete": "Supprimer",
     "webhooks.delete_title": "Supprimer le webhook",
     "webhooks.delete_confirm": "Supprimer le webhook {url} ?",

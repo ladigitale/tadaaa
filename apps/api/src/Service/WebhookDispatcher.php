@@ -13,6 +13,7 @@ use App\Entity\WebhookEndpoint;
 use App\Repository\DatasetMemberRepository;
 use App\Repository\WebhookEndpointRepository;
 use App\Util\BaseIdParser;
+use App\Webhook\StandardWebhookSignature;
 use App\Webhook\WebhookEventType;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -146,6 +147,7 @@ final class WebhookDispatcher
                     'X-Tadaaa-Event' => $eventType,
                     'X-Tadaaa-Delivery' => $eventId,
                     'X-Tadaaa-Signature' => 't='.$timestamp.',v1='.$signature,
+                    ...StandardWebhookSignature::headers($endpoint->getSigningSecret(), $eventId, $timestamp, $body),
                 ],
                 'body' => $body,
                 'timeout' => 5,

@@ -482,6 +482,8 @@ export type WebhookInfo = {
 export type CreatedWebhook = {
   webhook: WebhookInfo;
   plainSecret: string;
+  /** `whsec_…` : même secret pour les bibliothèques Standard Webhooks. */
+  standardSecret?: string;
 };
 
 export type WebhookDeliveryInfo = {

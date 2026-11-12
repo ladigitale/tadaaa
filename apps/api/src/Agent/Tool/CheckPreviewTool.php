@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\McpTool;
 use ApiPlatform\State\ProcessorInterface;
 use App\Mcp\Processor\ArtifactMcpProcessor;
 use App\Mcp\Tool\RenderArtifactTool;
+use App\Mcp\Tool\RunArtifactTool;
 use App\Mcp\Tool\SimulateStoreTool;
 use Mcp\Schema\Content\TextContent;
 use Mcp\Schema\Result\CallToolResult;
@@ -48,6 +49,8 @@ final class CheckPreviewTool implements AgentTool
             .'{"expectText":"Score"}, {"expectNoText":"undefined"}, {"waitText":"…","timeout":ms}). '
             .'mode "simulate" : rejoue des actions sur le réducteur d’un store — store, actions '
             .'([{type, payload?, repeat?}]), until (JSONata), snapshots, tickMs. '
+            .'mode "io" : essaie le contrat io du brouillon comme un outil (headless) avec input (objet conforme à '
+            .'io.input.schema) → {status, output, errors} ; à faire avant de publier un artefact qui déclare io. '
             .'À appeler après preview_artifact pour tout artefact interactif (jeu, filtres, animation, son, shader), '
             .'et avant de proposer la publication.';
     }
@@ -59,7 +62,8 @@ final class CheckPreviewTool implements AgentTool
         return [
             'type' => 'object',
             'properties' => [
-                'mode' => ['type' => 'string', 'enum' => ['render', 'simulate']],
+                'mode' => ['type' => 'string', 'enum' => ['render', 'simulate', 'io']],
+                'input' => ['type' => 'object', 'description' => 'mode io : entrée du contrat'],
                 'view' => ['type' => 'string'],
                 'viewport' => ['type' => 'object', 'properties' => ['width' => ['type' => 'integer'], 'height' => ['type' => 'integer']]],
                 'settleMs' => ['type' => 'integer'],
@@ -88,7 +92,10 @@ final class CheckPreviewTool implements AgentTool
         $str = static fn (string $key): ?string => \is_string($input[$key] ?? null) && $input[$key] !== '' ? $input[$key] : null;
         $list = static fn (string $key): ?array => \is_array($input[$key] ?? null) ? array_values($input[$key]) : null;
 
-        if (($input['mode'] ?? 'render') === 'simulate') {
+        if (($input['mode'] ?? 'render') === 'io') {
+            $raw->input = json_decode((string) json_encode($input['input'] ?? new \stdClass()), false);
+            $dto = new RunArtifactTool(input: \is_array($input['input'] ?? null) ? $input['input'] : [], document: $document);
+        } elseif (($input['mode'] ?? 'render') === 'simulate') {
             $dto = new SimulateStoreTool(
                 document: $document,
                 store: $str('store'),

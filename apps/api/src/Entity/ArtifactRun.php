@@ -17,12 +17,16 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'artifact_runs')]
 #[ORM\Index(name: 'idx_artifact_run_artifact', columns: ['artifact_id', 'created_at'])]
 #[ORM\Index(name: 'idx_artifact_run_user', columns: ['created_by_id'])]
+#[ORM\Index(name: 'idx_artifact_run_pending', columns: ['status', 'expires_at'])]
+#[ORM\Index(name: 'idx_artifact_run_workflow', columns: ['workflow_run_id'])]
 class ArtifactRun
 {
     public const STATUS_PENDING = 'pending';
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_INCOMPLETE = 'incomplete';
     public const STATUS_FAILED = 'failed';
+    public const STATUS_EXPIRED = 'expired';
+    public const STATUS_CANCELLED = 'cancelled';
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]
@@ -75,6 +79,14 @@ class ArtifactRun
 
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $expiresAt = null;
+
+    /** Étape d'un workflow d'artefacts (null : run lancé seul). */
+    #[ORM\ManyToOne(targetEntity: ArtifactWorkflowRun::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?ArtifactWorkflowRun $workflowRun = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $workflowStep = null;
 
     public function __construct(Artifact $artifact, int $artifactVersion, ?User $createdBy, string $mode, mixed $input)
     {
@@ -159,6 +171,22 @@ class ArtifactRun
     public function setIo(array $io): void
     {
         $this->io = $io;
+    }
+
+    public function getWorkflowRun(): ?ArtifactWorkflowRun
+    {
+        return $this->workflowRun;
+    }
+
+    public function getWorkflowStep(): ?string
+    {
+        return $this->workflowStep;
+    }
+
+    public function attachToWorkflow(ArtifactWorkflowRun $run, string $step): void
+    {
+        $this->workflowRun = $run;
+        $this->workflowStep = $step;
     }
 
     public function getExpiresAt(): ?\DateTimeImmutable

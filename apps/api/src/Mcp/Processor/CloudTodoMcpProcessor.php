@@ -156,6 +156,7 @@ final class CloudTodoMcpProcessor implements ProcessorInterface
         return [
             'webhook' => $this->webhooks->serialize($created['endpoint']),
             'plainSecret' => $created['plainSecret'],
+            'standardSecret' => \App\Webhook\StandardWebhookSignature::secretFor($created['plainSecret']),
         ];
     }
 
