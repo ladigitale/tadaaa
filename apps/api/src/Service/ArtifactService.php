@@ -437,6 +437,48 @@ final class ArtifactService
     }
 
     /**
+     * Références `@asset:<nom>` d'une valeur (ex. l'entrée d'un run) remplacées par l'URL publique des assets
+     * de l'artefact, comme dans le document servi au viewer. Sans base d'URL connue : valeur inchangée.
+     */
+    public function expandAssetRefs(Artifact $artifact, mixed $value, ?string $requestBaseUrl = null): mixed
+    {
+        $assetBase = $this->assetsBaseUrl !== '' ? $this->assetsBaseUrl : ($requestBaseUrl ?? '');
+        if ($assetBase === '') {
+            return $value;
+        }
+
+        return ArtifactAssetRefs::expand(
+            $value,
+            $assetBase,
+            $artifact->getSlug(),
+            $this->assets->hashes($artifact),
+            $artifact->getVisibility() === ArtifactVisibility::Link ? $artifact->getLinkToken() : null,
+        );
+    }
+
+    /**
+     * Noms d'assets référencés (`@asset:<nom>`) dans une valeur mais absents de l'artefact.
+     *
+     * @return list<string>
+     */
+    public function missingAssetRefs(Artifact $artifact, mixed $value): array
+    {
+        $refs = ArtifactAssetRefs::find($value);
+        if ($refs === []) {
+            return [];
+        }
+        $hashes = $this->assets->hashes($artifact);
+        $missing = [];
+        foreach ($refs as [, $name]) {
+            if (!isset($hashes[$name])) {
+                $missing[$name] = true;
+            }
+        }
+
+        return array_keys($missing);
+    }
+
+    /**
      * Public / link / private (JWT member) read.
      *
      * @return array{body: array<string, mixed>, etag: string}
