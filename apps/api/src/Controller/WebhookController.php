@@ -57,6 +57,7 @@ final class WebhookController extends AbstractController
         return $this->json([
             'webhook' => $this->webhooks->serialize($created['endpoint']),
             'plainSecret' => $created['plainSecret'],
+            'standardSecret' => \App\Webhook\StandardWebhookSignature::secretFor($created['plainSecret']),
         ], Response::HTTP_CREATED);
     }
 

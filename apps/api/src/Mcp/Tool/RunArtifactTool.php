@@ -19,6 +19,8 @@ Exécute la version en ligne d'un artefact qui déclare un contrat `io` (artefac
 - interactive : un humain fait l'étape. Renvoie `{runId, status: "pending", url, runToken, expiresAt}` : donner `url` à la personne ; le viewer envoie l'entrée au store, puis publie la sortie quand io.output.when devient vrai. Suivre avec get_artifact_run (ou le webhook artifact.run.completed). Valable 24 h.
 - embed : dans un hôte qui affiche les MCP Apps (Claude, ChatGPT…), l'artefact s'affiche dans la conversation (interface ui://tadaaa/artifact-runner) : la personne fait l'étape, la sortie revient au modèle en message. Ailleurs, comme interactive pour une page hôte : `<artifact-embed slug="…" run="<runId>" run-token="<runToken>">` ; la sortie est aussi émise en événement DOM `artifact-output`.
 
+Essai d'un brouillon avant publication : `document` (document complet) + `input`, mode headless, rien n'est enregistré (`dryRun: true`).
+
 Le run est enregistré (get_artifact_run) et déclenche les webhooks artifact.run.completed / artifact.run.failed. Contrats disponibles : list_artifact_tools.
 DESC,
     processor: ArtifactMcpProcessor::class,
@@ -29,12 +31,14 @@ final class RunArtifactTool
 {
     /**
      * @param array<string, mixed>|null $input
+     * @param array<string, mixed>|null $document
      */
     public function __construct(
         public ?string $id = null,
         public ?string $slug = null,
         public ?array $input = null,
         public ?string $mode = null,
+        public ?array $document = null,
     ) {
     }
 }

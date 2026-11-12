@@ -14,7 +14,8 @@ namespace App\Service;
  *     "description": "…",                        // optionnel (500 car.)
  *     "modes": ["headless"],                     // headless | interactive | embed (au moins un)
  *     "input":  {"schema": {…JSON Schema…}, "store": "calc", "action": "io:input"},
- *     "output": {"schema": {…JSON Schema…}, "from": "calc.result", "when": "phase = 'done'"},
+ *     "output": {"schema": {…JSON Schema…}, "from": "calc.result", "when": "phase = 'done'",
+ *                "files": {"dessin": "sketch.file"}},           // optionnel, modes interactive / embed
  *     "headless": {"actions": [{"type": "tick", "repeat": 100}], "maxSteps": 2000}
  *   }
  *
@@ -41,6 +42,8 @@ final class ArtifactIo
     public const MAX_HEADLESS_ACTIONS = 16;
     public const MAX_HEADLESS_STEPS = 20000;
     public const DEFAULT_HEADLESS_STEPS = 2000;
+    public const MAX_OUTPUT_FILES = 4;
+    public const FILE_KEY = '/^[a-z][a-z0-9_-]{0,31}$/';
 
     private const TYPES = ['string', 'number', 'integer', 'boolean', 'object', 'array', 'null'];
     private const KEYWORDS = [
@@ -123,8 +126,8 @@ final class ArtifactIo
             $errors[] = ['path' => '/io/output', 'message' => 'output requis : {schema, from, when?}.'];
         } else {
             foreach (array_keys($output) as $k) {
-                if (!\in_array($k, ['schema', 'from', 'when'], true)) {
-                    $errors[] = ['path' => '/io/output/'.$k, 'message' => 'Clé non autorisée (schema, from, when).'];
+                if (!\in_array($k, ['schema', 'from', 'when', 'files'], true)) {
+                    $errors[] = ['path' => '/io/output/'.$k, 'message' => 'Clé non autorisée (schema, from, when, files).'];
                 }
             }
             $errors = [...$errors, ...self::checkSchema($output['schema'] ?? null, '/io/output/schema')];
@@ -137,6 +140,23 @@ final class ArtifactIo
                     $errors[] = ['path' => '/io/output/from', 'message' => sprintf('« %s » ne correspond à aucun store, transform ou source.', $root)];
                 } elseif ($headless && $inputStore !== null && $root !== $inputStore) {
                     $errors[] = ['path' => '/io/output/from', 'message' => sprintf('En mode headless, from doit lire le store d’entrée « %s » (seul son réducteur est exécuté).', $inputStore)];
+                }
+            }
+            if (\array_key_exists('files', $output)) {
+                $files = $output['files'];
+                if (!\is_array($files) || array_is_list($files) || \count($files) > self::MAX_OUTPUT_FILES) {
+                    $errors[] = ['path' => '/io/output/files', 'message' => sprintf('files : objet {nom: "dataProvider.chemin"} (%d fichiers max) ; le chemin donne l’URL du fichier (blob:, data:) ou {url}.', self::MAX_OUTPUT_FILES)];
+                } else {
+                    foreach ($files as $name => $path) {
+                        $p = '/io/output/files/'.$name;
+                        if (!preg_match(self::FILE_KEY, (string) $name)) {
+                            $errors[] = ['path' => $p, 'message' => 'Nom de fichier : a-z, 0-9, _ ou - (32 car. max), commence par une lettre.'];
+                        } elseif (!\is_string($path) || !preg_match(self::DOTTED, $path)) {
+                            $errors[] = ['path' => $p, 'message' => 'Chemin "dataProvider.chemin" attendu.'];
+                        } elseif (!isset($providers[explode('.', $path)[0]])) {
+                            $errors[] = ['path' => $p, 'message' => sprintf('« %s » ne correspond à aucun store, transform ou source.', explode('.', $path)[0])];
+                        }
+                    }
                 }
             }
             if (\array_key_exists('when', $output) && (!\is_string($output['when']) || trim($output['when']) === '' || \strlen($output['when']) > 2000)) {
@@ -206,7 +226,97 @@ final class ArtifactIo
             'modes' => \is_array($io['modes'] ?? null) ? array_values($io['modes']) : [],
             'inputSchema' => \is_array($io['input']['schema'] ?? null) ? $io['input']['schema'] : ['type' => 'object', 'properties' => new \stdClass()],
             'outputSchema' => $io['output']['schema'] ?? null,
+            'outputFiles' => \is_array($io['output']['files'] ?? null) && $io['output']['files'] !== [] ? array_keys($io['output']['files']) : null,
         ], static fn (mixed $v): bool => $v !== null);
+    }
+
+    /**
+     * Description OpenAPI 3.1 d'un artefact-outil (contrat publié par {@see self::describe()}) :
+     * lancer un run, le lire, l'annuler. Pour n8n, Make, un client généré…
+     *
+     * @param array<string, mixed> $contract
+     *
+     * @return array<string, mixed>
+     */
+    public static function openApi(array $contract, string $slug, string $apiBase): array
+    {
+        $runPath = '/api/artifacts/'.$slug.'/runs';
+        $output = $contract['outputSchema'] ?? new \stdClass();
+        $run = [
+            'type' => 'object',
+            'properties' => [
+                'runId' => ['type' => 'string', 'format' => 'uuid'],
+                'slug' => ['type' => 'string'],
+                'mode' => ['type' => 'string', 'enum' => self::MODES],
+                'status' => ['type' => 'string', 'enum' => ['completed', 'incomplete', 'failed', 'pending', 'expired', 'cancelled']],
+                'output' => $output,
+                'errors' => ['type' => 'array', 'items' => ['type' => 'string']],
+                'url' => ['type' => 'string', 'format' => 'uri', 'description' => 'Mode interactive : page à donner à la personne qui fait l’étape.'],
+                'runToken' => ['type' => 'string', 'description' => 'Modes interactive / embed : jeton du run (24 h).'],
+                'expiresAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+            ],
+            'required' => ['runId', 'status'],
+        ];
+        $runRef = ['$ref' => '#/components/schemas/Run'];
+        $json = static fn (array $schema): array => ['content' => ['application/json' => ['schema' => $schema]]];
+        $error = ['description' => 'Erreur', ...$json(['type' => 'object', 'properties' => ['detail' => ['type' => 'string']]])];
+
+        return [
+            'openapi' => '3.1.0',
+            'info' => [
+                'title' => (string) ($contract['title'] ?? $slug),
+                'version' => '1',
+                'description' => (string) ($contract['description'] ?? 'Artefact Tadaaa utilisé comme outil (contrat io).'),
+            ],
+            'servers' => [['url' => rtrim($apiBase, '/')]],
+            'security' => [['bearer' => []]],
+            'paths' => [
+                $runPath => [
+                    'post' => [
+                        'operationId' => 'runArtifact',
+                        'summary' => 'Lancer un run',
+                        'requestBody' => ['required' => true, ...$json([
+                            'type' => 'object',
+                            'properties' => [
+                                'input' => $contract['inputSchema'] ?? ['type' => 'object'],
+                                'mode' => ['type' => 'string', 'enum' => $contract['modes'] ?? self::MODES],
+                            ],
+                            'required' => ['input'],
+                        ])],
+                        'responses' => [
+                            '201' => ['description' => 'Run headless terminé', ...$json($runRef)],
+                            '200' => ['description' => 'Run en attente (interactive / embed) ou headless sans sortie conforme', ...$json($runRef)],
+                            '400' => $error,
+                            '429' => $error,
+                        ],
+                    ],
+                ],
+                $runPath.'/{runId}' => [
+                    'get' => [
+                        'operationId' => 'getArtifactRun',
+                        'summary' => 'Lire un run',
+                        'parameters' => [['name' => 'runId', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string', 'format' => 'uuid']]],
+                        'responses' => ['200' => ['description' => 'Run', ...$json($runRef)], '404' => $error],
+                    ],
+                ],
+                $runPath.'/{runId}/cancel' => [
+                    'post' => [
+                        'operationId' => 'cancelArtifactRun',
+                        'summary' => 'Annuler un run en attente',
+                        'parameters' => [['name' => 'runId', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string', 'format' => 'uuid']]],
+                        'responses' => ['200' => ['description' => 'Run annulé', ...$json($runRef)], '409' => $error],
+                    ],
+                ],
+            ],
+            'webhooks' => [
+                'artifact.run.completed' => ['post' => ['summary' => 'Run terminé (Standard Webhooks)', 'requestBody' => $json(['type' => 'object', 'properties' => ['type' => ['const' => 'artifact.run.completed'], 'data' => $runRef]]), 'responses' => ['2XX' => ['description' => 'Reçu']]]],
+                'artifact.run.failed' => ['post' => ['summary' => 'Run échoué, expiré ou annulé (Standard Webhooks)', 'requestBody' => $json(['type' => 'object', 'properties' => ['type' => ['const' => 'artifact.run.failed'], 'data' => $runRef]]), 'responses' => ['2XX' => ['description' => 'Reçu']]]],
+            ],
+            'components' => [
+                'schemas' => ['Run' => $run],
+                'securitySchemes' => ['bearer' => ['type' => 'http', 'scheme' => 'bearer', 'description' => 'Jeton d’API Tadaaa']],
+            ],
+        ];
     }
 
     /**

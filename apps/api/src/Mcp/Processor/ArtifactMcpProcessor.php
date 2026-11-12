@@ -31,6 +31,7 @@ use App\Mcp\Tool\RenderArtifactTool;
 use App\Mcp\Tool\SimulateStoreTool;
 use App\Mcp\Tool\RunArtifactTool;
 use App\Mcp\Tool\GetArtifactRunTool;
+use App\Mcp\Tool\CancelArtifactRunTool;
 use App\Mcp\Tool\ListArtifactToolsTool;
 use App\Mcp\Tool\UpdateArtifactTool;
 use App\Mcp\Tool\UploadArtifactAssetTool;
@@ -116,6 +117,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof RenderArtifactTool => $this->render($user, $data, $png, $context),
             $data instanceof RunArtifactTool => $this->runArtifact($user, $data, $context),
             $data instanceof GetArtifactRunTool => $this->getRun($user, $data),
+            $data instanceof CancelArtifactRunTool => $this->runs->cancel($user, $this->emptyToNull($data->runId) ?? throw new BadRequestHttpException('runId requis.')),
             $data instanceof ListArtifactToolsTool => ['tools' => $this->runs->listTools($user, $this->emptyToNull($data->datasetId))],
             $data instanceof ValidateArtifactTool => $this->validateWithLint($data->document ?? []),
             $data instanceof PublishArtifactTool => $this->publish($user, $data, $context),
@@ -448,9 +450,17 @@ final class ArtifactMcpProcessor implements ProcessorInterface
      */
     private function runArtifact(User $user, RunArtifactTool $tool, array $context): array
     {
+        // Entrée brute : les objets vides restent des objets (le SDK MCP les décode en []).
+        $rawInput = $this->rawArguments->rawArgument($context, 'run_artifact', 'input');
+        if ($tool->document !== null) {
+            $document = $this->rawArguments->rawArgument($context, 'run_artifact', 'document')
+                ?? json_decode((string) json_encode($tool->document), false);
+
+            return $this->runs->dryRun($document, $rawInput ?? json_decode((string) json_encode($tool->input ?? new \stdClass()), false));
+        }
         $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
         if ($idOrSlug === null) {
-            throw new BadRequestHttpException('id ou slug requis.');
+            throw new BadRequestHttpException('id ou slug requis (ou document pour essayer un brouillon).');
         }
         // Entrée brute : les objets vides restent des objets (le SDK MCP les décode en []).
         $input = $this->rawArguments->rawArgument($context, 'run_artifact', 'input')
@@ -463,6 +473,15 @@ final class ArtifactMcpProcessor implements ProcessorInterface
     private function getRun(User $user, GetArtifactRunTool $tool): array
     {
         $runId = $this->emptyToNull($tool->runId);
+        $file = $this->emptyToNull($tool->file);
+        if ($runId !== null && $file !== null) {
+            $content = $this->runs->readFile($user, $runId, $file);
+            $meta = ['name' => $file, 'contentType' => $content['contentType'], 'sizeBytes' => $content['sizeBytes'], 'sha256' => $content['sha256']];
+
+            return $content['sizeBytes'] <= self::MAX_INLINE_BYTES
+                ? $meta + ['contentBase64' => base64_encode($content['data'])]
+                : $meta + ['note' => 'Trop volumineux pour être renvoyé ici : télécharger avec GET /api/artifacts/{slug}/runs/{runId}/files/{name}.'];
+        }
         if ($runId !== null) {
             return $this->runs->get($user, $runId);
         }
@@ -756,6 +775,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof SimulateStoreTool => 'simulate_store',
             $data instanceof RunArtifactTool => 'run_artifact',
             $data instanceof GetArtifactRunTool => 'get_artifact_run',
+            $data instanceof CancelArtifactRunTool => 'cancel_artifact_run',
             $data instanceof ListArtifactToolsTool => 'list_artifact_tools',
             $data instanceof RenderArtifactTool => 'render_artifact',
             $data instanceof PublishArtifactTool => 'publish_artifact',

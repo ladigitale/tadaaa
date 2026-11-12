@@ -51,6 +51,7 @@ export class ConfigWebhooksPage extends LitElement {
   @state() private selectedEvents: string[] = [];
   @state() private datasetId = "";
   @state() private plainSecret: string | null = null;
+  @state() private standardSecret: string | null = null;
   @state() private deliveriesFor: string | null = null;
   @state() private deliveries: WebhookDeliveryInfo[] = [];
 
@@ -122,6 +123,7 @@ export class ConfigWebhooksPage extends LitElement {
         datasetId: this.datasetId || null,
       });
       this.plainSecret = created.plainSecret;
+      this.standardSecret = created.standardSecret ?? null;
       set(appConfigKey.path, {...form, webhookUrl: ""});
       await this.reload();
     } catch (error) {
@@ -212,6 +214,10 @@ export class ConfigWebhooksPage extends LitElement {
                     <sonic-alert type="warning" class="mb-4">
                       ${t("webhooks.secret_once")}
                       <code class="block mt-1 break-all">${this.plainSecret}</code>
+                      ${this.standardSecret
+                        ? html`<span class="block mt-2">${t("webhooks.standard_secret")}</span>
+                            <code class="block mt-1 break-all">${this.standardSecret}</code>`
+                        : nothing}
                     </sonic-alert>
                   `
                 : nothing}

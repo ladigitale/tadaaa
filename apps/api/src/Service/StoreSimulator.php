@@ -86,6 +86,76 @@ final class StoreSimulator
     }
 
     /**
+     * Évalue des expressions JSONata sur une donnée (même bac à sable que les simulations).
+     *
+     * @param array<string, string> $exprs clé → expression
+     *
+     * @return array{results: array<string, mixed>, errors: list<array{key: string, message: string}>}
+     */
+    public function evaluate(array $exprs, mixed $data): array
+    {
+        $items = [];
+        foreach ($exprs as $key => $expr) {
+            $items[] = ['key' => (string) $key, 'expr' => $expr];
+        }
+        if ($items === []) {
+            return ['results' => [], 'errors' => []];
+        }
+        $payload = json_encode(['data' => $data, 'items' => $items], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($payload === false || \strlen($payload) > self::MAX_REQUEST) {
+            return ['results' => [], 'errors' => [['key' => '*', 'message' => 'Données illisibles ou trop volumineuses.']]];
+        }
+        if (!is_dir($this->toolDir.'/node_modules/jsonata')) {
+            return ['results' => [], 'errors' => [['key' => '*', 'message' => 'Évaluateur JSONata indisponible (dépendances Node non installées sur ce serveur).']]];
+        }
+        $cmd = [$this->nodeBinary ?: 'node', '--permission', '--allow-fs-read='.$this->toolDir, '--max-old-space-size=128', $this->toolDir.'/eval-jsonata.mjs'];
+        $run = SubprocessRunner::run($cmd, $this->toolDir, $payload, 5, self::MAX_OUTPUT, ['PATH' => (string) getenv('PATH')]);
+        $decoded = $run['status'] === 'ok' ? json_decode($run['stdout'], false) : null;
+        if (!$decoded instanceof \stdClass) {
+            return ['results' => [], 'errors' => [['key' => '*', 'message' => $run['status'] === 'timeout' ? 'Délai dépassé (5 s).' : 'Évaluateur JSONata : sortie invalide.']]];
+        }
+        $results = [];
+        foreach (get_object_vars($decoded->results ?? new \stdClass()) as $k => $v) {
+            $results[(string) $k] = $v;
+        }
+        $errors = [];
+        foreach ((array) ($decoded->errors ?? []) as $e) {
+            $errors[] = ['key' => (string) ($e->key ?? '*'), 'message' => (string) ($e->message ?? '')];
+        }
+
+        return ['results' => $results, 'errors' => $errors];
+    }
+
+    /**
+     * Vérifie la syntaxe d'expressions JSONata (clé → expression) ; erreurs par clé.
+     *
+     * @param array<string, string> $exprs
+     *
+     * @return list<array{key: string, message: string}>
+     */
+    public function checkExpressions(array $exprs): array
+    {
+        $items = [];
+        foreach ($exprs as $key => $expr) {
+            $items[] = ['path' => (string) $key, 'expr' => $expr];
+        }
+        if ($items === [] || !is_dir($this->toolDir.'/node_modules/jsonata')) {
+            return [];
+        }
+        $cmd = [$this->nodeBinary ?: 'node', '--permission', '--allow-fs-read='.$this->toolDir, '--max-old-space-size=128', $this->toolDir.'/check-jsonata.mjs'];
+        $run = SubprocessRunner::run($cmd, $this->toolDir, (string) json_encode(['items' => $items], JSON_UNESCAPED_UNICODE), 5, self::MAX_OUTPUT, ['PATH' => (string) getenv('PATH')]);
+        $decoded = $run['status'] === 'ok' ? json_decode($run['stdout'], true) : null;
+        $out = [];
+        foreach (\is_array($decoded) ? (array) ($decoded['errors'] ?? []) : [] as $e) {
+            if (\is_array($e) && \is_string($e['path'] ?? null)) {
+                $out[] = ['key' => $e['path'], 'message' => 'JSONata invalide : '.($e['message'] ?? '')];
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * @param array<string, mixed> $request {document, store, actions, until?, maxSteps?, snapshots?, tickMs?}
      *
      * @return array<string, mixed>

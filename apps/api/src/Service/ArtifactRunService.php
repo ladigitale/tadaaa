@@ -6,10 +6,16 @@ namespace App\Service;
 
 use App\Entity\ArtifactRun;
 use App\Entity\ArtifactVisibility;
+use App\Entity\ArtifactWorkflowRun;
+use App\Event\ArtifactRunFinished;
 use App\Entity\User;
 use App\Repository\ArtifactRunRepository;
 use App\Webhook\WebhookEventType;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\GoneHttpException;
@@ -33,6 +39,11 @@ final class ArtifactRunService
         private readonly DatasetAccessService $access,
         private readonly EntityManagerInterface $em,
         private readonly WebhookDispatcher $webhooks,
+        private readonly UsageMeter $usage,
+        private readonly ArtifactRunFiles $files,
+        private readonly EventDispatcherInterface $events,
+        #[Autowire(service: 'limiter.artifact_runs')]
+        private readonly RateLimiterFactoryInterface $limiter,
     ) {
     }
 
@@ -62,6 +73,11 @@ final class ArtifactRunService
         return $out;
     }
 
+    public function slugFor(string $idOrSlug): string
+    {
+        return $this->artifacts->findArtifactEntity($idOrSlug)->getSlug();
+    }
+
     /**
      * Contrat publié d'un artefact (null : pas de bloc `io`).
      *
@@ -69,14 +85,22 @@ final class ArtifactRunService
      */
     public function contract(User $user, string $idOrSlug): ?array
     {
-        $detail = $this->artifacts->getForUser($user, $idOrSlug);
+        $this->artifacts->getForUser($user, $idOrSlug);
+        $artifact = $this->artifacts->findArtifactEntity($idOrSlug);
+        // Contrat de la version en ligne : celle qu'exécutent les runs.
+        $detail = $this->artifacts->getForUser($user, $idOrSlug, $artifact->getLiveVersion());
         $document = ArtifactFiles::expand(json_decode((string) json_encode($detail['document'] ?? []), true));
+        $contract = \is_array($document) ? ArtifactIo::describe($document) : null;
 
-        return \is_array($document) ? ArtifactIo::describe($document) : null;
+        return $contract === null ? null : $contract + ['openapi' => '/api/artifacts/'.$artifact->getSlug().'/openapi.json'];
     }
 
     /** Durée de validité d'un run interactif / intégré (jeton). */
     public const PENDING_TTL = 'PT24H';
+    /** Rétention des runs terminés. */
+    public const RETENTION = 'P90D';
+    /** Runs expirés traités à chaque création de run (le reste : app:artifact-runs:sweep). */
+    private const SWEEP_ON_RUN = 20;
 
     /**
      * Lance un run sur la version en ligne. `mode` vide = headless.
@@ -88,11 +112,15 @@ final class ArtifactRunService
      *
      * @return array<string, mixed>
      */
-    public function run(User $user, string $idOrSlug, mixed $input, ?string $mode = null): array
+    public function run(User $user, string $idOrSlug, mixed $input, ?string $mode = null, ?ArtifactWorkflowRun $workflowRun = null, ?string $workflowStep = null): array
     {
         $mode = $mode ?: 'headless';
         if (!\in_array($mode, ArtifactIo::MODES, true)) {
             throw new BadRequestHttpException('mode : '.implode(', ', ArtifactIo::MODES).'.');
+        }
+        $limit = $this->limiter->create($user->getUserIdentifier())->consume();
+        if (!$limit->isAccepted()) {
+            throw new TooManyRequestsHttpException(max(1, $limit->getRetryAfter()->getTimestamp() - time()), 'Trop de runs d’artefacts, réessayez dans quelques instants.');
         }
         $this->artifacts->getForUser($user, $idOrSlug);
         $artifact = $this->artifacts->findArtifactEntity($idOrSlug);
@@ -124,6 +152,9 @@ final class ArtifactRunService
 
         $run = new ArtifactRun($artifact, $version, $user, $mode, $input);
         $run->setIo($io);
+        if ($workflowRun !== null && $workflowStep !== null) {
+            $run->attachToWorkflow($workflowRun, $workflowStep);
+        }
         $extra = ['title' => \is_string($io['title'] ?? null) ? $io['title'] : $artifact->getTitle()];
         if ($mode === 'headless') {
             $this->executeHeadless($run, $wire, $io, $input);
@@ -148,8 +179,18 @@ final class ArtifactRunService
 
         $this->em->persist($run);
         $this->em->flush();
+        try {
+            $this->usage->increment($user, $artifact->getDataset(), UsageMeter::ARTIFACT_RUNS);
+        } catch (\Throwable) {
+            // L'observabilité ne bloque pas le run.
+        }
         if ($mode === 'headless') {
             $this->notify($run, $user);
+        }
+        try {
+            $this->sweep(self::SWEEP_ON_RUN);
+        } catch (\Throwable) {
+            // Le ménage ne bloque pas le run (repris par app:artifact-runs:sweep).
         }
 
         return $this->serialize($run) + $extra;
@@ -186,7 +227,7 @@ final class ArtifactRunService
     {
         $run = $this->requirePublicRun($slug, $runId, $token);
         if ($run->getStatus() !== ArtifactRun::STATUS_PENDING) {
-            throw new ConflictHttpException('Ce run est déjà terminé.');
+            throw new ConflictHttpException(sprintf('Ce run n’est plus en attente (%s).', $run->getStatus()));
         }
         if ($run->isExpired()) {
             throw new GoneHttpException('Ce run a expiré.');
@@ -199,8 +240,47 @@ final class ArtifactRunService
         $run->finish(ArtifactRun::STATUS_COMPLETED, $output);
         $this->em->flush();
         $this->notify($run, $run->getCreatedBy());
+        $this->events->dispatch(new ArtifactRunFinished($run));
 
         return ['runId' => $run->getId()->toRfc4122(), 'status' => $run->getStatus()];
+    }
+
+    /**
+     * Fichier de sortie (io.output.files) envoyé par le viewer avant la sortie : `<clé>.<ext>`.
+     *
+     * @return array{name: string, contentType: string, sizeBytes: int, sha256: string}
+     */
+    public function publicPutFile(string $slug, string $runId, string $token, string $name, string $bytes): array
+    {
+        $run = $this->requirePublicRun($slug, $runId, $token);
+        if ($run->getStatus() !== ArtifactRun::STATUS_PENDING || $run->isExpired()) {
+            throw new ConflictHttpException('Ce run n’est plus en attente.');
+        }
+        $declared = $run->getIo()['output']['files'] ?? [];
+        $dot = strrpos($name, '.');
+        $key = $dot === false ? $name : substr($name, 0, $dot);
+        if (!\is_array($declared) || !\array_key_exists($key, $declared)) {
+            throw new BadRequestHttpException(sprintf('Fichier « %s » non déclaré dans io.output.files.', $key));
+        }
+        foreach ($this->files->list($run) as $existing) {
+            $existingKey = explode('.', $existing['name'])[0];
+            if ($existingKey === $key && $existing['name'] !== $name) {
+                throw new ConflictHttpException(sprintf('Le fichier « %s » a déjà été envoyé (%s).', $key, $existing['name']));
+            }
+        }
+
+        return $this->files->put($run, $name, $bytes);
+    }
+
+    /** @return array{contentType: string, sizeBytes: int, sha256: string, data: string} */
+    public function readFile(User $user, string $runId, string $name): array
+    {
+        $file = $this->files->read($this->requireRun($user, $runId), $name);
+        if ($file === null) {
+            throw new NotFoundHttpException('Fichier introuvable.');
+        }
+
+        return $file;
     }
 
     private function requirePublicRun(string $slug, string $runId, string $token): ArtifactRun
@@ -224,6 +304,80 @@ final class ArtifactRunService
         return $url.(str_contains($url, '?') ? '&' : '?').http_build_query(['run' => $runId, 'rt' => $token]).$hash;
     }
 
+    /**
+     * Annule un run en attente (interactive / embed) : le lien ne sert plus, webhook artifact.run.failed.
+     *
+     * @return array<string, mixed>
+     */
+    public function cancel(User $user, string $runId): array
+    {
+        $run = $this->requireRun($user, $runId);
+        if ($run->getStatus() !== ArtifactRun::STATUS_PENDING) {
+            throw new ConflictHttpException('Seul un run en attente peut être annulé.');
+        }
+        $run->finish(ArtifactRun::STATUS_CANCELLED, null, ['Run annulé.']);
+        $this->em->flush();
+        $this->notify($run, $user);
+        $this->events->dispatch(new ArtifactRunFinished($run));
+
+        return $this->serialize($run);
+    }
+
+    /**
+     * Ménage : runs en attente expirés → `expired` (webhook artifact.run.failed), puis suppression
+     * des runs terminés plus vieux que la rétention.
+     *
+     * @return array{expired: int, purged: int}
+     */
+    public function sweep(int $limit = 500, bool $purge = true): array
+    {
+        $now = new \DateTimeImmutable();
+        $expired = $this->runs->findExpiredPending($now, $limit);
+        foreach ($expired as $run) {
+            $run->finish(ArtifactRun::STATUS_EXPIRED, null, ['Délai dépassé : aucune sortie reçue avant l’expiration du run.']);
+        }
+        if ($expired !== []) {
+            $this->em->flush();
+            foreach ($expired as $run) {
+                $this->notify($run, $run->getCreatedBy());
+                $this->events->dispatch(new ArtifactRunFinished($run));
+            }
+        }
+        $purged = $purge ? $this->runs->purgeFinishedBefore($now->sub(new \DateInterval(self::RETENTION))) : 0;
+
+        return ['expired' => \count($expired), 'purged' => $purged];
+    }
+
+    /**
+     * Essai headless d'un brouillon (document passé tel quel, rien n'est enregistré ni notifié) :
+     * vérifier un contrat io avant de publier.
+     *
+     * @return array<string, mixed>
+     */
+    public function dryRun(mixed $wireDocument, mixed $input): array
+    {
+        $wire = ArtifactFiles::expand($wireDocument);
+        $document = json_decode((string) json_encode($wire), true);
+        $io = \is_array($document) ? ($document['io'] ?? null) : null;
+        if (!\is_array($io)) {
+            throw new BadRequestHttpException('Le brouillon ne déclare pas de contrat io.');
+        }
+        $declErrors = ArtifactIo::validateDeclaration($io, $document);
+        if ($declErrors !== []) {
+            return ['dryRun' => true, 'status' => ArtifactRun::STATUS_FAILED, 'output' => null, 'errors' => array_map(static fn (array $e): string => $e['path'].' : '.$e['message'], $declErrors)];
+        }
+        if (!\in_array('headless', $io['modes'], true)) {
+            throw new BadRequestHttpException('Essai d’un brouillon : seul le mode headless s’exécute (les autres se testent dans l’aperçu de l’atelier).');
+        }
+        $input ??= new \stdClass();
+        $inputErrors = \is_array($io['input']['schema'] ?? null) ? ArtifactIo::validateValue($io['input']['schema'], $input, '') : [];
+        if ($inputErrors !== []) {
+            return ['dryRun' => true, 'status' => ArtifactRun::STATUS_FAILED, 'output' => null, 'errors' => array_map(static fn (string $e): string => 'Entrée invalide : '.$e, $inputErrors)];
+        }
+
+        return ['dryRun' => true] + $this->headless($wire, $io, $input);
+    }
+
     /** @return array<string, mixed> */
     public function get(User $user, string $runId): array
     {
@@ -244,6 +398,19 @@ final class ArtifactRunService
      */
     private function executeHeadless(ArtifactRun $run, mixed $wire, array $io, mixed $input): void
     {
+        $r = $this->headless($wire, $io, $input);
+        $run->finish($r['status'], $r['output'], $r['errors'], $r['metrics']);
+    }
+
+    /**
+     * Exécution headless (sans persistance).
+     *
+     * @param array<string, mixed> $io
+     *
+     * @return array{status: string, output: mixed, errors: list<string>, metrics: array<string, mixed>}
+     */
+    private function headless(mixed $wire, array $io, mixed $input): array
+    {
         $plan = ArtifactIo::headlessPlan($io, $input);
         $result = $this->simulator->simulate([
             'document' => $wire,
@@ -258,23 +425,18 @@ final class ArtifactRunService
             'stateBytes' => $result['metrics']['stateBytes'] ?? null,
         ], static fn (mixed $v): bool => $v !== null);
         if (($result['ok'] ?? false) !== true) {
-            $run->finish(ArtifactRun::STATUS_FAILED, null, array_values(array_map('strval', (array) ($result['errors'] ?? ['Échec du réducteur.']))), $metrics);
-
-            return;
+            return ['status' => ArtifactRun::STATUS_FAILED, 'output' => null, 'errors' => array_values(array_map('strval', (array) ($result['errors'] ?? ['Échec du réducteur.']))), 'metrics' => $metrics];
         }
         $output = ArtifactIo::pluck($result['finalState'] ?? null, $plan['path']);
         if ($plan['until'] !== null && ($result['untilReached'] ?? false) !== true) {
-            $run->finish(ArtifactRun::STATUS_INCOMPLETE, $output, [sprintf('Condition io.output.when jamais vraie en %d pas (augmenter io.headless.maxSteps ou ajouter des actions).', (int) ($result['steps'] ?? 0))], $metrics);
-
-            return;
+            return ['status' => ArtifactRun::STATUS_INCOMPLETE, 'output' => $output, 'errors' => [sprintf('Condition io.output.when jamais vraie en %d pas (augmenter io.headless.maxSteps ou ajouter des actions).', (int) ($result['steps'] ?? 0))], 'metrics' => $metrics];
         }
         $outputErrors = \is_array($io['output']['schema'] ?? null) ? ArtifactIo::validateValue($io['output']['schema'], $output, '') : [];
         if ($outputErrors !== []) {
-            $run->finish(ArtifactRun::STATUS_FAILED, $output, array_map(static fn (string $e): string => 'Sortie non conforme : '.$e, \array_slice($outputErrors, 0, 10)), $metrics);
-
-            return;
+            return ['status' => ArtifactRun::STATUS_FAILED, 'output' => $output, 'errors' => array_map(static fn (string $e): string => 'Sortie non conforme : '.$e, \array_slice($outputErrors, 0, 10)), 'metrics' => $metrics];
         }
-        $run->finish(ArtifactRun::STATUS_COMPLETED, $output, [], $metrics);
+
+        return ['status' => ArtifactRun::STATUS_COMPLETED, 'output' => $output, 'errors' => [], 'metrics' => $metrics];
     }
 
     private function notify(ArtifactRun $run, ?User $user): void
@@ -294,6 +456,12 @@ final class ArtifactRunService
     }
 
     /** @return array<string, mixed> */
+    public function serializeEntity(ArtifactRun $run): array
+    {
+        return $this->serialize($run);
+    }
+
+    /** @return array<string, mixed> */
     private function serialize(ArtifactRun $run, bool $withData = true): array
     {
         $out = [
@@ -309,9 +477,18 @@ final class ArtifactRunService
             'errors' => $run->getErrors(),
             'metrics' => (object) $run->getMetrics(),
         ];
+        if ($run->getWorkflowRun() !== null) {
+            $out['workflowRunId'] = $run->getWorkflowRun()->getId()->toRfc4122();
+            $out['workflowStep'] = $run->getWorkflowStep();
+        }
         if ($withData) {
             $out['input'] = $run->getInput();
             $out['output'] = $run->getOutput();
+            $base = '/api/artifacts/'.$run->getArtifact()->getSlug().'/runs/'.$run->getId()->toRfc4122().'/files/';
+            $files = \is_array($run->getIo()['output']['files'] ?? null) ? $this->files->list($run) : [];
+            if ($files !== []) {
+                $out['files'] = array_map(static fn (array $f): array => $f + ['url' => $base.$f['name']], $files);
+            }
         }
 
         return $out;

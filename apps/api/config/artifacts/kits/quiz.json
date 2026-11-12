@@ -87,6 +87,42 @@
    "$param": "title"
   },
   "defaultView": "quiz",
+  "io": {
+  "title": {
+   "$param": "title"
+  },
+  "description": "Quiz passé par une personne : score, bonnes réponses et nombre de questions.",
+  "modes": [
+   "interactive",
+   "embed"
+  ],
+  "output": {
+   "schema": {
+    "type": "object",
+    "properties": {
+     "score": {
+      "type": "integer",
+      "minimum": 0
+     },
+     "good": {
+      "type": "integer",
+      "minimum": 0
+     },
+     "total": {
+      "type": "integer",
+      "minimum": 0
+     }
+    },
+    "required": [
+     "score",
+     "good",
+     "total"
+    ]
+   },
+   "from": "quiz.result",
+   "when": "phase='end'"
+  }
+ },
   "views": [
    {
     "id": "quiz",
@@ -163,7 +199,7 @@
             "verdict": ""
            }
           },
-          "reducer": "(\n  $s := $state; $a := $action; $t := $a.type;\n  $Q := $s.questions; $n := $count($Q);\n  $ticks := $s.cfg.timer * 10;\n  $bar := function($left) { $ticks > 0 ? $map([1..20], function($k) { $k <= $ceil(20 * $left / $ticks) ? 1 : 0 }) : [] };\n  $answerText := function($q) { $q.answers[$q.correct] };\n  $explain := function($q) { $s.cfg.explain and $q.explain ? $q.explain : \"\" };\n  $show := function($st, $i) { $merge([$st, {\n    \"phase\": \"play\", \"i\": $i,\n    \"cur\": $merge([$Q[$i], {\"num\": $string($i + 1) & \" / \" & $string($n)}]),\n    \"left\": $ticks, \"secs\": $string($s.cfg.timer) & \" s\", \"bar\": $bar($ticks),\n    \"running\": $ticks > 0, \"msg\": \"\", \"explainText\": \"\"\n  }]) };\n  $verdict := function($st) { (\n    $ratio := $n > 0 ? $st.good / $n : 0;\n    $ratio = 1 ? $s.txt.perfect : $ratio >= 0.6 ? $s.txt.good : $s.txt.retry\n  ) };\n  $t = \"init\" ? $merge([$s, {\n    \"phase\": \"intro\",\n    \"info\": $string($n) & \" \" & ($n > 1 ? $s.txt.questions : $s.txt.question) & ($s.cfg.timer > 0 ? \" · \" & $string($s.cfg.timer) & \" s \" & $s.txt.perQuestion : \"\")\n  }]) :\n  $t = \"start\" ? $show($merge([$s, {\"score\": 0, \"good\": 0}]), 0) :\n  $t = \"answer\" and $s.phase = \"play\" ? (\n    $ok := $a.payload.a = $s.cur.correct;\n    $bonus := $ok and $s.cfg.speed and $ticks > 0 ? $round(100 * $s.left / $ticks) : 0;\n    $pts := $ok ? 100 + $bonus : 0;\n    $merge([$s, {\n      \"phase\": \"feedback\", \"running\": false, \"ok\": $ok, \"ko\": $not($ok),\n      \"score\": $s.score + $pts, \"good\": $s.good + ($ok ? 1 : 0),\n      \"msg\": $ok ? $s.txt.right & ($bonus > 0 ? \" +\" & $string($pts) : \"\") : $s.txt.wrong & \" \" & $answerText($s.cur),\n      \"explainText\": $explain($s.cur)\n    }])\n  ) :\n  $t = \"tick\" and $s.phase = \"play\" ? (\n    $l := $s.left - 1;\n    $l <= 0\n      ? $merge([$s, {\"phase\": \"feedback\", \"running\": false, \"ok\": false, \"ko\": true, \"left\": 0, \"bar\": $bar(0), \"secs\": \"0 s\",\n          \"msg\": $s.txt.timeout & \" \" & $answerText($s.cur), \"explainText\": $explain($s.cur)}])\n      : $merge([$s, {\"left\": $l, \"bar\": $bar($l), \"secs\": $string($ceil($l / 10)) & \" s\"}])\n  ) :\n  $t = \"next\" and $s.phase = \"feedback\" ? (\n    $s.i + 1 < $n ? $show($s, $s.i + 1) : $merge([$s, {\n      \"phase\": \"end\", \"running\": false,\n      \"final\": $string($s.good) & \" / \" & $string($n),\n      \"verdict\": $verdict($s)\n    }])\n  ) :\n  $t = \"restart\" ? $merge([$s, {\"phase\": \"intro\", \"running\": false}]) :\n  $s\n)",
+          "reducer": "(\n  $s := $state; $a := $action; $t := $a.type;\n  $Q := $s.questions; $n := $count($Q);\n  $ticks := $s.cfg.timer * 10;\n  $bar := function($left) { $ticks > 0 ? $map([1..20], function($k) { $k <= $ceil(20 * $left / $ticks) ? 1 : 0 }) : [] };\n  $answerText := function($q) { $q.answers[$q.correct] };\n  $explain := function($q) { $s.cfg.explain and $q.explain ? $q.explain : \"\" };\n  $show := function($st, $i) { $merge([$st, {\n    \"phase\": \"play\", \"i\": $i,\n    \"cur\": $merge([$Q[$i], {\"num\": $string($i + 1) & \" / \" & $string($n)}]),\n    \"left\": $ticks, \"secs\": $string($s.cfg.timer) & \" s\", \"bar\": $bar($ticks),\n    \"running\": $ticks > 0, \"msg\": \"\", \"explainText\": \"\"\n  }]) };\n  $verdict := function($st) { (\n    $ratio := $n > 0 ? $st.good / $n : 0;\n    $ratio = 1 ? $s.txt.perfect : $ratio >= 0.6 ? $s.txt.good : $s.txt.retry\n  ) };\n  $t = \"init\" ? $merge([$s, {\n    \"phase\": \"intro\",\n    \"info\": $string($n) & \" \" & ($n > 1 ? $s.txt.questions : $s.txt.question) & ($s.cfg.timer > 0 ? \" · \" & $string($s.cfg.timer) & \" s \" & $s.txt.perQuestion : \"\")\n  }]) :\n  $t = \"start\" ? $show($merge([$s, {\"score\": 0, \"good\": 0}]), 0) :\n  $t = \"answer\" and $s.phase = \"play\" ? (\n    $ok := $a.payload.a = $s.cur.correct;\n    $bonus := $ok and $s.cfg.speed and $ticks > 0 ? $round(100 * $s.left / $ticks) : 0;\n    $pts := $ok ? 100 + $bonus : 0;\n    $merge([$s, {\n      \"phase\": \"feedback\", \"running\": false, \"ok\": $ok, \"ko\": $not($ok),\n      \"score\": $s.score + $pts, \"good\": $s.good + ($ok ? 1 : 0),\n      \"msg\": $ok ? $s.txt.right & ($bonus > 0 ? \" +\" & $string($pts) : \"\") : $s.txt.wrong & \" \" & $answerText($s.cur),\n      \"explainText\": $explain($s.cur)\n    }])\n  ) :\n  $t = \"tick\" and $s.phase = \"play\" ? (\n    $l := $s.left - 1;\n    $l <= 0\n      ? $merge([$s, {\"phase\": \"feedback\", \"running\": false, \"ok\": false, \"ko\": true, \"left\": 0, \"bar\": $bar(0), \"secs\": \"0 s\",\n          \"msg\": $s.txt.timeout & \" \" & $answerText($s.cur), \"explainText\": $explain($s.cur)}])\n      : $merge([$s, {\"left\": $l, \"bar\": $bar($l), \"secs\": $string($ceil($l / 10)) & \" s\"}])\n  ) :\n  $t = \"next\" and $s.phase = \"feedback\" ? (\n    $s.i + 1 < $n ? $show($s, $s.i + 1) : $merge([$s, {\n      \"phase\": \"end\", \"running\": false,\n      \"result\": {\"score\": $s.score, \"good\": $s.good, \"total\": $n},\n      \"final\": $string($s.good) & \" / \" & $string($n),\n      \"verdict\": $verdict($s)\n    }])\n  ) :\n  $t = \"restart\" ? $merge([$s, {\"phase\": \"intro\", \"running\": false}]) :\n  $s\n)",
           "boot-action": "init",
           "budget-ms": "60"
          }

@@ -7,12 +7,14 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Service\ArtifactDataService;
 use App\Service\ArtifactDocumentValidator;
+use App\Service\ArtifactIo;
 use App\Service\ArtifactRunService;
 use App\Service\ArtifactService;
 use App\Service\JsonShape;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -292,6 +294,21 @@ final class ArtifactController extends AbstractController
         return $this->json($contract, 200, [], self::JSON_CONTEXT);
     }
 
+    /** Description OpenAPI 3.1 de l'artefact-outil (n8n, Make, client généré…). */
+    #[Route('/{id}/openapi.json', name: 'api_artifacts_openapi', methods: ['GET'])]
+    public function openApi(string $id, Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $contract = $this->runs->contract($user, $id);
+        if ($contract === null) {
+            return $this->json(['message' => 'Cet artefact ne déclare pas de contrat io.'], 404);
+        }
+        $slug = (string) ($this->runs->slugFor($id));
+
+        return $this->json(ArtifactIo::openApi($contract, $slug, $request->getSchemeAndHttpHost()), 200, [], self::JSON_CONTEXT);
+    }
+
     /** Lance un run : {"input": {…}, "mode": "headless"}. */
     #[Route('/{id}/runs', name: 'api_artifacts_runs_create', methods: ['POST'])]
     public function createRun(string $id, Request $request): JsonResponse
@@ -316,6 +333,40 @@ final class ArtifactController extends AbstractController
         $user = $this->getUser();
 
         return $this->json(['member' => $this->runs->listRuns($user, $id, $request->query->getInt('limit', 20))], 200, [], self::JSON_CONTEXT);
+    }
+
+    #[Route('/{id}/runs/{runId}/files/{name}', name: 'api_artifacts_runs_file', methods: ['GET'])]
+    public function runFile(string $id, string $runId, string $name): Response
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $run = $this->runs->get($user, $runId);
+        if ($run['slug'] !== $id && $run['artifactId'] !== $id) {
+            return $this->json(['message' => 'Run introuvable.'], 404);
+        }
+        $file = $this->runs->readFile($user, $runId, $name);
+
+        return new Response($file['data'], 200, [
+            'Content-Type' => $file['contentType'],
+            'Content-Disposition' => 'attachment; filename="'.$name.'"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Security-Policy' => "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+            'Cache-Control' => 'private, max-age=3600',
+            'ETag' => '"'.$file['sha256'].'"',
+        ]);
+    }
+
+    #[Route('/{id}/runs/{runId}/cancel', name: 'api_artifacts_runs_cancel', methods: ['POST'])]
+    public function cancelRun(string $id, string $runId): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $run = $this->runs->get($user, $runId);
+        if ($run['slug'] !== $id && $run['artifactId'] !== $id) {
+            return $this->json(['message' => 'Run introuvable.'], 404);
+        }
+
+        return $this->json($this->runs->cancel($user, $runId), 200, [], self::JSON_CONTEXT);
     }
 
     #[Route('/{id}/runs/{runId}', name: 'api_artifacts_runs_get', methods: ['GET'])]

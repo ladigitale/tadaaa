@@ -11,7 +11,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
 #[ApiResource(operations: [])]
 #[McpTool(
     name: 'get_artifact_run',
-    description: 'Lit un run d’artefact par `runId` : `{status, input, output, errors, metrics, createdAt, completedAt}`. Avec `slug` (ou `id`) sans runId : les derniers runs de cet artefact (sans entrées ni sorties ; `limit` ≤ 100, défaut 20).',
+    description: 'Lit un run d’artefact par `runId` : `{status, input, output, files, errors, metrics, createdAt, completedAt}`. Avec `file` (nom d’un fichier de `files`) : son contenu en base64 (`contentBase64`, 256 Ko max ; au-delà, la fiche et l’URL de téléchargement). Avec `slug` (ou `id`) sans runId : les derniers runs de cet artefact (sans entrées ni sorties ; `limit` ≤ 100, défaut 20).',
     processor: ArtifactMcpProcessor::class,
 )]
 final class GetArtifactRunTool
@@ -21,6 +21,7 @@ final class GetArtifactRunTool
         public ?string $id = null,
         public ?string $slug = null,
         public ?int $limit = null,
+        public ?string $file = null,
     ) {
     }
 }

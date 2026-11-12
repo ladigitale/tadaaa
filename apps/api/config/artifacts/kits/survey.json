@@ -103,6 +103,23 @@
    "$param": "title"
   },
   "defaultView": "form",
+  "io": {
+  "title": {
+   "$param": "title"
+  },
+  "description": "Formulaire rempli par une personne : ses réponses (une clé par question).",
+  "modes": [
+   "interactive",
+   "embed"
+  ],
+  "output": {
+   "schema": {
+    "type": "object"
+   },
+   "from": "form.submitted",
+   "when": "$exists(submitted)"
+  }
+ },
   "data": {
    "sources": {
     "answers": {
@@ -204,7 +221,7 @@
    },
    "stores": {
     "form": {
-     "reducer": "(\n  $s := $state; $a := $action; $t := $a.type;\n  $clean := function($p) { $merge([{}, $each($p, function($v, $k) {\n    $k = \"surfaceId\" or $k = \"sourceComponentId\" ? {} :\n    {$k: $type($v) = \"array\" ? $join($v, \", \") : $lookup($s.types, $k) = \"number\" and $type($v) = \"string\" ? ($v = \"\" ? null : $number($v)) : $v}\n  })]) };\n  $t = \"send\" ? (\n    $data := $clean($a.payload);\n    $miss := [$filter($s.required, function($r) { (\n      $v := $lookup($data, $r.id);\n      $not($exists($v)) or $v = \"\" or $v = null\n    ) })];\n    $count($miss) > 0 ? $merge([$s, {\"msg\": $s.txt.missing & \" \" & $join($miss.label, \", \")}]) :\n    $s.sending ? $s :\n    $merge([$s, {\"outbox\": $append($s.outbox, [{\"id\": $string($round($a.t)), \"data\": $data}]), \"sending\": true, \"msg\": $s.txt.sending}])\n  ) :\n  $t = \"sink:ok\" ? $merge([$s, {\"outbox\": [$filter($s.outbox, function($o) { $o.id != $a.payload.id })], \"sending\": false, \"sent\": $s.sent + 1, \"msg\": $s.txt.thanks}]) :\n  $t = \"sink:error\" ? $merge([$s, {\"outbox\": [$filter($s.outbox, function($o) { $o.id != $a.payload.id })], \"sending\": false, \"msg\": $s.txt.error}]) :\n  $s\n)",
+     "reducer": "(\n  $s := $state; $a := $action; $t := $a.type;\n  $clean := function($p) { $merge([{}, $each($p, function($v, $k) {\n    $k = \"surfaceId\" or $k = \"sourceComponentId\" ? {} :\n    {$k: $type($v) = \"array\" ? $join($v, \", \") : $lookup($s.types, $k) = \"number\" and $type($v) = \"string\" ? ($v = \"\" ? null : $number($v)) : $v}\n  })]) };\n  $t = \"send\" ? (\n    $data := $clean($a.payload);\n    $miss := [$filter($s.required, function($r) { (\n      $v := $lookup($data, $r.id);\n      $not($exists($v)) or $v = \"\" or $v = null\n    ) })];\n    $count($miss) > 0 ? $merge([$s, {\"msg\": $s.txt.missing & \" \" & $join($miss.label, \", \")}]) :\n    $s.sending ? $s :\n    $merge([$s, {\"submitted\": $data, \"outbox\": $append($s.outbox, [{\"id\": $string($round($a.t)), \"data\": $data}]), \"sending\": true, \"msg\": $s.txt.sending}])\n  ) :\n  $t = \"sink:ok\" ? $merge([$s, {\"outbox\": [$filter($s.outbox, function($o) { $o.id != $a.payload.id })], \"sending\": false, \"sent\": $s.sent + 1, \"msg\": $s.txt.thanks}]) :\n  $t = \"sink:error\" ? $merge([$s, {\"outbox\": [$filter($s.outbox, function($o) { $o.id != $a.payload.id })], \"sending\": false, \"msg\": $s.txt.error}]) :\n  $s\n)",
      "initial": {
       "outbox": [],
       "sending": false,
