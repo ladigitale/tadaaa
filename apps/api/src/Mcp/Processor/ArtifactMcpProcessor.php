@@ -267,7 +267,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             );
         }
 
-        $hasOps = \is_array($tool->ops) && $tool->ops !== [];
+        $remoteOps = $this->fetchOps($tool->opsFrom);
+        $hasOps = (\is_array($tool->ops) && $tool->ops !== []) || $remoteOps !== [];
         $hasEdits = \is_array($tool->edits) && $tool->edits !== [];
         $setFiles = $this->fetchFiles($tool->fetch);
         if ($hasOps || $hasEdits || $setFiles !== []) {
@@ -276,6 +277,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             }
             // Versions brutes (objets vides conservés) si le client les fournit.
             $ops = $this->rawArguments->rawArgument($context, 'update_artifact', 'ops') ?? json_decode((string) json_encode($tool->ops ?? []), false);
+            $ops = [...$remoteOps, ...(\is_array($ops) ? $ops : [])];
             $edits = $this->rawArguments->rawArgument($context, 'update_artifact', 'edits') ?? json_decode((string) json_encode($tool->edits ?? []), false);
             $result = $this->artifacts->patchDocument(
                 $user,
@@ -290,7 +292,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         }
 
         if ($result === null) {
-            throw new BadRequestHttpException('Rien à mettre à jour (document, ops, edits, fetch, title, visibility ou description).');
+            throw new BadRequestHttpException('Rien à mettre à jour (document, ops, opsFrom, edits, fetch, title, visibility ou description).');
         }
 
         $out = [
@@ -312,6 +314,40 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         }
 
         return $out;
+    }
+
+    /** Taille maximale d'une liste d'ops chargée par `opsFrom`. */
+    private const MAX_REMOTE_OPS_BYTES = 2 * 1024 * 1024;
+
+    /**
+     * Ops JSON Patch chargées depuis une URL autorisée (`opsFrom: {url, sha256?}`), en objets (stdClass) comme
+     * les ops brutes : un tableau JSON, appliqué avant les `ops` de l'appel.
+     *
+     * @param array<string, mixed>|null $from
+     *
+     * @return list<mixed>
+     */
+    private function fetchOps(?array $from): array
+    {
+        if ($from === null || $from === []) {
+            return [];
+        }
+        $url = $from['url'] ?? null;
+        if (!\is_string($url) || $url === '') {
+            throw new BadRequestHttpException('opsFrom : {url, sha256?} attendu.');
+        }
+        $sha = \is_string($from['sha256'] ?? null) ? $from['sha256'] : null;
+        $bytes = $this->fetcher->fetchBytes($url, self::MAX_REMOTE_OPS_BYTES, $sha);
+        try {
+            $ops = json_decode($bytes, false, 512, \JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new BadRequestHttpException(sprintf('opsFrom : JSON invalide (%s).', $e->getMessage()));
+        }
+        if (!\is_array($ops) || !array_is_list($ops)) {
+            throw new BadRequestHttpException('opsFrom : un tableau JSON d\'ops est attendu.');
+        }
+
+        return $ops;
     }
 
     /**
