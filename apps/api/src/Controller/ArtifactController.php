@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Service\ArtifactDataService;
 use App\Service\ArtifactDocumentValidator;
+use App\Service\ArtifactRunService;
 use App\Service\ArtifactService;
 use App\Service\JsonShape;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -27,6 +28,7 @@ final class ArtifactController extends AbstractController
         private readonly ArtifactService $artifacts,
         private readonly ArtifactDataService $artifactData,
         private readonly ArtifactDocumentValidator $validator,
+        private readonly ArtifactRunService $runs,
     ) {
     }
 
@@ -274,6 +276,59 @@ final class ArtifactController extends AbstractController
         $this->artifacts->deleteAsset($user, $id, $name, $request->getClientIp());
 
         return $this->json(null, 204);
+    }
+
+    /** Contrat d'entrées / sorties (bloc `io`) : 404 si l'artefact n'en déclare pas. */
+    #[Route('/{id}/io', name: 'api_artifacts_io', methods: ['GET'])]
+    public function io(string $id): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $contract = $this->runs->contract($user, $id);
+        if ($contract === null) {
+            return $this->json(['message' => 'Cet artefact ne déclare pas de contrat io.'], 404);
+        }
+
+        return $this->json($contract, 200, [], self::JSON_CONTEXT);
+    }
+
+    /** Lance un run : {"input": {…}, "mode": "headless"}. */
+    #[Route('/{id}/runs', name: 'api_artifacts_runs_create', methods: ['POST'])]
+    public function createRun(string $id, Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        // Décodage objet : les {} de l'entrée restent des objets pour le réducteur.
+        $body = json_decode($request->getContent() ?: '{}', false);
+        if (!$body instanceof \stdClass) {
+            throw new BadRequestHttpException('JSON object expected.');
+        }
+        $mode = isset($body->mode) && \is_string($body->mode) ? $body->mode : null;
+        $run = $this->runs->run($user, $id, $body->input ?? new \stdClass(), $mode);
+
+        return $this->json($run, $run['status'] === 'completed' ? 201 : 200, [], self::JSON_CONTEXT);
+    }
+
+    #[Route('/{id}/runs', name: 'api_artifacts_runs_list', methods: ['GET'])]
+    public function listRuns(string $id, Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        return $this->json(['member' => $this->runs->listRuns($user, $id, $request->query->getInt('limit', 20))], 200, [], self::JSON_CONTEXT);
+    }
+
+    #[Route('/{id}/runs/{runId}', name: 'api_artifacts_runs_get', methods: ['GET'])]
+    public function getRun(string $id, string $runId): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $run = $this->runs->get($user, $runId);
+        if ($run['slug'] !== $id && $run['artifactId'] !== $id) {
+            return $this->json(['message' => 'Run introuvable.'], 404);
+        }
+
+        return $this->json($run, 200, [], self::JSON_CONTEXT);
     }
 
     /** @return array<string, mixed> */

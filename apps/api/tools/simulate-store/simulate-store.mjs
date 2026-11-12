@@ -13,7 +13,8 @@
  *     "snapshots": ["phase","lives"],                   // chemins gardés à chaque étape (optionnel)
  *     "tickMs": 33                                      // si présent, ajoute t = pas × tickMs au payload des "tick"
  *   }
- * Sortie JSON : { ok, steps, finalState, snapshots?, metrics:{msPerStep, maxMsStep, stateBytes}, errors[] }
+ * Sortie JSON : { ok, steps, finalState, untilReached?, snapshots?, metrics:{msPerStep, maxMsStep, stateBytes}, errors[] }
+ *   untilReached (si until) : vrai quand la condition a arrêté la simulation.
  *
  * Limite : JSONata + `$rand(seed)` ; toute autre fonction enregistrée par le viewer est à
  * ajouter ici, sinon l'erreur « Attempted to invoke a non-function » est remontée.
@@ -69,6 +70,7 @@ let state = store.initial;
 let total = 0;
 let maxMs = 0;
 let step = 0;
+let reached = false;
 outer: for (const a of req.actions ?? []) {
   const n = Math.max(1, Number(a.repeat ?? 1));
   for (let i = 0; i < n; i++) {
@@ -89,11 +91,15 @@ outer: for (const a of req.actions ?? []) {
     maxMs = Math.max(maxMs, dt);
     step++;
     if (req.snapshots) snaps.push(Object.fromEntries(req.snapshots.map((p) => [p, getPath(state, p)])));
-    if (until && (await until.evaluate(state)) === true) break outer;
+    if (until && (await until.evaluate(state)) === true) {
+      reached = true;
+      break outer;
+    }
   }
 }
 out.steps = step;
 out.finalState = state;
+if (until) out.untilReached = reached;
 if (req.snapshots) out.snapshots = snaps.length > 200 ? [...snaps.filter((_, i) => i % Math.ceil(snaps.length / 200) === 0), snaps.at(-1)] : snaps;
 out.metrics = {
   msPerStep: step ? +(total / step).toFixed(3) : 0,

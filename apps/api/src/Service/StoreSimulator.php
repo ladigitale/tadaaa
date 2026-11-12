@@ -46,6 +46,9 @@ final class StoreSimulator
                 $items[] = ['path' => '/data/transforms/'.$name.'/jsonata', 'expr' => $def['jsonata']];
             }
         }
+        if (\is_string($document['io']['output']['when'] ?? null)) {
+            $items[] = ['path' => '/io/output/when', 'expr' => $document['io']['output']['when']];
+        }
         $walk = static function (mixed $node, string $path) use (&$walk, &$items): void {
             if (!\is_array($node)) {
                 return;

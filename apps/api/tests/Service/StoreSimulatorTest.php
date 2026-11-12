@@ -40,6 +40,20 @@ final class StoreSimulatorTest extends TestCase
         self::assertSame(['n' => 5], end($r['snapshots']));
     }
 
+    public function testReportsWhetherUntilWasReached(): void
+    {
+        $doc = ['data' => ['stores' => ['c' => [
+            'initial' => ['n' => 0],
+            'reducer' => '$action.type="inc" ? $merge([$state, {"n": $state.n + 1}]) : $state',
+        ]]]];
+        $reached = $this->simulator->simulate(['document' => $doc, 'store' => 'c', 'actions' => [['type' => 'inc', 'repeat' => 10]], 'until' => 'n >= 3']);
+        $missed = $this->simulator->simulate(['document' => $doc, 'store' => 'c', 'actions' => [['type' => 'inc', 'repeat' => 2]], 'until' => 'n >= 3']);
+
+        self::assertTrue($reached['untilReached']);
+        self::assertFalse($missed['untilReached']);
+        self::assertSame(2, $missed['finalState']['n']);
+    }
+
     public function testUnknownStoreIsReported(): void
     {
         $r = $this->simulator->simulate(['document' => ['data' => ['stores' => []]], 'store' => 'x', 'actions' => [['type' => 'a']]]);
