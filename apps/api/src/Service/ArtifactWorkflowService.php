@@ -313,8 +313,9 @@ final class ArtifactWorkflowService
         }
         if ($withData) {
             $out['input'] = $run->getInput();
-            // Le jeton n'est rendu que dans `waiting` (étape en cours).
-            $out['steps'] = array_map(static fn (array $s): array => array_diff_key($s, ['runToken' => true]), $steps);
+            // Le jeton (et l'URL qui le porte) n'est rendu que dans `waiting` (étape en cours) : jamais
+            // dans `steps`, ni pour une étape terminée.
+            $out['steps'] = array_map(static fn (array $s): array => array_diff_key($s, ['runToken' => true, 'url' => true, 'linkKey' => true]), $steps);
             $out['output'] = $run->getOutput();
         }
 
