@@ -103,9 +103,25 @@ Les runs `pending` expirés apparaissent avec le statut `expired`.
 `artifact.run.completed` et `artifact.run.failed` (statut `failed` ou `incomplete`), sur le jeu de
 l'artefact ; `data` = le run sérialisé.
 
-## Suite prévue
+### MCP Apps (hôtes IA)
 
-- Pont JSON-RPC MCP Apps (`io.modelcontextprotocol/ui`) : l'artefact affiché dans un hôte IA
-  (Claude, ChatGPT…) avec la même entrée / sortie.
-- Sorties binaires (assets) et jeton par run.
-- Format Standard Webhooks pour les signatures.
+`run_artifact` porte `_meta.ui.resourceUri = ui://tadaaa/artifact-runner` (extension
+`io.modelcontextprotocol/ui`, plus la clé plate `ui/resourceUri` pour les hôtes antérieurs).
+Un hôte qui affiche les MCP Apps (Claude, ChatGPT…) charge cette interface avec le résultat :
+
+- mode `embed` (ou `interactive`) : l'artefact est intégré dans la conversation via embed.js avec
+  le run (`data-run`, `data-run-token`, `data-key` pour un artefact « lien ») ; quand la personne a
+  terminé, le viewer publie la sortie sur l'API, puis l'interface la renvoie au modèle
+  (`ui/update-model-context` et `ui/message`) ;
+- mode `headless` : l'artefact est affiché avec la même entrée (`data-input`), rien n'est renvoyé.
+
+Le HTML vient de `apps/api/src/Mcp/Ui/artifact-runner.html` (origines du viewer et de l'API
+injectées par `ArtifactRunnerUiProcessor`) ; la CSP déclarée (`_meta.ui.csp`) liste le viewer,
+l'API, les assets et les CDN épinglés ; caméra, micro et presse-papiers sont demandés (l'hôte peut
+refuser). Un artefact privé ne peut pas être intégré. Smoke : `scripts/smoke-mcp-app.mjs` dans
+ladigitale/artifacts (hôte simulé).
+
+## Suite possible
+
+- Sorties binaires (assets) et format Standard Webhooks pour les signatures.
+- Expiration active des runs `pending` (webhook `artifact.run.failed` à l'échéance).
