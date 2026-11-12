@@ -36,7 +36,7 @@ final class PublicArtifactRunController extends AbstractController
     {
         $this->consumeRate($request);
         $response = $this->json(
-            $this->runs->publicGet($slug, $runId, $request->query->getString('rt')),
+            $this->runs->publicGet($slug, $runId, $request->query->getString('rt'), $request->getSchemeAndHttpHost()),
             200,
             [],
             ['preserve_empty_objects' => true],

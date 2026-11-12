@@ -150,6 +150,13 @@ final class ArtifactRunService
             }
         }
 
+        // Un gros contenu (image, jeu de gestes, données) passe par un asset de l'artefact : `@asset:<nom>` dans
+        // l'entrée, remplacé par son URL quand le viewer lit le run.
+        $missing = $this->artifacts->missingAssetRefs($artifact, $input);
+        if ($missing !== []) {
+            throw new BadRequestHttpException(sprintf('Entrée invalide : asset introuvable (%s) ; ajouter le fichier avec upload_artifact_asset.', implode(', ', array_map(static fn (string $n): string => '@asset:'.$n, $missing))));
+        }
+
         $run = new ArtifactRun($artifact, $version, $user, $mode, $input);
         $run->setIo($io);
         if ($workflowRun !== null && $workflowStep !== null) {
@@ -201,7 +208,7 @@ final class ArtifactRunService
      *
      * @return array<string, mixed>
      */
-    public function publicGet(string $slug, string $runId, string $token): array
+    public function publicGet(string $slug, string $runId, string $token, ?string $requestBaseUrl = null): array
     {
         $run = $this->requirePublicRun($slug, $runId, $token);
         $out = [
@@ -212,7 +219,8 @@ final class ArtifactRunService
             'expiresAt' => $run->getExpiresAt()?->format(\DateTimeInterface::ATOM),
         ];
         if ($out['status'] === ArtifactRun::STATUS_PENDING) {
-            $out['input'] = $run->getInput();
+            // Références @asset: de l'entrée résolues en URL, comme dans le document.
+            $out['input'] = $this->artifacts->expandAssetRefs($run->getArtifact(), $run->getInput(), $requestBaseUrl);
         }
 
         return $out;
