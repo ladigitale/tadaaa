@@ -57,20 +57,34 @@ d'entrée, seul réducteur exécuté.
 
 ## Exécution
 
-Mode headless (seul mode exécuté par l'API pour l'instant) : même moteur que `simulate_store`
-(sous-processus Node bridé : 8 s, 128 Mo, sans réseau ni fichiers). Le calcul doit donc vivre
-dans le réducteur JSONata ; ce qui dépend d'un composant (caméra, shader, ML…) relève des modes
-`interactive` / `embed`.
+Un run s'exécute toujours sur la **version en ligne** (celle que sert le viewer).
 
-Statuts : `completed` (sortie conforme), `incomplete` (`when` jamais vrai dans le budget de pas),
-`failed` (erreur du réducteur ou sortie non conforme).
+**headless** — même moteur que `simulate_store` (sous-processus Node bridé : 8 s, 128 Mo, sans
+réseau ni fichiers). Le calcul doit donc vivre dans le réducteur JSONata. Statut final immédiat :
+`completed` (sortie conforme), `incomplete` (`when` jamais vrai dans le budget de pas), `failed`
+(erreur du réducteur ou sortie non conforme).
+
+**interactive** — un humain fait l'étape (composants compris : caméra, dessin, formulaire…).
+Le run est créé `pending` avec un jeton (24 h, seule son empreinte est stockée) et une `url` du
+viewer portant `?run=<id>&rt=<jeton>`. Le viewer lit l'entrée, l'envoie au store, puis publie la
+sortie dès que `when` est vrai (sans `when` : au premier changement non vide de `from`). La sortie
+est validée par `output.schema` côté API ; un refus est affiché et la personne peut corriger.
+Un artefact privé ne s'ouvre que pour les membres connectés de son jeu.
+
+**embed** — comme interactive, dans une page hôte :
+`<artifact-embed slug="…" run="<runId>" run-token="<runToken>">` (ou `data-run` /
+`data-run-token` avec embed.js). Sans run serveur, `input='{…}'` (ou `data-input`) donne une
+entrée locale : rien n'est envoyé à l'API. Dans tous les cas la sortie est émise sur l'élément en
+événement DOM `artifact-output` (`detail` : `{output, runId, slug}`).
+
+Les runs `pending` expirés apparaissent avec le statut `expired`.
 
 ### MCP
 
 | Outil | Rôle |
 |-------|------|
 | `list_artifact_tools` | contrats des artefacts lisibles : `{slug, title, description, modes, inputSchema, outputSchema}` |
-| `run_artifact` | `{slug, input, mode?}` → `{runId, status, output, errors, metrics}` (aussi en `structuredContent`) |
+| `run_artifact` | `{slug, input, mode?}` → `{runId, status, output, errors, metrics}` ; en interactive / embed : `{runId, status: "pending", url?, runToken, expiresAt}` |
 | `get_artifact_run` | `{runId}` → run complet ; `{slug}` → derniers runs |
 
 ### API
@@ -81,6 +95,8 @@ Statuts : `completed` (sortie conforme), `incomplete` (`when` jamais vrai dans l
 | `POST /api/artifacts/{id}/runs` | `{"input": {…}, "mode": "headless"}` → run (201 si `completed`) |
 | `GET /api/artifacts/{id}/runs` | derniers runs (sans entrées ni sorties) |
 | `GET /api/artifacts/{id}/runs/{runId}` | run complet |
+| `GET /api/public/artifacts/{slug}/runs/{runId}?rt=` | viewer : statut et entrée d'un run `pending` (jeton du run) |
+| `POST /api/public/artifacts/{slug}/runs/{runId}/output` | viewer : `{"rt": "…", "output": …}` → run `completed` (409 si déjà terminé, 410 si expiré) |
 
 ### Webhooks
 
@@ -89,8 +105,7 @@ l'artefact ; `data` = le run sérialisé.
 
 ## Suite prévue
 
-- Modes `interactive` et `embed` : runs `pending`, URL signée portant le `runId`, entrée
-  dispatchée par le viewer, sortie publiée quand `when` devient vrai ; pont JSON-RPC MCP Apps
-  (`io.modelcontextprotocol/ui`) pour l'intégration et les hôtes IA.
+- Pont JSON-RPC MCP Apps (`io.modelcontextprotocol/ui`) : l'artefact affiché dans un hôte IA
+  (Claude, ChatGPT…) avec la même entrée / sortie.
 - Sorties binaires (assets) et jeton par run.
 - Format Standard Webhooks pour les signatures.

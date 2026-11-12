@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\ArtifactRun;
+use App\Entity\ArtifactVisibility;
 use App\Entity\User;
 use App\Repository\ArtifactRunRepository;
 use App\Webhook\WebhookEventType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\GoneHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Uid\Uuid;
 
@@ -72,8 +75,16 @@ final class ArtifactRunService
         return \is_array($document) ? ArtifactIo::describe($document) : null;
     }
 
+    /** Durée de validité d'un run interactif / intégré (jeton). */
+    public const PENDING_TTL = 'PT24H';
+
     /**
-     * Lance un run. `mode` vide = headless.
+     * Lance un run sur la version en ligne. `mode` vide = headless.
+     *
+     * - headless : exécuté tout de suite, statut final renvoyé ;
+     * - interactive : run `pending`, `url` du viewer portant le run et son jeton (24 h) ; la
+     *   sortie arrive quand la personne a terminé (get_artifact_run, webhook) ;
+     * - embed : run `pending`, `runToken` à passer à <artifact-embed run=… run-token=…>.
      *
      * @return array<string, mixed>
      */
@@ -83,13 +94,17 @@ final class ArtifactRunService
         if (!\in_array($mode, ArtifactIo::MODES, true)) {
             throw new BadRequestHttpException('mode : '.implode(', ', ArtifactIo::MODES).'.');
         }
-        $detail = $this->artifacts->getForUser($user, $idOrSlug);
+        $this->artifacts->getForUser($user, $idOrSlug);
+        $artifact = $this->artifacts->findArtifactEntity($idOrSlug);
+        // Un outil s'exécute sur ce que le viewer publie : la version en ligne.
+        $version = $artifact->getLiveVersion();
+        $detail = $this->artifacts->getForUser($user, $idOrSlug, $version);
         // Forme « wire » (les {} restent des objets) pour le réducteur, forme tableau pour lire io.
         $wire = ArtifactFiles::expand(json_decode((string) json_encode($detail['document'] ?? new \stdClass()), false));
         $document = json_decode((string) json_encode($wire), true);
         $io = \is_array($document) ? ($document['io'] ?? null) : null;
         if (!\is_array($io)) {
-            throw new BadRequestHttpException('Cet artefact ne déclare pas de contrat io (voir get_artifact_catalog rules=["io"]).');
+            throw new BadRequestHttpException('La version en ligne de cet artefact ne déclare pas de contrat io (voir get_artifact_catalog rules=["io"]).');
         }
         $declErrors = ArtifactIo::validateDeclaration($io, $document);
         if ($declErrors !== []) {
@@ -97,9 +112,6 @@ final class ArtifactRunService
         }
         if (!\in_array($mode, $io['modes'], true)) {
             throw new BadRequestHttpException(sprintf('Mode « %s » non déclaré par l’artefact (io.modes : %s).', $mode, implode(', ', $io['modes'])));
-        }
-        if ($mode !== 'headless') {
-            throw new BadRequestHttpException(sprintf('Le mode « %s » n’est pas encore exécutable par l’API : seul headless l’est pour l’instant.', $mode));
         }
 
         $input ??= new \stdClass();
@@ -110,15 +122,99 @@ final class ArtifactRunService
             }
         }
 
-        $artifact = $this->artifacts->findArtifactEntity($idOrSlug);
-        $run = new ArtifactRun($artifact, (int) ($detail['version'] ?? $artifact->getCurrentVersion()), $user, $mode, $input);
-        $this->executeHeadless($run, $wire, $io, $input);
+        $run = new ArtifactRun($artifact, $version, $user, $mode, $input);
+        $run->setIo($io);
+        $extra = [];
+        if ($mode === 'headless') {
+            $this->executeHeadless($run, $wire, $io, $input);
+        } else {
+            $token = $run->issueToken((new \DateTimeImmutable())->add(new \DateInterval(self::PENDING_TTL)));
+            $extra['runToken'] = $token;
+            if ($mode === 'interactive') {
+                $linkToken = $artifact->getVisibility() === ArtifactVisibility::Link ? $artifact->getLinkToken() : null;
+                $extra['url'] = self::withRunParams($this->artifacts->publicUrl($artifact->getSlug(), $linkToken), $run->getId()->toRfc4122(), $token);
+                if ($artifact->getVisibility() === ArtifactVisibility::Private) {
+                    $extra['note'] = 'Artefact privé : seuls les membres connectés de son jeu pourront ouvrir ce lien.';
+                }
+            }
+        }
 
         $this->em->persist($run);
         $this->em->flush();
-        $this->notify($run, $user);
+        if ($mode === 'headless') {
+            $this->notify($run, $user);
+        }
 
-        return $this->serialize($run);
+        return $this->serialize($run) + $extra;
+    }
+
+    /**
+     * Run vu par le viewer (jeton du run, sans compte) : entrée à envoyer au store si `pending`.
+     *
+     * @return array<string, mixed>
+     */
+    public function publicGet(string $slug, string $runId, string $token): array
+    {
+        $run = $this->requirePublicRun($slug, $runId, $token);
+        $out = [
+            'runId' => $run->getId()->toRfc4122(),
+            'slug' => $slug,
+            'mode' => $run->getMode(),
+            'status' => $run->isExpired() && $run->getStatus() === ArtifactRun::STATUS_PENDING ? 'expired' : $run->getStatus(),
+            'expiresAt' => $run->getExpiresAt()?->format(\DateTimeInterface::ATOM),
+        ];
+        if ($out['status'] === ArtifactRun::STATUS_PENDING) {
+            $out['input'] = $run->getInput();
+        }
+
+        return $out;
+    }
+
+    /**
+     * Sortie publiée par le viewer : validée par io.output.schema, run terminé, webhook.
+     *
+     * @return array<string, mixed>
+     */
+    public function publicComplete(string $slug, string $runId, string $token, mixed $output): array
+    {
+        $run = $this->requirePublicRun($slug, $runId, $token);
+        if ($run->getStatus() !== ArtifactRun::STATUS_PENDING) {
+            throw new ConflictHttpException('Ce run est déjà terminé.');
+        }
+        if ($run->isExpired()) {
+            throw new GoneHttpException('Ce run a expiré.');
+        }
+        $schema = $run->getIo()['output']['schema'] ?? null;
+        $errors = \is_array($schema) ? ArtifactIo::validateValue($schema, $output, '') : [];
+        if ($errors !== []) {
+            throw new BadRequestHttpException('Sortie non conforme : '.implode(' ', \array_slice($errors, 0, 5)));
+        }
+        $run->finish(ArtifactRun::STATUS_COMPLETED, $output);
+        $this->em->flush();
+        $this->notify($run, $run->getCreatedBy());
+
+        return ['runId' => $run->getId()->toRfc4122(), 'status' => $run->getStatus()];
+    }
+
+    private function requirePublicRun(string $slug, string $runId, string $token): ArtifactRun
+    {
+        $run = Uuid::isValid($runId) ? $this->runs->find(Uuid::fromString($runId)) : null;
+        if (!$run instanceof ArtifactRun || $run->getArtifact()->getSlug() !== $slug || !$run->matchesToken($token)) {
+            throw new NotFoundHttpException('Run introuvable.');
+        }
+
+        return $run;
+    }
+
+    private static function withRunParams(string $url, string $runId, string $token): string
+    {
+        $hash = '';
+        if (($pos = strpos($url, '#')) !== false) {
+            $hash = substr($url, $pos);
+            $url = substr($url, 0, $pos);
+        }
+
+        return $url.(str_contains($url, '?') ? '&' : '?').http_build_query(['run' => $runId, 'rt' => $token]).$hash;
     }
 
     /** @return array<string, mixed> */
@@ -174,7 +270,7 @@ final class ArtifactRunService
         $run->finish(ArtifactRun::STATUS_COMPLETED, $output, [], $metrics);
     }
 
-    private function notify(ArtifactRun $run, User $user): void
+    private function notify(ArtifactRun $run, ?User $user): void
     {
         $type = $run->getStatus() === ArtifactRun::STATUS_COMPLETED ? WebhookEventType::ARTIFACT_RUN_COMPLETED : WebhookEventType::ARTIFACT_RUN_FAILED;
         $this->webhooks->dispatch($run->getArtifact()->getDataset(), $type, $this->serialize($run), $user);
@@ -199,9 +295,10 @@ final class ArtifactRunService
             'slug' => $run->getArtifact()->getSlug(),
             'version' => $run->getArtifactVersion(),
             'mode' => $run->getMode(),
-            'status' => $run->getStatus(),
+            'status' => $run->getStatus() === ArtifactRun::STATUS_PENDING && $run->isExpired() ? 'expired' : $run->getStatus(),
             'createdAt' => $run->getCreatedAt()->format(\DateTimeInterface::ATOM),
             'completedAt' => $run->getCompletedAt()?->format(\DateTimeInterface::ATOM),
+            'expiresAt' => $run->getExpiresAt()?->format(\DateTimeInterface::ATOM),
             'errors' => $run->getErrors(),
             'metrics' => (object) $run->getMetrics(),
         ];
