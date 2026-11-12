@@ -86,13 +86,47 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return output;
 }
 
+const SW_READY_TIMEOUT_MS = 5_000;
+
+/**
+ * `navigator.serviceWorker.ready` never settles when no worker was registered
+ * (e.g. dev hosts excluded by register.ts) — bound the wait so probes don't hang.
+ */
 async function getRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (!("serviceWorker" in navigator)) return null;
   try {
-    return await navigator.serviceWorker.ready;
+    const existing = await navigator.serviceWorker.getRegistration();
+    if (existing?.active) return existing;
+    return await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), SW_READY_TIMEOUT_MS),
+      ),
+    ]);
   } catch {
     return null;
   }
+}
+
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+/**
+ * A subscription is bound to the VAPID key it was created with. After a key
+ * rotation, push services reject every send (403) — detect and resubscribe.
+ */
+function subscriptionMatchesKey(
+  subscription: PushSubscription,
+  publicKey: string,
+): boolean {
+  const current = subscription.options?.applicationServerKey;
+  if (!current) return true; // Unknown (older browsers): keep it.
+  return sameBytes(new Uint8Array(current), urlBase64ToUint8Array(publicKey));
 }
 
 function baseStatus(
@@ -334,8 +368,17 @@ export async function subscribeServerPush(): Promise<boolean> {
     let subscription = await registration.pushManager.getSubscription();
     if (subscription) {
       const json = subscription.toJSON();
-      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+      if (
+        !json.endpoint ||
+        !json.keys?.p256dh ||
+        !json.keys?.auth ||
+        !subscriptionMatchesKey(subscription, publicKey)
+      ) {
+        const staleEndpoint = subscription.endpoint;
         await subscription.unsubscribe().catch(() => undefined);
+        if (staleEndpoint) {
+          await revokePushSubscription(staleEndpoint).catch(() => undefined);
+        }
         subscription = null;
       }
     }
