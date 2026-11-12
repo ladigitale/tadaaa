@@ -124,12 +124,19 @@ final class ArtifactRunService
 
         $run = new ArtifactRun($artifact, $version, $user, $mode, $input);
         $run->setIo($io);
-        $extra = [];
+        $extra = ['title' => \is_string($io['title'] ?? null) ? $io['title'] : $artifact->getTitle()];
         if ($mode === 'headless') {
             $this->executeHeadless($run, $wire, $io, $input);
         } else {
             $token = $run->issueToken((new \DateTimeImmutable())->add(new \DateInterval(self::PENDING_TTL)));
             $extra['runToken'] = $token;
+            $linkKey = $artifact->getVisibility() === ArtifactVisibility::Link ? $artifact->getLinkToken() : null;
+            if ($mode === 'embed' && $linkKey !== null) {
+                $extra['linkKey'] = $linkKey;
+            }
+            if ($mode === 'embed' && $artifact->getVisibility() === ArtifactVisibility::Private) {
+                $extra['note'] = 'Artefact privé : une intégration ne peut pas l’afficher (passer l’artefact en « lien » ou « public »).';
+            }
             if ($mode === 'interactive') {
                 $linkToken = $artifact->getVisibility() === ArtifactVisibility::Link ? $artifact->getLinkToken() : null;
                 $extra['url'] = self::withRunParams($this->artifacts->publicUrl($artifact->getSlug(), $linkToken), $run->getId()->toRfc4122(), $token);

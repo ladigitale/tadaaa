@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Artefact</title>
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; font-family: system-ui, sans-serif; }
+  #msg { margin: 0; padding: 12px 14px; font-size: 14px; opacity: .75; }
+  #msg[data-kind="error"] { opacity: 1; color: #b42318; }
+  #app:empty { display: none; }
+</style>
+</head>
+<body>
+<p id="msg" role="status">Chargement de l’artefact…</p>
+<div id="app"></div>
+<script>
+/*
+ * Interface MCP Apps (io.modelcontextprotocol/ui) de run_artifact.
+ * L'hôte envoie l'appel (tool-input) puis son résultat (tool-result) ; on intègre l'artefact avec
+ * embed.js du viewer : run serveur (mode embed / interactive : runId + runToken) ou entrée locale
+ * (headless : simple rendu). La sortie du run (événement artifact-output) est publiée par le
+ * viewer sur l'API, puis renvoyée au modèle (ui/update-model-context + ui/message).
+ */
+(function () {
+  "use strict";
+  var ARTIFACTS_ORIGIN = "__ARTIFACTS_ORIGIN__";
+  var API_ORIGIN = "__API_ORIGIN__";
+  var PROTOCOL_VERSION = "2026-01-26";
+
+  var nextId = 1;
+  var pending = {};
+  var toolInput = null;
+  var mounted = false;
+  var theme = "";
+  var msg = document.getElementById("msg");
+  var app = document.getElementById("app");
+
+  function post(message) {
+    window.parent.postMessage(message, "*");
+  }
+  function request(method, params) {
+    var id = nextId++;
+    post({jsonrpc: "2.0", id: id, method: method, params: params || {}});
+    return new Promise(function (resolve, reject) {
+      pending[id] = {resolve: resolve, reject: reject};
+    });
+  }
+  function notify(method, params) {
+    post({jsonrpc: "2.0", method: method, params: params || {}});
+  }
+  function respond(id, result) {
+    post({jsonrpc: "2.0", id: id, result: result || {}});
+  }
+  function say(text, kind) {
+    msg.textContent = text;
+    msg.hidden = !text;
+    if (kind) msg.setAttribute("data-kind", kind);
+    else msg.removeAttribute("data-kind");
+  }
+
+  window.addEventListener("message", function (event) {
+    if (event.source !== window.parent) return;
+    var m = event.data;
+    if (!m || m.jsonrpc !== "2.0") return;
+    if (m.id != null && !m.method) {
+      var p = pending[m.id];
+      if (!p) return;
+      delete pending[m.id];
+      if (m.error) p.reject(m.error);
+      else p.resolve(m.result);
+      return;
+    }
+    var params = m.params || {};
+    switch (m.method) {
+      case "ui/notifications/tool-input":
+        toolInput = params.arguments || {};
+        break;
+      case "ui/notifications/tool-result":
+        onToolResult(params);
+        break;
+      case "ui/notifications/tool-cancelled":
+        say("Appel annulé.");
+        break;
+      case "ui/notifications/host-context-changed":
+        applyHostContext(params);
+        break;
+      case "ui/resource-teardown":
+      case "ping":
+        if (m.id != null) respond(m.id, {});
+        break;
+      default:
+        if (m.id != null) post({jsonrpc: "2.0", id: m.id, error: {code: -32601, message: "Méthode inconnue"}});
+    }
+  });
+
+  function applyHostContext(ctx) {
+    if (ctx && (ctx.theme === "dark" || ctx.theme === "light")) {
+      theme = ctx.theme === "dark" ? "dark" : "";
+      var el = app.querySelector("artifact-embed");
+      if (el) {
+        if (theme) el.setAttribute("theme", theme);
+        else el.removeAttribute("theme");
+      }
+    }
+  }
+
+  function onToolResult(result) {
+    if (mounted) return;
+    var sc = result && result.structuredContent;
+    if (!sc || typeof sc.slug !== "string") {
+      say(result && result.isError ? "L’exécution a échoué." : "Rien à afficher pour ce résultat.", result && result.isError ? "error" : "");
+      return;
+    }
+    if (sc.mode === "headless" || !sc.runToken) {
+      // Résultat déjà calculé : on montre l'artefact avec la même entrée, sans rien renvoyer.
+      mount(sc, null, toolInput && toolInput.input);
+      say(sc.status === "completed" ? "" : "Exécution : " + sc.status + (sc.errors && sc.errors.length ? " — " + sc.errors[0] : ""), sc.status === "failed" ? "error" : "");
+      return;
+    }
+    mount(sc, {id: sc.runId, token: sc.runToken}, null);
+    say("");
+  }
+
+  function mount(sc, run, localInput) {
+    mounted = true;
+    var script = document.createElement("script");
+    script.src = ARTIFACTS_ORIGIN + "/embed.js";
+    script.async = true;
+    script.setAttribute("data-artifact", sc.slug);
+    script.setAttribute("data-target", "#app");
+    script.setAttribute("data-open-link", "false");
+    if (API_ORIGIN) script.setAttribute("data-api", API_ORIGIN);
+    if (sc.linkKey) script.setAttribute("data-key", sc.linkKey);
+    if (theme) script.setAttribute("data-theme", theme);
+    if (run) {
+      script.setAttribute("data-run", run.id);
+      script.setAttribute("data-run-token", run.token);
+    } else if (localInput !== undefined && localInput !== null) {
+      script.setAttribute("data-input", JSON.stringify(localInput));
+    }
+    script.onerror = function () {
+      say("Impossible de charger le viewer Artefacts (" + ARTIFACTS_ORIGIN + ").", "error");
+    };
+    document.body.appendChild(script);
+    if (run) {
+      app.addEventListener("artifact-output", function (e) {
+        var d = e.detail || {};
+        if (d.runId !== run.id) return;
+        sendOutput(sc, d.output);
+      });
+    }
+  }
+
+  function sendOutput(sc, output) {
+    var json = JSON.stringify(output);
+    var text = "Résultat de l’artefact « " + (sc.title || sc.slug) + " » (run " + sc.runId + ") : " + json;
+    request("ui/update-model-context", {
+      content: [{type: "text", text: text}],
+      structuredContent: {runId: sc.runId, slug: sc.slug, status: "completed", output: output},
+    }).catch(function () {});
+    request("ui/message", {role: "user", content: {type: "text", text: text}}).catch(function () {});
+  }
+
+  // Taille : seulement après l'initialisation (rien n'est envoyé à l'hôte avant).
+  function watchSize() {
+    if (typeof ResizeObserver === "function") {
+      var last = "";
+      new ResizeObserver(function () {
+        var r = document.documentElement.getBoundingClientRect();
+        var key = Math.ceil(r.width) + "x" + Math.ceil(r.height);
+        if (key === last) return;
+        last = key;
+        notify("ui/notifications/size-changed", {width: Math.ceil(r.width), height: Math.ceil(r.height)});
+      }).observe(document.documentElement);
+    }
+  }
+
+  request("ui/initialize", {
+    protocolVersion: PROTOCOL_VERSION,
+    appCapabilities: {availableDisplayModes: ["inline", "fullscreen"]},
+    clientInfo: {name: "tadaaa-artifact-runner", version: "1.0.0"},
+  }).then(function (res) {
+    applyHostContext((res && res.hostContext) || {});
+    notify("ui/notifications/initialized", {});
+    watchSize();
+  }, function () {
+    say("Hôte MCP Apps indisponible.", "error");
+  });
+})();
+</script>
+</body>
+</html>
