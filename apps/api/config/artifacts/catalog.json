@@ -4166,6 +4166,37 @@
       "description": "Palette d'harmonie : base (#rrggbb), rule mono|analogous|complementary|split|triadic|tetradic|square|custom (palette libre : colors, liste JSON ou #a, #b… ou params.colors, 12 au plus ; random / rotate en tournent toutes les teintes, write-base les écrit dans params.colors), count 1..12 (0 = nombre de teintes de la règle, puis nuances plus claires / plus sombres), spread (° des teintes voisines), step (écart de clarté des nuances) ; pastilles cliquables (direction row|column|grid, columns, shape circle|square, swatch-size ; flèches au clavier) : le choix part vers un store comme sonic-action (target, action défaut set, key défaut color, payload JSON ajouté) ; selected = rang choisi au départ, follow (défaut vrai) renvoie la couleur au même rang quand la palette change ; headless = calcul seul ; params {base, rule, colors, count, spread, step, selected} en direct ; control {random, rotate} compteurs (teinte au hasard, +30°) ; write-base (la base tirée par random / rotate est aussi écrite dans params, action set : toute la palette tient dans ce store, enregistrable) ; état {base, rule, count, spread, step, colors[], items[{hex, hue, l, c, role base|harmony|shade|custom}], selected, selectedIndex}"
     },
     {
+      "name": "sonic-palette-editor",
+      "props": {
+        "params": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "colors": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "rule": {
+          "type": "string"
+        },
+        "save-to": {
+          "type": "string"
+        },
+        "save-action": {
+          "type": "string"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "color",
+      "description": "Éditeur de palette (modale de configuration) : bande des couleurs (clic = sélection, cadenas = verrou, + = ajouter), carré clarté × saturation OKLCH à la teinte courante et bande des teintes (glisser ou flèches), code hex, nombre 1..12, nom ; aide d'harmonie : règle (mono|analogous|complementary|split|triadic|tetradic|square) et bouton Proposer qui remplit les couleurs non verrouillées (la 1re verrouillée sert de base, sinon la sélectionnée ; chaque demande donne une variante). params = dp ou dp.clé d'un objet {id, name, colors, locked, rule} (rechargé quand il change) ; colors / name / rule en attributs sans params ; control {suggest, save, add, remove} compteurs ; save envoie {type: save-action (défaut savePalette), payload: {id, name, colors}} au store save-to ; état out-data-provider {id, name, colors, locked, count, selected, rule, lockedCount}"
+    },
+    {
       "name": "sonic-pan",
       "props": {
         "name": {
@@ -7354,5 +7385,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); color (sonic-palette); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; markdown (sonic-markdown); media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; scroll (sonic-scroll); shader (sonic-shader); sketch (sonic-sketch, sonic-sketch-guide); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); color (sonic-palette, sonic-palette-editor); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; markdown (sonic-markdown); media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; scroll (sonic-scroll); shader (sonic-shader); sketch (sonic-sketch, sonic-sketch-guide); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
