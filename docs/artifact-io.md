@@ -86,7 +86,8 @@ Statuts d'un run : `completed`, `incomplete`, `failed` (headless) ; `pending` pu
 garde ces objets (ex. `ioFSvg`, `ioFPng`) et passe `when` à vrai quand les deux sont là ;
 `output.files` les désigne (`{"dessin": "store.ioFSvg"}`). Un dessin de départ donné en entrée
 (texte SVG) se lit avec `sonic-vectorize svg-from="store.cle" keep-colors auto`, branché sur
-l'`import-from` du dessin. Exemple : Abysse (`abysse-zoom-infini`).
+l'`import-from` du dessin ; pour *peindre* au lieu d'importer, `gestures-from="store.cle"` rejoue
+des traits de pinceau (pression, fusion, gomme) donnés en entrée. Exemple : Abysse (`abysse-zoom-infini`).
 
 **Fichiers de sortie** — avant la sortie, le viewer envoie chaque fichier de `output.files`
 (`<clé>.<ext>`) ; le run les liste dans `files` (`{name, contentType, sizeBytes, sha256, url}`),
