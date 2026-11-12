@@ -65,6 +65,17 @@ class ArtifactRun
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $completedAt = null;
 
+    /** Contrat `io` de la version exécutée (validation de la sortie publiée par le viewer). */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $io = null;
+
+    /** Empreinte SHA-256 du jeton de run (modes interactive / embed) ; le jeton n'est jamais stocké. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $tokenHash = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $expiresAt = null;
+
     public function __construct(Artifact $artifact, int $artifactVersion, ?User $createdBy, string $mode, mixed $input)
     {
         $this->id = Uuid::v7();
@@ -136,6 +147,43 @@ class ArtifactRun
     public function getCompletedAt(): ?\DateTimeImmutable
     {
         return $this->completedAt;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function getIo(): ?array
+    {
+        return $this->io;
+    }
+
+    /** @param array<string, mixed> $io */
+    public function setIo(array $io): void
+    {
+        $this->io = $io;
+    }
+
+    public function getExpiresAt(): ?\DateTimeImmutable
+    {
+        return $this->expiresAt;
+    }
+
+    public function isExpired(?\DateTimeImmutable $now = null): bool
+    {
+        return $this->expiresAt !== null && $this->expiresAt <= ($now ?? new \DateTimeImmutable());
+    }
+
+    /** Crée le jeton du run (rendu une seule fois) et fixe son expiration. */
+    public function issueToken(\DateTimeImmutable $expiresAt): string
+    {
+        $token = rtrim(strtr(base64_encode(random_bytes(24)), '+/', '-_'), '=');
+        $this->tokenHash = hash('sha256', $token);
+        $this->expiresAt = $expiresAt;
+
+        return $token;
+    }
+
+    public function matchesToken(string $token): bool
+    {
+        return $this->tokenHash !== null && $token !== '' && hash_equals($this->tokenHash, hash('sha256', $token));
     }
 
     /**

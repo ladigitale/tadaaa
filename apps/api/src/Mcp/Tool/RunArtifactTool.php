@@ -12,11 +12,13 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
 #[McpTool(
     name: 'run_artifact',
     description: <<<'DESC'
-Exécute un artefact qui déclare un contrat `io` (artefact utilisé comme outil) : `id` ou `slug`, `input` (objet conforme à io.input.schema), `mode` (défaut headless, seul mode exécuté par l'API pour l'instant).
+Exécute la version en ligne d'un artefact qui déclare un contrat `io` (artefact utilisé comme outil) : `id` ou `slug`, `input` (objet conforme à io.input.schema), `mode` (défaut headless ; doit figurer dans io.modes).
 
-Headless : l'entrée est envoyée au store d'entrée comme action `io:input` (ou io.input.action), le réducteur JSONata tourne sans navigateur (actions de io.headless rejouées ensuite) jusqu'à io.output.when, puis la sortie est lue dans io.output.from et validée par io.output.schema.
+- headless : l'entrée est envoyée au store d'entrée comme action `io:input` (ou io.input.action), le réducteur JSONata tourne sans navigateur (actions de io.headless rejouées ensuite) jusqu'à io.output.when ; la sortie est lue dans io.output.from et validée par io.output.schema. Statut final immédiat : completed | incomplete | failed.
+- interactive : un humain fait l'étape. Renvoie `{runId, status: "pending", url, runToken, expiresAt}` : donner `url` à la personne ; le viewer envoie l'entrée au store, puis publie la sortie quand io.output.when devient vrai. Suivre avec get_artifact_run (ou le webhook artifact.run.completed). Valable 24 h.
+- embed : comme interactive, pour une page hôte : `<artifact-embed slug="…" run="<runId>" run-token="<runToken>">` ; la sortie est aussi émise en événement DOM `artifact-output`.
 
-Retourne `{runId, status: completed|incomplete|failed, output, errors, metrics}` ; le run est enregistré (get_artifact_run) et déclenche les webhooks artifact.run.completed / artifact.run.failed. Contrats disponibles : list_artifact_tools.
+Le run est enregistré (get_artifact_run) et déclenche les webhooks artifact.run.completed / artifact.run.failed. Contrats disponibles : list_artifact_tools.
 DESC,
     processor: ArtifactMcpProcessor::class,
 )]
