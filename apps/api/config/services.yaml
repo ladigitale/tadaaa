@@ -46,12 +46,21 @@ parameters:
     env(AGENT_LLM_MODEL): 'claude-sonnet-5-5'
     env(AGENT_LLM_MAX_TOKENS): '16000'
     env(AGENT_LLM_BASE_URL): 'https://api.anthropic.com'
+    # Mise à jour prod via MCP (super admin) : répertoire partagé avec le runner hôte, vide = désactivé.
+    env(OPS_DIR): ''
+    # E-mails (virgules) des comptes ROLE_ADMIN autorisés à déclencher update-prod ; vide = personne.
+    env(OPS_DEPLOY_USERS): ''
 
 services:
     # default configuration for services in *this* file
     _defaults:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    App\Service\ProdDeploy:
+        arguments:
+            $opsDir: '%env(OPS_DIR)%'
+            $allowedUsers: '%env(OPS_DEPLOY_USERS)%'
 
     App\Service\ArtifactFileFetcher:
         arguments:
