@@ -6115,6 +6115,9 @@
         },
         "simulate-pressure": {
           "type": "boolean"
+        },
+        "no-tiles": {
+          "type": "boolean"
         }
       },
       "addon": "sketch",
