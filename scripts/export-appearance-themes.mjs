@@ -69,7 +69,8 @@ const labels = {
   "cafe": "Café",
   "lavande": "Lavande",
   "crepuscule": "Crépuscule",
-  "encre": "Encre"
+  "encre": "Encre",
+  "affiche": "Affiche"
 };
 
 const fontsCssUrl = extractFontUrl(appCss);

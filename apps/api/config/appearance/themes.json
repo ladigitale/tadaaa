@@ -1,10 +1,15 @@
 {
   "version": 1,
   "defaultThemeId": "default",
-  "fontsCssUrl": "https://fonts.googleapis.com/css2?family=Bangers&family=Barlow:wght@400;500;600;700&family=Bebas+Neue&family=Cabin:wght@400;500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Comic+Neue:wght@400;700&family=DM+Sans:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Josefin+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Mochiy+Pop+One&family=Monoton&family=Outfit:wght@400;500;600;700&family=Oxanium:wght@500;600;700&family=Poiret+One&family=Public+Sans:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Rowdies:wght@400;700&family=Share+Tech+Mono&family=Sora:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Teko:wght@500;600;700&family=Unbounded:wght@500;600;700&family=VT323&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap",
+  "fontsCssUrl": "https://fonts.googleapis.com/css2?family=Bangers&family=Barlow:wght@400;500;600;700&family=Bebas+Neue&family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Cabin:wght@400;500;600;700&family=Chakra+Petch:wght@400;500;600;700&family=Comic+Neue:wght@400;700&family=DM+Sans:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Josefin+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Mochiy+Pop+One&family=Monoton&family=Outfit:wght@400;500;600;700&family=Oxanium:wght@500;600;700&family=Poiret+One&family=Public+Sans:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Rowdies:wght@400;700&family=Share+Tech+Mono&family=Sora:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Teko:wght@500;600;700&family=Unbounded:wght@500;600;700&family=VT323&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap",
   "shell": {
     "contentMaxWidth": "72rem",
     "menuPosition": "start"
+  },
+  "icons": {
+    "library": "custom",
+    "path": "https://cdn.jsdelivr.net/npm/iconoir@7.10.1/icons/$prefix/$name.svg",
+    "defaultPrefix": "regular"
   },
   "themes": {
     "default": {
@@ -484,11 +489,43 @@
         "--sc-font-family-headings": "\"Unbounded\", ui-sans-serif, sans-serif",
         "--sc-headings-font-family": "var(--sc-font-family-headings)"
       }
+    },
+    "affiche": {
+      "id": "affiche",
+      "label": "Affiche",
+      "dark": false,
+      "vars": {
+        "--sc-base": "#fffdf7",
+        "--sc-base-content": "#17130e",
+        "--sc-base-50": "#f3ede1",
+        "--sc-base-100": "#e6dece",
+        "--sc-base-200": "#d2c8b4",
+        "--sc-base-300": "#b0a48e",
+        "--sc-base-400": "#857a66",
+        "--sc-base-500": "#5f5647",
+        "--sc-base-600": "#453e33",
+        "--sc-base-700": "#2e2922",
+        "--sc-base-800": "#1f1b16",
+        "--sc-base-900": "#17130e",
+        "--sc-primary": "#17130e",
+        "--sc-primary-content": "#fffdf7",
+        "--sc-accent": "#d7f23f",
+        "--sc-accent-content": "#17130e",
+        "--sc-info": "#2b6fd6",
+        "--sc-info-content": "#ffffff",
+        "--sc-success": "#1f8a4c",
+        "--sc-success-content": "#ffffff",
+        "--sc-warning": "#e08a00",
+        "--sc-warning-content": "#1c1100",
+        "--sc-danger": "#d92d20",
+        "--sc-danger-content": "#ffffff",
+        "--sc-rounded": "0.2rem",
+        "--sc-btn-rounded": "0.2rem",
+        "--sc-border-width": "1.5px",
+        "--sc-font-family-base": "\"DM Sans\", ui-sans-serif, sans-serif",
+        "--sc-font-family-headings": "\"Bricolage Grotesque\", ui-sans-serif, sans-serif",
+        "--sc-headings-font-family": "var(--sc-font-family-headings)"
+      }
     }
-  },
-  "icons": {
-    "library": "custom",
-    "path": "https://cdn.jsdelivr.net/npm/iconoir@7.10.1/icons/$prefix/$name.svg",
-    "defaultPrefix": "regular"
   }
 }
