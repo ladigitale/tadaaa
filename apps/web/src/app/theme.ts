@@ -128,8 +128,8 @@ export const APP_THEMES: AppThemeMeta[] = [
   {
     id: "affiche",
     label: "Affiche",
-    description: "Warm paper, ink, acid accent · Bricolage Grotesque",
-    swatches: ["#f3ede1", "#17130e", "#d7f23f"],
+    description: "Warm paper, ink, acid accent, candy shapes · Bricolage Grotesque",
+    swatches: ["#f3ede1", "#d7f23f", "#ff5fa2"],
     dark: false,
   },
 ];
