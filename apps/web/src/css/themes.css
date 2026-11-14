@@ -435,8 +435,9 @@ html[data-theme="encre"] sonic-theme {
   --sc-headings-font-family: var(--sc-font-family-headings);
 }
 
-/* Affiche : papier chaud, encre, accent acide. Le primaire est l'encre (ni bleu ni rouge,
-   pour ne pas se confondre avec info et danger) ; `--sc-accent` porte les rehauts. */
+/* Affiche : papier chaud, encre, accent acide, formes rondes. Le primaire est l'encre (ni bleu
+   ni rouge, pour ne pas se confondre avec info et danger) ; `--sc-accent` porte les rehauts et
+   `--sc-deco-1..4` les aplats décoratifs (rose, turquoise, jaune, orange), jamais du sens. */
 html[data-theme="affiche"],
 html[data-theme="affiche"] sonic-theme {
   color-scheme: light;
@@ -456,6 +457,11 @@ html[data-theme="affiche"] sonic-theme {
   --sc-primary-content: #fffdf7;
   --sc-accent: #d7f23f;
   --sc-accent-content: #17130e;
+  --sc-deco-1: #ff5fa2;
+  --sc-deco-2: #19d3c5;
+  --sc-deco-3: #ffd23f;
+  --sc-deco-4: #ff8a3d;
+  --sc-deco-content: #17130e;
   --sc-info: #2b6fd6;
   --sc-info-content: #ffffff;
   --sc-success: #1f8a4c;
@@ -464,9 +470,9 @@ html[data-theme="affiche"] sonic-theme {
   --sc-warning-content: #1c1100;
   --sc-danger: #d92d20;
   --sc-danger-content: #ffffff;
-  --sc-rounded: 0.2rem;
-  --sc-btn-rounded: 0.2rem;
-  --sc-border-width: 1.5px;
+  --sc-rounded: 0.9rem;
+  --sc-btn-rounded: 9999px;
+  --sc-border-width: 2px;
   --sc-font-family-base: "DM Sans", ui-sans-serif, sans-serif;
   --sc-font-family-headings: "Bricolage Grotesque", ui-sans-serif, sans-serif;
   --sc-headings-font-family: var(--sc-font-family-headings);
