@@ -409,6 +409,12 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "account.register_submit": "Create account",
     "account.register_intro":
       "Create a cloud account to sync this browser’s data.",
+    "account.register_intro_sister":
+      "Create your account to use {app}. It is a Tadaaa account: one email, one password.",
+    "account.register_hint_sister":
+      "We email you a confirmation link. Open it and you land straight in {app}, signed in.",
+    "account.register_pending_sister":
+      "Check your inbox: the confirmation link takes you straight into {app}.",
     "account.go_login": "Already have an account? Sign in",
     "account.go_register": "Need an account? Create one",
     "account.cta.need":
@@ -1272,6 +1278,12 @@ export const MESSAGES: Record<AppLocale, WordingCatalog> = {
     "account.register_submit": "Créer mon compte",
     "account.register_intro":
       "Créez un compte cloud pour synchroniser les données de ce navigateur.",
+    "account.register_intro_sister":
+      "Créez votre compte pour utiliser {app}. C’est un compte Tadaaa : un email, un mot de passe.",
+    "account.register_hint_sister":
+      "Un lien de confirmation est envoyé par email. Ouvrez-le : vous arrivez directement dans {app}, connecté.",
+    "account.register_pending_sister":
+      "Regardez vos emails : le lien de confirmation vous amène directement dans {app}.",
     "account.go_login": "Déjà un compte ? Se connecter",
     "account.go_register": "Pas encore de compte ? En créer un",
     "account.cta.need":

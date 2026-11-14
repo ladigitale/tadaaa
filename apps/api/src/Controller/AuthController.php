@@ -114,7 +114,7 @@ final class AuthController extends AbstractController
         $this->entityManager->flush();
 
         try {
-            $this->accountMailer->sendEmailVerification($user, $rawToken);
+            $this->accountMailer->sendEmailVerification($user, $rawToken, $input->returnTo);
         } catch (\Throwable) {
             // Account exists; user can resend. Avoid leaking mailer failures as 500 with secrets.
             return $this->json([
@@ -184,7 +184,7 @@ final class AuthController extends AbstractController
         $rawToken = $this->issueEmailVerifyToken($user);
         $this->entityManager->flush();
         try {
-            $this->accountMailer->sendEmailVerification($user, $rawToken);
+            $this->accountMailer->sendEmailVerification($user, $rawToken, $input->returnTo);
         } catch (\Throwable) {
             // swallow
         }
