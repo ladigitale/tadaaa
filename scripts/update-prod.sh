@@ -143,9 +143,17 @@ api_host="${API_SERVER_NAME:-}"
 
 if [[ "$DO_PULL" -eq 1 ]]; then
   need_cmd git
+  script_before="$(git rev-parse HEAD:scripts/update-prod.sh 2>/dev/null || true)"
   info "git pull --ff-only…"
   git pull --ff-only
   ok "Git up to date."
+  # Bash lit ce fichier au fil de l'exécution : après un pull qui le modifie, on relance la
+  # nouvelle version (une seule fois) au lieu de finir avec l'ancienne.
+  script_after="$(git rev-parse HEAD:scripts/update-prod.sh 2>/dev/null || true)"
+  if [[ -z "${UPDATE_PROD_REEXEC:-}" && "$script_before" != "$script_after" ]]; then
+    info "update-prod.sh a changé : relance avec la nouvelle version…"
+    UPDATE_PROD_REEXEC=1 exec bash "$ROOT/scripts/update-prod.sh" "$@"
+  fi
 fi
 
 info "Ensuring new .env defaults (mail, quotas, …)…"
@@ -182,6 +190,9 @@ ensure_sibling_git() {
   local dir="$1" url="$2" name="$3"
   if [[ -d "$dir/.git" ]]; then
     if [[ "$DO_PULL" -eq 1 ]]; then
+      # Le build régénère le routeur (ordre des routes propre à la machine) : sans ce retour à
+      # la version suivie, un commit qui touche ce fichier bloque le pull.
+      git -C "$dir" checkout -- src/app/routes/router.ts 2>/dev/null || true
       info "git pull $name…"
       git -C "$dir" pull --ff-only
     fi
