@@ -23,6 +23,9 @@ final class ArtifactService
 {
     private const SLUG_PATTERN = '/^[a-z0-9][a-z0-9-]{2,63}$/';
 
+    /** Chemins du viewer Artefacts (routes et fichiers statiques) : jamais des slugs. */
+    public const RESERVED_SLUGS = ['admin', 'cloud', 'demarrer', 'embed', 'assets'];
+
     public function __construct(
         private readonly ArtifactRepository $artifacts,
         private readonly ArtifactVersionRepository $versions,
@@ -177,7 +180,7 @@ final class ArtifactService
             if (!preg_match(self::SLUG_PATTERN, $slug)) {
                 throw new BadRequestHttpException('slug invalide.');
             }
-            if ($this->artifacts->slugExists($slug, $artifact)) {
+            if (\in_array($slug, self::RESERVED_SLUGS, true) || $this->artifacts->slugExists($slug, $artifact)) {
                 throw new BadRequestHttpException('slug déjà utilisé.');
             }
             $artifact->setSlug($slug);
@@ -695,7 +698,7 @@ final class ArtifactService
             if (!preg_match(self::SLUG_PATTERN, $slug)) {
                 throw new BadRequestHttpException('slug invalide (^[a-z0-9][a-z0-9-]{2,63}$).');
             }
-            if ($this->artifacts->slugExists($slug)) {
+            if (\in_array($slug, self::RESERVED_SLUGS, true) || $this->artifacts->slugExists($slug)) {
                 throw new BadRequestHttpException('slug déjà utilisé.');
             }
 
@@ -708,7 +711,7 @@ final class ArtifactService
         }
         $candidate = $base;
         $i = 0;
-        while ($this->artifacts->slugExists($candidate)) {
+        while (\in_array($candidate, self::RESERVED_SLUGS, true) || $this->artifacts->slugExists($candidate)) {
             $suffix = substr(bin2hex(random_bytes(2)), 0, 4);
             $candidate = substr($base, 0, 58).'-'.$suffix;
             if (++$i > 20) {

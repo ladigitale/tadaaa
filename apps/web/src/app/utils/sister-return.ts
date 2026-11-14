@@ -51,3 +51,21 @@ export function isAllowedSisterReturnUrl(url: string): boolean {
     return false;
   }
 }
+
+const SISTER_APP_NAMES: Record<string, string> = {
+  artifacts: "Artefacts",
+  belts: "Ceintures",
+  glane: "Glane",
+};
+
+/** Nom lisible de l'app sœur visée par l'adresse de retour ("" si aucune ou non autorisée). */
+export function sisterAppName(returnTo = readSisterReturnTo()): string {
+  if (!returnTo || !isAllowedSisterReturnUrl(returnTo)) return "";
+  try {
+    const host = new URL(returnTo).hostname;
+    const label = host.split(".")[0] ?? "";
+    return SISTER_APP_NAMES[label] ?? host;
+  } catch {
+    return "";
+  }
+}

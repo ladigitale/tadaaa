@@ -13,7 +13,7 @@ import {
   loadAccountSettings,
   type AccountSettings,
 } from "../account-settings";
-import {tx} from "../i18n";
+import {tf, tx} from "../i18n";
 import {
   checkCloudApiHealth,
   refreshAccountSession,
@@ -33,6 +33,11 @@ import {
   navigateAfterAuth,
 } from "../utils/pending-invite";
 import {navigateTo} from "../utils/navigate";
+import {
+  captureSisterReturnParam,
+  readSisterReturnTo,
+  sisterAppName,
+} from "../utils/sister-return";
 import {isEnterSubmitEvent} from "../utils/form-enter-submit";
 import {showError} from "../utils/modal-dialog";
 import {formLabelStyles} from "../styles/form-label";
@@ -96,6 +101,10 @@ export class ConfigAccountRegisterPage extends LitElement {
   @state()
   private acceptedTerms = false;
 
+  /** App sœur d'où vient la personne (Artefacts…) : texte et retour adaptés. */
+  @state()
+  private sisterApp = "";
+
   private onAccountChanged = () => {
     this.account = loadAccountSettings();
     if (isAccountConnected(this.account)) {
@@ -108,6 +117,8 @@ export class ConfigAccountRegisterPage extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     captureInviteQueryParam();
+    captureSisterReturnParam();
+    this.sisterApp = sisterAppName();
     window.addEventListener(ACCOUNT_CHANGED_EVENT, this.onAccountChanged);
     void this.bootstrap();
   }
@@ -172,11 +183,15 @@ export class ConfigAccountRegisterPage extends LitElement {
         form.accountApiBaseUrl,
         form.accountWebsite ?? "",
         true,
+        this.sisterApp ? readSisterReturnTo() : "",
       );
       clearAccountPasswordField();
       if (result.pending) {
-        this.pendingRegistrationMessage = result.message;
-        this.statusMessage = result.message;
+        const message = this.sisterApp
+          ? tf("account.register_pending_sister", {app: this.sisterApp})
+          : result.message;
+        this.pendingRegistrationMessage = message;
+        this.statusMessage = message;
       } else {
         this.account = result.settings;
         await navigateAfterAuth(result.settings);
@@ -207,7 +222,9 @@ export class ConfigAccountRegisterPage extends LitElement {
 
         <div class="space-y-6 pt-8" @keydown=${this.onFormKeyDown}>
           <sonic-alert status="info">
-            ${t("account.register_intro")}
+            ${this.sisterApp
+              ? tf("account.register_intro_sister", {app: this.sisterApp})
+              : t("account.register_intro")}
             <div class="mt-1 text-sm opacity-80">${healthLabel}</div>
           </sonic-alert>
           ${this.statusMessage
@@ -266,7 +283,11 @@ export class ConfigAccountRegisterPage extends LitElement {
               ${t("account.go_login")}
             </sonic-button>
           </sonic-form-actions>
-          <p class="text-sm text-neutral-500">${t("account.register_hint")}</p>
+          <p class="text-sm text-neutral-500">
+            ${this.sisterApp
+              ? tf("account.register_hint_sister", {app: this.sisterApp})
+              : t("account.register_hint")}
+          </p>
           ${this.pendingRegistrationMessage
             ? html`<sonic-alert status="info"
                 >${this.pendingRegistrationMessage}</sonic-alert
