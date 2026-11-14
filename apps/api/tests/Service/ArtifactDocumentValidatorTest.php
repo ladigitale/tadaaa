@@ -742,11 +742,11 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertLessThan(14_000, strlen($encodedFiltered));
 
         // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, 3d, 2d, procgen, monde, monde2d, animation,
-        // appareil, salons, ia, collecte). Plafond large, pour repérer une dérive de taille.
+        // appareil, salons, ia, collecte). Plafond large, pour repérer une dérive de taille (environ 101 400 octets mi-novembre 2026).
         $payload = $this->validator->mcpCatalogPayload(true);
         $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE);
         self::assertNotFalse($encoded);
-        self::assertLessThan(100_000, strlen($encoded));
+        self::assertLessThan(110_000, strlen($encoded));
         self::assertArrayHasKey('commonProps', $payload['catalog']);
     }
 
@@ -1238,6 +1238,24 @@ final class ArtifactDocumentValidatorTest extends TestCase
         ];
         $result = $this->validator->validate($doc);
         self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        // Bouton « Plein écran » : sonic-button dans sonic-fullscreen, zone data-fullscreen-root, repli simulé.
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'div', 'attributes' => ['id' => 'atelier', 'data-fullscreen-root' => ''], 'nodes' => [
+                ['tagName' => 'sonic-fullscreen', 'attributes' => ['id' => 'fs', 'fallback' => 'simulate'], 'nodes' => [
+                    ['tagName' => 'sonic-button', 'attributes' => ['variant' => 'ghost'], 'nodes' => [
+                        ['tagName' => 'span', 'attributes' => ['swap' => 'off', 'text' => 'Plein écran']],
+                        ['tagName' => 'span', 'attributes' => ['swap' => 'on', 'text' => 'Quitter']],
+                    ]],
+                ]],
+                ['tagName' => 'sonic-fullscreen', 'attributes' => ['target' => 'atelier', 'fallback' => 'none', 'for' => 'b2']],
+            ]],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['appareil'], false);
+        self::assertStringContainsString('data-fullscreen-root', $payload['rules']['appareil']);
+        self::assertStringContainsString('fallback', $payload['rules']['appareil']);
     }
 
     public function testCatalogPayloadExplainsMondes(): void
