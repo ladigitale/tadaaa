@@ -14,7 +14,8 @@ export type AppThemeId =
   | "cafe"
   | "lavande"
   | "crepuscule"
-  | "encre";
+  | "encre"
+  | "affiche";
 
 export type AppThemeMeta = {
   id: AppThemeId;
@@ -122,6 +123,13 @@ export const APP_THEMES: AppThemeMeta[] = [
     label: "Encre",
     description: "Stencil ink on paper · Unbounded",
     swatches: ["#f2eee6", "#121a6e", "#186090"],
+    dark: false,
+  },
+  {
+    id: "affiche",
+    label: "Affiche",
+    description: "Warm paper, ink, acid accent · Bricolage Grotesque",
+    swatches: ["#f3ede1", "#17130e", "#d7f23f"],
     dark: false,
   },
 ];
