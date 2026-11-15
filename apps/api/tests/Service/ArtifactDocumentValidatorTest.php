@@ -1265,6 +1265,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('bipede', $payload['rules']['monde']);
         self::assertStringContainsString('clipSpeed', $payload['rules']['monde']);
         self::assertStringContainsString('view2d', $payload['rules']['monde']);
+        self::assertStringContainsString('PREFABS PARAMÉTRÉS', $payload['rules']['monde']);
         $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['monde2d'], false);
         self::assertContains('monde2d', ArtifactDocumentValidator::LONG_RULES);
         self::assertStringContainsString('personnage', $payload['rules']['monde2d']);
