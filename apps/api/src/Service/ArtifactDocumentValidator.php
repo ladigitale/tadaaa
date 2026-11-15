@@ -33,8 +33,8 @@ final class ArtifactDocumentValidator
     private const NODE_ID_PATTERN = '/^[A-Za-z][A-Za-z0-9_-]{0,63}$/';
 
     /** Accès sensibles déclarés par le document (`capabilities`) et composants qui les exigent. */
-    public const CAPABILITIES = ['camera', 'microphone', 'midi', 'screen'];
-    private const CAPABILITY_TAGS = ['sonic-camera' => 'camera', 'sonic-mic' => 'microphone', 'sonic-midi' => 'midi', 'sonic-screen' => 'screen'];
+    public const CAPABILITIES = ['camera', 'microphone', 'midi', 'screen', 'bluetooth'];
+    private const CAPABILITY_TAGS = ['sonic-camera' => 'camera', 'sonic-mic' => 'microphone', 'sonic-midi' => 'midi', 'sonic-screen' => 'screen', 'sonic-bluetooth' => 'bluetooth'];
     /** Origines de modèles ML (`capabilities: [{"ml": ["https://hote/chemin/"]}]`, addon `vision`). */
     public const MAX_ML_ORIGINS = 8;
 
@@ -246,10 +246,23 @@ final class ArtifactDocumentValidator
     /** Mémo de l'addon `device` (API navigateur en DataProviders). */
     private const DEVICE_RULE = 'API NAVIGATEUR EN DATAPROVIDERS (composants sans rendu, sans JS) : sonic-fullscreen (bouton « Plein écran » : un sonic-button DANS sonic-fullscreen, clic = bascule, enfants swap="off"/"on" pour l’icône ; target="id" ou sélecteur, défaut ancêtre data-fullscreen-root sinon la page ; fallback simulate (défaut, iPhone : plein écran simulé en position fixe 100svh) | none ; aussi for, control {enter, exit, toggle} ; état active, simulated) ; sonic-pointer-lock (souris verrouillée, visée : control {lock, unlock, toggle, reset}, état dx dy x y raw, rate) ; sonic-wake-lock (écran allumé : control {acquire, release, toggle}, auto) ; '
         .'sonic-orientation (control {lock{type: landscape|portrait|…}, unlock, sensors, stop} ; état type angle alpha beta gamma ax ay az ra rb rg, smoothing, rate) ; sonic-clipboard (control {copy{text}, read}) ; sonic-share (control {share{title, text, url http(s)}}, repli par copie) ; sonic-vibrate (control {vibrate{pattern:"100,50,100"}, stop} ; absent sous iOS) ; '
-        .'sonic-page-state (visible, focus, connexion, taille, préférences : sans permission ni commande) ; sonic-capabilities (capsState {status, embedded, secureContext, fullscreen, wakeLock, pointerLock, orientation, clipboard, share, vibrate, gamepad, midi, camera, microphone, audio, screen, chacun {supported, allowed, permission}} : à lire pour n’afficher que les commandes utilisables). '
+        .'sonic-page-state (visible, focus, connexion, taille, préférences : sans permission ni commande) ; sonic-capabilities (capsState {status, embedded, secureContext, fullscreen, wakeLock, pointerLock, orientation, clipboard, share, vibrate, gamepad, midi, camera, microphone, audio, screen, bluetooth, chacun {supported, allowed, permission}} : à lire pour n’afficher que les commandes utilisables). '
         .'Chaque composant publie <id>State (ou out-data-provider) {status: idle|requesting|ready|denied|error|unsupported, error, supported, allowed, active, …} et se pilote par COMPTEURS dans control : {toggle: 3} puis {toggle: 4} déclenche une fois (la 1re valeur vue sert de référence) ; avec arguments {share: {n: 2, text: "…"}}. '
         .'GESTE OBLIGATOIRE : plein écran, pointer lock, vibration, partage et capteurs iOS exigent un clic. Utilise for="idDuBouton" (l’action part dans le clic même) ou un compteur écrit par un bouton (sonic-action → reducer, fenêtre de quelques secondes) ; une commande lancée par un minuteur, au chargement ou par un agent est refusée (status denied). '
-        .'Aucune entrée à déclarer dans capabilities. Prévoir un repli quand supported vaut false ou status denied. En intégration (iframe hôte) la fonction doit être autorisée par la page : allowed le dit.';
+        .'Aucune entrée à déclarer dans capabilities (sauf Bluetooth : règle « bluetooth »). Prévoir un repli quand supported vaut false ou status denied. En intégration (iframe hôte) la fonction doit être autorisée par la page : allowed le dit.';
+
+    /** Mémo de l'addon `bluetooth` (appareils Bluetooth LE, imprimante d'étiquettes). */
+    private const BLUETOOTH_RULE = 'BLUETOOTH (Web Bluetooth : Chrome / Edge / Android en HTTPS ; PAS d’iPhone, ni Firefox, ni Safari) : déclarer "capabilities": ["bluetooth"] (sinon refusé). '
+        .'Transport : <sonic-bluetooth id="bt" profile="…" for="idBouton" auto-reconnect> ; le CLIC ouvre le sélecteur du navigateur (jamais au chargement). '
+        .'profile : luck (imprimante d’étiquettes Fichero d’Action, AiYin D11s), escpos (tickets), uart-nus (ESP32, micro:bit, Espruino), uart-issc, uart-hm10, heart-rate, battery, csc, cycling-power ; '
+        .'sans profil : filters=\'[{"namePrefix":"X"}]\' + channels=\'{"tx":"service/caractéristique","rx":"…"}\' (UUID courts ou complets). '
+        .'État btState {status: idle|requesting|ready|denied|error|unsupported, error, supported, connected, device{name}, values{rx:{hex, bytes, text, n}}, rx (compteur de notifications), reconnecting}. '
+        .'Commandes par compteurs dans control : {connect, disconnect, toggle, write:{n, hex|bytes|text, channel}, read:{n, channel}}. '
+        .'IMPRIMER UNE ÉTIQUETTE : <sonic-label-printer id="imp" transport="#bt" source="#dessin" label-mm="30x12" for="imprimer" show-preview style="width:240px"> ; '
+        .'source = #id d’une source d’images (sonic-sketch, sonic-paint, sonic-still, sonic-2d, sonic-shader, canvas, img) ; dessiner dans le sens de lecture, au rapport de l’étiquette (30x12 → 240 x 96 points, 5:2) ; '
+        .'dither threshold (texte, traits, QR ; défaut) | floyd (photo) | atkinson | bayer, threshold 0..255, density 0..2, copies 1..50, orientation landscape|portrait, flip (demi-tour) ; réglages aussi en direct dans control {dither, threshold, copies, labelMm}. '
+        .'show-preview affiche l’aperçu 1 bit EXACT (mêmes points que sur le papier). État impState {status, error (capot ouvert, plus de papier…), model, battery, paper, cover, printing, progress, jobs (compteur), preview{width, height, ink}, issues}. '
+        .'Interface : bouton « Connecter l’imprimante » (for du sonic-bluetooth), bouton « Imprimer » visible quand impState.status vaut ready (sonic-if), message d’erreur lisible, repli si btState.supported vaut false (« Ouvrez cette page dans Chrome ou Edge »). 2 sonic-bluetooth max par page.';
 
     /** Mémo de l'addon `p2p` (salons temps réel). */
     private const ROOMS_RULE = 'SALONS TEMPS RÉEL (jeux, tableau blanc ; visiteurs d’un même artefact, sans compte) : UN SEUL sonic-p2p par page : <sonic-p2p id="net" pseudo="Ana" share="game.local" rate="20" control="net.ctl" store="jeu" message-action="net-msg">. N’écris NI artifact, NI api, NI link-token : le viewer les impose (toute valeur du document est ignorée). '
@@ -286,7 +299,7 @@ final class ArtifactDocumentValidator
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
     /** Compétences (config/artifacts/skills/*.md) : servies à la demande par rules=["design", "<archétype>"], jamais par défaut. */
     public const SKILLS = ['design', 'vitrine', 'jeu', 'outil', 'dashboard', 'experience', 'multivue', 'carte'];
-    public const LONG_RULES = ['listes', 'a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'monde', 'monde2d', 'mobilier', 'animation', 'appareil', 'salons', 'ia', 'collecte', 'io'];
+    public const LONG_RULES = ['listes', 'a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'monde', 'monde2d', 'mobilier', 'animation', 'appareil', 'bluetooth', 'salons', 'ia', 'collecte', 'io'];
 
     private readonly ArtifactA2uiValidator $a2uiValidator;
 
@@ -437,6 +450,7 @@ final class ArtifactDocumentValidator
                 'mobilier' => self::MOBILIER_RULE,
                 'animation' => self::ANIMATION_RULE,
                 'appareil' => self::DEVICE_RULE,
+                'bluetooth' => self::BLUETOOTH_RULE,
                 'salons' => self::ROOMS_RULE,
                 'ia' => $this->huggingFaceRule(),
                 'a2ui' => 'Vue A2UI v0.9 (alternative à root) : views[].a2ui = liste de messages {"version":"v0.9", createSurface|updateComponents|updateDataModel|deleteSurface}. Catalogue de base uniquement (catalogId '.ArtifactA2uiValidator::BASIC_CATALOG_ID.'). Composants : '.implode(', ', ArtifactA2uiValidator::SUPPORTED_COMPONENTS).'. Props : littéraux ou {"path":"/abs"} ; pas de call. CheckBox (value booléen), ChoicePicker (options [{label, value}], value = liste de chaînes, variant mutuallyExclusive|multipleSelection), Slider (min, max, value nombre), DateTimeInput (enableDate, enableTime, value ISO), Tabs (tabs [{title, child}]), Modal (trigger, content) ; libellés en texte littéral. Liste à gabarit : "children": {"path":"/items","componentId":"item"} — le sous-arbre "item" est répété par élément, chemins relatifs ("name") résolus sur l’élément ; imbrication possible. Composants dans n’importe quel ordre, "root" obligatoire. views[].actionStore = id d’un data.stores : un clic sur action.event devient {type: name, payload: {...context résolu, surfaceId, sourceComponentId}} dispatché au store (reducer, sinks). views[].a2uiBindings = {"/booking": "booking"} : l’état du store est recopié dans le data model des surfaces à ce chemin à chaque changement (lire avec {"path":"/booking/count"}). Gabarits SDUI chat:answer / chat:result-card / chat:confirm / chat:short-form / chat:actions et a2ui:<Composant> disponibles en libraryKey dans les vues root.',
@@ -1439,7 +1453,9 @@ final class ArtifactDocumentValidator
         }
         $limits = ['sonic-camera' => 2, 'sonic-hand-tracker' => 1, 'sonic-face-tracker' => 1, 'sonic-pose-tracker' => 1, 'sonic-object-detector' => 1, 'sonic-segmenter' => 1, 'sonic-click-segmenter' => 1, 'sonic-image-embedder' => 1, 'sonic-example-classifier' => 2, 'sonic-landmarks-overlay' => 4, 'sonic-mic' => 2, 'sonic-video' => 6, 'sonic-frame-sync' => 2, 'sonic-puppet' => 1, 'sonic-audio-recorder' => 4, 'sonic-media-recorder' => 2, 'sonic-midi' => 2, 'sonic-screen' => 1, 'sonic-physics' => 4, 'sonic-2d' => 4, 'sonic-procgen' => 2, 'sonic-controller' => 2,
             // Un seul salon (connexion Mercure) et un seul verrou par page (même liste que le garde du viewer).
-            'sonic-p2p' => 1, 'sonic-pointer-lock' => 1, 'sonic-wake-lock' => 1, 'sonic-orientation' => 1];
+            'sonic-p2p' => 1, 'sonic-pointer-lock' => 1, 'sonic-wake-lock' => 1, 'sonic-orientation' => 1,
+            // Un appareil Bluetooth = un sélecteur du navigateur et une connexion.
+            'sonic-bluetooth' => 2, 'sonic-label-printer' => 2];
         foreach ($limits as $tag => $max) {
             if (($this->seenTags[$tag] ?? 0) > $max) {
                 $errors[] = ['path' => '/views', 'message' => sprintf('Trop de %s (max %d).', $tag, $max)];

@@ -63,6 +63,8 @@ final class ArtifactDocumentValidatorTest extends TestCase
                 ['name' => 'sonic-shader'],
                 ['name' => 'sonic-midi'],
                 ['name' => 'sonic-screen'],
+                ['name' => 'sonic-bluetooth'],
+                ['name' => 'sonic-label-printer'],
                 ['name' => 'sonic-grain'],
                 ['name' => 'sonic-ladder'],
                 ['name' => 'sonic-karplus'],
@@ -674,6 +676,32 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('Trop de sonic-screen', $result['errors'][0]['message']);
     }
 
+    public function testBluetoothNeedsCapability(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'sonic-bluetooth', 'attributes' => ['id' => 'bt', 'profile' => 'luck', 'for' => 'connecter']],
+            ['tagName' => 'sonic-label-printer', 'attributes' => ['id' => 'imp', 'transport' => '#bt', 'source' => '#dessin', 'label-mm' => '30x12', 'show-preview' => '']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('"bluetooth"', implode(' | ', array_column($result['errors'], 'message')));
+
+        $doc['capabilities'] = ['bluetooth'];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['views'][0]['root']['nodes'] = array_fill(0, 3, ['tagName' => 'sonic-bluetooth', 'attributes' => ['profile' => 'luck']]);
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('Trop de sonic-bluetooth', $result['errors'][0]['message']);
+
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['bluetooth'], false);
+        self::assertContains('bluetooth', ArtifactDocumentValidator::LONG_RULES);
+        self::assertStringContainsString('sonic-label-printer', $payload['rules']['bluetooth']);
+        self::assertStringContainsString('capabilities', $payload['rules']['bluetooth']);
+    }
+
     public function testGrainSampleUrls(): void
     {
         $doc = $this->minimalDoc();
@@ -824,7 +852,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
         // Sommaire pour le prompt système : tous les composants et les thèmes de règles (~2,5k tokens).
         $index = $validator->catalogIndex();
         self::assertLessThan(18_000, \strlen($index));
-        foreach (['sonic-button', 'sonic-store', 'sonic-physics', 'a2ui', 'chartjs', 'div', 'addon animation', 'addon device', 'addon p2p', 'animation, appareil, salons'] as $needle) {
+        foreach (['sonic-button', 'sonic-store', 'sonic-physics', 'a2ui', 'chartjs', 'div', 'addon animation', 'addon device', 'addon p2p', 'addon bluetooth', 'animation, appareil, bluetooth, salons'] as $needle) {
             self::assertStringContainsString($needle, $index);
         }
     }

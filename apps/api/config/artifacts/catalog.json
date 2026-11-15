@@ -1,7 +1,7 @@
 {
   "concordeVersion": "5.1.3",
   "creativeStackVersion": "0.1.0",
-  "generatedFrom": "@supersoniks/concorde 5.1.3 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, blobs, color, controller, cursor, device, hugging-face-infer, interactive, map, markdown, media, ocr, p2p, paint, physics, plot, predict, procgen, scroll, shader, sketch, sound, stage, tape, text, vector, vectorize, vision, webgpu)",
+  "generatedFrom": "@supersoniks/concorde 5.1.3 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, blobs, bluetooth, color, controller, cursor, device, hugging-face-infer, interactive, map, markdown, media, ocr, p2p, paint, physics, plot, predict, procgen, scroll, shader, sketch, sound, stage, tape, text, vector, vectorize, vision, webgpu)",
   "components": [
     {
       "name": "sonic-2d",
@@ -615,6 +615,65 @@
       "description": "Compte les objets : source (#id d'une source d'images), control {n} ou auto (chaque nouvelle image, interval ms : en continu sur une caméra), polarity auto|dark|light, bias, flatten, open, min-area-rel, no-split, drop-border, ref-from (DP {x,y} 0..1 d'un objet type), params (réglages en direct), fit ; état {status, count, estimate, clusters, median, reference, polarity, blobs[{id, cx, cy, nx, ny, nw, nh, area, k, split, border}], overlay {url}, width, height, ms, error} ; aperçu = marqueurs numérotés à superposer à l'image"
     },
     {
+      "name": "sonic-bluetooth",
+      "props": {
+        "profile": {
+          "type": "string",
+          "description": "profil nommé : filtres, canaux tx / rx, taille des morceaux"
+        },
+        "filters": {
+          "type": "string",
+          "description": "JSON [{name | namePrefix | services:[uuid]}], ajouté aux filtres du profil"
+        },
+        "services": {
+          "type": "string",
+          "description": "services à ouvrir en plus (UUID courts, complets ou noms standard), séparés par des espaces"
+        },
+        "channels": {
+          "type": "string",
+          "description": "JSON {alias: \"service/caractéristique\"} ; tx = écriture par défaut, rx = notifications"
+        },
+        "notify": {
+          "type": "string",
+          "description": "alias écoutés dès la connexion (défaut : rx)"
+        },
+        "chunk-size": {
+          "type": "number",
+          "description": "octets par écriture (défaut du profil, sinon 20 ; 512 au plus)"
+        },
+        "gap-ms": {
+          "type": "number",
+          "description": "délai entre deux morceaux"
+        },
+        "auto-reconnect": {
+          "type": "boolean",
+          "description": "reconnexion au même appareil après une coupure, sans sélecteur"
+        },
+        "accept-all": {
+          "type": "boolean",
+          "description": "sélecteur sans filtre de nom (déconseillé)"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n} ou {commande: {n, …arguments}}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance connect, dans le geste"
+        },
+        "rate": {
+          "type": "number",
+          "description": "publications par seconde au plus pour les notifications (30)"
+        }
+      },
+      "addon": "bluetooth",
+      "description": "Un appareil Bluetooth LE choisi par l'utilisateur (sélecteur du navigateur, geste obligatoire : for=\"idBouton\"). profile = luck (imprimantes Fichero / D11s), escpos, uart-nus (ESP32, micro:bit, Espruino), uart-issc, uart-hm10, cat, niimbot, midi, heart-rate, battery, csc, cycling-power ; sans profil : filters + channels. Commandes control {connect:n, disconnect:n, toggle:n, write:{n, channel, hex|bytes|text, response}, read:{n, channel}, subscribe:{n, channel}, unsubscribe:{n, channel}, forget:n}. État <id>State {status, error, supported, allowed, active, available, connected, device{id,name}, profile, services[{uuid, characteristics[{uuid, props}]}], channels, values{<alias>:{hex, bytes, text, n, at}}, rx (compteur de notifications), tx{queued, sent, n}, reconnecting}. Événements sonic-bluetooth-connect, sonic-bluetooth-disconnect, sonic-bluetooth-data {channel, bytes}. Écritures de 512 octets au plus ; services de mise à jour de micrologiciel, HID et FIDO refusés. Sert de transport aux pilotes (sonic-label-printer transport=\"#id\")"
+    },
+    {
       "name": "sonic-body",
       "props": {
         "name": {
@@ -1040,7 +1099,7 @@
         }
       },
       "addon": "device",
-      "description": "Ce que l'environnement autorise, en un DataProvider, sans ouvrir de demande de permission : pour fullscreen, pointerLock, wakeLock, gamepad, midi, orientation, clipboard, share, vibrate, camera, microphone, audio, screen → {supported, allowed (Permissions Policy), permission}, plus embedded (iframe) et secureContext. À lire pour dégrader proprement. control {refresh:n} relit. État <id>State {status:\"ready\", embedded, secureContext, fullscreen:{…}, …}"
+      "description": "Ce que l'environnement autorise, en un DataProvider, sans ouvrir de demande de permission : pour fullscreen, pointerLock, wakeLock, gamepad, midi, orientation, clipboard, share, vibrate, camera, microphone, audio, screen, bluetooth → {supported, allowed (Permissions Policy), permission}, plus embedded (iframe) et secureContext. À lire pour dégrader proprement. control {refresh:n} relit. État <id>State {status:\"ready\", embedded, secureContext, fullscreen:{…}, …}"
     },
     {
       "name": "sonic-captcha",
@@ -2788,6 +2847,81 @@
       },
       "addon": "interactive",
       "description": "Clavier -> actions store (keymap code -> type ou {type, payload}, repeat {type: [délai, intervalle]}, keyup -> <type>:up) ; control / params (DP) {keymap, repeat, keyup, disabled} en direct (attributs < control < params) ; out-data-provider publie {status: idle|ready|error, error, held (codes tenus), last {code, type, payload, phase}, count, keys}"
+    },
+    {
+      "name": "sonic-label-printer",
+      "props": {
+        "transport": {
+          "type": "string",
+          "description": "#id du sonic-bluetooth"
+        },
+        "source": {
+          "type": "string",
+          "description": "#id de la source d'images"
+        },
+        "protocol": {
+          "type": "string",
+          "description": "auto, luck-aiyin, luck-lujiang ou escpos"
+        },
+        "width-px": {
+          "type": "number",
+          "description": "largeur de la tête en points pour un modèle inconnu (multiple de 8 ; 384 pour un ticket 58 mm)"
+        },
+        "label-mm": {
+          "type": "string",
+          "description": "longueur x largeur en mm, ex. 30x12"
+        },
+        "orientation": {
+          "type": "string",
+          "description": "landscape (défaut) ou portrait"
+        },
+        "fit": {
+          "type": "string",
+          "description": "contain (défaut), cover ou stretch"
+        },
+        "dither": {
+          "type": "string",
+          "description": "threshold (défaut : texte, traits), floyd (photo), atkinson, bayer"
+        },
+        "threshold": {
+          "type": "number",
+          "description": "0..255 (128) : plus haut = plus noir"
+        },
+        "density": {
+          "type": "number",
+          "description": "0 clair, 1 normal, 2 foncé"
+        },
+        "paper": {
+          "type": "string",
+          "description": "gap (étiquettes, défaut), black-mark ou continuous"
+        },
+        "copies": {
+          "type": "number",
+          "description": "1..50"
+        },
+        "flip": {
+          "type": "boolean",
+          "description": "retourne l'impression d'un demi-tour (si l'étiquette sort à l'envers)"
+        },
+        "show-preview": {
+          "type": "boolean",
+          "description": "affiche l'aperçu 1 bit (dimensionner par style : width)"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP : compteurs de commandes et réglages en direct"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance print"
+        }
+      },
+      "addon": "bluetooth",
+      "description": "Imprime l'image d'une source (#id : sonic-sketch, sonic-paint, sonic-still, sonic-2d…) sur une imprimante thermique derrière un sonic-bluetooth (transport=\"#id\"). protocol auto (d'après le nom de l'appareil) | luck-aiyin (Fichero D11s d'Action : tête 96 points, 12 mm, étiquette 30x12) | luck-lujiang | escpos (tickets, width-px requis). Image ramenée à l'étiquette (label-mm \"longueur x largeur\", fit), passée en 1 bit (dither threshold|floyd|atkinson|bayer, threshold), tournée (orientation landscape = texte dans le sens de la longueur). Commandes control {print:n | {n, copies}, preview:n, feed:n, refresh:n, cancel:n} ou for ; réglages en direct dans control {labelMm, orientation, fit, dither, threshold, density, paper, copies}. État <id>State {status, error, active, protocol, model, firmware, head{widthPx, dpi}, battery, charging, paper ok|out|unknown, cover closed|open|unknown, overheated, printing, progress, copy, copies, jobs (compteur), preview{width, height, ink}, issues[], settings}. show-preview affiche l'aperçu 1 bit exact (mêmes points que sur le papier) à la place du composant ; c'est aussi une source d'images (#id). Événements sonic-label-printer-done, sonic-label-printer-error"
     },
     {
       "name": "sonic-ladder",
@@ -7519,5 +7653,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); color (sonic-palette, sonic-palette-editor); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; markdown (sonic-markdown); media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; scroll (sonic-scroll); shader (sonic-shader); sketch (sonic-sketch, sonic-sketch-guide, sonic-painterly); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); bluetooth (sonic-bluetooth, sonic-label-printer); color (sonic-palette, sonic-palette-editor); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; markdown (sonic-markdown); media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; scroll (sonic-scroll); shader (sonic-shader); sketch (sonic-sketch, sonic-sketch-guide, sonic-painterly); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
