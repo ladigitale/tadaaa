@@ -81,7 +81,7 @@ Tout est traité sur des valeurs décodées en objets : `{}` reste `{}`.
 
 - **Textes affichés.** Un nœud SDUI n'a pas de contenu texte. Les textes passent par un store dédié (`reducer: "$state"`) lu par `sonic-value`. Les kits `grid` et `shader` utilisent ce store « ui ».
 - **Store relié à un composant.** Ne mettez pas de textes (`title`…) dans le store d'un composant relié par `dataProvider`, comme `sonic-shader` : `Subscriber` les copierait en propriétés.
-- **Événements de `sonic-action`.** Il écoute `pointerdown` / `pointerup`. Pour tester, utilisez de vrais clics souris.
+- **Événements de `sonic-action`.** Il part au clic par défaut (comme un bouton Concorde) ; `trigger="pointerdown"` ou `hold-repeat` le fait partir dès l'appui (croix directionnelle du kit grid). Pour tester, utilisez de vrais clics souris.
 - **Tests.**
   - `tests/Service/ArtifactKitsTest.php` construit chaque kit avec `tests/Fixtures/kits/<id>.json` et valide le document. Ajoutez une fixture pour chaque nouveau kit.
   - Vérifiez aussi le kit dans le viewer Artefacts : jouez-le pour de vrai.
