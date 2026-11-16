@@ -65,6 +65,9 @@ final class ArtifactDocumentValidatorTest extends TestCase
                 ['name' => 'sonic-screen'],
                 ['name' => 'sonic-bluetooth'],
                 ['name' => 'sonic-label-printer'],
+                ['name' => 'sonic-serial'],
+                ['name' => 'sonic-grbl'],
+                ['name' => 'sonic-gcode'],
                 ['name' => 'sonic-grain'],
                 ['name' => 'sonic-ladder'],
                 ['name' => 'sonic-karplus'],
@@ -674,6 +677,33 @@ final class ArtifactDocumentValidatorTest extends TestCase
         $result = $this->validator->validate($doc);
         self::assertFalse($result['valid']);
         self::assertStringContainsString('Trop de sonic-screen', $result['errors'][0]['message']);
+    }
+
+    public function testSerialNeedsCapability(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'sonic-serial', 'attributes' => ['id' => 'port', 'profile' => 'ch340', 'for' => 'connecter']],
+            ['tagName' => 'sonic-gcode', 'attributes' => ['id' => 'prog', 'source' => '#dessin', 'width-mm' => '60', 'power' => '25']],
+            ['tagName' => 'sonic-grbl', 'attributes' => ['id' => 'laser', 'transport' => '#port', 'source' => '#prog', 'machine' => 'atomstack-a5-pro']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('"serial"', implode(' | ', array_column($result['errors'], 'message')));
+
+        $doc['capabilities'] = ['serial'];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['views'][0]['root']['nodes'][] = ['tagName' => 'sonic-grbl', 'attributes' => ['transport' => '#port']];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('Trop de sonic-grbl', $result['errors'][0]['message']);
+
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['laser'], false);
+        self::assertContains('laser', ArtifactDocumentValidator::LONG_RULES);
+        self::assertStringContainsString('sonic-grbl', $payload['rules']['laser']);
+        self::assertStringContainsString('capabilities', $payload['rules']['laser']);
     }
 
     public function testBluetoothNeedsCapability(): void

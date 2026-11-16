@@ -33,8 +33,8 @@ final class ArtifactDocumentValidator
     private const NODE_ID_PATTERN = '/^[A-Za-z][A-Za-z0-9_-]{0,63}$/';
 
     /** Accès sensibles déclarés par le document (`capabilities`) et composants qui les exigent. */
-    public const CAPABILITIES = ['camera', 'microphone', 'midi', 'screen', 'bluetooth'];
-    private const CAPABILITY_TAGS = ['sonic-camera' => 'camera', 'sonic-mic' => 'microphone', 'sonic-midi' => 'midi', 'sonic-screen' => 'screen', 'sonic-bluetooth' => 'bluetooth'];
+    public const CAPABILITIES = ['camera', 'microphone', 'midi', 'screen', 'bluetooth', 'serial'];
+    private const CAPABILITY_TAGS = ['sonic-camera' => 'camera', 'sonic-mic' => 'microphone', 'sonic-midi' => 'midi', 'sonic-screen' => 'screen', 'sonic-bluetooth' => 'bluetooth', 'sonic-serial' => 'serial'];
     /** Origines de modèles ML (`capabilities: [{"ml": ["https://hote/chemin/"]}]`, addon `vision`). */
     public const MAX_ML_ORIGINS = 8;
 
@@ -249,7 +249,7 @@ final class ArtifactDocumentValidator
         .'sonic-page-state (visible, focus, connexion, taille, préférences : sans permission ni commande) ; sonic-capabilities (capsState {status, embedded, secureContext, fullscreen, wakeLock, pointerLock, orientation, clipboard, share, vibrate, gamepad, midi, camera, microphone, audio, screen, bluetooth, chacun {supported, allowed, permission}} : à lire pour n’afficher que les commandes utilisables). '
         .'Chaque composant publie <id>State (ou out-data-provider) {status: idle|requesting|ready|denied|error|unsupported, error, supported, allowed, active, …} et se pilote par COMPTEURS dans control : {toggle: 3} puis {toggle: 4} déclenche une fois (la 1re valeur vue sert de référence) ; avec arguments {share: {n: 2, text: "…"}}. '
         .'GESTE OBLIGATOIRE : plein écran, pointer lock, vibration, partage et capteurs iOS exigent un clic. Utilise for="idDuBouton" (l’action part dans le clic même) ou un compteur écrit par un bouton (sonic-action → reducer, fenêtre de quelques secondes) ; une commande lancée par un minuteur, au chargement ou par un agent est refusée (status denied). '
-        .'Aucune entrée à déclarer dans capabilities (sauf Bluetooth : règle « bluetooth »). Prévoir un repli quand supported vaut false ou status denied. En intégration (iframe hôte) la fonction doit être autorisée par la page : allowed le dit.';
+        .'Aucune entrée à déclarer dans capabilities (sauf Bluetooth : règle « bluetooth », et port série : règle « laser »). Prévoir un repli quand supported vaut false ou status denied. En intégration (iframe hôte) la fonction doit être autorisée par la page : allowed le dit.';
 
     /** Mémo de l'addon `bluetooth` (appareils Bluetooth LE, imprimante d'étiquettes). */
     private const BLUETOOTH_RULE = 'BLUETOOTH (Web Bluetooth : Chrome / Edge / Android en HTTPS ; PAS d’iPhone, ni Firefox, ni Safari) : déclarer "capabilities": ["bluetooth"] (sinon refusé). '
@@ -263,6 +263,21 @@ final class ArtifactDocumentValidator
         .'dither threshold (texte, traits, QR ; défaut) | floyd (photo) | atkinson | bayer, threshold 0..255, density 0..2, copies 1..50, orientation landscape|portrait, flip (demi-tour) ; protocol auto (défaut : d’après l’appareil, Fichero ou Niimbot) ; Niimbot NON TESTÉ sur matériel : si rien ne sort, imposer protocol niimbot-d110 | niimbot-b1 | niimbot-d11v1 | niimbot-b21v1 | niimbot-v4 (B1 et B21 : tête 384 points, label-mm="50x30" par défaut) ; réglages aussi en direct dans control {dither, threshold, copies, labelMm}. '
         .'show-preview affiche l’aperçu 1 bit EXACT (mêmes points que sur le papier). État impState {status, error (capot ouvert, plus de papier…), model, battery, paper, cover, printing, progress, jobs (compteur), preview{width, height, ink}, issues}. '
         .'Interface : bouton « Connecter l’imprimante » (for du sonic-bluetooth), bouton « Imprimer » visible quand impState.status vaut ready (sonic-if), message d’erreur lisible, repli si btState.supported vaut false (« Ouvrez cette page dans Chrome ou Edge »). 2 sonic-bluetooth max par page.';
+
+    /** Mémo des addons `serial` et `grbl` (port série, graveur / découpeuse laser GRBL). */
+    private const LASER_RULE = 'LASER ET PORT SÉRIE (Web Serial : Chrome / Edge sur ordinateur, Chrome Android récent, en HTTPS ; PAS d’iPhone, ni Firefox, ni Safari) : déclarer "capabilities": ["serial"] (sinon refusé). '
+        .'Trois composants en chaîne : <sonic-serial id="port" profile="ch340" for="connecter" auto-reconnect> (transport ; le CLIC ouvre le sélecteur de port, jamais au chargement ; profile ch340 = graveurs Atomstack, Ortur, Sculpfun ; grbl = tous les ponts courants ; cp210x, ftdi, arduino, esp32) ; '
+        .'<sonic-gcode id="prog" source="#dessin" width-mm="60" power="25" speed="2000" auto show-preview control="reglages" style="width:320px"> (dessin → programme G-code) ; '
+        .'<sonic-grbl id="laser" transport="#port" source="#prog" machine="atomstack-a5-pro" control="laserCtl" for="lancer"> (machine GRBL 1.1 ; machine auto = zone lue sur la machine). '
+        .'sonic-gcode : source = #id d’un sonic-sketch (ses surfaces de couleur sont HACHURÉES = gravure) ou d’une source d’images (sonic-still, sonic-paint, sonic-camera : gravure par balayage, dither floyd|atkinson|bayer|threshold|gray) ; svg-from = DP d’un fichier SVG ouvert par sonic-file-open (ref-provider) ou du SVG en texte ({svg:"<svg…>"}) : trait (stroke) suivi, surface (fill) hachurée. '
+        .'Réglages par défaut power (% de la pleine puissance), speed (mm/min), passes, mode auto|line|fill|skip, interval (mm entre lignes, 0.1), kerf ; PAR COULEUR : ops=\'[{"color":"#000000","mode":"fill","power":20,"speed":3000},{"color":"#ff0000","mode":"line","power":90,"speed":300,"passes":2}]\' exécutées dans l’ordre (gravure d’abord, DÉCOUPE EN DERNIER ; mode line sur une surface = son contour). Le blanc ne brûle pas. '
+        .'Taille width-mm / height-mm (proportions gardées), position x-mm / y-mm, origine en bas à gauche. Mêmes réglages en direct dans control (camelCase : power, speed, passes, ops, widthMm, xMm…) avec les compteurs {build, download (fichier .gcode), clear}. '
+        .'État progState {status, error, ready, kind vector|image, lines, bbox{x,y,w,h} mm, sizeMm{w,h}, estimateS, burnMm, issues[]}. '
+        .'sonic-grbl, commandes par compteurs dans control : {run, hold, resume, stop, frame (tour de l’emprise, faisceau éteint ; {n, power} 0..5 %), jog:{n, x, y} (mm, relatif), goto:{n, x, y}, setOrigin (l’origine devient la position de la tête), home, unlock (après une alarme), send:{n, line}}. '
+        .'État laserState {status idle|requesting|ready|error, error, connected, firmware, machineState Idle|Run|Hold|Jog|Alarm, alarm{message}, pos{x,y}, area{x,y}, maxS, laserMode, job{kind, progress 0..1, running, paused, elapsedS, estimateS}, jobs (compteur), issues[], console[]}. '
+        .'SÉCURITÉ intégrée, à ne pas contourner : run exige un vrai clic (for="lancer" ou compteur écrit par un bouton, jamais un minuteur), M3 est remplacé par M4, la tâche s’arrête si la page se ferme ; max-power="60" plafonne la puissance. '
+        .'Interface conseillée, par étapes : 1 « Connecter » (for du sonic-serial ; repli si portState.supported vaut false : « Ouvrez cette page dans Chrome ou Edge sur ordinateur ») ; 2 réglages (matériau, puissance, vitesse, taille) et aperçu ; 3 placement : boutons de déplacement (jog ±1 / ±10 mm), « Origine ici » (setOrigin), « Cadrer » (frame) ; 4 « Lancer » (type danger), puis progression (laserState.job.progress), « Pause » / « Reprendre » / « Arrêter » ; afficher laserState.error, laserState.issues et progState.issues. '
+        .'Rappeler à l’écran : lunettes de protection, ne jamais laisser la machine sans surveillance. Pilote NON TESTÉ sur matériel. Limites : 2 sonic-serial, 1 sonic-grbl, 4 sonic-gcode par page.';
 
     /** Mémo de l'addon `p2p` (salons temps réel). */
     private const ROOMS_RULE = 'SALONS TEMPS RÉEL (jeux, tableau blanc ; visiteurs d’un même artefact, sans compte) : UN SEUL sonic-p2p par page : <sonic-p2p id="net" pseudo="Ana" share="game.local" rate="20" control="net.ctl" store="jeu" message-action="net-msg">. N’écris NI artifact, NI api, NI link-token : le viewer les impose (toute valeur du document est ignorée). '
@@ -299,7 +314,7 @@ final class ArtifactDocumentValidator
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
     /** Compétences (config/artifacts/skills/*.md) : servies à la demande par rules=["design", "<archétype>"], jamais par défaut. */
     public const SKILLS = ['design', 'vitrine', 'jeu', 'outil', 'dashboard', 'experience', 'multivue', 'carte'];
-    public const LONG_RULES = ['listes', 'a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'monde', 'monde2d', 'mobilier', 'animation', 'appareil', 'bluetooth', 'salons', 'ia', 'collecte', 'io'];
+    public const LONG_RULES = ['listes', 'a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'monde', 'monde2d', 'mobilier', 'animation', 'appareil', 'bluetooth', 'salons', 'laser', 'ia', 'collecte', 'io'];
 
     private readonly ArtifactA2uiValidator $a2uiValidator;
 
@@ -451,6 +466,7 @@ final class ArtifactDocumentValidator
                 'animation' => self::ANIMATION_RULE,
                 'appareil' => self::DEVICE_RULE,
                 'bluetooth' => self::BLUETOOTH_RULE,
+                'laser' => self::LASER_RULE,
                 'salons' => self::ROOMS_RULE,
                 'ia' => $this->huggingFaceRule(),
                 'a2ui' => 'Vue A2UI v0.9 (alternative à root) : views[].a2ui = liste de messages {"version":"v0.9", createSurface|updateComponents|updateDataModel|deleteSurface}. Catalogue de base uniquement (catalogId '.ArtifactA2uiValidator::BASIC_CATALOG_ID.'). Composants : '.implode(', ', ArtifactA2uiValidator::SUPPORTED_COMPONENTS).'. Props : littéraux ou {"path":"/abs"} ; pas de call. CheckBox (value booléen), ChoicePicker (options [{label, value}], value = liste de chaînes, variant mutuallyExclusive|multipleSelection), Slider (min, max, value nombre), DateTimeInput (enableDate, enableTime, value ISO), Tabs (tabs [{title, child}]), Modal (trigger, content) ; libellés en texte littéral. Liste à gabarit : "children": {"path":"/items","componentId":"item"} — le sous-arbre "item" est répété par élément, chemins relatifs ("name") résolus sur l’élément ; imbrication possible. Composants dans n’importe quel ordre, "root" obligatoire. views[].actionStore = id d’un data.stores : un clic sur action.event devient {type: name, payload: {...context résolu, surfaceId, sourceComponentId}} dispatché au store (reducer, sinks). views[].a2uiBindings = {"/booking": "booking"} : l’état du store est recopié dans le data model des surfaces à ce chemin à chaque changement (lire avec {"path":"/booking/count"}). Gabarits SDUI chat:answer / chat:result-card / chat:confirm / chat:short-form / chat:actions et a2ui:<Composant> disponibles en libraryKey dans les vues root.',
@@ -1494,7 +1510,9 @@ final class ArtifactDocumentValidator
             // Un seul salon (connexion Mercure) et un seul verrou par page (même liste que le garde du viewer).
             'sonic-p2p' => 1, 'sonic-pointer-lock' => 1, 'sonic-wake-lock' => 1, 'sonic-orientation' => 1,
             // Un appareil Bluetooth = un sélecteur du navigateur et une connexion.
-            'sonic-bluetooth' => 2, 'sonic-label-printer' => 2];
+            'sonic-bluetooth' => 2, 'sonic-label-printer' => 2,
+            // Port série : un sélecteur et une connexion par port ; une seule machine pilotée par page.
+            'sonic-serial' => 2, 'sonic-grbl' => 1, 'sonic-gcode' => 4];
         foreach ($limits as $tag => $max) {
             if (($this->seenTags[$tag] ?? 0) > $max) {
                 $errors[] = ['path' => '/views', 'message' => sprintf('Trop de %s (max %d).', $tag, $max)];
