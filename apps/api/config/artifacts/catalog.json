@@ -2233,7 +2233,7 @@
         },
         "dither": {
           "type": "string",
-          "description": "image : floyd (défaut), atkinson, bayer, threshold, gray"
+          "description": "image : floyd (défaut), atkinson, jarvis, stucki, burkes, sierra, sierra-lite, bayer, random, threshold, adaptive, gray, hatch, waves, spiral, isolines, stipple"
         },
         "threshold": {
           "type": "number",
@@ -2266,10 +2266,18 @@
         "for": {
           "type": "string",
           "description": "ids dont le clic lance build"
+        },
+        "levels": {
+          "type": "number",
+          "description": "paliers des lignes de niveau (2..16, 8)"
+        },
+        "line-spacing": {
+          "type": "number",
+          "description": "écart entre traits des rendus hatch, waves, spiral, stipple, en mm (0.5)"
         }
       },
       "addon": "grbl",
-      "description": "Dessin → programme G-code. source=\"#id\" : un sonic-sketch (son SVG : surfaces hachurées, traits suivis) ou une source d'images (sonic-still, sonic-paint… : gravure par balayage) ; svg-from : DP d'un fichier SVG (ref-provider de sonic-file-open) ou du SVG en texte. Réglages par défaut power (%), speed (mm/min), passes, mode (auto : trait pour un contour, hachures pour un remplissage | line : suit le trait ou le contour | fill | skip), interval (mm entre deux lignes), kerf (mm, compensation du trait de coupe sur les contours fermés) ; par couleur : ops=[{color:\"#ff0000\", mode:\"line\", power:90, speed:300, passes:2}], exécutées dans l'ordre (hachures d'abord, découpe en dernier ; intérieurs avant extérieurs). Le blanc ne brûle pas. Taille width-mm / height-mm (proportions gardées ; sans elles : taille réelle du SVG, 50 mm pour une image), position x-mm / y-mm, origine en bas à gauche. Image : dither floyd | atkinson | bayer | threshold | gray (puissance selon le gris, min-power). tool=pen : traits seulement, stylo baissé par M3. Commandes control {build:n, download:n (fichier .gcode), clear:n} et les réglages en direct {power, speed, passes, mode, interval, kerf, ops, widthMm, heightMm, xMm, yMm, frame, maxS, dither, threshold, minPower, input, tool} ; auto reconstruit à chaque changement. État <id>State {status, error, ready, seq (compteur), kind vector|image, lines, bbox{x,y,w,h} mm, sizeMm{w,h}, estimateS, burnMm, travelMm, issues[], skipped{}, settings}. show-preview dessine les parcours (c'est aussi une source d'images #id). Lu par sonic-grbl source=\"#id\""
+      "description": "Dessin → programme G-code. source=\"#id\" : un sonic-sketch (son SVG : surfaces hachurées, traits suivis) ou une source d'images (sonic-still, sonic-paint… : gravure par balayage) ; svg-from : DP d'un fichier SVG (ref-provider de sonic-file-open) ou du SVG en texte. Réglages par défaut power (%), speed (mm/min), passes, mode (auto : trait pour un contour, hachures pour un remplissage | line : suit le trait ou le contour | fill | skip), interval (mm entre deux lignes), kerf (mm, compensation du trait de coupe sur les contours fermés) ; par couleur : ops=[{color:\"#ff0000\", mode:\"line\", power:90, speed:300, passes:2}], exécutées dans l'ordre (hachures d'abord, découpe en dernier ; intérieurs avant extérieurs). Le blanc ne brûle pas. Taille width-mm / height-mm (proportions gardées ; sans elles : taille réelle du SVG, 50 mm pour une image), position x-mm / y-mm, origine en bas à gauche. Image : préparation dans la source (sonic-shader de la bibliothèque : niveaux = luminosité, contraste, gamma, éclairage local ; pile-effets = encre, contour, crayonné, peinture, aplats, hachures, points, négatif… ; sobel ; halftone), puis rendu dither = tramages floyd | atkinson | jarvis | stucki | burkes | sierra | sierra-lite | bayer | random | threshold | adaptive (seuil local), gray (puissance selon le gris, min-power), ou traits hatch (hachures croisées) | waves (ondes) | spiral | isolines (lignes de niveau, levels) | stipple (pointillisme), écart line-spacing mm. Photo en aplats vectoriels : sonic-vectorize puis svg-from=\"<id>State.file\". tool=pen : traits seulement, stylo baissé par M3. Commandes control {build:n, download:n (fichier .gcode), clear:n} et les réglages en direct {power, speed, passes, mode, interval, kerf, ops, widthMm, heightMm, xMm, yMm, frame, maxS, dither, threshold, minPower, input, tool} ; auto reconstruit à chaque changement. État <id>State {status, error, ready, seq (compteur), kind vector|image, colors [{color, fill, stroke}] (couleurs du SVG, pour les attribuer à des opérations par ops), lines, bbox{x,y,w,h} mm, sizeMm{w,h}, estimateS, burnMm, travelMm, issues[], skipped{}, settings}. show-preview dessine les parcours, chaque opération dans sa couleur (c'est aussi une source d'images #id). Lu par sonic-grbl source=\"#id\""
     },
     {
       "name": "sonic-gesture",
@@ -3075,7 +3083,7 @@
         },
         "dither": {
           "type": "string",
-          "description": "threshold (défaut : texte, traits), floyd (photo), atkinson, bayer"
+          "description": "threshold (défaut : texte, traits), floyd (photo), atkinson, jarvis, stucki, burkes, sierra, sierra-lite, bayer, random, adaptive (seuil local)"
         },
         "threshold": {
           "type": "number",
@@ -3187,6 +3195,29 @@
       },
       "addon": "vision",
       "description": "Dessine sur un canvas la sortie d'un tracker (source=\"hand\" : DataProvider de sortie) : points et squelette des mains, contours du visage (le tracker doit publier landmarks=\"true\"), squelette du corps, boîtes étiquetées d'objets ; kind auto|hands|face|pose|objects ; background=\"cam\" redessine l'image de la caméra (ou d'un sonic-segmenter) dessous ; pensé comme panneau séparé : ne rien superposer à la vue caméra ; color, color2, line-width, point-radius, points, bones, fill, width, height, mirror ; aucun HTML injecté"
+    },
+    {
+      "name": "sonic-laser-pattern",
+      "props": {
+        "pattern": {
+          "type": "string",
+          "description": "grille, boite, engrenages, puzzle, tampon, porte-cles, pendentif, dessous, regle"
+        },
+        "params": {
+          "type": "string",
+          "description": "DP des paramètres du modèle"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP {pattern, params} prioritaire"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        }
+      },
+      "addon": "grbl",
+      "description": "Modèle paramétrique pour le laser, sans JS : pattern = grille (grille d'essais puissance × vitesse, avec ses propres réglages par case dans ops), boite (boîte à encoches : largeur, profondeur, hauteur, epaisseur, creneau, couvercle, motif), engrenages (dents1, dents2, module, axe, rayons), puzzle (colonnes, lignes, piece, coins, graine, motif), tampon (taille, forme, branches, anneau, miroir), porte-cles, pendentif, dessous (dessous de verre), regle. Paramètres par params (DP) ou en direct par control {pattern, params} ; bornés et arrondis au pas. État <id>State {status, error, pattern, label, description, params (effectifs), specs [{key, label, min, max, step, default, unit}] (pour construire le formulaire), svg (millimètres réels : noir = gravure, bleu = marquage, rouge = découpe), widthMm, heightMm, ops (réglages par couleur du modèle ou null), notes[], seq, catalog [{id, label, description}]}. À brancher sur sonic-gcode svg-from=\"<id>State\" ; motif : 0 aucun, 1 cœur, 2 étoile, 3 fleur, 4 rosace"
     },
     {
       "name": "sonic-legend",
@@ -7922,5 +7953,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); bluetooth (sonic-bluetooth, sonic-label-printer); color (sonic-palette, sonic-palette-editor); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); grbl (sonic-grbl, sonic-gcode); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; markdown (sonic-markdown); media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; scroll (sonic-scroll); serial (sonic-serial); shader (sonic-shader); sketch (sonic-sketch, sonic-sketch-guide, sonic-painterly); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); bluetooth (sonic-bluetooth, sonic-label-printer); color (sonic-palette, sonic-palette-editor); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); grbl (sonic-grbl, sonic-gcode, sonic-laser-pattern); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; markdown (sonic-markdown); media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; scroll (sonic-scroll); serial (sonic-serial); shader (sonic-shader); sketch (sonic-sketch, sonic-sketch-guide, sonic-painterly); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
