@@ -874,6 +874,27 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertTrue($result['valid'], json_encode($result['errors']));
     }
 
+    public function testPersistAndHistorySkip(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['data'] = [
+            'stores' => ['chambre' => ['reducer' => '$s', 'initial' => [], 'historySkip' => 'select,hover']],
+            'transforms' => ['piece' => ['jsonata' => '{}']],
+            'persist' => ['providers' => ['chambre', 'piece'], 'version' => 1],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['data']['stores']['chambre']['historySkip'] = 'select; drop';
+        $doc['data']['persist'] = ['providers' => ['chambre', 'fantome'], 'version' => -1];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        $paths = array_column($result['errors'], 'path');
+        self::assertContains('/data/stores/chambre/historySkip', $paths);
+        self::assertContains('/data/persist/providers/1', $paths);
+        self::assertContains('/data/persist/version', $paths);
+    }
+
     public function testRejectsSinkWithoutIntakeAndBadIntake(): void
     {
         $doc = $this->minimalDoc();
