@@ -40,7 +40,7 @@
       "uniqueItems": true,
       "items": {
         "oneOf": [
-          { "enum": ["camera", "microphone", "midi", "screen", "bluetooth"] },
+          { "enum": ["camera", "microphone", "midi", "screen", "bluetooth", "serial"] },
           {
             "type": "object",
             "additionalProperties": false,
@@ -56,7 +56,7 @@
           }
         ]
       },
-      "description": "Accès sensibles que le document peut demander (sonic-camera → camera, sonic-mic → microphone, sonic-midi → midi, sonic-screen → screen, sonic-bluetooth → bluetooth). Le viewer les annonce ; rien n'est activé sans clic. Une entrée {\"ml\": [origines https]} déclare les hôtes d'où un modèle de suivi (sonic-hand-tracker) peut être téléchargé, avec consentement."
+      "description": "Accès sensibles que le document peut demander (sonic-camera → camera, sonic-mic → microphone, sonic-midi → midi, sonic-screen → screen, sonic-bluetooth → bluetooth, sonic-serial → serial). Le viewer les annonce ; rien n'est activé sans clic. Une entrée {\"ml\": [origines https]} déclare les hôtes d'où un modèle de suivi (sonic-hand-tracker) peut être téléchargé, avec consentement."
     },
     "data": {
       "type": "object",
