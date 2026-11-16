@@ -48,6 +48,12 @@ framework:
             limit: 60
             interval: '1 minute'
             lock_factory: null
+        # Sauvegardes en ligne des visiteurs (data.persist.online) : écriture différée côté viewer, ~1 / 2 s au plus.
+        artifacts_saves:
+            policy: sliding_window
+            limit: 120
+            interval: '1 minute'
+            lock_factory: null
         # Salons d'artefacts (créer, entrer, accepter, expulser, quitter) : par IP, large pour une classe derrière une même box.
         artifacts_rooms:
             policy: sliding_window

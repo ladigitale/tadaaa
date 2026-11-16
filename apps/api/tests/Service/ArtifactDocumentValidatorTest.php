@@ -925,6 +925,27 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertContains('/data/persist/version', $paths);
     }
 
+    public function testOnlinePersistAndMaxStateBytes(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['data'] = [
+            'stores' => ['chambre' => ['reducer' => '$s', 'initial' => [], 'maxStateBytes' => 1228800]],
+            'transforms' => ['sauvegarde' => ['jsonata' => '{}']],
+            'persist' => ['providers' => ['chambre'], 'version' => 2, 'online' => true, 'status' => 'sauvegarde'],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['data']['stores']['chambre']['maxStateBytes'] = 5_000_000;
+        $doc['data']['persist']['online'] = 'oui';
+        $doc['data']['persist']['status'] = '1 mauvais';
+        $result = $this->validator->validate($doc);
+        $paths = array_column($result['errors'], 'path');
+        self::assertContains('/data/stores/chambre/maxStateBytes', $paths);
+        self::assertContains('/data/persist/online', $paths);
+        self::assertContains('/data/persist/status', $paths);
+    }
+
     public function testRejectsSinkWithoutIntakeAndBadIntake(): void
     {
         $doc = $this->minimalDoc();
