@@ -27,7 +27,7 @@ Jamais de JSONata entre un producteur haute fréquence (physique) et le rendu : 
 ## 3. Calques à l'écran (de bas en haut, tous dans le cadre)
 1. Scène (`sonic-2d`/`stage`/`3d`/`shader`), enveloppée par `sonic-gesture target="jeu"` pour le tactile.
 2. HUD : `position:absolute;inset:0 0 auto 0;display:flex;justify-content:space-between;padding:14px 16px;pointer-events:none`, score en `sonic-value format="0000"` + `tabular-nums`, vies en icônes. 2–3 informations, pas plus.
-3. Commandes tactiles (seulement si `pageState.touch`) : `sonic-if dataProvider="pageState" key="touch" equals="true"` + boutons ronds `sonic-button shape="circle" size="xl"` dans `sonic-action` (`hold-repeat` pour tenir) en bas, hors de la zone de jeu utile.
+3. Commandes tactiles (seulement si `pageState.touch`) : `sonic-if dataProvider="pageState" key="touch" equals="true"` + boutons ronds `sonic-button shape="circle" size="xl"` dans `sonic-action trigger="pointerdown"` (l'action part dès l'appui ; `hold-repeat` pour tenir, qui l'implique) en bas, hors de la zone de jeu utile.
 4. Écrans : un `sonic-if dataProvider="jeu" key="phase" equals="title"` (puis un pour `pause`, un pour `over`) → `position:absolute;inset:0;display:grid;place-content:center;gap:16px;text-align:center` sur un voile (`rgb(…/.8)` + `backdrop-filter:blur(6px)`). Titre du jeu énorme, une ligne d'aide (« ← → ou glisse »), UN bouton primaire (`sonic-action type="start"`), le record.
 Le bouton Jouer est aussi le geste qui débloque le son : pas besoin d'invite séparée si `sonic-sound` ne joue qu'après.
 
