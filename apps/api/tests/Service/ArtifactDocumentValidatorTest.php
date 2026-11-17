@@ -801,11 +801,12 @@ final class ArtifactDocumentValidatorTest extends TestCase
 
         // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, 3d, 2d, procgen, monde, monde2d, animation,
         // mobilier, appareil, salons, ia, collecte). Plafond large, pour repérer une dérive de taille (environ 101 400 octets
-        // mi-novembre 2026, puis environ 16 000 de plus avec les prefabs, la pose, l'espace, les collisions et le mobilier).
+        // mi-novembre 2026, puis environ 16 000 de plus avec les prefabs, la pose, l'espace, les collisions et le mobilier ;
+        // environ 135 500 le 17 novembre 2026 avec les règles « monde » suivantes, 136 700 avec le post-traitement de procgen).
         $payload = $this->validator->mcpCatalogPayload(true);
         $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE);
         self::assertNotFalse($encoded);
-        self::assertLessThan(130_000, strlen($encoded));
+        self::assertLessThan(145_000, strlen($encoded));
         self::assertArrayHasKey('commonProps', $payload['catalog']);
     }
 
@@ -1357,6 +1358,14 @@ final class ArtifactDocumentValidatorTest extends TestCase
         $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['appareil'], false);
         self::assertStringContainsString('data-fullscreen-root', $payload['rules']['appareil']);
         self::assertStringContainsString('fallback', $payload['rules']['appareil']);
+    }
+
+    public function testCatalogPayloadExplainsProcgenPostProcessing(): void
+    {
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['procgen'], false);
+        self::assertStringContainsString('style.post', $payload['rules']['procgen']);
+        self::assertStringContainsString('kuwahara-aniso', $payload['rules']['procgen']);
+        self::assertStringContainsString('snap: false', $payload['rules']['procgen']);
     }
 
     public function testCatalogPayloadExplainsMondes(): void
