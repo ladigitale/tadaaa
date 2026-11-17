@@ -802,7 +802,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
         // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, 3d, 2d, procgen, monde, monde2d, animation,
         // mobilier, appareil, salons, ia, collecte). Plafond large, pour repérer une dérive de taille (environ 101 400 octets
         // mi-novembre 2026, puis environ 16 000 de plus avec les prefabs, la pose, l'espace, les collisions et le mobilier ;
-        // environ 135 500 le 17 novembre 2026 avec les règles « monde » suivantes, 136 700 avec le post-traitement de procgen, 140 600 avec les prairies et la physique de procgen, 141 900 avec les tissus de procgen, 142 100 avec les finis texturés de procgen, 143 000 avec les particules de procgen, 143 700 avec les ambiances et le rendu soigné de procgen, 144 500 avec le monde infini de procgen, environ 146 200 avec les émetteurs de procgen ; plafond relevé à 150 000).
+        // environ 135 500 le 17 novembre 2026 avec les règles « monde » suivantes, 136 700 avec le post-traitement de procgen, 140 600 avec les prairies et la physique de procgen, 141 900 avec les tissus de procgen, 142 100 avec les finis texturés de procgen, 143 000 avec les particules de procgen, 143 700 avec les ambiances et le rendu soigné de procgen, 144 500 avec le monde infini de procgen, environ 146 200 avec les émetteurs de procgen, 146 400 avec les retouches de calques de procgen (moves, remove) ; plafond relevé à 150 000).
         $payload = $this->validator->mcpCatalogPayload(true);
         $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE);
         self::assertNotFalse($encoded);
@@ -1358,6 +1358,13 @@ final class ArtifactDocumentValidatorTest extends TestCase
         $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['appareil'], false);
         self::assertStringContainsString('data-fullscreen-root', $payload['rules']['appareil']);
         self::assertStringContainsString('fallback', $payload['rules']['appareil']);
+    }
+
+    public function testCatalogPayloadExplainsProcgenLayerMoves(): void
+    {
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['procgen'], false);
+        self::assertStringContainsString('layers[i].moves[index]', $payload['rules']['procgen']);
+        self::assertStringContainsString('remove [index]', $payload['rules']['procgen']);
     }
 
     public function testCatalogPayloadExplainsProcgenEmitters(): void
