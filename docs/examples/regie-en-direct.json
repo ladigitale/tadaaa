@@ -1,0 +1,353 @@
+{
+ "schema": "artifacts/1",
+ "title": "Régie en direct",
+ "description": "Démo du flux en direct d'un run : une scène pilotée à distance par n'importe quel émetteur.",
+ "defaultView": "direct",
+ "page": {
+  "nav": "none"
+ },
+ "data": {
+  "stores": {
+   "scene": {
+    "initial": {
+     "phase": "live",
+     "titre": "Régie en direct",
+     "soustitre": "En attente du signal…",
+     "chapitre": "Avant-première",
+     "reactions": 0,
+     "annonces": 0,
+     "fil0": "Le direct va commencer.",
+     "fil1": "",
+     "fil2": "",
+     "param0": 0.15,
+     "param1": 0.55,
+     "param2": 0,
+     "param3": 0.3
+    },
+    "reducer": "($t := $action.type;\n $p := $action.payload;\n $t = 'io:input' ? $merge([$state, {'titre': $p.titre ? $p.titre : $state.titre}]) : $t = 'chapitre' ? $merge([$state, {'chapitre': $p.nom, 'soustitre': $p.soustitre ? $p.soustitre : $state.soustitre}]) : $t = 'annonce' ? $merge([$state, {'fil0': $p.texte, 'fil1': $state.fil0, 'fil2': $state.fil1, 'annonces': $state.annonces + 1}]) : $t = 'reaction' ? $merge([$state, {'reactions': $state.reactions + ($p.n ? $p.n : 1)}]) : $t = 'finish' ? $merge([$state, {'phase': 'done'}]) : $state)",
+    "budgetMs": 50
+   }
+  }
+ },
+ "views": [
+  {
+   "id": "direct",
+   "title": "Direct",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "position:relative;border-radius:1rem;overflow:hidden;aspect-ratio:16/9;max-width:64rem;margin:1rem auto 0;background:#05050d"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-shader",
+        "attributes": {
+         "params": "scene",
+         "out-data-provider": "sceneShader",
+         "image": "vec3 pal(float t){ return 0.5 + 0.5 * cos(6.28318 * (t + vec3(0.0, 0.33, 0.67))); }\nfloat hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\nfloat noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);\n  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }\nfloat fbm(vec2 p){ float v = 0.0, a = 0.5; for (int k = 0; k < 5; k++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }\nvoid mainImage(out vec4 o, in vec2 f){\n  vec2 uv = f / iResolution.xy;\n  vec2 p = (2.0 * f - iResolution.xy) / iResolution.y;\n  float e = clamp(uParam0, 0.0, 1.0);\n  float t = iTime * (0.15 + 1.2 * e);\n  float d = mix(1.5, 4.0, clamp(uParam3, 0.0, 1.0));\n  vec3 col = vec3(0.02, 0.02, 0.05);\n  for (int k = 0; k < 3; k++) {\n    float fk = float(k);\n    float y = p.y + 0.35 * fk - 0.3 + 0.35 * fbm(vec2(p.x * d * 0.5 + t * 0.6 + fk * 3.1, t * 0.3 + fk));\n    float band = exp(-pow(y * (5.0 - 2.5 * e), 2.0));\n    col += band * pal(uParam1 + 0.12 * fk + 0.1 * fbm(p * 2.0 + t)) * (0.5 + 0.9 * e);\n  }\n  float stars = step(0.995, hash(floor(f * 0.5))) * (0.4 + 0.6 * sin(iTime * 3.0 + hash(floor(f)) * 6.28));\n  col += stars * 0.6 * (1.0 - e * 0.5);\n  col += uParam2 * pal(uParam1 + 0.5) * 0.8 * (1.0 - length(p) * 0.4);\n  col *= 1.0 - 0.35 * length(uv - 0.5);\n  o = vec4(col, 1.0);\n}\n",
+         "dpr-max": "1.5",
+         "play": true,
+         "style": "position:absolute;inset:0;width:100%;height:100%;display:block"
+        }
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(.8rem,3vw,2rem);pointer-events:none;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.6)"
+        },
+        "nodes": [
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;gap:.6rem;align-items:center;font-size:.85rem;letter-spacing:.08em;text-transform:uppercase"
+          },
+          "nodes": [
+           {
+            "tagName": "span",
+            "attributes": {
+             "style": "background:#e5262a;color:#fff;border-radius:999px;padding:.15rem .6rem;font-weight:700;text-shadow:none"
+            },
+            "textContent": "● En direct"
+           },
+           {
+            "tagName": "sonic-value",
+            "attributes": {
+             "dataProvider": "scene",
+             "key": "chapitre",
+             "style": "font-weight:600"
+            }
+           }
+          ]
+         },
+         {
+          "tagName": "div",
+          "nodes": [
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "font-size:clamp(1.6rem,5vw,3.4rem);font-weight:800;line-height:1.05"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "scene",
+               "key": "titre"
+              }
+             }
+            ]
+           },
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "font-size:clamp(.95rem,2vw,1.25rem);opacity:.9;margin-top:.4rem"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "scene",
+               "key": "soustitre"
+              }
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "display:flex;gap:1.2rem;font-size:.95rem;font-variant-numeric:tabular-nums"
+          },
+          "nodes": [
+           {
+            "tagName": "span",
+            "nodes": [
+             {
+              "tagName": "span",
+              "textContent": "♥ "
+             },
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "scene",
+               "key": "reactions",
+               "style": "font-weight:700"
+              }
+             }
+            ]
+           },
+           {
+            "tagName": "span",
+            "nodes": [
+             {
+              "tagName": "span",
+              "textContent": "✉ "
+             },
+             {
+              "tagName": "sonic-value",
+              "attributes": {
+               "dataProvider": "scene",
+               "key": "annonces",
+               "style": "font-weight:700"
+              }
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "max-width:64rem;margin:1rem auto;padding:0 .2rem;display:grid;gap:.35rem"
+      },
+      "nodes": [
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;opacity:.7"
+        },
+        "textContent": "Fil du direct"
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "font-size:1.05rem;font-weight:600"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-value",
+          "attributes": {
+           "dataProvider": "scene",
+           "key": "fil0"
+          }
+         }
+        ]
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "opacity:.75"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-value",
+          "attributes": {
+           "dataProvider": "scene",
+           "key": "fil1"
+          }
+         }
+        ]
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "opacity:.5"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-value",
+          "attributes": {
+           "dataProvider": "scene",
+           "key": "fil2"
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tagName": "div",
+      "attributes": {
+       "id": "cartes",
+       "style": "max-width:64rem;margin:0 auto 1.5rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr));gap:.8rem"
+      },
+      "nodes": [
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "border:1px solid var(--sc-base-200);border-radius:.8rem;padding:.9rem 1rem"
+        },
+        "nodes": [
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "font-weight:700;margin-bottom:.3rem"
+          },
+          "textContent": "Comment ça marche"
+         },
+         {
+          "tagName": "div",
+          "attributes": {
+           "style": "font-size:.9rem;opacity:.85"
+          },
+          "textContent": "Cette page ne fait rien seule : un émetteur distant pousse des messages dans le run. Les couleurs suivent une partition jouée ici, le texte et ces cartes arrivent par le flux."
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "io": {
+  "title": "Régie en direct",
+  "description": "Scène pilotée par flux : actions chapitre {nom, soustitre?}, annonce {texte}, reaction {n?}, finish ; partitions sur /param0 (énergie 0…1), /param1 (teinte 0…1), /param2 (flash 0…1), /param3 (densité 0…1) ; cartes ajoutées par document.patch dans #cartes (/views/0/root/nodes/2/nodes/-).",
+  "modes": [
+   "interactive",
+   "embed"
+  ],
+  "input": {
+   "schema": {
+    "type": "object",
+    "properties": {
+     "titre": {
+      "type": "string",
+      "maxLength": 80
+     }
+    },
+    "additionalProperties": false
+   },
+   "store": "scene"
+  },
+  "output": {
+   "schema": {
+    "type": "object",
+    "properties": {
+     "reactions": {
+      "type": "integer"
+     },
+     "annonces": {
+      "type": "integer"
+     },
+     "chapitre": {
+      "type": "string"
+     }
+    }
+   },
+   "from": "scene",
+   "when": "phase = 'done'"
+  },
+  "stream": {
+   "store": "scene",
+   "actions": {
+    "chapitre": {
+     "schema": {
+      "type": "object",
+      "properties": {
+       "nom": {
+        "type": "string",
+        "maxLength": 40
+       },
+       "soustitre": {
+        "type": "string",
+        "maxLength": 120
+       }
+      },
+      "required": [
+       "nom"
+      ]
+     }
+    },
+    "annonce": {
+     "schema": {
+      "type": "object",
+      "properties": {
+       "texte": {
+        "type": "string",
+        "maxLength": 160
+       }
+      },
+      "required": [
+       "texte"
+      ]
+     }
+    },
+    "reaction": {
+     "schema": {
+      "type": "object",
+      "properties": {
+       "n": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1000
+       }
+      }
+     }
+    },
+    "finish": {}
+   },
+   "state": true,
+   "document": true,
+   "score": true,
+   "rate": 30
+  }
+ }
+}

@@ -90,7 +90,7 @@
          "tagName": "sonic-store",
          "attributes": {
           "id": "scene",
-          "budget-ms": "20",
+          "budget-ms": "50",
           "reducer": "$action.type = 'set' ? $merge([$state, $action.payload]) : $action.type = 'finish' ? $merge([$state, {'phase': 'done'}]) : $state",
           "initial": {
            "$json": {
@@ -139,7 +139,6 @@
           {
            "tagName": "sonic-shader",
            "attributes": {
-            "dataProvider": "scene",
             "image": {
              "$param": "shader"
             },
@@ -148,7 +147,9 @@
             },
             "dpr-max": "1.5",
             "play": true,
-            "style": "display:block;width:100%"
+            "style": "display:block;width:100%",
+            "params": "scene",
+            "out-data-provider": "sceneShader"
            }
           }
          ]
@@ -215,6 +216,9 @@
       },
       "param3": {
        "type": "number"
+      },
+      "phase": {
+       "type": "string"
       }
      }
     },

@@ -241,6 +241,15 @@ relayée aussi en webhook `artifact.run.progress` (au plus toutes les 10 s).
 `param0…3` (action `set`, `state.delta`, partitions sur `/param0`…) et la légende
 (`document.patch` sur le texte de `#legende`).
 
+**Démo « Régie en direct »** — `docs/examples/regie-en-direct.json` (scène, fil, compteurs,
+cartes) pilotée par un programme quelconque : `scripts/demo-direct-stream.mjs --events
+<origine API + eventsUrl> --token <emitToken> [--minutes 3]` envoie deux partitions de 60 s,
+des chapitres, annonces et réactions, ajoute des cartes et réécrit le titre, puis `end`.
+
+**Budget du store** — une action qui dépasse le budget du store est ignorée, et l'écran qui l'a
+sautée n'est plus synchrone : le viewer donne 50 ms au store du flux déclaré dans `data.stores` ;
+pour un `sonic-store` écrit dans la vue, mettre `budget-ms="50"`.
+
 **Durée** — chaque message prolonge le run de 24 h, dans la limite de 7 jours après sa création ;
 500 000 messages par run au plus (le serveur garde les 1 000 derniers pour les rattrapages).
 
