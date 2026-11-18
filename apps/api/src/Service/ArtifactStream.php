@@ -17,8 +17,14 @@ namespace App\Service;
  *     "document": true,                         // document.patch (JSON Patch sur le document affiché)
  *     "score": true,                            // partitions jouées localement par le viewer
  *     "rate": 30,                               // messages par seconde acceptés (1…120, défaut 20)
- *     "progress": {"from": "scene.progress", "every": 1000}   // le viewer publie cette valeur (ms min. entre deux)
+ *     "progress": {"from": "scene.progress", "every": 1000},  // le viewer publie cette valeur (ms min. entre deux)
+ *     "emit": {"from": "pad.outbox", "ack": "pad"}             // file d'envoi vers d'autres runs (liens)
  *   }
+ *
+ * `emit` : le viewer du run publie chaque élément {id, data} de la file `from` (une fois par id),
+ * puis envoie {type: "emit:ok", payload: {id}} au store `ack` qui le retire de sa file. Les liens
+ * entre runs ({@see ArtifactRunLinkService}) renvoient ces éléments dans le flux d'autres runs.
+ * Un run qui ne fait qu'émettre n'a pas besoin de store ni d'actions.
  *
  * Messages entrants (AG-UI accepté : CUSTOM → action, STATE_SNAPSHOT, STATE_DELTA) :
  *   {"type": "action", "name": "palette", "payload": …}
@@ -36,7 +42,7 @@ namespace App\Service;
  *   #rrggbb, ou paliers pour le reste) écrites dans l'état du store au pointeur `path`.
  *
  * Messages sortants (publiés par le viewer qui exécute le run) : progress {value}, snapshot
- * {seq, state} (pour les spectateurs qui arrivent en cours).
+ * {seq, state} (pour les spectateurs qui arrivent en cours), emit {id, data} (file d'envoi).
  */
 final class ArtifactStream
 {
@@ -53,7 +59,8 @@ final class ArtifactStream
     public const MIN_PROGRESS_EVERY = 100;
     public const EASES = ['linear', 'in', 'out', 'inOut', 'step'];
     public const IN_TYPES = ['action', 'state.snapshot', 'state.delta', 'document.patch', 'score', 'score.stop', 'end'];
-    public const OUT_TYPES = ['progress', 'snapshot'];
+    public const OUT_TYPES = ['progress', 'snapshot', 'emit'];
+    public const MAX_EMIT_ID = 64;
 
     private const ACTION = '/^[a-zA-Z][a-zA-Z0-9_:.-]{0,63}$/';
     private const DOTTED = '/^[a-zA-Z][a-zA-Z0-9_-]{0,63}(\.[a-zA-Z0-9_-]{1,64}){0,8}$/';
@@ -71,16 +78,17 @@ final class ArtifactStream
     {
         $p = '/io/stream';
         if (!\is_array($stream) || array_is_list($stream)) {
-            return [['path' => $p, 'message' => 'stream doit être un objet {store?, actions?, state?, document?, score?, rate?, progress?}.']];
+            return [['path' => $p, 'message' => 'stream doit être un objet {store?, actions?, state?, document?, score?, rate?, progress?, emit?}.']];
         }
         $errors = [];
         foreach (array_keys($stream) as $k) {
-            if (!\in_array($k, ['store', 'actions', 'state', 'document', 'score', 'rate', 'progress'], true)) {
-                $errors[] = ['path' => $p.'/'.$k, 'message' => 'Clé non autorisée (store, actions, state, document, score, rate, progress).'];
+            if (!\in_array($k, ['store', 'actions', 'state', 'document', 'score', 'rate', 'progress', 'emit'], true)) {
+                $errors[] = ['path' => $p.'/'.$k, 'message' => 'Clé non autorisée (store, actions, state, document, score, rate, progress, emit).'];
             }
         }
+        $accepts = self::actionNames($stream) !== [] || ($stream['state'] ?? false) === true || ($stream['document'] ?? false) === true || ($stream['score'] ?? false) === true;
         $store = $stream['store'] ?? $inputStore;
-        if (!\is_string($store) || !isset($stores[$store])) {
+        if (($accepts || \array_key_exists('store', $stream)) && (!\is_string($store) || !isset($stores[$store]))) {
             $errors[] = ['path' => $p.'/store', 'message' => \is_string($store)
                 ? sprintf('« %s » : aucun store de ce nom (data.stores ou sonic-store id).', $store)
                 : 'store requis (ou io.input.store) : le store qui reçoit les messages du flux.'];
@@ -93,8 +101,22 @@ final class ArtifactStream
                 $errors[] = ['path' => $p.'/'.$flag, 'message' => $flag.' : booléen.'];
             }
         }
-        if (self::actionNames($stream) === [] && ($stream['state'] ?? false) !== true && ($stream['document'] ?? false) !== true && ($stream['score'] ?? false) !== true) {
-            $errors[] = ['path' => $p, 'message' => 'Un flux doit accepter quelque chose : actions, state, document ou score.'];
+        if (!$accepts && !\array_key_exists('emit', $stream)) {
+            $errors[] = ['path' => $p, 'message' => 'Un flux doit accepter quelque chose (actions, state, document, score) ou émettre (emit).'];
+        }
+        if (\array_key_exists('emit', $stream)) {
+            $em = $stream['emit'];
+            if (!\is_array($em) || array_is_list($em) || array_diff(array_keys($em), ['from', 'ack']) !== []) {
+                $errors[] = ['path' => $p.'/emit', 'message' => 'emit : {from: "dataProvider.chemin" (file [{id, data}]), ack?: "store"}.'];
+            } else {
+                $from = $em['from'] ?? null;
+                if (!\is_string($from) || !preg_match(self::DOTTED, $from) || !isset($providers[explode('.', $from)[0]])) {
+                    $errors[] = ['path' => $p.'/emit/from', 'message' => 'from : "dataProvider.chemin" existant (tableau [{id, data}]).'];
+                }
+                if (\array_key_exists('ack', $em) && (!\is_string($em['ack']) || !isset($stores[$em['ack']]))) {
+                    $errors[] = ['path' => $p.'/emit/ack', 'message' => 'ack : nom d’un store (reçoit {type: "emit:ok", payload: {id}}).'];
+                }
+            }
         }
         if (\array_key_exists('rate', $stream) && (!\is_int($stream['rate']) || $stream['rate'] < 1 || $stream['rate'] > self::MAX_RATE)) {
             $errors[] = ['path' => $p.'/rate', 'message' => sprintf('rate : entier 1…%d (messages par seconde).', self::MAX_RATE)];
@@ -132,6 +154,20 @@ final class ArtifactStream
         return array_values(array_filter(array_is_list($actions) ? $actions : array_keys($actions), 'is_string'));
     }
 
+    /** Le flux déclare-t-il une file d'envoi (emit) ? @param array<string, mixed> $io */
+    public static function emits(array $io): bool
+    {
+        return \is_array($io['stream']['emit'] ?? null);
+    }
+
+    /** Le flux accepte-t-il des messages (pas seulement emit) ? @param array<string, mixed> $io */
+    public static function accepts(array $io): bool
+    {
+        $s = \is_array($io['stream'] ?? null) ? $io['stream'] : [];
+
+        return self::actionNames($s) !== [] || ($s['state'] ?? false) === true || ($s['document'] ?? false) === true || ($s['score'] ?? false) === true;
+    }
+
     /** Store visé par le flux. @param array<string, mixed> $io */
     public static function store(array $io): ?string
     {
@@ -161,6 +197,7 @@ final class ArtifactStream
             'score' => ($stream['score'] ?? false) === true,
             'rate' => self::rate($stream),
             'progress' => \is_array($stream['progress'] ?? null),
+            'emit' => \is_array($stream['emit'] ?? null),
         ];
     }
 
@@ -265,7 +302,7 @@ final class ArtifactStream
     public static function normalizeOut(mixed $msg): array
     {
         if (!$msg instanceof \stdClass || !\in_array($msg->type ?? null, self::OUT_TYPES, true)) {
-            return [null, ['message attendu : {type: progress|snapshot, …}.']];
+            return [null, ['message attendu : {type: progress|snapshot|emit, …}.']];
         }
         if (\strlen((string) json_encode($msg)) > self::MAX_MESSAGE_BYTES) {
             return [null, [sprintf('message trop volumineux (%d octets max).', self::MAX_MESSAGE_BYTES)]];
@@ -274,6 +311,13 @@ final class ArtifactStream
         $out->type = $msg->type;
         if ($msg->type === 'progress') {
             $out->value = $msg->value ?? null;
+        } elseif ($msg->type === 'emit') {
+            $id = $msg->id ?? null;
+            if (!(\is_string($id) && $id !== '' && mb_strlen($id) <= self::MAX_EMIT_ID) && !\is_int($id)) {
+                return [null, [sprintf('emit : {id (texte de %d car. au plus ou entier), data}.', self::MAX_EMIT_ID)]];
+            }
+            $out->id = $id;
+            $out->data = $msg->data ?? null;
         } else {
             if (!\is_int($msg->seq ?? null) || $msg->seq < 0) {
                 return [null, ['snapshot : {seq, state} (seq = dernier message appliqué).']];

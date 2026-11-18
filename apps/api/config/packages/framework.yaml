@@ -52,7 +52,7 @@ framework:
         # L'émission a son propre débit par run (io.stream.rate).
         artifacts_stream:
             policy: sliding_window
-            limit: 600
+            limit: 1800
             interval: '1 minute'
             lock_factory: null
         # Sauvegardes en ligne des visiteurs (data.persist.online) : écriture différée côté viewer, ~1 / 2 s au plus.

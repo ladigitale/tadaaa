@@ -45,6 +45,7 @@ final class ArtifactRunService
         #[Autowire(service: 'limiter.artifact_runs')]
         private readonly RateLimiterFactoryInterface $limiter,
         private readonly ArtifactRunStreamService $streams,
+        private readonly \App\Repository\ArtifactRunLinkRepository $links,
     ) {
     }
 
@@ -401,7 +402,16 @@ final class ArtifactRunService
     /** @return array<string, mixed> */
     public function get(User $user, string $runId): array
     {
-        return $this->serialize($this->requireRun($user, $runId));
+        $run = $this->requireRun($user, $runId);
+        $out = $this->serialize($run);
+        if ($run->hasStream()) {
+            $links = $this->links->findForRun($run);
+            if ($links !== []) {
+                $out['links'] = array_map(static fn (\App\Entity\ArtifactRunLink $l): array => $l->serialize(), $links);
+            }
+        }
+
+        return $out;
     }
 
     /** @return list<array<string, mixed>> */
@@ -502,6 +512,7 @@ final class ArtifactRunService
             $out['stream'] = [
                 'seq' => $run->getStreamSeq(),
                 'messages' => (int) ($meta['messages'] ?? 0),
+                'emitted' => (int) ($meta['emitted'] ?? 0),
                 'ended' => $run->isStreamEnded(),
                 'progress' => $meta['progress'] ?? null,
             ];

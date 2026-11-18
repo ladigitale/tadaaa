@@ -6,12 +6,14 @@ namespace App\Service;
 
 use App\Entity\ArtifactRun;
 use App\Entity\User;
+use App\Event\ArtifactRunEmitted;
 use App\Repository\ArtifactRunRepository;
 use App\Webhook\WebhookEventType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -62,6 +64,7 @@ final class ArtifactRunStreamService
         private readonly WebhookDispatcher $webhooks,
         private readonly UsageMeter $usage,
         private readonly LoggerInterface $logger,
+        private readonly EventDispatcherInterface $events,
         #[Autowire(service: 'cache.rate_limiter')]
         private readonly CacheItemPoolInterface $limiterPool,
     ) {
@@ -119,6 +122,18 @@ final class ArtifactRunStreamService
         }
 
         return $this->emit($run, $body);
+    }
+
+    /**
+     * Messages relayés par un lien entre runs ({@see ArtifactRunLinkService}).
+     *
+     * @param list<\stdClass> $messages
+     *
+     * @return array<string, mixed>
+     */
+    public function emitFromLink(ArtifactRun $run, array $messages): array
+    {
+        return $this->emit($run, (object) ['events' => $messages]);
     }
 
     /**
@@ -206,6 +221,7 @@ final class ArtifactRunStreamService
         $list = self::messages($body);
         $relay = [];
         $progress = null;
+        $emitted = [];
         foreach ($list as $i => $raw) {
             [$msg, $errors] = ArtifactStream::normalizeOut($raw);
             if ($msg === null) {
@@ -223,22 +239,42 @@ final class ArtifactRunStreamService
             }
             $msg->t = self::nowMs();
             $relay[] = $msg;
-            $progress = $msg->value;
+            if ($msg->type === 'emit') {
+                if (!ArtifactStream::emits($run->getIo() ?? [])) {
+                    throw new BadRequestHttpException('Ce run n’a pas de file d’envoi (io.stream.emit).');
+                }
+                $emitted[] = $msg;
+            } else {
+                $progress = $msg->value;
+            }
         }
         $meta = $run->getStreamMeta();
         $hook = false;
-        if ($relay !== []) {
+        if ($relay !== [] && \count($emitted) < \count($relay)) {
             $meta['progress'] = $progress;
             $meta['progressAt'] = self::nowMs();
             if (time() - (int) ($meta['progressHookAt'] ?? 0) >= self::PROGRESS_HOOK_EVERY) {
                 $meta['progressHookAt'] = time();
                 $hook = true;
             }
+        }
+        if ($emitted !== []) {
+            $meta['emitted'] = (int) ($meta['emitted'] ?? 0) + \count($emitted);
+            $run->extendExpiry(
+                (new \DateTimeImmutable())->add(new \DateInterval(self::IDLE_TTL)),
+                $run->getCreatedAt()->add(new \DateInterval(self::MAX_LIFETIME)),
+            );
+        }
+        if ($relay !== []) {
             $run->setStreamMeta($meta);
         }
         $this->em->flush();
         if ($relay !== []) {
             $this->publish($run, 'out', ['events' => $relay]);
+        }
+        if ($emitted !== []) {
+            // Liens entre runs : renvoyés dans les flux cibles (erreurs consignées sur le lien).
+            $this->events->dispatch(new ArtifactRunEmitted($run, $emitted));
         }
         if ($hook) {
             $this->webhooks->dispatch($run->getArtifact()->getDataset(), WebhookEventType::ARTIFACT_RUN_PROGRESS, [
@@ -268,6 +304,9 @@ final class ArtifactRunStreamService
             throw new BadRequestHttpException(sprintf('Envoi trop volumineux (%d octets max, découper en plusieurs envois).', ArtifactStream::MAX_BATCH_BYTES));
         }
         $this->assertOpen($run, true);
+        if (!ArtifactStream::accepts($run->getIo() ?? [])) {
+            throw new BadRequestHttpException('Ce run n’accepte aucun message : son flux ne fait qu’émettre (io.stream.emit).');
+        }
         $stream = (array) ($run->getIo()['stream'] ?? []);
 
         // Validation complète avant de toucher au run : un envoi est accepté ou refusé en entier.
