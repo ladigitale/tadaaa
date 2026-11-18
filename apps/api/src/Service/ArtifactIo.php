@@ -16,7 +16,8 @@ namespace App\Service;
  *     "input":  {"schema": {…JSON Schema…}, "store": "calc", "action": "io:input"},
  *     "output": {"schema": {…JSON Schema…}, "from": "calc.result", "when": "phase = 'done'",
  *                "files": {"dessin": "sketch.file"}},           // optionnel, modes interactive / embed
- *     "headless": {"actions": [{"type": "tick", "repeat": 100}], "maxSteps": 2000}
+ *     "headless": {"actions": [{"type": "tick", "repeat": 100}], "maxSteps": 2000},
+ *     "stream": {…}                               // optionnel : flux en direct, voir ArtifactStream
  *   }
  *
  * - `input` (optionnel) : l'entrée validée par `schema` est envoyée au store `store` comme action
@@ -70,8 +71,8 @@ final class ArtifactIo
         }
         $errors = [];
         foreach (array_keys($io) as $k) {
-            if (!\in_array($k, ['title', 'description', 'modes', 'input', 'output', 'headless'], true)) {
-                $errors[] = ['path' => '/io/'.$k, 'message' => 'Clé non autorisée (title, description, modes, input, output, headless).'];
+            if (!\in_array($k, ['title', 'description', 'modes', 'input', 'output', 'headless', 'stream'], true)) {
+                $errors[] = ['path' => '/io/'.$k, 'message' => 'Clé non autorisée (title, description, modes, input, output, headless, stream).'];
             }
         }
         foreach (['title' => 80, 'description' => 500] as $k => $max) {
@@ -202,6 +203,13 @@ final class ArtifactIo
             }
         }
 
+        if (\array_key_exists('stream', $io)) {
+            if ($modes !== [] && array_intersect($modes, ['interactive', 'embed']) === []) {
+                $errors[] = ['path' => '/io/stream', 'message' => 'Un flux suppose un viewer ouvert : mode interactive ou embed.'];
+            }
+            $errors = [...$errors, ...ArtifactStream::validateDeclaration($io['stream'], $inputStore, $stores, $providers)];
+        }
+
         return $errors;
     }
 
@@ -227,6 +235,7 @@ final class ArtifactIo
             'inputSchema' => \is_array($io['input']['schema'] ?? null) ? $io['input']['schema'] : ['type' => 'object', 'properties' => new \stdClass()],
             'outputSchema' => $io['output']['schema'] ?? null,
             'outputFiles' => \is_array($io['output']['files'] ?? null) && $io['output']['files'] !== [] ? array_keys($io['output']['files']) : null,
+            'stream' => \is_array($io['stream'] ?? null) && !array_is_list($io['stream']) ? ArtifactStream::describe($io['stream']) : null,
         ], static fn (mixed $v): bool => $v !== null);
     }
 
@@ -260,6 +269,85 @@ final class ArtifactIo
         $runRef = ['$ref' => '#/components/schemas/Run'];
         $json = static fn (array $schema): array => ['content' => ['application/json' => ['schema' => $schema]]];
         $error = ['description' => 'Erreur', ...$json(['type' => 'object', 'properties' => ['detail' => ['type' => 'string']]])];
+        $stream = \is_array($contract['stream'] ?? null) ? $contract['stream'] : null;
+        $streamPaths = [];
+        $streamWebhooks = [];
+        if ($stream !== null) {
+            $run['properties']['stream'] = [
+                'type' => 'object',
+                'description' => 'Flux du run (io.stream). Jetons rendus une seule fois, à la création.',
+                'properties' => [
+                    'emitToken' => ['type' => 'string', 'description' => 'Pousser des messages (Authorization: Bearer).'],
+                    'watchToken' => ['type' => 'string', 'description' => 'Suivre le flux en lecture seule.'],
+                    'eventsUrl' => ['type' => 'string'],
+                    'joinUrl' => ['type' => 'string'],
+                    'watchUrl' => ['type' => 'string', 'format' => 'uri', 'description' => 'Viewer en spectateur.'],
+                    'seq' => ['type' => 'integer'],
+                    'messages' => ['type' => 'integer'],
+                    'ended' => ['type' => 'boolean'],
+                    'progress' => new \stdClass(),
+                ],
+            ];
+            $actions = [];
+            foreach ((array) $stream['actions'] as $name => $def) {
+                $actions[] = [
+                    'type' => 'object',
+                    'title' => 'action '.$name,
+                    'properties' => ['type' => ['const' => 'action'], 'name' => ['const' => $name], 'payload' => \is_array($def) && \is_array($def['schema'] ?? null) ? $def['schema'] : new \stdClass()],
+                    'required' => ['type', 'name'],
+                ];
+            }
+            $patch = ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['op' => ['enum' => ['add', 'remove', 'replace', 'move', 'copy', 'test']], 'path' => ['type' => 'string'], 'from' => ['type' => 'string'], 'value' => new \stdClass()], 'required' => ['op', 'path']]];
+            $kinds = $actions;
+            if ($stream['state'] ?? false) {
+                $kinds[] = ['type' => 'object', 'title' => 'state.snapshot', 'properties' => ['type' => ['const' => 'state.snapshot'], 'state' => ['type' => 'object']], 'required' => ['type', 'state']];
+                $kinds[] = ['type' => 'object', 'title' => 'state.delta', 'properties' => ['type' => ['const' => 'state.delta'], 'patch' => $patch], 'required' => ['type', 'patch']];
+            }
+            if ($stream['document'] ?? false) {
+                $kinds[] = ['type' => 'object', 'title' => 'document.patch', 'properties' => ['type' => ['const' => 'document.patch'], 'patch' => $patch], 'required' => ['type', 'patch']];
+            }
+            if ($stream['score'] ?? false) {
+                $kinds[] = ['type' => 'object', 'title' => 'score', 'properties' => ['type' => ['const' => 'score'], 'score' => ['type' => 'object', 'description' => '{duration?, loop?, speed?, events?: [{at, action, payload?}], tracks?: [{path, keys: [{at, value, ease?}]}]}']], 'required' => ['type', 'score']];
+                $kinds[] = ['type' => 'object', 'title' => 'score.stop', 'properties' => ['type' => ['const' => 'score.stop']], 'required' => ['type']];
+            }
+            $kinds[] = ['type' => 'object', 'title' => 'end', 'properties' => ['type' => ['const' => 'end']], 'required' => ['type']];
+            $publicRun = '/api/public/artifacts/'.$slug.'/runs/{runId}';
+            $runIdParam = ['name' => 'runId', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string', 'format' => 'uuid']];
+            $streamPaths[$publicRun.'/events'] = [
+                'post' => [
+                    'operationId' => 'streamArtifactEvents',
+                    'summary' => sprintf('Pousser des messages dans le flux du run (%d messages/s au plus)', (int) ($stream['rate'] ?? ArtifactStream::DEFAULT_RATE)),
+                    'security' => [['emitToken' => []]],
+                    'parameters' => [$runIdParam],
+                    'requestBody' => ['required' => true, ...$json([
+                        'type' => 'object',
+                        'properties' => ['events' => ['type' => 'array', 'maxItems' => ArtifactStream::MAX_BATCH, 'items' => ['oneOf' => $kinds]]],
+                        'required' => ['events'],
+                    ])],
+                    'responses' => [
+                        '202' => ['description' => 'Messages acceptés', ...$json(['type' => 'object', 'properties' => ['accepted' => ['type' => 'integer'], 'seq' => ['type' => 'integer'], 'firstSeq' => ['type' => 'integer'], 'ended' => ['type' => 'boolean']]])],
+                        '400' => $error, '409' => $error, '410' => $error, '429' => $error,
+                    ],
+                ],
+            ];
+            $streamPaths[$publicRun.'/stream'] = [
+                'get' => [
+                    'operationId' => 'joinArtifactStream',
+                    'summary' => 'Rejoindre le flux (rt, wt ou et) : identifiants Mercure, état courant, messages depuis after',
+                    'security' => [],
+                    'parameters' => [
+                        $runIdParam,
+                        ['name' => 'wt', 'in' => 'query', 'schema' => ['type' => 'string'], 'description' => 'Jeton de spectateur (ou rt / et).'],
+                        ['name' => 'after', 'in' => 'query', 'schema' => ['type' => 'integer'], 'description' => 'Messages de numéro supérieur (rattrapage, ou suivi sans Mercure).'],
+                    ],
+                    'responses' => ['200' => ['description' => 'État du flux', ...$json(['type' => 'object'])], '404' => $error],
+                ],
+            ];
+            $streamWebhooks = [
+                'artifact.run.progress' => ['post' => ['summary' => 'Progression du flux (io.stream.progress, au plus toutes les 10 s)', 'requestBody' => $json(['type' => 'object', 'properties' => ['type' => ['const' => 'artifact.run.progress'], 'data' => ['type' => 'object', 'properties' => ['runId' => ['type' => 'string'], 'progress' => new \stdClass(), 'seq' => ['type' => 'integer']]]]]), 'responses' => ['2XX' => ['description' => 'Reçu']]]],
+                'artifact.run.stream_ended' => ['post' => ['summary' => 'Fin du flux (message end)', 'requestBody' => $json(['type' => 'object', 'properties' => ['type' => ['const' => 'artifact.run.stream_ended'], 'data' => ['type' => 'object']]]), 'responses' => ['2XX' => ['description' => 'Reçu']]]],
+            ];
+        }
 
         return [
             'openapi' => '3.1.0',
@@ -299,6 +387,7 @@ final class ArtifactIo
                         'responses' => ['200' => ['description' => 'Run', ...$json($runRef)], '404' => $error],
                     ],
                 ],
+                ...$streamPaths,
                 $runPath.'/{runId}/cancel' => [
                     'post' => [
                         'operationId' => 'cancelArtifactRun',
@@ -311,10 +400,12 @@ final class ArtifactIo
             'webhooks' => [
                 'artifact.run.completed' => ['post' => ['summary' => 'Run terminé (Standard Webhooks)', 'requestBody' => $json(['type' => 'object', 'properties' => ['type' => ['const' => 'artifact.run.completed'], 'data' => $runRef]]), 'responses' => ['2XX' => ['description' => 'Reçu']]]],
                 'artifact.run.failed' => ['post' => ['summary' => 'Run échoué, expiré ou annulé (Standard Webhooks)', 'requestBody' => $json(['type' => 'object', 'properties' => ['type' => ['const' => 'artifact.run.failed'], 'data' => $runRef]]), 'responses' => ['2XX' => ['description' => 'Reçu']]]],
+                ...$streamWebhooks,
             ],
             'components' => [
                 'schemas' => ['Run' => $run],
-                'securitySchemes' => ['bearer' => ['type' => 'http', 'scheme' => 'bearer', 'description' => 'Jeton d’API Tadaaa']],
+                'securitySchemes' => ['bearer' => ['type' => 'http', 'scheme' => 'bearer', 'description' => 'Jeton d’API Tadaaa']]
+                    + ($stream !== null ? ['emitToken' => ['type' => 'http', 'scheme' => 'bearer', 'description' => 'stream.emitToken du run']] : []),
             ],
         ];
     }

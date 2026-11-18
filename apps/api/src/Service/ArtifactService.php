@@ -511,17 +511,7 @@ final class ArtifactService
 
         // Références @file: puis @asset: résolues pour le viewer (une clé de lien est jointe aux URL d'assets
         // d'un artefact « lien » : l'image ou le son chargés par le navigateur n'ont ni session ni en-tête).
-        $document = ArtifactFiles::expand($version->getWireDocument());
-        $assetBase = $this->assetsBaseUrl !== '' ? $this->assetsBaseUrl : ($requestBaseUrl ?? '');
-        if ($assetBase !== '') {
-            $document = ArtifactAssetRefs::expand(
-                $document,
-                $assetBase,
-                $artifact->getSlug(),
-                $this->assets->hashes($artifact),
-                $artifact->getVisibility() === ArtifactVisibility::Link ? $artifact->getLinkToken() : null,
-            );
-        }
+        $document = $this->expandAssets($artifact, ArtifactFiles::expand($version->getWireDocument()), $requestBaseUrl);
 
         $body = [
             'id' => $artifact->getId()->toRfc4122(),
@@ -544,6 +534,37 @@ final class ArtifactService
     }
 
     /** @return array<string, mixed> */
+    /**
+     * Références `@asset:nom` d'un morceau de document (ou du document entier) → URL publiques,
+     * comme pour le viewer (document servi, patches d'un flux de run).
+     */
+    public function expandAssets(Artifact $artifact, mixed $value, ?string $requestBaseUrl = null): mixed
+    {
+        $assetBase = $this->assetsBaseUrl !== '' ? $this->assetsBaseUrl : ($requestBaseUrl ?? '');
+        if ($assetBase === '') {
+            return $value;
+        }
+
+        return ArtifactAssetRefs::expand(
+            $value,
+            $assetBase,
+            $artifact->getSlug(),
+            $this->assets->hashes($artifact),
+            $artifact->getVisibility() === ArtifactVisibility::Link ? $artifact->getLinkToken() : null,
+        );
+    }
+
+    /** Document « wire » d'une version (fichiers @file développés, assets non résolus). */
+    public function versionWireDocument(Artifact $artifact, int $version): mixed
+    {
+        $v = $this->versions->findOneForArtifactVersion($artifact, $version);
+        if ($v === null) {
+            throw new NotFoundHttpException('Version introuvable.');
+        }
+
+        return ArtifactFiles::expand($v->getWireDocument());
+    }
+
     public function publicMeta(string $slug, ?string $linkToken, ?User $user): array
     {
         $full = $this->publicRead($slug, $linkToken, $user);

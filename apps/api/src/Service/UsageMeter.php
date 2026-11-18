@@ -26,6 +26,7 @@ final class UsageMeter
     public const EMBED_ORIGIN_DENIED = 'embed_origin_denied';
     public const AGENT_RUNS = 'agent_runs';
     public const ARTIFACT_RUNS = 'artifact_runs';
+    public const ARTIFACT_STREAM_MESSAGES = 'artifact_stream_messages';
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

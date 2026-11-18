@@ -27,6 +27,8 @@ final class WebhookEventType
 
     public const ARTIFACT_RUN_COMPLETED = 'artifact.run.completed';
     public const ARTIFACT_RUN_FAILED = 'artifact.run.failed';
+    public const ARTIFACT_RUN_PROGRESS = 'artifact.run.progress';
+    public const ARTIFACT_RUN_STREAM_ENDED = 'artifact.run.stream_ended';
     public const ARTIFACT_WORKFLOW_WAITING = 'artifact.workflow.waiting';
     public const ARTIFACT_WORKFLOW_COMPLETED = 'artifact.workflow.completed';
     public const ARTIFACT_WORKFLOW_FAILED = 'artifact.workflow.failed';
@@ -54,6 +56,8 @@ final class WebhookEventType
             ['type' => self::DATASET_INVITE_CREATED, 'description' => 'Une invitation à un jeu a été créée.'],
             ['type' => self::ARTIFACT_RUN_COMPLETED, 'description' => 'Un run d’artefact (contrat io) a produit sa sortie.'],
             ['type' => self::ARTIFACT_RUN_FAILED, 'description' => 'Un run d’artefact (contrat io) a échoué ou s’est arrêté sans sortie.'],
+            ['type' => self::ARTIFACT_RUN_PROGRESS, 'description' => 'Progression d’un run en flux (io.stream.progress), au plus toutes les 10 s par run.'],
+            ['type' => self::ARTIFACT_RUN_STREAM_ENDED, 'description' => 'Le flux d’un run a reçu son message de fin (end).'],
             ['type' => self::ARTIFACT_WORKFLOW_WAITING, 'description' => 'Un workflow d’artefacts attend une personne (étape interactive : URL dans waiting.url).'],
             ['type' => self::ARTIFACT_WORKFLOW_COMPLETED, 'description' => 'Un workflow d’artefacts est terminé (sortie dans output).'],
             ['type' => self::ARTIFACT_WORKFLOW_FAILED, 'description' => 'Un workflow d’artefacts a échoué ou a été annulé.'],

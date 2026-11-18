@@ -88,6 +88,48 @@ class ArtifactRun
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $workflowStep = null;
 
+    /** Flux (io.stream) : clé secrète des topics Mercure du run (null : pas de flux). */
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $streamKey = null;
+
+    /** Empreinte du jeton d'émission (pousser des messages). */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $emitTokenHash = null;
+
+    /** Empreinte du jeton de spectateur (lecture seule du flux). */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $watchTokenHash = null;
+
+    /** Numéro du dernier message accepté. */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $streamSeq = 0;
+
+    /*
+     * Les trois champs suivants sont du JSON gardé en texte : un `{}` doit rester un objet
+     * (le type json de Doctrine décode en tableaux et confondrait {} et []).
+     */
+
+    /** Document courant si le flux l'a modifié (document.patch), forme « wire ». */
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $streamDocument = null;
+
+    /** Dernière partition reçue ({score, t, seq}) ; null après score.stop. */
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $streamScore = null;
+
+    /** Dernier instantané d'état publié par le viewer ({seq, state, at}). */
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $streamSnapshot = null;
+
+    /**
+     * Compteurs et état du flux : messages, progress (dernière valeur), progressAt,
+     * progressHookAt, endedAt.
+     *
+     * @var array<string, mixed>
+     */
+    #[ORM\Column(type: 'json', options: ['default' => '{}'])]
+    private array $streamMeta = [];
+
     public function __construct(Artifact $artifact, int $artifactVersion, ?User $createdBy, string $mode, mixed $input)
     {
         $this->id = Uuid::v7();
@@ -199,10 +241,120 @@ class ArtifactRun
         return $this->expiresAt !== null && $this->expiresAt <= ($now ?? new \DateTimeImmutable());
     }
 
+    public function hasStream(): bool
+    {
+        return $this->streamKey !== null;
+    }
+
+    public function getStreamKey(): ?string
+    {
+        return $this->streamKey;
+    }
+
+    /**
+     * Ouvre le flux du run : clé des topics et jetons d'émission / de spectateur (rendus une seule fois).
+     *
+     * @return array{emitToken: string, watchToken: string}
+     */
+    public function openStream(): array
+    {
+        $this->streamKey = bin2hex(random_bytes(16));
+        $emit = self::newToken();
+        $watch = self::newToken();
+        $this->emitTokenHash = hash('sha256', $emit);
+        $this->watchTokenHash = hash('sha256', $watch);
+
+        return ['emitToken' => $emit, 'watchToken' => $watch];
+    }
+
+    public function matchesEmitToken(string $token): bool
+    {
+        return $this->emitTokenHash !== null && $token !== '' && hash_equals($this->emitTokenHash, hash('sha256', $token));
+    }
+
+    public function matchesWatchToken(string $token): bool
+    {
+        return $this->watchTokenHash !== null && $token !== '' && hash_equals($this->watchTokenHash, hash('sha256', $token));
+    }
+
+    public function getStreamSeq(): int
+    {
+        return $this->streamSeq;
+    }
+
+    public function setStreamSeq(int $seq): void
+    {
+        $this->streamSeq = $seq;
+    }
+
+    /** Valeur décodée en objets (null si absente). */
+    public function getStreamDocument(): mixed
+    {
+        return $this->streamDocument === null ? null : json_decode($this->streamDocument, false);
+    }
+
+    public function setStreamDocument(mixed $document): void
+    {
+        $this->streamDocument = $document === null ? null : (string) json_encode($document, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
+    }
+
+    /** Valeur décodée en objets (null si absente). */
+    public function getStreamScore(): mixed
+    {
+        return $this->streamScore === null ? null : json_decode($this->streamScore, false);
+    }
+
+    public function setStreamScore(mixed $score): void
+    {
+        $this->streamScore = $score === null ? null : (string) json_encode($score, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
+    }
+
+    /** Valeur décodée en objets (null si absente). */
+    public function getStreamSnapshot(): mixed
+    {
+        return $this->streamSnapshot === null ? null : json_decode($this->streamSnapshot, false);
+    }
+
+    public function setStreamSnapshot(mixed $snapshot): void
+    {
+        $this->streamSnapshot = $snapshot === null ? null : (string) json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
+    }
+
+    /** @return array<string, mixed> */
+    public function getStreamMeta(): array
+    {
+        return $this->streamMeta;
+    }
+
+    /** @param array<string, mixed> $meta */
+    public function setStreamMeta(array $meta): void
+    {
+        $this->streamMeta = $meta;
+    }
+
+    public function isStreamEnded(): bool
+    {
+        return isset($this->streamMeta['endedAt']);
+    }
+
+    /** Prolonge l'expiration (activité du flux), sans dépasser $max. */
+    public function extendExpiry(\DateTimeImmutable $until, \DateTimeImmutable $max): void
+    {
+        $until = $until > $max ? $max : $until;
+        if ($this->expiresAt === null || $until > $this->expiresAt) {
+            $this->expiresAt = $until;
+        }
+    }
+
+    private static function newToken(): string
+    {
+        return rtrim(strtr(base64_encode(random_bytes(24)), '+/', '-_'), '=');
+    }
+
     /** Crée le jeton du run (rendu une seule fois) et fixe son expiration. */
     public function issueToken(\DateTimeImmutable $expiresAt): string
     {
-        $token = rtrim(strtr(base64_encode(random_bytes(24)), '+/', '-_'), '=');
+        $token = self::newToken();
         $this->tokenHash = hash('sha256', $token);
         $this->expiresAt = $expiresAt;
 

@@ -44,6 +44,7 @@ final class ArtifactRunService
         private readonly EventDispatcherInterface $events,
         #[Autowire(service: 'limiter.artifact_runs')]
         private readonly RateLimiterFactoryInterface $limiter,
+        private readonly ArtifactRunStreamService $streams,
     ) {
     }
 
@@ -182,6 +183,10 @@ final class ArtifactRunService
                     $extra['note'] = 'Artefact privé : seuls les membres connectés de son jeu pourront ouvrir ce lien.';
                 }
             }
+            if (\is_array($io['stream'] ?? null)) {
+                $linkToken = $artifact->getVisibility() === ArtifactVisibility::Link ? $artifact->getLinkToken() : null;
+                $extra['stream'] = $this->streams->open($run, $this->artifacts->publicUrl($artifact->getSlug(), $linkToken));
+            }
         }
 
         $this->em->persist($run);
@@ -200,7 +205,14 @@ final class ArtifactRunService
             // Le ménage ne bloque pas le run (repris par app:artifact-runs:sweep).
         }
 
-        return $this->serialize($run) + $extra;
+        $out = $this->serialize($run);
+        if (isset($extra['stream'], $out['stream'])) {
+            // Jetons du flux : rendus une seule fois, à la création.
+            $out['stream'] = $extra['stream'] + $out['stream'];
+            unset($extra['stream']);
+        }
+
+        return $out + $extra;
     }
 
     /**
@@ -485,6 +497,15 @@ final class ArtifactRunService
             'errors' => $run->getErrors(),
             'metrics' => (object) $run->getMetrics(),
         ];
+        if ($run->hasStream()) {
+            $meta = $run->getStreamMeta();
+            $out['stream'] = [
+                'seq' => $run->getStreamSeq(),
+                'messages' => (int) ($meta['messages'] ?? 0),
+                'ended' => $run->isStreamEnded(),
+                'progress' => $meta['progress'] ?? null,
+            ];
+        }
         if ($run->getWorkflowRun() !== null) {
             $out['workflowRunId'] = $run->getWorkflowRun()->getId()->toRfc4122();
             $out['workflowStep'] = $run->getWorkflowStep();
