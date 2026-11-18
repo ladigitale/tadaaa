@@ -44,7 +44,7 @@ final class ArtifactUiRules
     /**
      * @param array<string, mixed> $document Document déjà valide (fichiers résolus).
      *
-     * @return list<array{path: string, message: string}>
+     * @return list<array{path: string, rule: string, message: string}>
      */
     public static function lint(array $document): array
     {
@@ -80,6 +80,7 @@ final class ArtifactUiRules
                 if (\is_string($attrs['type'] ?? null) && preg_match(self::TAB_ACTION, $attrs['type']) === 1) {
                     $warnings[] = [
                         'path' => $path.'/attributes/type',
+                        'rule' => 'avis:onglet-par-action',
                         'message' => sprintf('sonic-action type="%s" : un changement d’onglet est un choix, pas une action. Recette « onglets » : sonic-button radio formDataProvider/name/value + sonic-states (l’onglet actif s’affiche seul). À garder seulement si le réducteur doit réagir au changement (fermer un modal).', $attrs['type']),
                     ];
                 }
@@ -93,6 +94,7 @@ final class ArtifactUiRules
                 if ($fields >= 2) {
                     $warnings[] = [
                         'path' => $path,
+                        'rule' => 'avis:champs-en-vrac',
                         'message' => sprintf('%d champs dans un %s sans sonic-fieldset ni sonic-form-layout : les ranger avec la recette « formulaire » (libellés alignés, deux colonnes dès 440 px).', $fields, $tag),
                     ];
                 }
@@ -110,6 +112,7 @@ final class ArtifactUiRules
             foreach ($pointerdown as $path) {
                 $warnings[] = [
                     'path' => $path.'/attributes/trigger',
+                    'rule' => 'avis:pointerdown',
                     'message' => 'sonic-action trigger="pointerdown" sur un bouton d’interface : l’appui déclenche avant le défilement et empêche de faire défiler la page au doigt. Retirer trigger (départ au clic) ; pointerdown est réservé aux commandes de jeu et aux pads d’instrument.',
                 ];
             }

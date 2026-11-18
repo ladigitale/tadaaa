@@ -8,8 +8,10 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\AuditLog;
 use App\Entity\User;
+use App\Mcp\Tool\GetArtifactValidationStatsTool;
 use App\Mcp\Tool\GetProdUpdateStatusTool;
 use App\Mcp\Tool\TriggerProdUpdateTool;
+use App\Service\ArtifactValidationStats;
 use App\Service\AuditLogger;
 use App\Service\ProdDeploy;
 use Mcp\Schema\Content\TextContent;
@@ -18,7 +20,7 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
- * Outils MCP d'exploitation (super admin) : mise à jour de production.
+ * Outils MCP d'exploitation (super admin) : mise à jour de production, mesure des validations d'artefacts.
  *
  * Volontairement absents de l'agent intégré (ToolboxFactory) : seuls les clients MCP
  * authentifiés avec le compte super admin y ont accès.
@@ -31,6 +33,7 @@ final class OpsMcpProcessor implements ProcessorInterface
         private readonly ProdDeploy $deploy,
         private readonly AuditLogger $audit,
         private readonly Security $security,
+        private readonly ArtifactValidationStats $validationStats,
     ) {
     }
 
@@ -47,6 +50,7 @@ final class OpsMcpProcessor implements ProcessorInterface
 
         $payload = match (true) {
             $data instanceof TriggerProdUpdateTool => $this->trigger($user, $data),
+            $data instanceof GetArtifactValidationStatsTool => $this->validationStats->stats($data->days ?? 7, $data->source),
             $data instanceof GetProdUpdateStatusTool => $this->deploy->status($user, $data->runId, $data->tail ?? 60),
             default => throw new \InvalidArgumentException(sprintf('Payload MCP non supporté : %s', get_debug_type($data))),
         };
