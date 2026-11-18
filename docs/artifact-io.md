@@ -236,6 +236,11 @@ depuis cet instantané (`complete: false` si le journal ne remonte pas assez loi
 Mercure. Le topic `out` porte la progression publiée par le viewer (`io.stream.progress`),
 relayée aussi en webhook `artifact.run.progress` (au plus toutes les 10 s).
 
+**Kit `direct`** — une scène shader déjà câblée : `build_artifact_from_kit {kit: "direct", params:
+{preset: "plasma", title: "…"}}`, publier, `run_artifact {mode: "interactive"}`, puis piloter
+`param0…3` (action `set`, `state.delta`, partitions sur `/param0`…) et la légende
+(`document.patch` sur le texte de `#legende`).
+
 **Durée** — chaque message prolonge le run de 24 h, dans la limite de 7 jours après sa création ;
 500 000 messages par run au plus (le serveur garde les 1 000 derniers pour les rattrapages).
 

@@ -76,7 +76,7 @@ final class ArtifactKitsTest extends TestCase
     public function testShippedKitsBuildValidDocuments(): void
     {
         $kits = new ArtifactKits(self::API.'/config/artifacts/kits');
-        self::assertSame(['gestemidi', 'grid', 'onepage', 'quiz', 'sentinel', 'shader', 'survey'], $kits->ids());
+        self::assertSame(['direct', 'gestemidi', 'grid', 'onepage', 'quiz', 'sentinel', 'shader', 'survey'], $kits->ids());
         $validator = new ArtifactDocumentValidator(
             self::API.'/config/artifacts/catalog.json',
             self::API.'/config/artifacts/sdui.schema.json',
@@ -94,8 +94,8 @@ final class ArtifactKitsTest extends TestCase
         }
 
         $summary = $kits->summary();
-        self::assertLessThan(6000, \strlen($summary));
-        foreach (['quiz :', 'grid :', 'Presets : snake', 'correct: integer', 'shader :', 'survey :', 'sentinel :', 'Presets : presence, bruit, geste', 'gestemidi :', 'Presets : frappe, doigts, tenue'] as $needle) {
+        self::assertLessThan(7000, \strlen($summary));
+        foreach (['quiz :', 'grid :', 'Presets : snake', 'correct: integer', 'shader :', 'survey :', 'sentinel :', 'Presets : presence, bruit, geste', 'gestemidi :', 'Presets : frappe, doigts, tenue', 'direct :'] as $needle) {
             self::assertStringContainsString($needle, $summary);
         }
     }
