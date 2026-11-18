@@ -1,7 +1,6 @@
 {
  "schema": "artifacts/1",
  "title": "Régie en direct",
- "description": "Démo du flux en direct d'un run : une scène pilotée à distance par n'importe quel émetteur.",
  "defaultView": "direct",
  "page": {
   "nav": "none"
