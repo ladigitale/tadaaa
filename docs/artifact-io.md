@@ -81,6 +81,19 @@ entrée locale : rien n'est envoyé à l'API. Dans tous les cas la sortie est é
 Statuts d'un run : `completed`, `incomplete`, `failed` (headless) ; `pending` puis `completed`,
 `expired` (24 h sans sortie) ou `cancelled` (modes interactive / embed).
 
+**Dessin comme outil** — `sonic-sketch` avec `export-to="<store>"` envoie chaque export
+(`save` en SVG, `savePng`) en action `exported` `{url, mime, width, height, size}` : le réducteur
+garde ces objets (ex. `ioFSvg`, `ioFPng`) et passe `when` à vrai quand les deux sont là ;
+`output.files` les désigne (`{"dessin": "store.ioFSvg"}`). Un dessin de départ donné en entrée
+(texte SVG) se lit avec `sonic-vectorize svg-from="store.cle" keep-colors auto`, branché sur
+l'`import-from` du dessin ; pour *peindre* au lieu d'importer, `gestures-from="store.cle"` rejoue
+des traits de pinceau (pression, fusion, gomme) donnés en entrée. Exemple : Abysse (`abysse-zoom-infini`).
+
+**Fichiers d'entrée (assets)** — un gros contenu (image, jeu de gestes, données) ne passe pas dans
+l'entrée : il est ajouté à l'artefact (`upload_artifact_asset`) et l'entrée le désigne par
+`"@asset:<nom>"`. La création du run refuse une référence vers un asset absent ; quand le viewer lit
+le run, chaque référence est remplacée par l'URL publique de l'asset (comme dans le document).
+
 **Fichiers de sortie** — avant la sortie, le viewer envoie chaque fichier de `output.files`
 (`<clé>.<ext>`) ; le run les liste dans `files` (`{name, contentType, sizeBytes, sha256, url}`),
 téléchargeables par `GET /api/artifacts/{id}/runs/{runId}/files/{name}` ou `get_artifact_run`

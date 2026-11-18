@@ -103,3 +103,6 @@ build/Release/
 apps/morseattack/
 apps/belts
 apps/artifacts/
+
+# Mise à jour prod via MCP : demandes / journaux du runner hôte
+/var/ops/

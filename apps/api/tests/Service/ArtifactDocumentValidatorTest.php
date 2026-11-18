@@ -63,6 +63,11 @@ final class ArtifactDocumentValidatorTest extends TestCase
                 ['name' => 'sonic-shader'],
                 ['name' => 'sonic-midi'],
                 ['name' => 'sonic-screen'],
+                ['name' => 'sonic-bluetooth'],
+                ['name' => 'sonic-label-printer'],
+                ['name' => 'sonic-serial'],
+                ['name' => 'sonic-grbl'],
+                ['name' => 'sonic-gcode'],
                 ['name' => 'sonic-grain'],
                 ['name' => 'sonic-ladder'],
                 ['name' => 'sonic-karplus'],
@@ -674,6 +679,59 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('Trop de sonic-screen', $result['errors'][0]['message']);
     }
 
+    public function testSerialNeedsCapability(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'sonic-serial', 'attributes' => ['id' => 'port', 'profile' => 'ch340', 'for' => 'connecter']],
+            ['tagName' => 'sonic-gcode', 'attributes' => ['id' => 'prog', 'source' => '#dessin', 'width-mm' => '60', 'power' => '25']],
+            ['tagName' => 'sonic-grbl', 'attributes' => ['id' => 'laser', 'transport' => '#port', 'source' => '#prog', 'machine' => 'atomstack-a5-pro']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('"serial"', implode(' | ', array_column($result['errors'], 'message')));
+
+        $doc['capabilities'] = ['serial'];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['views'][0]['root']['nodes'][] = ['tagName' => 'sonic-grbl', 'attributes' => ['transport' => '#port']];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('Trop de sonic-grbl', $result['errors'][0]['message']);
+
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['laser'], false);
+        self::assertContains('laser', ArtifactDocumentValidator::LONG_RULES);
+        self::assertStringContainsString('sonic-grbl', $payload['rules']['laser']);
+        self::assertStringContainsString('capabilities', $payload['rules']['laser']);
+    }
+
+    public function testBluetoothNeedsCapability(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'sonic-bluetooth', 'attributes' => ['id' => 'bt', 'profile' => 'luck', 'for' => 'connecter']],
+            ['tagName' => 'sonic-label-printer', 'attributes' => ['id' => 'imp', 'transport' => '#bt', 'source' => '#dessin', 'label-mm' => '30x12', 'show-preview' => '']],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('"bluetooth"', implode(' | ', array_column($result['errors'], 'message')));
+
+        $doc['capabilities'] = ['bluetooth'];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['views'][0]['root']['nodes'] = array_fill(0, 3, ['tagName' => 'sonic-bluetooth', 'attributes' => ['profile' => 'luck']]);
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('Trop de sonic-bluetooth', $result['errors'][0]['message']);
+
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['bluetooth'], false);
+        self::assertContains('bluetooth', ArtifactDocumentValidator::LONG_RULES);
+        self::assertStringContainsString('sonic-label-printer', $payload['rules']['bluetooth']);
+        self::assertStringContainsString('capabilities', $payload['rules']['bluetooth']);
+    }
+
     public function testGrainSampleUrls(): void
     {
         $doc = $this->minimalDoc();
@@ -742,11 +800,13 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertLessThan(14_000, strlen($encodedFiltered));
 
         // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, 3d, 2d, procgen, monde, monde2d, animation,
-        // appareil, salons, ia, collecte). Plafond large, pour repérer une dérive de taille.
+        // mobilier, appareil, salons, ia, collecte). Plafond large, pour repérer une dérive de taille (environ 101 400 octets
+        // mi-novembre 2026, puis environ 16 000 de plus avec les prefabs, la pose, l'espace, les collisions et le mobilier ;
+        // environ 135 500 le 17 novembre 2026 avec les règles « monde » suivantes, 136 700 avec le post-traitement de procgen, 140 600 avec les prairies et la physique de procgen, 141 900 avec les tissus de procgen, 142 100 avec les finis texturés de procgen, 143 000 avec les particules de procgen, 143 700 avec les ambiances et le rendu soigné de procgen, 144 500 avec le monde infini de procgen, environ 146 200 avec les émetteurs de procgen, 146 400 avec les retouches de calques de procgen (moves, remove), environ 147 700 avec les parties et états de procgen ; plafond relevé à 150 000).
         $payload = $this->validator->mcpCatalogPayload(true);
         $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE);
         self::assertNotFalse($encoded);
-        self::assertLessThan(100_000, strlen($encoded));
+        self::assertLessThan(150_000, strlen($encoded));
         self::assertArrayHasKey('commonProps', $payload['catalog']);
     }
 
@@ -823,7 +883,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
         // Sommaire pour le prompt système : tous les composants et les thèmes de règles (~2,5k tokens).
         $index = $validator->catalogIndex();
         self::assertLessThan(18_000, \strlen($index));
-        foreach (['sonic-button', 'sonic-store', 'sonic-physics', 'a2ui', 'chartjs', 'div', 'addon animation', 'addon device', 'addon p2p', 'animation, appareil, salons'] as $needle) {
+        foreach (['sonic-button', 'sonic-store', 'sonic-physics', 'a2ui', 'chartjs', 'div', 'addon animation', 'addon device', 'addon p2p', 'addon bluetooth', 'animation, appareil, bluetooth, salons'] as $needle) {
             self::assertStringContainsString($needle, $index);
         }
     }
@@ -843,6 +903,48 @@ final class ArtifactDocumentValidatorTest extends TestCase
         ];
         $result = $this->validator->validate($doc);
         self::assertTrue($result['valid'], json_encode($result['errors']));
+    }
+
+    public function testPersistAndHistorySkip(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['data'] = [
+            'stores' => ['chambre' => ['reducer' => '$s', 'initial' => [], 'historySkip' => 'select,hover']],
+            'transforms' => ['piece' => ['jsonata' => '{}']],
+            'persist' => ['providers' => ['chambre', 'piece'], 'version' => 1],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['data']['stores']['chambre']['historySkip'] = 'select; drop';
+        $doc['data']['persist'] = ['providers' => ['chambre', 'fantome'], 'version' => -1];
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        $paths = array_column($result['errors'], 'path');
+        self::assertContains('/data/stores/chambre/historySkip', $paths);
+        self::assertContains('/data/persist/providers/1', $paths);
+        self::assertContains('/data/persist/version', $paths);
+    }
+
+    public function testOnlinePersistAndMaxStateBytes(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['data'] = [
+            'stores' => ['chambre' => ['reducer' => '$s', 'initial' => [], 'maxStateBytes' => 1228800]],
+            'transforms' => ['sauvegarde' => ['jsonata' => '{}']],
+            'persist' => ['providers' => ['chambre'], 'version' => 2, 'online' => true, 'status' => 'sauvegarde'],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        $doc['data']['stores']['chambre']['maxStateBytes'] = 5_000_000;
+        $doc['data']['persist']['online'] = 'oui';
+        $doc['data']['persist']['status'] = '1 mauvais';
+        $result = $this->validator->validate($doc);
+        $paths = array_column($result['errors'], 'path');
+        self::assertContains('/data/stores/chambre/maxStateBytes', $paths);
+        self::assertContains('/data/persist/online', $paths);
+        self::assertContains('/data/persist/status', $paths);
     }
 
     public function testRejectsSinkWithoutIntakeAndBadIntake(): void
@@ -1238,6 +1340,62 @@ final class ArtifactDocumentValidatorTest extends TestCase
         ];
         $result = $this->validator->validate($doc);
         self::assertTrue($result['valid'], json_encode($result['errors']));
+
+        // Bouton « Plein écran » : sonic-button dans sonic-fullscreen, zone data-fullscreen-root, repli simulé.
+        $doc['views'][0]['root']['nodes'] = [
+            ['tagName' => 'div', 'attributes' => ['id' => 'atelier', 'data-fullscreen-root' => ''], 'nodes' => [
+                ['tagName' => 'sonic-fullscreen', 'attributes' => ['id' => 'fs', 'fallback' => 'simulate'], 'nodes' => [
+                    ['tagName' => 'sonic-button', 'attributes' => ['variant' => 'ghost'], 'nodes' => [
+                        ['tagName' => 'span', 'attributes' => ['swap' => 'off', 'text' => 'Plein écran']],
+                        ['tagName' => 'span', 'attributes' => ['swap' => 'on', 'text' => 'Quitter']],
+                    ]],
+                ]],
+                ['tagName' => 'sonic-fullscreen', 'attributes' => ['target' => 'atelier', 'fallback' => 'none', 'for' => 'b2']],
+            ]],
+        ];
+        $result = $this->validator->validate($doc);
+        self::assertTrue($result['valid'], json_encode($result['errors']));
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['appareil'], false);
+        self::assertStringContainsString('data-fullscreen-root', $payload['rules']['appareil']);
+        self::assertStringContainsString('fallback', $payload['rules']['appareil']);
+    }
+
+    public function testCatalogPayloadExplainsProcgenPartsAndStates(): void
+    {
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['procgen'], false);
+        self::assertStringContainsString('PARTIES MOBILES', $payload['rules']['procgen']);
+        self::assertStringContainsString('pick.part', $payload['rules']['procgen']);
+        self::assertStringContainsString('stateFx', $payload['rules']['procgen']);
+        self::assertStringContainsString('door.fl', $payload['rules']['procgen']);
+    }
+
+    public function testCatalogPayloadExplainsProcgenLayerMoves(): void
+    {
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['procgen'], false);
+        self::assertStringContainsString('layers[i].moves[index]', $payload['rules']['procgen']);
+        self::assertStringContainsString('remove [index]', $payload['rules']['procgen']);
+    }
+
+    public function testCatalogPayloadExplainsProcgenEmitters(): void
+    {
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['procgen'], false);
+        self::assertStringContainsString('recipe.emitters', $payload['rules']['procgen']);
+        self::assertStringContainsString('altitude', $payload['rules']['procgen']);
+        self::assertStringContainsString('impact {hits', $payload['rules']['procgen']);
+    }
+
+    public function testCatalogPayloadExplainsProcgenPostProcessing(): void
+    {
+        $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['procgen'], false);
+        self::assertStringContainsString('style.post', $payload['rules']['procgen']);
+        self::assertStringContainsString('kuwahara-aniso', $payload['rules']['procgen']);
+        self::assertStringContainsString('snap: false', $payload['rules']['procgen']);
+        self::assertStringContainsString('recipe.physics', $payload['rules']['procgen']);
+        self::assertStringContainsString('settle', $payload['rules']['procgen']);
+        self::assertStringContainsString('textile.laundry', $payload['rules']['procgen']);
+        self::assertStringContainsString('style.matieres', $payload['rules']['procgen']);
+        self::assertStringContainsString('recipe.weather', $payload['rules']['procgen']);
+        self::assertStringContainsString('chimney.N', $payload['rules']['procgen']);
     }
 
     public function testCatalogPayloadExplainsMondes(): void
@@ -1247,6 +1405,13 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('bipede', $payload['rules']['monde']);
         self::assertStringContainsString('clipSpeed', $payload['rules']['monde']);
         self::assertStringContainsString('view2d', $payload['rules']['monde']);
+        self::assertStringContainsString('PREFABS PARAMÉTRÉS', $payload['rules']['monde']);
+        self::assertStringContainsString('mondeInfo.conflicts', $payload['rules']['monde']);
+        self::assertStringContainsString('ESPACE', $payload['rules']['monde']);
+        self::assertStringContainsString('COLLISIONS', $payload['rules']['monde']);
+        $mobilier = $this->validator->mcpCatalogPayload(true, ['__none__'], ['mobilier'], false);
+        self::assertContains('mobilier', ArtifactDocumentValidator::LONG_RULES);
+        self::assertStringContainsString('mezzanine', $mobilier['rules']['mobilier']);
         $payload = $this->validator->mcpCatalogPayload(true, ['__none__'], ['monde2d'], false);
         self::assertContains('monde2d', ArtifactDocumentValidator::LONG_RULES);
         self::assertStringContainsString('personnage', $payload['rules']['monde2d']);

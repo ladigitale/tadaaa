@@ -92,8 +92,13 @@ services:
       LEGAL_HOST_ADDRESS: ${LEGAL_HOST_ADDRESS:-}
       LEGAL_HOST_CONTACT: ${LEGAL_HOST_CONTACT:-}
       LEGAL_PRIVACY_EMAIL: ${LEGAL_PRIVACY_EMAIL:-}
+      # Mise à jour prod via MCP (trigger_prod_update) : demandes déposées dans /srv/ops, exécutées
+      # par le runner hôte (scripts/ops/install-deploy-runner.sh). Vide = personne n'y a accès.
+      OPS_DIR: /srv/ops
+      OPS_DEPLOY_USERS: ${OPS_DEPLOY_USERS:-}
     volumes:
       - jwt_keys:/app/config/jwt
+      - ${OPS_HOST_DIR:-./var/ops}:/srv/ops
       - ${ARTIFACTS_DIST:-./apps/artifacts/dist}:/srv/artifacts-dist:ro
     expose:
       - "80"

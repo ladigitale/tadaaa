@@ -65,4 +65,15 @@ final class ArtifactAssetRefsTest extends TestCase
     {
         self::assertSame($this->doc(), ArtifactAssetRefs::expand($this->doc(), 'https://h', 'mon-jeu', []));
     }
+
+    public function testFindAndExpandInRunInput(): void
+    {
+        // Entrée d'un run : une image et un jeu de gestes en assets, une chaîne ordinaire laissée telle quelle.
+        $input = (object) ['image' => '@asset:photo.png', 'gestesFichier' => '@asset:peinture.json', 'consigne' => 'Un phare'];
+        self::assertSame([['/image', 'photo.png'], ['/gestesFichier', 'peinture.json']], ArtifactAssetRefs::find($input));
+        $out = ArtifactAssetRefs::expand($input, 'https://api.example', 'abysse', ['photo.png' => self::SHA]);
+        self::assertSame('https://api.example/api/public/artifacts/abysse/assets/photo.png?v=abcdef012345', $out->image);
+        self::assertSame('@asset:peinture.json', $out->gestesFichier);
+        self::assertSame('Un phare', $out->consigne);
+    }
 }

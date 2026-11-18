@@ -29,7 +29,7 @@ Prérequis : la compétence `design` (demande `rules=["design","experience"]` en
 | expérience à plusieurs | `sonic-p2p` (état partagé, temps commun via `time-source` + `smooth`) |
 
 ## 3. Interfaces d'instruments
-- Pads : grille `repeat(4,1fr)` de `sonic-button shape="square" size="xl"` dans `sonic-action` (`hold-repeat` si tenue), ou `sonic-matrix` + `sonic-gesture` pour un séquenceur pas-à-pas (case = pas, couleur = vélocité, la colonne jouée éclairée par `<seq>State.step`).
+- Pads : grille `repeat(4,1fr)` de `sonic-button shape="square" size="xl"` dans `sonic-action trigger="pointerdown"` (son dès l'appui ; `hold-repeat` si tenue), ou `sonic-matrix` + `sonic-gesture` pour un séquenceur pas-à-pas (case = pas, couleur = vélocité, la colonne jouée éclairée par `<seq>State.step`).
 - Curseurs : `sonic-input type="range"` dans un `formDataProvider` ; `sonic-param to="flt.freq-hz" source="ui.cutoff" min max ramp-s` ; affiche la valeur (Hz, %, BPM) à côté.
 - Transport : lecture/pause (icônes `play-outline`/`pause-outline`), BPM en gros chiffres tabulaires, indicateur de temps (4 points dont celui du `beat` courant).
 - Une seule erreur de patch = aucun son : nomme chaque module ciblé, relis rules.audio, vérifie l'état `<id>State.errors`.

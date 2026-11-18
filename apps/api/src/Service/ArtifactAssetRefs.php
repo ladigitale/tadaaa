@@ -87,6 +87,16 @@ final class ArtifactAssetRefs
         return $node;
     }
 
+    /**
+     * Références `@asset:` d'une valeur quelconque (ex. l'entrée d'un run) : [pointeur JSON, nom].
+     *
+     * @return list<array{string, string}>
+     */
+    public static function find(mixed $value): array
+    {
+        return self::refs($value, '');
+    }
+
     /** @return list<array{string, string}> [pointeur, nom] */
     private static function refs(mixed $node, string $path): array
     {

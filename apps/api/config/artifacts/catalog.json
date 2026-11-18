@@ -1,7 +1,7 @@
 {
   "concordeVersion": "5.1.3",
   "creativeStackVersion": "0.1.0",
-  "generatedFrom": "@supersoniks/concorde 5.1.3 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, blobs, color, controller, cursor, device, hugging-face-infer, interactive, map, markdown, media, ocr, p2p, paint, physics, plot, predict, procgen, scroll, shader, sketch, sound, stage, tape, text, vector, vectorize, vision, webgpu)",
+  "generatedFrom": "@supersoniks/concorde 5.1.3 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, animation, audio, blobs, bluetooth, color, controller, cursor, device, grbl, hugging-face-infer, interactive, map, markdown, media, ocr, p2p, paint, physics, plot, predict, procgen, scroll, serial, shader, sketch, sound, stage, tape, text, vector, vectorize, vision, webgpu)",
   "components": [
     {
       "name": "sonic-2d",
@@ -50,6 +50,18 @@
           "type": "boolean",
           "description": "Envoie aussi {objectId:null, x, y} (coordonnées du monde) pour un tap hors sprite"
         },
+        "drag": {
+          "type": "string",
+          "description": "Glisser les instances d'un monde : regex des noms déplaçables (.* : toutes). L'objet suit le pointeur, rangé en direct (appui, aimantation aux murs et aux voisins, collisions) ; vue de dessus et iso : tout le sol, profil et face : l'axe horizontal de l'écran. R / Maj+R (quart de tour), Q / E ou la molette le tournent pendant le geste. Au lâcher target reçoit {type:\"place\", payload:{objectId,x,y,z,ry,valid,hits,snaps,place}} et la sortie publie placed"
+        },
+        "drag-selected": {
+          "type": "boolean",
+          "description": "Avec drag : seule l'instance sélectionnée (clé selection du DataProvider, contour bleu) se déplace ; un tap sélectionne (action pick avec instance), un glisser ailleurs fait tourner la vue"
+        },
+        "keep-heading": {
+          "type": "boolean",
+          "description": "Avec drag : l'objet glissé garde son cap (pas de rotation automatique dos au mur) ; R, Q / E ou la molette le tournent."
+        },
         "out-data-provider": {
           "type": "string",
           "description": "DataProvider où publier {status, error, count, missing, errors}"
@@ -64,7 +76,7 @@
         },
         "monde": {
           "type": "string",
-          "description": "Monde en primitives (même JSON et mêmes nodes que sonic-3d, voir 3d/monde.md) ; aussi clé DP monde ; vue view2d top|side|front|iso"
+          "description": "Monde en primitives (même JSON et mêmes nodes que sonic-3d, voir 3d/monde.md) ; aussi clé DP monde ; vue view2d top|side|front|iso Prefabs paramétrés : params déclarés sur un modèle, expressions \"= …\" dans ses pièces, sous-modèles use, emplacements slots, valeurs par placement (params, slots). Pose : on \"instance@surface\" ou \"sol\", stack, spacing, avoid ; nodes.<instance>.on pour changer d’appui. Espace : clé espace {contour, hauteur, bords (murs, clôtures, ouvertures), zones, plafond} = pièce ou parcelle dont les murs, le plafond et les zones sont des appuis. Catalogue de mobilier par nom, sans écrire le modèle (lit, bureau, table, etagere, armoire, commode, tapis, coussin, rideau, lampadaire, lampe, suspension, applique, cadre, plante, bac, potager, cabane, barbecue, borne). Émetteurs (emitters) : projectiles ballistic et nuées flock instanciés, salves par la clé DP emit.<id> (compteur n), touches regroupées vers target (hit), état publié (emitters, hits). Particules (particles, vent) : feu, fumée, étincelles, pluie… par préréglages, salves par la clé DP fx.<id> (compteur n), traînées et impacts des émetteurs (trail, burst). Collisions en jeu : collider (box, sphere, capsule, none) sur un modèle, tags et sensor sur un placement (enter / leave vers target), requêtes ray / sphere / box par la clé DP queries.<id> (réponse dans la sortie queries). Monde infini (infini) : tuiles générées autour d'une instance suivie (relief, biomes, calques peuplés), retouches par la clé DP tiles, sortie infini, événement tileEnter. Finis (finish : metal, chrome, verre, depoli, laque, velours, cuir…, ou {rough, metal, clear, sheen, glass, ior, opacity, relief}) et matières de base physiques (chrome, or, cuivre, verre, cuir, velours…) ; environnement (studio, exterieur, aucun) pour les reflets. Physique 3D (physique, corps, liaisons, clé DP forces, sortie physique, événements contact / rest) : même simulation qu'en 3D, vue en projection. Ambiances (ambiance) et etalonnage : couleurs, silhouettes et grain en 2D."
         },
         "monde-layer": {
           "type": "string",
@@ -72,11 +84,11 @@
         },
         "monde2d": {
           "type": "string",
-          "description": "Monde 2D natif (JSON : ciel, calques, styles, formes vectorielles, personnages et décor procéduraux en vue profil / face / dessus, modèles gen procgen vectoriels (profil, face, plongée), clips ; voir monde2d.md) ; aussi clé DP monde2d. Instances pilotées par nodes (x y rz, flip, clip, clipSpeed, clipT, roles)"
+          "description": "Monde 2D natif (JSON : ciel, calques, styles, formes vectorielles, personnages et décor procéduraux en vue profil / face / dessus, modèles gen procgen vectoriels (profil, face, plongée), clips ; voir monde2d.md) ; aussi clé DP monde2d. Instances pilotées par nodes (x y rz, flip, clip, clipSpeed, clipT, roles) Prefabs paramétrés : params déclarés sur un modèle, expressions \"= …\" dans ses pièces, sous-modèles use, emplacements slots, valeurs par placement (params, slots)."
         }
       },
       "addon": "2d",
-      "description": "Scène 2D/2.5D : width × height logiques (mise à l'échelle de la largeur) ; enfants sonic-sprite ou sprites=DP liste ; dataProvider : clé nodes {nom:{x, y, rz (radians), scale, opacity, visible, z, color, ease}} et clé camera {x, y, zoom, ease} (ou attribut camera = chemin) ; layers=\"ciel:0 decor:0.4 monde:1:y hud:0\" (parallaxe ; :y = tri par y) ; target reçoit {type:pick, payload:{objectId, x, y}} ; rendu à la demande ; clé monde : monde complet en primitives articulées et animées (monde.md), même JSON et mêmes nodes en 2D et 3D. ; clé monde2d : monde 2D natif (monde2d.md), dont modèles gen : personnages, animaux, bâtiments et décor procgen en illustration vectorielle."
+      "description": "Scène 2D/2.5D : width × height logiques (mise à l'échelle de la largeur) ; enfants sonic-sprite ou sprites=DP liste ; dataProvider : clé nodes {nom:{x, y, rz (radians), scale, opacity, visible, z, color, ease}} et clé camera {x, y, zoom, ease} (ou attribut camera = chemin) ; layers=\"ciel:0 decor:0.4 monde:1:y hud:0\" (parallaxe ; :y = tri par y) ; target reçoit {type:pick, payload:{objectId, x, y}} ; rendu à la demande ; clé monde : monde complet en primitives articulées et animées (monde.md), même JSON et mêmes nodes en 2D et 3D. ; clé monde2d : monde 2D natif (monde2d.md), dont modèles gen : personnages, animaux, bâtiments et décor procgen en illustration vectorielle. Slot selection : contenu posé au-dessus de l'objet sélectionné d'un monde, qui le suit (bulle d'actions)."
     },
     {
       "name": "sonic-3d",
@@ -107,6 +119,18 @@
         "pick-empty": {
           "type": "boolean",
           "description": "Envoie {objectId:null} pour un tap dans le vide"
+        },
+        "drag": {
+          "type": "string",
+          "description": "Glisser les instances d'un monde : regex des noms déplaçables (.* : toutes). L'instance suit le pointeur, rangée en direct (appui, aimantation aux murs et aux voisins, collisions) ; R / Maj+R (quart de tour), Q / E ou la molette le tournent pendant le geste ; au lâcher target reçoit {type:\"place\", payload:{objectId,x,y,z,ry,valid,hits,snaps,place}} et la clé de sortie placed est publiée"
+        },
+        "drag-selected": {
+          "type": "boolean",
+          "description": "Avec drag : seule l'instance sélectionnée (clé selection du DataProvider, contour bleu) se déplace ; un tap sélectionne (action pick avec instance), un glisser ailleurs fait tourner la vue"
+        },
+        "keep-heading": {
+          "type": "boolean",
+          "description": "Avec drag : l'objet glissé garde son cap (pas de rotation automatique dos au mur) ; R, Q / E ou la molette le tournent."
         },
         "fov": {
           "type": "number"
@@ -142,7 +166,7 @@
         },
         "camera": {
           "type": "string",
-          "description": "orbit (défaut), perspective ou ortho"
+          "description": "orbit (défaut), perspective, ortho, map, ou yeux : à hauteur d'yeux dans la pièce d'un monde (glisser = regarder autour, tap sur le sol = y aller, molette / flèches = avancer, reculer, tourner)"
         },
         "min-distance": {
           "type": "number",
@@ -170,11 +194,19 @@
         },
         "monde": {
           "type": "string",
-          "description": "Monde en primitives ou modèles gen procgen (JSON : modèles articulés, clips, palette, textures, style, placement ; voir monde.md) ; aussi clé DP monde. Instances pilotées par nodes (x y z rx ry rz, clip, clipSpeed, clipT, roles)"
+          "description": "Monde en primitives ou modèles gen procgen (JSON : modèles articulés, clips, palette, textures, style, placement ; voir monde.md) ; aussi clé DP monde. Instances pilotées par nodes (x y z rx ry rz, clip, clipSpeed, clipT, roles) Prefabs paramétrés : params déclarés sur un modèle, expressions \"= …\" dans ses pièces, sous-modèles use, emplacements slots, valeurs par placement (params, slots). Pose : on \"instance@surface\" ou \"sol\", stack, spacing, avoid ; nodes.<instance>.on pour changer d’appui. Espace : clé espace {contour, hauteur, bords (murs, clôtures, ouvertures), zones, plafond} = pièce ou parcelle dont les murs, le plafond et les zones sont des appuis. Catalogue de mobilier par nom, sans écrire le modèle (lit, bureau, table, etagere, armoire, commode, tapis, coussin, rideau, lampadaire, lampe, suspension, applique, cadre, poster, plante, bac, potager, cabane, barbecue, borne) ; images du monde (clé images, URL data:) affichées par une pièce (image) ou le poster. Émetteurs (emitters) : projectiles ballistic et nuées flock instanciés, salves par la clé DP emit.<id> (compteur n), touches regroupées vers target (hit), état publié (emitters, hits). Particules (particles, vent) : feu, fumée, étincelles, pluie… par préréglages, salves par la clé DP fx.<id> (compteur n), traînées et impacts des émetteurs (trail, burst). Collisions en jeu : collider (box, sphere, capsule, none) sur un modèle, tags et sensor sur un placement (enter / leave vers target), requêtes ray / sphere / box par la clé DP queries.<id> (réponse dans la sortie queries). Monde infini (infini) : tuiles générées autour d'une instance suivie (relief, biomes, calques peuplés), retouches par la clé DP tiles, sortie infini, événement tileEnter. Finis (finish : metal, chrome, verre, depoli, laque, velours, cuir…, ou {rough, metal, clear, sheen, glass, ior, opacity, relief}) et matières de base physiques (chrome, or, cuivre, verre, cuir, velours…) ; environnement (studio, exterieur, aucun) pour les reflets. Rendu photo (photo : true ou {echantillons, rebonds, attente, filtre peinture | lisse, tramage, niveaux, touche, echelle}) : lancer de rayons progressif quand la vue s'arrête, avancement dans la sortie photo. Textures procédurales affinées automatiquement de près (texture adaptative). Physique 3D (physique : true ou {gravite, sol, liaisons}, Rapier chargé à la demande) : corps sur les placements nommés (corps : dynamique, statique, cinematique ou {masse, friction, rebond, bloqueRotation, ccd…}), liaisons (charniere, rotule, fixe, glissiere, ressort, corde), ordres par la clé DP forces.<instance> (vx, fx, torque, impulse {n}, set {n}), sortie physique, événements contact et rest vers target ; push d'un émetteur pousse les corps touchés. Ambiances (ambiance : realiste, militaire, cartoon, jouet, cyber, alien, silhouette, noir, voxel, retro, horreur, western, pastel, onirique, tableau, ou {base, …}) : rendu, ciel, palette, style gen, lumiere {intensite, couleur, hauteur, azimut, ambiante} et etalonnage {saturation, contraste, teinte, noirEtBlanc, sepia, grain, vignette, pixel, niveaux, silhouette, contours, halo, aberration, lignes, peinture, tramage, occlusion} d'un mot. Herbes (herbes : [{type herbe|ble|roseau|fleurs|gazon, zone, densite, hauteur, pied, pointe, fleurs}]) : brins instanciés qui ondulent au vent et se couchent au passage des instances. Pièces souples (souple : tissu, jupe ou chaine, attache, rigidite, poids, vent, evasement, cintrage, plis) : capes, jupes, drapeaux, queues, écharpes simulés ; chevelures (cheveux : coupe longs|courts|frange|queue|herisses, nombre, longueur, couleur) en mèches simulées. Finis texturés : relief (normales), profondeur (parallaxe), usure (rugosité variable), occlusion des creux ; finis pave, brique, ecorce, rouille. arrondi (m) des boîtes par défaut, facettes (low-poly). Modèles gen : finish par rôle ({maillot: velours, metal: chrome} ou un nom pour tous les habits) et accessoires (parts portées par un os via parent : formes, tex, finish, souple, cheveux) qui suivent l'animation."
+        },
+        "view-provider": {
+          "type": "string",
+          "description": "DataProvider de réglages de vue en direct {camera, eyeHeight} : camera y remplace l'attribut (passer de orbit à yeux depuis un bouton radio sans remonter la scène)"
+        },
+        "eye-height": {
+          "type": "number",
+          "description": "Hauteur des yeux en camera=\"yeux\" (mètres, défaut 1.25)"
         }
       },
       "addon": "3d",
-      "description": "Scène 3D glTF/GLB pilotable par données : glb (base64, sans fetch), nodes (surcharges de nœuds via le DP), target (taps → sonic-store). Détail : règle « 3d » du catalogue ; sinon 3d.md ; clé monde : monde complet en primitives articulées et animées (monde.md), même JSON et mêmes nodes en 2D et 3D ; modèles gen (générateurs procgen : personnages et animaux skinnés, bâtiments, arbres, objets) au style procgen."
+      "description": "Scène 3D glTF/GLB pilotable par données : glb (base64, sans fetch), nodes (surcharges de nœuds via le DP), target (taps → sonic-store). Détail : règle « 3d » du catalogue ; sinon 3d.md ; clé monde : monde complet en primitives articulées et animées (monde.md), même JSON et mêmes nodes en 2D et 3D ; modèles gen (générateurs procgen : personnages et animaux skinnés, bâtiments, arbres, objets) au style procgen. Slot selection : contenu posé au-dessus de l'objet sélectionné d'un monde, qui le suit à l'écran (bulle d'actions) ; ses clics ne déplacent ni l'objet ni la vue."
     },
     {
       "name": "sonic-action",
@@ -194,15 +226,15 @@
         "trigger": {
           "type": "string",
           "values": [
-            "pointerdown",
-            "click"
+            "click",
+            "pointerdown"
           ],
-          "default": "pointerdown",
-          "description": "pointerdown : jeux et manettes tactiles ; click : interfaces (comme un bouton Concorde)"
+          "default": "click",
+          "description": "click (défaut) : comme un bouton Concorde, ne part pas quand un doigt fait défiler la page ; pointerdown : dès l'appui, pour les jeux et manettes tactiles (implicite avec hold-repeat)"
         }
       },
       "addon": "interactive",
-      "description": "Clic / hold -> action ; trigger = nom d'un évènement d'un enfant direct (écouté en capture, même s'il ne remonte pas) : trigger=\"hide\" autour d'un sonic-modal garde un store au courant de sa fermeture (croix, fond, Échap)"
+      "description": "Clic -> action (trigger=\"pointerdown\" ou hold-repeat : dès l'appui, jeux et croix directionnelles) ; trigger = nom d'un évènement d'un enfant direct (écouté en capture, même s'il ne remonte pas) : trigger=\"hide\" autour d'un sonic-modal garde un store au courant de sa fermeture (croix, fond, Échap)"
     },
     {
       "name": "sonic-alert",
@@ -613,6 +645,65 @@
       },
       "addon": "blobs",
       "description": "Compte les objets : source (#id d'une source d'images), control {n} ou auto (chaque nouvelle image, interval ms : en continu sur une caméra), polarity auto|dark|light, bias, flatten, open, min-area-rel, no-split, drop-border, ref-from (DP {x,y} 0..1 d'un objet type), params (réglages en direct), fit ; état {status, count, estimate, clusters, median, reference, polarity, blobs[{id, cx, cy, nx, ny, nw, nh, area, k, split, border}], overlay {url}, width, height, ms, error} ; aperçu = marqueurs numérotés à superposer à l'image"
+    },
+    {
+      "name": "sonic-bluetooth",
+      "props": {
+        "profile": {
+          "type": "string",
+          "description": "profil nommé : filtres, canaux tx / rx, taille des morceaux ; plusieurs séparés par des espaces (\"luck niimbot\") : le profil présent sur l'appareil choisi est retenu"
+        },
+        "filters": {
+          "type": "string",
+          "description": "JSON [{name | namePrefix | services:[uuid]}], ajouté aux filtres du profil"
+        },
+        "services": {
+          "type": "string",
+          "description": "services à ouvrir en plus (UUID courts, complets ou noms standard), séparés par des espaces"
+        },
+        "channels": {
+          "type": "string",
+          "description": "JSON {alias: \"service/caractéristique\"} ; tx = écriture par défaut, rx = notifications"
+        },
+        "notify": {
+          "type": "string",
+          "description": "alias écoutés dès la connexion (défaut : rx)"
+        },
+        "chunk-size": {
+          "type": "number",
+          "description": "octets par écriture (défaut du profil, sinon 20 ; 512 au plus)"
+        },
+        "gap-ms": {
+          "type": "number",
+          "description": "délai entre deux morceaux"
+        },
+        "auto-reconnect": {
+          "type": "boolean",
+          "description": "reconnexion au même appareil après une coupure, sans sélecteur"
+        },
+        "accept-all": {
+          "type": "boolean",
+          "description": "sélecteur sans filtre de nom (déconseillé)"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n} ou {commande: {n, …arguments}}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance connect, dans le geste"
+        },
+        "rate": {
+          "type": "number",
+          "description": "publications par seconde au plus pour les notifications (30)"
+        }
+      },
+      "addon": "bluetooth",
+      "description": "Un appareil Bluetooth LE choisi par l'utilisateur (sélecteur du navigateur, geste obligatoire : for=\"idBouton\"). profile = luck (imprimantes Fichero / D11s), escpos, uart-nus (ESP32, micro:bit, Espruino), uart-issc, uart-hm10, cat, niimbot (imprimantes d'étiquettes Niimbot), midi, heart-rate, battery, csc, cycling-power ; sans profil : filters + channels. Commandes control {connect:n, disconnect:n, toggle:n, write:{n, channel, hex|bytes|text, response}, read:{n, channel}, subscribe:{n, channel}, unsubscribe:{n, channel}, forget:n}. État <id>State {status, error, supported, allowed, active, available, connected, device{id,name}, profile, services[{uuid, characteristics[{uuid, props}]}], channels, values{<alias>:{hex, bytes, text, n, at}}, rx (compteur de notifications), tx{queued, sent, n}, reconnecting}. Événements sonic-bluetooth-connect, sonic-bluetooth-disconnect, sonic-bluetooth-data {channel, bytes}. Écritures de 512 octets au plus ; services de mise à jour de micrologiciel, HID et FIDO refusés. Sert de transport aux pilotes (sonic-label-printer transport=\"#id\")"
     },
     {
       "name": "sonic-body",
@@ -1040,7 +1131,7 @@
         }
       },
       "addon": "device",
-      "description": "Ce que l'environnement autorise, en un DataProvider, sans ouvrir de demande de permission : pour fullscreen, pointerLock, wakeLock, gamepad, midi, orientation, clipboard, share, vibrate, camera, microphone, audio, screen → {supported, allowed (Permissions Policy), permission}, plus embedded (iframe) et secureContext. À lire pour dégrader proprement. control {refresh:n} relit. État <id>State {status:\"ready\", embedded, secureContext, fullscreen:{…}, …}"
+      "description": "Ce que l'environnement autorise, en un DataProvider, sans ouvrir de demande de permission : pour fullscreen, pointerLock, wakeLock, gamepad, midi, orientation, clipboard, share, vibrate, camera, microphone, audio, screen, bluetooth, serial → {supported, allowed (Permissions Policy), permission}, plus embedded (iframe) et secureContext. À lire pour dégrader proprement. control {refresh:n} relit. État <id>State {status:\"ready\", embedded, secureContext, fullscreen:{…}, …}"
     },
     {
       "name": "sonic-captcha",
@@ -1411,6 +1502,9 @@
         },
         "magnetic-max": {
           "type": "number"
+        },
+        "map": {
+          "type": "string"
         },
         "out-data-provider": {
           "type": "string"
@@ -2023,15 +2117,19 @@
         },
         "target": {
           "type": "string",
-          "description": "sélecteur CSS de l'élément (défaut page entière)"
+          "description": "id ou sélecteur CSS de l'élément (défaut [data-fullscreen-root] parent, sinon page entière)"
         },
         "navigation-ui": {
           "type": "string",
           "description": "auto, hide ou show"
+        },
+        "fallback": {
+          "type": "string",
+          "description": "simulate (défaut) ou none"
         }
       },
       "addon": "device",
-      "description": "Plein écran (sans rendu). Commandes control {enter:n, exit:n, toggle:n} (forme {n, navigationUI} pour une entrée ponctuelle) + clé de réglage navigationUI (auto|hide|show, prioritaire sur l'attribut), ou for=\"idBouton\" (clic = bascule, geste exigé). target = sélecteur CSS (défaut toute la page). État <id>State {status, error, supported, allowed, active, element, supportsVideoOnly, navigationUI}. Événement sonic-fullscreen-change. iPhone : seulement sur une <video>. Iframe : allow=\"fullscreen\""
+      "description": "Plein écran d'une zone ou de la page. Bouton slotté (sonic-button) : un clic bascule ; active reflété sur l'hôte et le sonic-button (enfants swap=\"on\"/\"off\"), aria-pressed sur le bouton. Aussi for=\"idBouton\" ou control {enter:n, exit:n, toggle:n} (forme {n, navigationUI}) + clé de réglage navigationUI (auto|hide|show). target = id ou sélecteur, cherché dans le même arbre (défaut : ancêtre [data-fullscreen-root], sinon la page). fallback=\"simulate\" (défaut) : API absente ou refusée (iPhone hors <video>, iframe sans allow=\"fullscreen\") → cible en position fixe 100svh au-dessus de la page, data-fullscreen-simulated, Échap en sort ; none = échec publié. État <id>State {status, error, supported, allowed, active, simulated, element, supportsVideoOnly, navigationUI}. Événement sonic-fullscreen-change"
     },
     {
       "name": "sonic-gamepad",
@@ -2064,6 +2162,125 @@
       },
       "addon": "interactive",
       "description": "Manette (disposition standard, première manette) : boutons et stick gauche poussé à fond (ls-x-, ls-x+, ls-y-, ls-y+) -> actions store ; params (DP) {deadzone, keymap, repeat} en direct ; dataProvider / out-data-provider publie {status: idle|ready|error|unsupported, error, connected, id, deadzone}. Axes analogiques, gâchettes, plusieurs manettes, vibration : voir sonic-controller (addon controller)"
+    },
+    {
+      "name": "sonic-gcode",
+      "props": {
+        "source": {
+          "type": "string",
+          "description": "#id d'un sonic-sketch ou d'une source d'images"
+        },
+        "svg-from": {
+          "type": "string",
+          "description": "DP d'un SonicMediaRef de fichier SVG, ou du SVG en texte"
+        },
+        "input": {
+          "type": "string",
+          "description": "auto (SVG si disponible, sinon image), vector ou image"
+        },
+        "tool": {
+          "type": "string",
+          "description": "laser (défaut) ou pen"
+        },
+        "mode": {
+          "type": "string",
+          "description": "auto, line, fill ou skip pour les couleurs sans réglage propre"
+        },
+        "power": {
+          "type": "number",
+          "description": "puissance en % (20)"
+        },
+        "speed": {
+          "type": "number",
+          "description": "vitesse en mm/min (1500)"
+        },
+        "passes": {
+          "type": "number",
+          "description": "nombre de passes (1)"
+        },
+        "interval": {
+          "type": "number",
+          "description": "écart entre deux lignes de hachure ou de balayage, en mm (0.1)"
+        },
+        "kerf": {
+          "type": "number",
+          "description": "décalage des contours fermés en mm, positif vers l'extérieur"
+        },
+        "ops": {
+          "type": "string",
+          "description": "JSON [{color, mode, power, speed, passes, interval, kerf}] : réglages par couleur, dans l'ordre d'exécution"
+        },
+        "width-mm": {
+          "type": "number",
+          "description": "largeur voulue en mm (0 : taille réelle)"
+        },
+        "height-mm": {
+          "type": "number",
+          "description": "hauteur voulue en mm"
+        },
+        "x-mm": {
+          "type": "number",
+          "description": "position du coin bas gauche, en mm"
+        },
+        "y-mm": {
+          "type": "number",
+          "description": "position du coin bas gauche, en mm"
+        },
+        "frame": {
+          "type": "string",
+          "description": "content (défaut : cadre = emprise des formes) ou document (page du SVG)"
+        },
+        "max-s": {
+          "type": "number",
+          "description": "valeur S de pleine puissance : grblState.maxS (1000)"
+        },
+        "dither": {
+          "type": "string",
+          "description": "image : floyd (défaut), atkinson, jarvis, stucki, burkes, sierra, sierra-lite, bayer, random, threshold, adaptive, gray, hatch, waves, spiral, isolines, stipple"
+        },
+        "threshold": {
+          "type": "number",
+          "description": "0..255 (128)"
+        },
+        "min-power": {
+          "type": "number",
+          "description": "mode gray : puissance du gris le plus clair, en %"
+        },
+        "auto": {
+          "type": "boolean",
+          "description": "reconstruit le programme dès que la source ou un réglage change"
+        },
+        "show-preview": {
+          "type": "boolean",
+          "description": "affiche l'aperçu des parcours"
+        },
+        "file-name": {
+          "type": "string",
+          "description": "nom du fichier enregistré par download (tache.gcode)"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP : compteurs de commandes et réglages en direct"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance build"
+        },
+        "levels": {
+          "type": "number",
+          "description": "paliers des lignes de niveau (2..16, 8)"
+        },
+        "line-spacing": {
+          "type": "number",
+          "description": "écart entre traits des rendus hatch, waves, spiral, stipple, en mm (0.5)"
+        }
+      },
+      "addon": "grbl",
+      "description": "Dessin → programme G-code. source=\"#id\" : un sonic-sketch (son SVG : surfaces hachurées, traits suivis) ou une source d'images (sonic-still, sonic-paint… : gravure par balayage) ; svg-from : DP d'un fichier SVG (ref-provider de sonic-file-open) ou du SVG en texte. Réglages par défaut power (%), speed (mm/min), passes, mode (auto : trait pour un contour, hachures pour un remplissage | line : suit le trait ou le contour | fill | skip), interval (mm entre deux lignes), kerf (mm, compensation du trait de coupe sur les contours fermés) ; par couleur : ops=[{color:\"#ff0000\", mode:\"line\", power:90, speed:300, passes:2}], exécutées dans l'ordre (hachures d'abord, découpe en dernier ; intérieurs avant extérieurs). Le blanc ne brûle pas. Taille width-mm / height-mm (proportions gardées ; sans elles : taille réelle du SVG, 50 mm pour une image), position x-mm / y-mm, origine en bas à gauche. Image : préparation dans la source (sonic-shader de la bibliothèque : niveaux = luminosité, contraste, gamma, éclairage local ; pile-effets = encre, contour, crayonné, peinture, aplats, hachures, points, négatif… ; sobel ; halftone), puis rendu dither = tramages floyd | atkinson | jarvis | stucki | burkes | sierra | sierra-lite | bayer | random | threshold | adaptive (seuil local), gray (puissance selon le gris, min-power), ou traits hatch (hachures croisées) | waves (ondes) | spiral | isolines (lignes de niveau, levels) | stipple (pointillisme), écart line-spacing mm. Photo en aplats vectoriels : sonic-vectorize puis svg-from=\"<id>State.file\". tool=pen : traits seulement, stylo baissé par M3. Commandes control {build:n, download:n (fichier .gcode), clear:n} et les réglages en direct {power, speed, passes, mode, interval, kerf, ops, widthMm, heightMm, xMm, yMm, frame, maxS, dither, threshold, minPower, input, tool} ; auto reconstruit à chaque changement. État <id>State {status, error, ready, seq (compteur), kind vector|image, colors [{color, fill, stroke}] (couleurs du SVG, pour les attribuer à des opérations par ops), lines, bbox{x,y,w,h} mm, sizeMm{w,h}, estimateS, burnMm, travelMm, issues[], skipped{}, settings}. show-preview dessine les parcours, chaque opération dans sa couleur (c'est aussi une source d'images #id). Lu par sonic-grbl source=\"#id\""
     },
     {
       "name": "sonic-gesture",
@@ -2157,6 +2374,57 @@
       },
       "addon": "audio",
       "description": "Granulaire (natif) : sample = URL https/blob ou chemin DP d'un SonicMediaRef (prise de sonic-audio-recorder) ; position, spread, size-s, density (grains/s), pitch, jitter réglables en direct (sonic-param) ; dans une voix, la hauteur suit la note (C4 = original)"
+    },
+    {
+      "name": "sonic-grbl",
+      "props": {
+        "transport": {
+          "type": "string",
+          "description": "#id du sonic-serial"
+        },
+        "source": {
+          "type": "string",
+          "description": "#id du sonic-gcode (ou de tout élément getGcode())"
+        },
+        "machine": {
+          "type": "string",
+          "description": "auto (zone de travail et pleine puissance lues sur la machine) ou atomstack-a5-pro (410 x 400 mm, sans fin de course)"
+        },
+        "tool": {
+          "type": "string",
+          "description": "laser (défaut) ou pen (traceur : M3 gardé, pas de contrôle du mode laser)"
+        },
+        "max-power": {
+          "type": "number",
+          "description": "plafond de puissance en % (100 : aucun) ; les S au-dessus sont ramenés au plafond"
+        },
+        "allow-settings": {
+          "type": "boolean",
+          "description": "autorise send à écrire un réglage ($n=valeur)"
+        },
+        "poll-ms": {
+          "type": "number",
+          "description": "période de lecture de l'état en ms (250)"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n} ou {commande: {n, …arguments}}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance run, dans le geste"
+        },
+        "rate": {
+          "type": "number",
+          "description": "publications par seconde au plus (30)"
+        }
+      },
+      "addon": "grbl",
+      "description": "Machine GRBL 1.1 derrière un sonic-serial (transport=\"#id\", profil ch340 ou grbl). Lit version et réglages à la connexion. Commandes control {run:n | {n, gcode} (programme de source=\"#id\" d'un sonic-gcode, ou texte G-code), hold:n, resume:n, stop:n (pause, attente de l'arrêt, remise à zéro : position gardée), frame:n | {n, power (0..5 %), feed} (tour de l'emprise du programme, faisceau éteint par défaut), jog:{n, x, y, feed} (relatif, mm), goto:{n, x, y, feed} (point de travail), jogCancel:n, setOrigin:n (l'origine de travail devient la position courante), clearOrigin:n, home:n (si la machine a des fins de course), unlock:n (après une alarme), reset:n, refresh:n, send:{n, line} (console ; écriture de réglages $n= refusée sans allow-settings)}. for=\"idBouton\" lance run. État <id>State {status, error, active, connected, firmware, machine, machineState (Idle|Run|Hold|Jog|Alarm|Door|Check|Home|Sleep|unknown), alarm{code, message}, pos{x,y,z} (travail), mpos{x,y,z}, feed, power (S en cours), area{x,y} mm, maxS ($30), laserMode ($32), homing ($22), settings{\"30\":1000…}, job{kind job|frame, lines, sent, acked, progress 0..1, running, paused, elapsedS, estimateS, bbox{x,y,w,h}}, jobs (compteur), issues[], console[] (dernières lignes échangées)}. Événements sonic-grbl-ready, sonic-grbl-start, sonic-grbl-done, sonic-grbl-stop, sonic-grbl-error {line, message}. Sécurité : run et le cadrage faisceau allumé exigent un geste ; en tool=laser, M3 est remplacé par M4 et une machine en $32=0 est refusée ; max-power plafonne S ; la tâche est arrêtée à la fermeture de la page. Non validé sur matériel"
     },
     {
       "name": "sonic-group",
@@ -2786,6 +3054,81 @@
       "description": "Clavier -> actions store (keymap code -> type ou {type, payload}, repeat {type: [délai, intervalle]}, keyup -> <type>:up) ; control / params (DP) {keymap, repeat, keyup, disabled} en direct (attributs < control < params) ; out-data-provider publie {status: idle|ready|error, error, held (codes tenus), last {code, type, payload, phase}, count, keys}"
     },
     {
+      "name": "sonic-label-printer",
+      "props": {
+        "transport": {
+          "type": "string",
+          "description": "#id du sonic-bluetooth"
+        },
+        "source": {
+          "type": "string",
+          "description": "#id de la source d'images"
+        },
+        "protocol": {
+          "type": "string",
+          "description": "auto, luck-aiyin, luck-lujiang, escpos, niimbot (variante d'après le modèle) ou niimbot-d110 | niimbot-b1 | niimbot-d11v1 | niimbot-b21v1 | niimbot-v4 (variante imposée)"
+        },
+        "width-px": {
+          "type": "number",
+          "description": "largeur de la tête en points pour un modèle inconnu (multiple de 8 ; 384 pour un ticket 58 mm)"
+        },
+        "label-mm": {
+          "type": "string",
+          "description": "longueur x largeur en mm, ex. 30x12"
+        },
+        "orientation": {
+          "type": "string",
+          "description": "landscape (défaut) ou portrait"
+        },
+        "fit": {
+          "type": "string",
+          "description": "contain (défaut), cover ou stretch"
+        },
+        "dither": {
+          "type": "string",
+          "description": "threshold (défaut : texte, traits), floyd (photo), atkinson, jarvis, stucki, burkes, sierra, sierra-lite, bayer, random, adaptive (seuil local)"
+        },
+        "threshold": {
+          "type": "number",
+          "description": "0..255 (128) : plus haut = plus noir"
+        },
+        "density": {
+          "type": "number",
+          "description": "0 clair, 1 normal, 2 foncé"
+        },
+        "paper": {
+          "type": "string",
+          "description": "gap (étiquettes, défaut), black-mark ou continuous"
+        },
+        "copies": {
+          "type": "number",
+          "description": "1..50"
+        },
+        "flip": {
+          "type": "boolean",
+          "description": "retourne l'impression d'un demi-tour (si l'étiquette sort à l'envers)"
+        },
+        "show-preview": {
+          "type": "boolean",
+          "description": "affiche l'aperçu 1 bit (dimensionner par style : width)"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP : compteurs de commandes et réglages en direct"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance print"
+        }
+      },
+      "addon": "bluetooth",
+      "description": "Imprime l'image d'une source (#id : sonic-sketch, sonic-paint, sonic-still, sonic-2d…) sur une imprimante thermique derrière un sonic-bluetooth (transport=\"#id\"). protocol auto (d'après le nom de l'appareil) | luck-aiyin (Fichero D11s d'Action : tête 96 points, 12 mm, étiquette 30x12) | luck-lujiang | escpos (tickets, width-px requis) | niimbot (Niimbot D11, D110, D101, B1, B21, B18 derrière un sonic-bluetooth profile=\"niimbot\" ou \"luck niimbot\" ; modèle et tête lus sur l'imprimante ; non testé sur matériel : si rien ne sort, imposer niimbot-d110, niimbot-b1, niimbot-d11v1, niimbot-b21v1 ou niimbot-v4). Image ramenée à l'étiquette (label-mm \"longueur x largeur\", fit), passée en 1 bit (dither threshold|floyd|atkinson|bayer, threshold), tournée (orientation landscape = texte dans le sens de la longueur). Commandes control {print:n | {n, copies}, preview:n, feed:n, refresh:n, cancel:n} ou for ; réglages en direct dans control {labelMm, orientation, fit, dither, threshold, density, paper, copies}. État <id>State {status, error, active, protocol, model, firmware, head{widthPx, dpi}, battery, charging, paper ok|out|unknown, cover closed|open|unknown, overheated, printing, progress, copy, copies, jobs (compteur), preview{width, height, ink}, issues[], settings}. show-preview affiche l'aperçu 1 bit exact (mêmes points que sur le papier) à la place du composant ; c'est aussi une source d'images (#id). Événements sonic-label-printer-done, sonic-label-printer-error"
+    },
+    {
       "name": "sonic-ladder",
       "props": {
         "name": {
@@ -2855,6 +3198,29 @@
       },
       "addon": "vision",
       "description": "Dessine sur un canvas la sortie d'un tracker (source=\"hand\" : DataProvider de sortie) : points et squelette des mains, contours du visage (le tracker doit publier landmarks=\"true\"), squelette du corps, boîtes étiquetées d'objets ; kind auto|hands|face|pose|objects ; background=\"cam\" redessine l'image de la caméra (ou d'un sonic-segmenter) dessous ; pensé comme panneau séparé : ne rien superposer à la vue caméra ; color, color2, line-width, point-radius, points, bones, fill, width, height, mirror ; aucun HTML injecté"
+    },
+    {
+      "name": "sonic-laser-pattern",
+      "props": {
+        "pattern": {
+          "type": "string",
+          "description": "grille, boite, engrenages, puzzle, tampon, porte-cles, pendentif, dessous, regle"
+        },
+        "params": {
+          "type": "string",
+          "description": "DP des paramètres du modèle"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP {pattern, params} prioritaire"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        }
+      },
+      "addon": "grbl",
+      "description": "Modèle paramétrique pour le laser, sans JS : pattern = grille (grille d'essais puissance × vitesse, avec ses propres réglages par case dans ops), boite (boîte à encoches : largeur, profondeur, hauteur, epaisseur, creneau, couvercle, motif), engrenages (dents1, dents2, module, axe, rayons), puzzle (colonnes, lignes, piece, coins, graine, motif), tampon (taille, forme, branches, anneau, miroir), porte-cles, pendentif, dessous (dessous de verre), regle. Paramètres par params (DP) ou en direct par control {pattern, params} ; bornés et arrondis au pas. État <id>State {status, error, pattern, label, description, params (effectifs), specs [{key, label, min, max, step, default, unit}] (pour construire le formulaire), svg (millimètres réels : noir = gravure, bleu = marquage, rouge = découpe), widthMm, heightMm, ops (réglages par couleur du modèle ou null), notes[], seq, catalog [{id, label, description}]}. À brancher sur sonic-gcode svg-from=\"<id>State\" ; motif : 0 aucun, 1 cœur, 2 étoile, 3 fleur, 4 rosace"
     },
     {
       "name": "sonic-legend",
@@ -4070,6 +4436,10 @@
         "out-data-provider": {
           "type": "string"
         },
+        "persist": {
+          "type": "string",
+          "description": "Clé d'enregistrement local (lettres, chiffres, . _ -) : l'image est gardée dans le navigateur (IndexedDB), réenregistrée après chaque changement et rouverte au chargement"
+        },
         "undo-levels": {
           "type": "number"
         },
@@ -4090,10 +4460,106 @@
         },
         "stamp-from": {
           "type": "string"
+        },
+        "pen-eraser": {
+          "type": "string"
+        },
+        "pen-barrel": {
+          "type": "string"
+        },
+        "pen-tilt": {
+          "type": "string"
+        },
+        "touch": {
+          "type": "string"
+        },
+        "pressure-curve": {
+          "type": "number"
+        },
+        "pressure-min": {
+          "type": "number"
+        },
+        "simulate-pressure": {
+          "type": "boolean"
+        },
+        "target": {
+          "type": "string",
+          "description": "Store qui reçoit l'export : {type: export-action, payload: {image (URL data:), width, height}}"
+        },
+        "export-action": {
+          "type": "string",
+          "description": "Type de l'action d'export (défaut export)"
+        },
+        "export-size": {
+          "type": "number",
+          "description": "Plus grand côté de l'image exportée en px (défaut 512)"
+        },
+        "export-type": {
+          "type": "string",
+          "description": "jpeg (défaut), webp ou png"
+        },
+        "export-for": {
+          "type": "string",
+          "description": "ids des boutons dont le clic lance l'export"
         }
       },
       "addon": "paint",
-      "description": "Toile de peinture (width, height, background) : réglages color, size, hardness, opacity, spacing, smoothing, tool paint|erase|pick (pipette : la couleur vue, calques et sources d'images compris, devient celle du pinceau et est écrite dans brush-from.color ; Alt + clic aussi), pressure, pointe personnalisée tip / tip-from (chemin SVG ou forme de sonic-vector-library) avec angle, angle-follow, angle-jitter, size-jitter, scatter, roundness, mode de fusion blend (multiply, screen, overlay…), ou en direct brush-from {color, size, …} ; stamp-from (#id, … : sources d'images fondues dans la toile telles qu'elles apparaissent à l'écran, à la commande stamp : aplatir un calque sonic-sketch, capturer un shader ou une scène) ; view-sync (navigable : DP de vue partagée {x, y, zoom, rotation}, lu et écrit, calques alignés avec sonic-sketch) ; control {undo, redo, clear, save, stamp, fit, reset, zoomIn, zoomOut, rotateLeft, rotateRight, straighten} compteurs ; navigable : fenêtre sur l'image avec la navigation de sonic-sketch (molette, Espace / main, deux doigts déplacer-zoomer-tourner, + − 0 R), view-from {x, y, zoom, rotation} ; in-data-provider image de départ ; source d'images #id pour sonic-shader ; état {strokes, canUndo, canRedo, drawing, picked, last, x, y, zoom, rotation}"
+      "description": "Toile de peinture (width, height, background) : réglages color, size, hardness, opacity, spacing, smoothing, tool paint|erase|pick (pipette : la couleur vue, calques et sources d'images compris, devient celle du pinceau et est écrite dans brush-from.color ; Alt + clic aussi), pressure, pointe personnalisée tip / tip-from (chemin SVG ou forme de sonic-vector-library) avec angle, angle-follow, angle-jitter, size-jitter, scatter, roundness, mode de fusion blend (multiply, screen, overlay…), ou en direct brush-from {color, size, …} ; stamp-from (#id, … : sources d'images fondues dans la toile telles qu'elles apparaissent à l'écran, à la commande stamp : aplatir un calque sonic-sketch, capturer un shader ou une scène) ; view-sync (navigable : DP de vue partagée {x, y, zoom, rotation}, lu et écrit, calques alignés avec sonic-sketch) ; control {undo, redo, clear, save, stamp, fit, reset, zoomIn, zoomOut, rotateLeft, rotateRight, straighten} compteurs ; navigable : fenêtre sur l'image avec la navigation de sonic-sketch (molette, Espace / main, deux doigts déplacer-zoomer-tourner, + − 0 R), view-from {x, y, zoom, rotation} ; in-data-provider image de départ ; persist (clé : image gardée dans le navigateur et rouverte au chargement ; état stored off|loading|saving|saved|error) ; source d'images #id pour sonic-shader ; état {strokes, canUndo, canRedo, drawing, picked, last, x, y, zoom, rotation} ; stylets : pen-eraser erase|none (bout gomme), pen-barrel pick|pan|none (bouton latéral), pen-tilt angle|none (rotation / inclinaison orientent la pointe), touch auto|draw|navigate (rejet de la paume : après un stylet, le doigt navigue), pressure-curve / pressure-min (courbe de pression), simulate-pressure (souris / doigt : pression par la vitesse) ; en direct depuis brush-from : pressureCurve, pressureMin, simulatePressure Export (commande control export, ou clic sur export-for) : toile posée sur les sources de stamp-from (fond composé dessous), réduite à export-size, envoyée en URL data: au store target ({type: export-action, payload: {image, width, height}}) ; état exported {width, height, size, n}."
+    },
+    {
+      "name": "sonic-painterly",
+      "props": {
+        "source": {
+          "type": "string"
+        },
+        "src-from": {
+          "type": "string"
+        },
+        "params": {
+          "type": "string"
+        },
+        "control": {
+          "type": "string"
+        },
+        "auto": {
+          "type": "boolean"
+        },
+        "paint-prepare": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "aucun",
+            "median",
+            "bilateral",
+            "kuwahara",
+            "kuwahara-aniso",
+            "trame-aniso",
+            "aplats"
+          ]
+        },
+        "paint-style": {
+          "type": "string",
+          "enum": [
+            "realiste",
+            "illustration",
+            "huile"
+          ]
+        },
+        "max-side": {
+          "type": "number"
+        },
+        "detail": {
+          "type": "number"
+        },
+        "max-strokes": {
+          "type": "number"
+        },
+        "out-data-provider": {
+          "type": "string"
+        }
+      },
+      "addon": "sketch",
+      "description": "Peintre : peint n'importe quelle image en gestes de pinceau, rejoués par sonic-sketch (gestures-from) avec ses vrais pinceaux. paint-style realiste (défaut) : touches posées fondues comme à l'aérographe — grille de touches qui se recouvrent du très gros au moyen, glacis en Produit et Écran, touches de plus en plus fines là où l'écart reste fort, douces où l'image est floue et nettes où elle est nette, ovales orientées le long des arêtes, pinceau plus petit près des arêtes (pas de halo), détail porté sur le point focal, touches ajustées une à une ; proche de l'image, pinceau invisible, une empreinte par trait ; illustration : passes visibles avec les outils, comme un illustrateur — fond, masses au pinceau plat, glacis doux en Produit (ombres) et en Écran (lumières), voiles de couleur, matière (craie, traits orientés), détails fins, contours effilés en Produit, reflets en Écran ; toile simulée avec les fusions, quelques milliers de traits ; huile : touches opaques accumulées du gros au fin (là où la toile s'écarte encore de l'image, un trait part du point le plus faux et suit les formes). Image : source=\"#id\" (source d'images de la page : sonic-still, sonic-camera…) ou src-from (DP d'une URL ou de {url} : asset d'artefact, fichier ouvert ; https, blob:, data:image). Réglages max-side (analyse, défaut 360), detail (0..1, défaut 0.6), max-strokes (défaut selon la manière : réaliste 5000, illustration 3000, huile 12000 ; budget toujours tenu) ou DP params {style, focus {x, y, r} (point focal, 0..1), optimizeMs (ajustement des touches, réaliste, 4000 par défaut), prepare (préparation de l'image : auto, aucun, median, bilateral, kuwahara, kuwahara-aniso, trame-aniso, aplats ; auto = Kuwahara anisotrope en illustration, rien sinon), prepareForce (0..1, défaut 0.4), contrast (contraste automatique), dither (aplats : tramage Floyd–Steinberg à la réduction de palette), maxSide, detail, layers, threshold, maxLength, curvature, opacity, jitter, maxStrokes, seed, background} ; auto (chaque nouvelle image) ou control {paint} compteur. État (out-data-provider) {status idle|loading|working|ready|error, error, url (jeu de gestes JSON en blob:, à brancher sur gestures-from), width, height, strokes, layers [{radius, strokes}], residual (écart moyen restant 0..1), ms, runs}."
     },
     {
       "name": "sonic-palette",
@@ -4701,11 +5167,11 @@
       "props": {
         "dataProvider": {
           "type": "string",
-          "description": "Chemin DataProvider lu (scene, recipe, seed, params, style, view, anim, actors, kick, select, edit, hidden, anchors)"
+          "description": "Chemin DataProvider lu (scene, recipe, seed, params, style, view, anim, actors, kick, forces, queries, weather, fx, emitters, emit, select, edit, hidden, anchors, placeRequest, tiles, ambiance, photo)"
         },
         "state-out": {
           "type": "string",
-          "description": "DataProvider écrit (status, selection, view, actors, anchors, nodes, ids, balls) ; défaut <dataProvider>State"
+          "description": "DataProvider écrit (status, selection, view, actors, anchors, nodes, ids, balls, physics, queries, emitters, impacts, drag, free, photo, ambiance, infinite, tiles) ; défaut <dataProvider>State"
         },
         "scene": {
           "type": "string",
@@ -4719,6 +5185,10 @@
           "type": "string",
           "description": "Préréglage de style initial"
         },
+        "ambiance": {
+          "type": "string",
+          "description": "Ambiance initiale (realiste, militaire, cartoon, jouet, cyber, alien, silhouette, noir, voxel, retro, horreur, western, pastel, tableau, onirique) ; la clé ambiance du DataProvider l'emporte"
+        },
         "camera": {
           "type": "string",
           "description": "Caméra initiale : side, front, iso, oblique, top, perspective, follow"
@@ -4729,7 +5199,7 @@
         },
         "target": {
           "type": "string",
-          "description": "Id du sonic-store qui reçoit les événements (pick, select, arrive, blocked, enter, leave, actionEnd)"
+          "description": "Id du sonic-store qui reçoit les événements (pick, select, place, dragstart, dragRefused, placeFree, arrive, blocked, enter, leave, actionEnd, contact, settle, splash, drop, impact, expire, exit)"
         },
         "action-prefix": {
           "type": "string",
@@ -4737,11 +5207,27 @@
         },
         "render": {
           "type": "string",
-          "description": "Mode de rendu initial : 3d (défaut) ou vector (illustration vectorielle 2D) ; un style vectoriel l'impose aussi"
+          "description": "Mode de rendu initial : 3d (défaut), vector (illustration vectorielle 2D ; un style vectoriel l'impose aussi) ou photo (3D, rendu soigné à l'arrêt qui fige l'animation)"
+        },
+        "photo": {
+          "type": "boolean",
+          "description": "Rendu soigné quand la scène est immobile (la clé photo du DataProvider l'emporte)"
+        },
+        "drag": {
+          "type": "string",
+          "description": "Regex des ids ou calques déplaçables au doigt (\".*\" : tous) ; seuls les objets placés par points at et les acteurs de recipe.actors se glissent (rendu 3D) ; en monde infini, tout objet des tuiles"
+        },
+        "drag-selected": {
+          "type": "boolean",
+          "description": "Seul l'objet sélectionné (tap) se glisse, s'il est le premier sous le doigt ; ailleurs le geste tourne la vue (recommandé pour un éditeur)"
+        },
+        "keep-heading": {
+          "type": "boolean",
+          "description": "Cap gardé pendant le glisser (procgen ne tourne jamais un objet tout seul ; R, Q / E ou molette le tournent)"
         }
       },
       "addon": "procgen",
-      "description": "Scène procédurale 3D (rendu 2D ou 3D selon caméra et style) pilotée par DataProvider, sans JS. Lit dataProvider : scene (bibliothèque : village, rue, port, foret, bivouac, personnages, marche, montagne, vapeur, neon, blasons, jardin, ferme, bord-de-mer, aire-de-jeux, place-medievale, jardin-japonais) ou recipe (recette JSON : size, ground, paths, layers, zones, actors, view ; générateurs : character, animal (animal.dog, animal.horse…), tree, bush, grass, flowers, plant, rock, building, prop (prop.lamp, prop.bench…), vehicle, wall, emblem, ball (22 ballons et balles à taille réelle : ball.soccer, ball.tennis, ball.beach…), seat (22 assises par gabarit d'utilisateur : seat.chair, seat.parkbench, seat.sofa, seat.swing…), assembly (objet sur mesure décrit en pièces box/rod/tube/lathe/blob/plate), tool (24 outils à main : tool.rake, tool.hammer… ; tenus par un personnage avec item: 'tool.rake'), container (17 contenants : container.crate, container.basket… ; open, fill apples|sand|water|logs|tools|gold…), street (16 objets de mobilier urbain : street.streetlight, street.trafficlight, street.roadsign avec sign stop|yield|noentry|parking…, street.picnictable…), pet (14 objets pour animaux : pet.kennel, pet.henhouse, pet.trough… ; for dog|cat|horse|chicken|rabbit|bird ; ancre spot)), seed, params, render (3d par défaut, ou vector : illustration vectorielle 2D, nette à tout zoom), style (préréglages vectoriels : ligne-claire, flat, gravure, affiche, papier-decoupe, ex. flat/nuit ; préréglages 3D : gouache, doux, encre, bd, pixel, lowpoly, brume, nuit, neon, crepuscule, automne, printemps, desert, neige, papier, abysses, aquarelle ; ou jetons {preset, palette, shading, outline, fog, night…}), view {camera: side|front|iso|oblique|top|perspective|follow, yaw, pitch, zoom, cx, cy, cz, actor}, anim {play, speed}, actors {id: {x, z | target: objet ou 'id.sit.N' (s'asseoir), vx, vz, run, action: idle|walk|run|wave|point|cheer|talk|carry|sit|jump|think|bow|hammer|sweep|dig|kick (target: ballon, power, loft), mood}} (intentions, pas 60 Hz), kick {ball, power, dir, loft} (coup sans acteur ; les ballons rebondissent, roulent, se poussent), select (id), edit {id, params}, hidden [ids], anchors ['id@ancre'], exportSvg (compteur : publie svg en mode vectoriel). Écrit dans state-out (défaut <dataProvider>State) : status {mode, phase, progress, error, objects, triangles, drawCalls, fps, issues}, selection (avec affords, physics, seats si l'objet les publie), view, actors, anchors, nodes, ids, svg, balls {id: {x, y, z, moving}}. Événements vers target : pick {objectId, layer, x, y, z, actor, zone}, select, arrive {actor, target}, blocked, enter/leave {zone, actor | ball}, actionEnd, kick {actor, ball}, hit {ball, actor}, rest {ball, x, z}. Unités : mètres. Donner une hauteur ; 2 scènes au plus par document."
+      "description": "Scène procédurale 3D (rendu 2D ou 3D selon caméra et style) pilotée par DataProvider, sans JS. Lit dataProvider : scene (bibliothèque : campagne (monde infini), village, rue, port, foret, bivouac, personnages, marche, montagne, vapeur, neon, blasons, jardin, ferme, bord-de-mer, aire-de-jeux, place-medievale, jardin-japonais, riviere, prairie) ou recipe (recette JSON : size, ground, paths, layers, zones, actors, view, meadows (prairies en brins instanciés : [{kind herbe|ble|roseau|fleurs|gazon, zone [x0,z0,x1,z1]|[[x,z]…]|id de zone, density, height}], au vent wind/windDir, couchées par les acteurs ; 3D seulement) ; particules : weather {kind: rain|snow|leaves|petals, intensity}, fx {chimneys, campfires, cascades, mist, dust} et layers[].fx (smoke, fire, embers, steam, spray, leaves… sur les ancres chimney.N, light, fall, top), particles (systèmes libres du format monde), salves par la clé fx du DataProvider ; générateurs : character, animal (animal.dog, animal.horse, animal.pigeon, animal.seagull…), tree, bush, grass, flowers, plant, rock, building, prop (prop.lamp, prop.bench…), vehicle (vehicle.car, vehicle.moderncar, vehicle.van, vehicle.bus, vehicle.truck, vehicle.tractor, vehicle.wagon et vehicle.locomotive avec onRails sur structure.rails, vehicle.sailboat…), wall, emblem, ball (22 ballons et balles à taille réelle : ball.soccer, ball.tennis, ball.beach…), seat (22 assises par gabarit d'utilisateur : seat.chair, seat.parkbench, seat.sofa, seat.swing…), assembly (objet sur mesure décrit en pièces box/rod/tube/lathe/blob/plate), tool (24 outils à main : tool.rake, tool.hammer… ; tenus par un personnage avec item: 'tool.rake'), container (17 contenants : container.crate, container.basket… ; open, fill apples|sand|water|logs|tools|gold…), street (16 objets de mobilier urbain : street.streetlight, street.trafficlight, street.roadsign avec sign stop|yield|noentry|parking…, street.picnictable…), pet (14 objets pour animaux : pet.kennel, pet.henhouse, pet.trough… ; for dog|cat|horse|chicken|rabbit|bird ; ancre spot), structure (ouvrages praticables : structure.bridge (form arch|flat|truss, length, width, clearance ; placé {across: 'rivière'} il l'enjambe), structure.pontoon, structure.quay, structure.stairs (height, steps), structure.ramp, structure.arch (form round|pointed|torii), structure.gate (open), structure.rails ; les acteurs marchent sur le tablier ; ancres deck, entry.N, approach.N, spot, moor.N), water (points d'eau : water.pond, water.basin (shape round|rect), water.pool, water.cascade ; level, rimHeight ; ancres spot.N et approach.N pour boire)), couches et acteurs : action, target ('bassin.0', 'abreuvoir.0.spot', 'banc.0.sit.0' : l'acteur part posé à sa cible et tourné vers elle), seed, params, render (3d par défaut, ou vector : illustration vectorielle 2D, nette à tout zoom), style (préréglages vectoriels : ligne-claire, flat, gravure, affiche, papier-decoupe, ex. flat/nuit ; préréglages 3D : gouache, doux, encre, bd, pixel, lowpoly, brume, nuit, neon, crepuscule, automne, printemps, desert, neige, papier, abysses, aquarelle ; ou jetons {preset, palette, shading, outline, fog, night…, post}) ; post = pile d'effets de post-traitement cumulables (rendu 3D) : préréglage (riso, riso-3, trame-aniso, huile, aquarelle, gravure, lino, bd-tramee, pop, miniature, cyanotype, sepia, vitrail, 1bit, gameboy, pico8, neon, vhs, argentique, thermique, bichromie, trichromie, pointillisme, decoupe, coucher) ou liste [{fx, mix 0..1, mask near|far|objects|sky|{from, to}, …réglages}] (8 au plus ; fx : kuwahara-aniso, kuwahara, huile, aquarelle, bichromie, trichromie, riso, cmjn, degrade, palette, cyanotype, sepia, points, lignes, hachures, 1bit, lino, pointillisme, vitrail, bloom, halo, aberration, miniature, brume, grain, vignette, fuite, neon, thermique, glitch, crt, decoupe, kaleido, pixel, couleur, niveaux, silhouette ; voir procgen.md), postQuality auto|low|high ; pixels accrochés au monde en vue orthographique (pixel: {size, snap: false} pour désactiver), view {camera: side|front|iso|oblique|top|perspective|follow, yaw, pitch, zoom, cx, cy, cz, actor}, anim {play, speed}, actors {id: {x, z | target: objet ou 'id.sit.N' (s'asseoir), vx, vz, run, action: idle|walk|run|wave|point|cheer|talk|carry|sit|jump|think|bow|hammer|sweep|dig|kick (target: ballon, power, loft)|drink|eat|sleep (target: 'id.spot.N' d'un point d'eau, d'une gamelle, d'une niche ; 'id.sit.N' pour dormir assis), duration (s, puis actionEnd), mood}} (intentions, pas 60 Hz), kick {ball, power, dir, loft} (coup sans acteur ; les ballons rebondissent, roulent, se poussent), select (id), edit {id, params}, hidden [ids], states {objectId: {lid|door.fl|trunk|shutter.N|open: 0…1, burning|lit|boiling|smoking}} (parties mobiles animées sans recomposer, stateSpeed s ; recette : layers[].states {rang: {…}}, layers[].stateFx {'lid>0.3': 'steam'} ; publie parts dans selection et ids, événements state et pick.part), anchors ['id@ancre'], exportSvg (compteur : publie svg en mode vectoriel), placeRequest {id, gen, params, at [x, z], size [w, d], yaw} (place libre pour un nouvel objet : state-out.free et action placeFree), emitters {id: {gen (animal.pigeon, animal.seagull, ball.soccer…) ou shape (sphere|stone|fireball|arrow|dart|bird|butterfly|bee|fish|rat|leaf), variants, max, rate, life, from|at, offset, dir, spread, speed, gravity, drag, mask (id, calque, générateur, batiment|mur|arbre|vegetation|acteur|ballon|decor|sol|eau ou autre émetteur), onHit die|bounce|stick|pierce, push, trail, burst, flock {seek, flee, speed, separation, cohesion, align, wander, bounds, altitude [min, max] (nuée en vol)}, spawn {count, area}, scale, flap, spin, events [expire, exit], publish, lod, mobile}} (projectiles et nuées en masse, instanciés ; aussi recipe.emitters ; null retire), emit {id: {n, count, at, dir, toward, clear, kill}} (salve à chaque hausse de n). Monde infini (rendu 3D) : recipe.infinite {tile (m), radius (tuiles), follow (id d'acteur ou camera), seed, roads [{id, kind, width, spacing, density, wiggle}] (réseau de routes du monde), persist (retouches au plus)} : sol, routes et couches composés par tuiles autour du point suivi (même graine = même monde), couches semées par place.scatter {cell, density (nombre ou expression x, z, h), jitter}, along: 'routes' suit le réseau, at ancré au monde ; ids <couche>.<cx>_<cz>_<rang> ; clé tiles {\"cx,cz\": {remove, move, add}} = retouches persistées (le reducer recopie payload.tiles de l'action place) ; state-out.infinite (tuiles chargées, temps de composition). Écrit dans state-out (défaut <dataProvider>State) : status {mode, phase, progress, error, objects, triangles, drawCalls, fps, issues}, infinite, tiles, selection {id, layer, index, place, x, z, yaw, w, d, h, movable…} (avec affords, physics, seats si l'objet les publie), view, actors, anchors, nodes, ids [{id, layer, x, z, yaw, w, d, place}], svg, balls {id: {x, y, z, moving}}, emitters {id: {alive, emitted, dropped, expired, exited, ms, near}}, impacts (16 dernières touches), drag (pendant un glisser), free. Événements vers target : pick {objectId, layer, x, y, z, actor, zone}, select, arrive {actor, target}, blocked, enter/leave {zone, actor | ball}, actionEnd, kick {actor, ball}, hit {ball, actor}, rest {ball, x, z}, impact {hits: [{emitter, id, target, copy, tags, x, y, z}], t} (touches des projectiles, une fois par image), expire / exit {emitter, count} ; édition au doigt (attributs drag, drag-selected, keep-heading) : select {objectId, instance, layer, index, place, movable}, dragstart, place au lâcher {objectId, layer, index, x, y, z, yaw (°), ry, valid, snaps ; monde infini : tile, tiles, persist} (une seule action par glisser, rangée sans collision), dragRefused {reason: placement|occupied}, placeFree ; un objet de calque réparti (poisson, along, scatter…) se glisse aussi : écrire layers[i].moves[index] = {x, z, yaw} (remove: [index] pour le retirer). Gestes : un doigt = orbite (ou glisser l'objet sélectionné), deux doigts = déplacer et pincer, tap = sélection. Physique 3D (Rapier, chargé seulement si demandé) : recipe.physics true|{gravity, joints [{type: hinge|ball|fixed|slider|spring|rope, a, b, at}], paused, water, walls} et physics d'une couche ou d'un point at {x, z, y (hauteur de chute), physics} : \"dynamic\"|\"static\"|\"kinematic\"|{body, mass, friction, restitution, shape box|sphere|cylinder|capsule|hull} (caisses, tonneaux, chaises qui tombent, roulent, flottent ; ballons dynamiques par défaut ; décor, relief, ouvrages, bords et acteurs en obstacles) ; forces {id: {vx, fy, impulse {n, x, y, z}, set {n, …}}}, queries {id: {n, ray {from, dir} | sphere {at, r}}}, kick par la physique ; state-out.physics {status, bodies}, queries ; événements contact {a, b, impulse}, settle, splash, drop, enter/leave {zone, body} ; un corps glissé pousse les autres puis retombe. Unités : mètres. Donner une hauteur ; 2 scènes au plus par document. Jeton de style matieres : finis par rôle (métal, rugosité, tissu, vernis ; finis texturés pierre, pave, brique, ecorce, bois, cuir… avec motif et echelle ; verre, eau). Tissus simulés en 3D (figés en vectoriel) qui suivent vent et mouvements : textile (textile.flag, textile.banner, textile.pennant, textile.windsock, textile.laundry, textile.curtain ; fabric silk|cotton|canvas|wool) ; character cape short|long et soft cloth|hair|all (cape, écharpe, jupes, robes en tissu ; cheveux long, ponytail en mèches) ; status.soft. Ambiance d'un mot (clé ambiance, attribut ambiance, recette ambiance ou jeton de style ambiance) : realiste, militaire, cartoon, jouet, cyber, alien, silhouette, noir, voxel, retro, horreur, western, pastel, tableau, onirique (ou {base, ciel, brume, lumiere, etalonnage, palette, finish, meteo}) : règle lumière, ciel, brume, palette, finis, étalonnage (pile post) et météo (style.meteo) ; un style écrit la complète. Rendu soigné : clé photo (true ou {moteur auto|rayons|raster, echantillons, rebonds, attente ms, filtre peinture|lisse, tramage, niveaux, touche, echelle}) ou render: photo (fige l'animation à l'arrêt) : quand la scène est immobile, lancer de rayons progressif (ou accumulation : ombres douces, anticrénelage ; mobile très réduit), interrompu au premier geste ; état dans state-out.photo {etat, moteur, echantillons, total, progression}. Jetons de style : skyHorizon, skyTop, sunColor, ambientColor, ambient, environment exterieur|studio|aucun, meteo."
     },
     {
       "name": "sonic-progress",
@@ -5288,6 +5774,9 @@
         "control": {
           "type": "string"
         },
+        "map": {
+          "type": "string"
+        },
         "out-data-provider": {
           "type": "string"
         }
@@ -5599,6 +6088,69 @@
       "description": "Horloge musicale : pattern {idInstrument: 'mini-notation' | {notes, scale, pad: 'x..x'}} joué sur des instruments par id ; store=id reçoit {type:step, payload:{step,beat,bar,phase,when,bpm}} ; control DP {playing,bpm,swing,seed,pattern,beats,stepsPerBeat} ; état {status, playing, bpm, swing, seed, beats, stepsPerBeat, step, beat, bar, phase, sync, errors, warnings} ; sync=\"#midi\" : suit l'horloge MIDI d'un appareil (Start/Stop, tempo, phase) ; état sync {locked, driftMs}"
     },
     {
+      "name": "sonic-serial",
+      "props": {
+        "profile": {
+          "type": "string",
+          "description": "profil nommé : filtres du sélecteur et débit (ch340, cp210x, ftdi, arduino, esp32, grbl)"
+        },
+        "filters": {
+          "type": "string",
+          "description": "JSON [{usbVendorId, usbProductId}] (hexadécimal en chaîne, ex. \"1a86\", ou nombre), ajouté aux filtres du profil"
+        },
+        "baud": {
+          "type": "number",
+          "description": "débit en bauds (défaut du profil, sinon 115200)"
+        },
+        "data-bits": {
+          "type": "number",
+          "description": "7 ou 8 (8)"
+        },
+        "stop-bits": {
+          "type": "number",
+          "description": "1 ou 2 (1)"
+        },
+        "parity": {
+          "type": "string",
+          "description": "none (défaut), even, odd"
+        },
+        "flow-control": {
+          "type": "string",
+          "description": "none (défaut) ou hardware"
+        },
+        "eol": {
+          "type": "string",
+          "description": "fin de ligne de la commande line : lf (défaut), crlf, cr"
+        },
+        "auto-reconnect": {
+          "type": "boolean",
+          "description": "réouverture du même port quand il est rebranché, sans sélecteur"
+        },
+        "accept-all": {
+          "type": "boolean",
+          "description": "sélecteur sans filtre : tous les ports de la machine"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n} ou {commande: {n, …arguments}}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance connect, dans le geste"
+        },
+        "rate": {
+          "type": "number",
+          "description": "publications par seconde au plus (30)"
+        }
+      },
+      "addon": "serial",
+      "description": "Un port série choisi par l'utilisateur (sélecteur du navigateur, geste obligatoire : for=\"idBouton\" ; un port déjà autorisé pour le site est rouvert sans sélecteur). profile = ch340 (graveurs laser Atomstack, Ortur, Sculpfun ; clones Arduino), cp210x, ftdi, arduino, esp32, grbl (tous les ponts courants) ; sans profil : filters, ou accept-all. Commandes control {connect:n | {n, pick:true}, disconnect:n, toggle:n, write:{n, hex|bytes|text}, line:{n, text} (ajoute la fin de ligne), signals:{n, dtr, rts}, forget:n}. État <id>State {status, error, supported, allowed, active, connected, port{vendorId, productId, name}, profile, baud, rx{bytes, lines} (lines utilisable comme trigger), lastLine (dernière ligne de texte reçue), last{hex, at}, tx{queued, sent, n}, reconnecting}. Événements sonic-serial-connect, sonic-serial-disconnect, sonic-serial-line {text}. Écritures commandées de 4096 octets au plus. Sert de transport aux pilotes (sonic-grbl transport=\"#id\"). Dans une iframe : allow=\"serial\""
+    },
+    {
       "name": "sonic-sfx",
       "props": {
         "sound": {
@@ -5688,6 +6240,9 @@
         "param3": {
           "type": "number"
         },
+        "colors": {
+          "type": "string"
+        },
         "out-data-provider": {
           "type": "string",
           "description": "DP de sortie : état {status, error, errors…} + time, frame, mouseX/Y…"
@@ -5712,7 +6267,7 @@
         }
       },
       "addon": "shader",
-      "description": "Shader fragment Shadertoy (passes image, buffer A–D, common ; canaux image/vidéo/#id). dataProvider : param0…3 → uParam0…3, canaux (string | MediaRef) ; params (DP) {play, playOnHover, mouse, mouseMode, mouseSpeed, hoverSpeed, dprMax, image, bufferA…D, common, bufferFormat} prioritaire sur les attributs (sources et bufferFormat recompilent) ; état {status idle|compiling|ready|error, error (passe + ligne), errors[{pass, line, column, message}], passes, activeBufferFormat, playing} dans le DP de sortie (out-data-provider, sinon dataProvider), plus time, frame, mouseX/Y, hovering, sample* (paresseux) ; render-size \"2048x2048\" ou channel0 (rendu à taille fixe, indépendante de l'affichage : post-traitement en pleine résolution, ex. bibliothèque « finition ») ; control {save: n} → PNG dans l'état last (sonic-media-download)"
+      "description": "Shader fragment Shadertoy (passes image, buffer A–D, common ; canaux image/vidéo/#id). dataProvider : param0…3 → uParam0…3 ; colors \"--sc-base-50 --sc-accent #ff0080\" → uColor0…7 (vec4, jetons du thème relus au changement de thème), canaux (string | MediaRef) ; params (DP) {play, playOnHover, mouse, mouseMode, mouseSpeed, hoverSpeed, dprMax, image, bufferA…D, common, bufferFormat} prioritaire sur les attributs (sources et bufferFormat recompilent) ; état {status idle|compiling|ready|error, error (passe + ligne), errors[{pass, line, column, message}], passes, activeBufferFormat, playing} dans le DP de sortie (out-data-provider, sinon dataProvider), plus time, frame, mouseX/Y, hovering, sample* (paresseux) ; render-size \"2048x2048\" ou channel0 (rendu à taille fixe, indépendante de l'affichage : post-traitement en pleine résolution, ex. bibliothèque « finition ») ; control {save: n} → PNG dans l'état last (sonic-media-download)"
     },
     {
       "name": "sonic-shaper",
@@ -6022,10 +6577,61 @@
         },
         "sample-action": {
           "type": "string"
+        },
+        "export-to": {
+          "type": "string"
+        },
+        "export-action": {
+          "type": "string"
+        },
+        "gestures-from": {
+          "type": "string"
+        },
+        "pen-eraser": {
+          "type": "string"
+        },
+        "pen-barrel": {
+          "type": "string"
+        },
+        "pen-tilt": {
+          "type": "string"
+        },
+        "touch": {
+          "type": "string"
+        },
+        "pressure-curve": {
+          "type": "number"
+        },
+        "pressure-min": {
+          "type": "number"
+        },
+        "simulate-pressure": {
+          "type": "boolean"
+        },
+        "no-worker": {
+          "type": "boolean"
+        },
+        "no-gpu": {
+          "type": "boolean"
+        },
+        "render-mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "gpu",
+            "cpu",
+            "direct"
+          ]
+        },
+        "live-render": {
+          "type": "boolean"
+        },
+        "render-from": {
+          "type": "string"
         }
       },
       "addon": "sketch",
-      "description": "Dessin vectoriel à zoom infini (width, height, background) : molette = zoom, Espace / bouton du milieu / tool hand = déplacer, deux doigts = déplacer, zoomer et tourner ; background (couleur du papier ; transparent : rien dessous, les fusions posent la couleur telle quelle, export PNG transparent), checker (damier d'affichage sous un fond transparent : deux couleurs ou true ; checker-size px d'écran, défaut 8 ; ni export ni source d'images) ; pinceau color, size, blend (normal|multiply|screen|overlay|darken|lighten|color-dodge|color-burn|hard-light|soft-light|difference|exclusion|hue|saturation|color|luminosity, par trait), size-space screen|world, hardness, opacity (du trait entier, comme dans les logiciels de dessin : les empreintes qui se chevauchent ne foncent pas le trait ; en direct, à la mise à plat, au rendu et à l'export), spacing, smoothing, pressure, tip / tip-from (forme de sonic-vector-library), angle, angle-follow, angle-jitter, size-jitter, scatter, roundness ; import-from (état de sonic-vectorize, ou plusieurs séparés par des espaces : ses couches deviennent des aplats retravaillables, une étape d'annulation, opacité de couche respectée, keepColors = couleurs d'origine gardées ; esquisse pixel, photo ou shader générateur → vectoriel) avec import-auto, control {import (+ importSource : DP à importer sur demande, hors de import-from)}, import-place auto|screen|view (screen : là où la source apparaissait), import-skip (couleurs ignorées, défaut background), import-colors-from (DP de palette, ex. état de sonic-palette : les couleurs de la source, par étendue, prennent tour à tour celles de la palette — formes d'un shader générateur dans l'harmonie) ; état imported {layers, regions, ms} ; view-sync (DP de vue partagée {x, y, zoom, rotation}, lu et écrit : calques alignés avec une sonic-paint navigable, 1 unité = 1 pixel) ; tool paint|erase (gomme qui prend le pinceau courant : taille, forme, dureté, opacité)|pick (pipette, traverse les calques et sources d'images dessous : la couleur vue sous le point, même née d'une fusion, devient celle du pinceau et est écrite dans brush-from.color ; Alt + clic aussi ; revient à paint au lever si pick venait de brush-from)|select (clic = région d'aplat sous le point, Maj ajoute / retire)|select-color (toutes les régions de cette couleur ; tolerance 0..100 écart OKLab ×100, 0 = exacte ; contiguous = seulement celles qui se touchent) — une couleur choisie ensuite dans brush-from.color recolore la sélection (vraie couleur, ressoudée aux voisines de même couleur ; Suppr supprime, Échap vide)|hand ; brush-from, view-from {x, y, zoom, rotation} ; control {undo, redo, clear, save (SVG), savePng (PNG net à export-scale 1..8, export-area view|content ; aussi exportScale / exportArea dans le DP control), fit, reset, zoomIn, zoomOut, rotateLeft, rotateRight, straighten, selectAll, deselect, deleteSelection, recolor (+ color), samplePalette (+ sampleCount, défaut 6)} compteurs ; échantillonnage de palette : samplePalette publie dans l'état sampled {colors, from selection|drawing} les couleurs dominantes de la sélection, sinon du dessin (aplats par surface, traits par encre), sans le fond, et les envoie en action {type: sample-action (défaut sampled), payload: {colors, from}} au store sample-to (ex. pour une palette libre de sonic-palette, rule custom) ; simplify (px d'écran, défaut 0.35 : compaction des traits terminés, jointure des points + Ramer–Douglas–Peucker avec la pression ; 0 = aucune) ; flatten (défaut vrai : au lever, un trait plein, opacité et mode permis, est découpé dans la carte d'aplats par polygon-clipping ; couleurs de fusion calculées, parties recouvertes retirées, morceaux de même couleur qui se touchent unis, une région = une couleur d'un seul tenant) ; tool erase = gomme au pinceau courant : disque net → trou exact dans les aplats et masque sur les traits non aplatis, à opacité < 1 les aplats s'estompent d'autant et chaque passe (aller-retour, boucle) efface encore ; pointe, bord doux, dispersion ou pression variable → trait d'empreintes qui efface ce qui est dessous comme le pinceau peindrait (export SVG : masque) ; export SVG à tracés joints ; état {rotation, zoom, blend, points, lastStroke {before, after}, regions, colors, flats, masks, flattened, x, y, strokes, canUndo, canRedo, picked, sampled, selection {count, colors, bbox, area}, imported, bbox, last} ; retouches en aperçu par le DP control (la sélection, ou tout le dessin sans sélection ; état edit.scope selection|all) : edit simplify|grow|smooth|outline|palette (couleur la plus proche de la palette)|levels (paliers de clarté répartis sur la palette)|gradient (dégradé continu de la palette selon la clarté), palette-from (DP de palette, défaut import-colors-from), editAmount (px d'écran ; % pour les conversions de couleurs), editAmount (px d'écran ; grow négatif = réduire), editColors (outline : un anneau par couleur, CSS ou darker|lighter|complement|muted|vivid|black|white déduites de la couleur dominante), editApply / editCancel compteurs ; état edit {op, preview, error} ; persist (espace de noms du carnet local IndexedDB : dessin ouvert enregistré automatiquement et rouvert au chargement ; control newDrawing, openDrawing + drawingId, duplicateDrawing, deleteDrawing + drawingId, renameDrawing + drawingName ; état library {enabled, status, id, name, drawings [{id, name, created, updated, strokes, thumb (URL blob:), current}]}) ; settings-from (réglages du dessin pris dans d'autres stores — fond, palette, guides, effets — enregistrés avec chaque dessin du carnet et remis en place à son ouverture ; liste séparée par des espaces de store ou store.clé1,clé2 ; les changer rend le dessin non enregistré) ; prefs-from (préférences de l'utilisateur — pinceau, outil — gardées dans le carnet d'une session à l'autre, même syntaxe) ; save-mode auto|manual (manual : rien n'est enregistré sans commande control saveDrawing / saveDrawingAs, nom lu dans name-from (clé name) ou control.drawingName ; état library.dirty, library.progress 0..100 pour une sonic-progress, library.mode) ; passes (défaut vrai : un trait en mode de fusion ou à opacité < 1 est coupé en passes là où il revient sur lui-même (aller-retour de hachure, boucle, gribouillis, croisement) ; chaque passe s'ajoute à la précédente, en direct comme à la mise à plat, et ne fonce que sur ses vrais recouvrements, pas à la jonction : une hachure ou un remplissage fonce comme au crayon) ; brush-cursor : contour de l'empreinte à la place du curseur (souris / stylet, crayon et gomme) ; --sketch-overlay-z (CSS) : sélection et curseur au-dessus d'une couche d'effets"
+      "description": "Dessin vectoriel à zoom infini (width, height, background) : molette = zoom, Espace / bouton du milieu / tool hand = déplacer, deux doigts = déplacer, zoomer et tourner ; background (couleur du papier ; transparent : rien dessous, les fusions posent la couleur telle quelle, export PNG transparent), checker (damier d'affichage sous un fond transparent : deux couleurs ou true ; checker-size px d'écran, défaut 8 ; ni export ni source d'images) ; pinceau color, size, blend (normal|multiply|screen|overlay|darken|lighten|color-dodge|color-burn|hard-light|soft-light|difference|exclusion|hue|saturation|color|luminosity, par trait), size-space screen|world, hardness, opacity (du trait entier, comme dans les logiciels de dessin : les empreintes qui se chevauchent ne foncent pas le trait ; en direct, à la mise à plat, au rendu et à l'export), spacing, smoothing, pressure, tip / tip-from (forme de sonic-vector-library), angle, angle-follow, angle-jitter, size-jitter, scatter, roundness ; import-from (état de sonic-vectorize, ou plusieurs séparés par des espaces : ses couches deviennent des aplats retravaillables, une étape d'annulation, opacité de couche respectée, keepColors = couleurs d'origine gardées ; esquisse pixel, photo ou shader générateur → vectoriel) avec import-auto, control {import (+ importSource : DP à importer sur demande, hors de import-from)}, import-place auto|screen|view (screen : là où la source apparaissait), import-skip (couleurs ignorées des sources tracées, défaut background ; un SVG lu tel quel, keepColors, garde toutes ses couleurs), import-colors-from (DP de palette, ex. état de sonic-palette : les couleurs de la source, par étendue, prennent tour à tour celles de la palette — formes d'un shader générateur dans l'harmonie) ; état imported {layers, regions, ms} ; view-sync (DP de vue partagée {x, y, zoom, rotation}, lu et écrit : calques alignés avec une sonic-paint navigable, 1 unité = 1 pixel) ; tool paint|erase (gomme qui prend le pinceau courant : taille, forme, dureté, opacité)|pick (pipette, traverse les calques et sources d'images dessous : la couleur vue sous le point, même née d'une fusion, devient celle du pinceau et est écrite dans brush-from.color ; Alt + clic aussi ; revient à paint au lever si pick venait de brush-from)|select (clic = région d'aplat sous le point, Maj ajoute / retire)|select-color (toutes les régions de cette couleur ; tolerance 0..100 écart OKLab ×100, 0 = exacte ; contiguous = seulement celles qui se touchent) — une couleur choisie ensuite dans brush-from.color recolore la sélection (vraie couleur, ressoudée aux voisines de même couleur ; Suppr supprime, Échap vide)|hand ; brush-from, view-from {x, y, zoom, rotation} ; control {undo, redo, clear, save (SVG), savePng (PNG net à export-scale 1..8, export-area view|content ; aussi exportScale / exportArea dans le DP control), fit, reset, zoomIn, zoomOut, rotateLeft, rotateRight, straighten, selectAll, deselect, deleteSelection, recolor (+ color), samplePalette (+ sampleCount, défaut 6)} compteurs ; échantillonnage de palette : samplePalette publie dans l'état sampled {colors, from selection|drawing} les couleurs dominantes de la sélection, sinon du dessin (aplats par surface, traits par encre), sans le fond, et les envoie en action {type: sample-action (défaut sampled), payload: {colors, from}} au store sample-to (ex. pour une palette libre de sonic-palette, rule custom) ; simplify (px d'écran, défaut 0.35 : compaction des traits terminés, jointure des points + Ramer–Douglas–Peucker avec la pression ; 0 = aucune) ; flatten (défaut vrai : au lever, un trait plein, opacité et mode permis, est découpé dans la carte d'aplats par polygon-clipping ; couleurs de fusion calculées, parties recouvertes retirées, morceaux de même couleur qui se touchent unis, une région = une couleur d'un seul tenant) ; tool erase = gomme au pinceau courant : disque net → trou exact dans les aplats et masque sur les traits non aplatis, à opacité < 1 les aplats s'estompent d'autant et chaque passe (aller-retour, boucle) efface encore ; pointe, bord doux, dispersion ou pression variable → trait d'empreintes qui efface ce qui est dessous comme le pinceau peindrait (export SVG : masque) ; export SVG à tracés joints ; état {rotation, zoom, blend, points, lastStroke {before, after}, regions, colors, flats, masks, flattened, x, y, strokes, canUndo, canRedo, picked, sampled, selection {count, colors, bbox, area}, imported, bbox, last} ; retouches en aperçu par le DP control (la sélection, ou tout le dessin sans sélection ; état edit.scope selection|all) : edit simplify|grow|smooth|outline|palette (couleur la plus proche de la palette)|levels (paliers de clarté répartis sur la palette)|gradient (dégradé continu de la palette selon la clarté), palette-from (DP de palette, défaut import-colors-from), editAmount (px d'écran ; % pour les conversions de couleurs), editAmount (px d'écran ; grow négatif = réduire), editColors (outline : un anneau par couleur, CSS ou darker|lighter|complement|muted|vivid|black|white déduites de la couleur dominante), editApply / editCancel compteurs ; état edit {op, preview, error} ; persist (espace de noms du carnet local IndexedDB : dessin ouvert enregistré automatiquement et rouvert au chargement ; control newDrawing, openDrawing + drawingId, duplicateDrawing, deleteDrawing + drawingId, renameDrawing + drawingName ; état library {enabled, status, id, name, drawings [{id, name, created, updated, strokes, thumb (URL blob:), current}]}) ; settings-from (réglages du dessin pris dans d'autres stores — fond, palette, guides, effets — enregistrés avec chaque dessin du carnet et remis en place à son ouverture ; liste séparée par des espaces de store ou store.clé1,clé2 ; les changer rend le dessin non enregistré) ; prefs-from (préférences de l'utilisateur — pinceau, outil — gardées dans le carnet d'une session à l'autre, même syntaxe) ; save-mode auto|manual (manual : rien n'est enregistré sans commande control saveDrawing / saveDrawingAs, nom lu dans name-from (clé name) ou control.drawingName ; état library.dirty, library.progress 0..100 pour une sonic-progress, library.mode) ; passes (défaut vrai : un trait en mode de fusion ou à opacité < 1 est coupé en passes là où il revient sur lui-même (aller-retour de hachure, boucle, gribouillis, croisement) ; chaque passe s'ajoute à la précédente, en direct comme à la mise à plat, et ne fonce que sur ses vrais recouvrements, pas à la jonction : une hachure ou un remplissage fonce comme au crayon) ; export-to (store qui reçoit chaque export en action {type: export-action, défaut exported, payload: {url, mime, width, height, size}} ; URL des 4 derniers exports gardées valides) ; gestures-from (DP, ou plusieurs séparés par des espaces, d'un jeu de gestes — en données, ou l'URL d'un fichier JSON : chaîne ou {url}, https/blob:/data:, 30 Mo max, ex. un asset ou l'état de sonic-painterly — {width, height, strokes: [{pts: [x, y, pression, …], color, size, hardness, opacity, blend, tool paint|erase, tip, angle, angleFollow, angleJitter, sizeJitter, scatter, roundness, spacing, simplify, curve, reset}]} : chaque nouveau jeu est dessiné trait par trait par la chaîne du stylet — pression, passes, fusion, aplatissement, gomme —, cadre ajusté à 90 % de la toile, réglages gardés d'un trait au suivant, points reliés en courbe ; état gestures {playing, loading, done, total, truncated, error}) ; brush-cursor : contour de l'empreinte à la place du curseur (souris / stylet, crayon et gomme) ; --sketch-overlay-z (CSS) : sélection et curseur au-dessus d'une couche d'effets ; stylets : pen-eraser erase|none (bout gomme), pen-barrel pick|pan|none (bouton latéral), pen-tilt angle|none (rotation / inclinaison orientent la pointe), touch auto|draw|navigate (rejet de la paume : après un stylet, le doigt navigue), pressure-curve / pressure-min (courbe de pression), simulate-pressure (souris / doigt : pression par la vitesse) ; en direct depuis brush-from : pressureCurve, pressureMin, simulatePressure"
     },
     {
       "name": "sonic-sketch-guide",
@@ -6365,6 +6971,14 @@
         },
         "history": {
           "type": "number"
+        },
+        "history-skip": {
+          "type": "string",
+          "description": "Types d'action hors de l'historique d'annulation, séparés par des virgules (ex. select)"
+        },
+        "persist": {
+          "type": "string",
+          "description": "Clé de sauvegarde locale (navigateur) : état repris au démarrage, enregistré après chaque action ; @reset revient à initial"
         }
       },
       "addon": "interactive",
@@ -7128,7 +7742,7 @@
         },
         "svg-from": {
           "type": "string",
-          "description": "DP d'un SonicMediaRef (blob:) : un fichier SVG est lu tel quel au lieu d'être tracé"
+          "description": "DP d'un SonicMediaRef (blob:) ou d'un SVG en texte (\"<svg…>\" ou {svg}, 1 Mo max) : le SVG est lu tel quel au lieu d'être tracé"
         },
         "keep-colors": {
           "type": "boolean",
@@ -7388,5 +8002,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); color (sonic-palette, sonic-palette-editor); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; markdown (sonic-markdown); media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; scroll (sonic-scroll); shader (sonic-shader); sketch (sonic-sketch, sonic-sketch-guide); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); bluetooth (sonic-bluetooth, sonic-label-printer); color (sonic-palette, sonic-palette-editor); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); grbl (sonic-grbl, sonic-gcode, sonic-laser-pattern); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix); map (sonic-map) [requires: maplibre-gl]; markdown (sonic-markdown); media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; scroll (sonic-scroll); serial (sonic-serial); shader (sonic-shader); sketch (sonic-sketch, sonic-sketch-guide, sonic-painterly); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }

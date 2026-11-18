@@ -36,6 +36,39 @@ This:
 4. `docker compose -f compose.prod.yaml up -d --build`
 5. Runs Doctrine migrations
 
+### Updating from MCP (super admin)
+
+The MCP tools `trigger_prod_update` and `get_prod_update_status` let the super admin account
+run `scripts/update-prod.sh --pull` remotely (e.g. from an agent, right after merging a PR) and follow it.
+
+The API never runs the update itself: it drops a request into a directory shared with the host
+(`OPS_HOST_DIR`, default `./var/ops`, mounted on `/srv/ops` in `php`). A systemd `.path` unit on
+the host picks it up and runs `scripts/ops/deploy-runner.sh`, which runs the update and writes
+state + log to `var/ops/runs/`. Since the runner lives on the host, the recreation of the `php`
+container during the update does not interrupt it, and the status is still readable afterwards.
+
+Setup (once, as root, from the repo root):
+
+```bash
+sudo bash scripts/ops/install-deploy-runner.sh
+# .env — email(s) of ROLE_ADMIN account(s) allowed to trigger (comma separated)
+OPS_DEPLOY_USERS=you@example.com
+docker compose -f compose.prod.yaml up -d php
+```
+
+Guards:
+
+- Account must be `ROLE_ADMIN` **and** listed in `OPS_DEPLOY_USERS` (empty = nobody). Denied calls are audited.
+- Fixed command: no argument changes what runs (`reason` is only stored).
+- One run at a time (queued/running blocks a new trigger; a run stuck `running` for 90 min is reported `stale`).
+- Final status: `succeeded`, `failed` (script exit ≠ 0), `unhealthy` (script OK but `/api/health` KO),
+  `interrupted` (host restarted mid-run). `fromSha` / `toSha` give the commit before / after for a manual rollback:
+  `git checkout <fromSha> && bash scripts/update-prod.sh`.
+- The tools are not exposed to the built-in agent.
+
+Follow on the host: `journalctl -u tadaaa-deploy.service -f` or `var/ops/runs/<id>.log`.
+Remove: `sudo bash scripts/ops/install-deploy-runner.sh --uninstall`.
+
 If `MAILER_DSN` is still `null://null`, set Infomaniak SMTP in `.env` then recreate PHP:
 
 ```bash

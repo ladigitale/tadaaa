@@ -21,4 +21,8 @@ final class RegisterInput
 
     #[Assert\IsTrue(message: 'Vous devez accepter les CGU et la politique de confidentialité.')]
     public bool $acceptedTerms = false;
+
+    /** Adresse de retour vers une app sœur après confirmation de l’email (facultatif). */
+    #[Assert\Length(max: 500)]
+    public ?string $returnTo = null;
 }

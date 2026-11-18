@@ -370,6 +370,16 @@ final class PushNotificationDispatcher
                     if ($code === 404 || $code === 410) {
                         $sub->revoke();
                         $dirty = true;
+                    } elseif ($code === 403) {
+                        // Subscription bound to another VAPID key (key rotation) or
+                        // rejected credentials: unusable as-is. Revoke so the client
+                        // re-registers (it resubscribes when the key differs).
+                        $sub->revoke();
+                        $dirty = true;
+                        $this->logger->warning('Web Push 403 for {endpoint}, subscription revoked: {reason}', [
+                            'endpoint' => $endpoint,
+                            'reason' => $reason,
+                        ]);
                     } else {
                         $this->logger->warning('Web Push send failed for {endpoint}: {reason}', [
                             'endpoint' => $endpoint,

@@ -77,7 +77,7 @@ final class SystemPrompt
                longueur variable passent par sonic-list + <template> (demande rules=["listes"]). Réserve les vues
                A2UI ("a2ui": [messages], voir rules.a2ui) aux interfaces qui dialoguent avec un agent. Les gabarits
                chat:* et a2ui:* restent disponibles en libraryKey. Avant d'utiliser ces composants, demande la règle du thème :
-               rules=["animation"], ["appareil"] (plein écran, capteurs, presse-papiers…) ou ["salons"] (sonic-p2p),
+               rules=["animation"], ["appareil"] (plein écran, capteurs, presse-papiers…), ["bluetooth"] (imprimante d'étiquettes, ESP32…), ["laser"] (graveur / découpeuse laser, port série) ou ["salons"] (sonic-p2p),
                ["media"] (caméra, micro), ["physique"], ["3d"] (scène 3D pilotée par des données : GLB embarqué, nodes, taps),
                ["2d"] (scène 2D : éléments SDUI placés par la physique ou une timeline avec sonic-stage, jeu / 2.5D WebGL avec sonic-2d, caméra, parallaxe).
                Soigne le visuel : icônes (sonic-icon library="iconoir", noms exacts via find_icons), couleurs,

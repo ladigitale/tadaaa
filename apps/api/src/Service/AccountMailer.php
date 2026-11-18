@@ -21,10 +21,9 @@ final class AccountMailer
     ) {
     }
 
-    public function sendEmailVerification(User $user, string $rawToken): void
+    public function sendEmailVerification(User $user, string $rawToken, ?string $returnTo = null): void
     {
-        $base = rtrim($this->appPublicUrl, '/');
-        $url = $base.'/account/verify?token='.rawurlencode($rawToken);
+        $url = $this->verificationUrl($rawToken, $returnTo);
         $body = <<<TXT
 Bonjour,
 
@@ -38,6 +37,19 @@ Si vous n’êtes pas à l’origine de cette inscription, ignorez ce message.
 TXT;
 
         $this->send($user->getEmail(), 'Confirmez votre email — Tadaaa', $body);
+    }
+
+    /** Lien de confirmation ; `return_to` n'est gardé que s'il vise une app sœur. */
+    public function verificationUrl(string $rawToken, ?string $returnTo = null): string
+    {
+        $base = rtrim($this->appPublicUrl, '/');
+        $url = $base.'/account/verify?token='.rawurlencode($rawToken);
+        $safe = SisterReturnUrl::sanitize($returnTo, $this->appPublicUrl);
+        if ($safe !== null) {
+            $url .= '&return_to='.rawurlencode($safe);
+        }
+
+        return $url;
     }
 
     public function sendModerationNotice(User $user, string $action, string $personalMessage = ''): void

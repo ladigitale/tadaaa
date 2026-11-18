@@ -46,16 +46,16 @@ parameters:
     env(AGENT_LLM_MODEL): 'claude-sonnet-5-5'
     env(AGENT_LLM_MAX_TOKENS): '16000'
     env(AGENT_LLM_BASE_URL): 'https://api.anthropic.com'
+    # Mise à jour prod via MCP (super admin) : répertoire partagé avec le runner hôte, vide = désactivé.
+    env(OPS_DIR): ''
+    # E-mails (virgules) des comptes ROLE_ADMIN autorisés à déclencher update-prod ; vide = personne.
+    env(OPS_DEPLOY_USERS): ''
 
 services:
     # default configuration for services in *this* file
     _defaults:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
-
-    App\Service\ArtifactFileFetcher:
-        arguments:
-            $allowedHosts: '%env(ARTIFACT_FETCH_HOSTS)%'
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
@@ -84,6 +84,16 @@ services:
             - '../src/Agent/ThreadState.php'
             - '../src/Agent/Settings/AgentProviders.php'
             - '../src/Agent/Settings/UrlGuard.php'
+
+    # Définitions explicites APRÈS le chargement de src/ : sinon `App\:` les écrase.
+    App\Service\ProdDeploy:
+        arguments:
+            $opsDir: '%env(OPS_DIR)%'
+            $allowedUsers: '%env(OPS_DEPLOY_USERS)%'
+
+    App\Service\ArtifactFileFetcher:
+        arguments:
+            $allowedHosts: '%env(ARTIFACT_FETCH_HOSTS)%'
 
     App\Service\MercureFeature:
         arguments:

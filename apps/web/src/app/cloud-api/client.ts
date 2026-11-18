@@ -109,6 +109,7 @@ export async function registerAccount(
   apiBaseUrl?: string,
   website = "",
   acceptedTerms = false,
+  returnTo = "",
 ): Promise<{settings: AccountSettings; pending: boolean; message: string}> {
   const base = apiBaseUrl?.trim() || loadAccountSettings().apiBaseUrl;
   const settings: AccountSettings = {
@@ -126,7 +127,13 @@ export async function registerAccount(
     "/auth/register",
     {
       method: "POST",
-      body: JSON.stringify({email, password, website, acceptedTerms}),
+      body: JSON.stringify({
+        email,
+        password,
+        website,
+        acceptedTerms,
+        ...(returnTo ? {returnTo} : {}),
+      }),
     },
     settings,
   );

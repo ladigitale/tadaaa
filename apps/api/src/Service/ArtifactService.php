@@ -23,6 +23,9 @@ final class ArtifactService
 {
     private const SLUG_PATTERN = '/^[a-z0-9][a-z0-9-]{2,63}$/';
 
+    /** Chemins du viewer Artefacts (routes et fichiers statiques) : jamais des slugs. */
+    public const RESERVED_SLUGS = ['admin', 'cloud', 'demarrer', 'embed', 'assets'];
+
     public function __construct(
         private readonly ArtifactRepository $artifacts,
         private readonly ArtifactVersionRepository $versions,
@@ -177,7 +180,7 @@ final class ArtifactService
             if (!preg_match(self::SLUG_PATTERN, $slug)) {
                 throw new BadRequestHttpException('slug invalide.');
             }
-            if ($this->artifacts->slugExists($slug, $artifact)) {
+            if (\in_array($slug, self::RESERVED_SLUGS, true) || $this->artifacts->slugExists($slug, $artifact)) {
                 throw new BadRequestHttpException('slug déjà utilisé.');
             }
             $artifact->setSlug($slug);
@@ -437,6 +440,48 @@ final class ArtifactService
     }
 
     /**
+     * Références `@asset:<nom>` d'une valeur (ex. l'entrée d'un run) remplacées par l'URL publique des assets
+     * de l'artefact, comme dans le document servi au viewer. Sans base d'URL connue : valeur inchangée.
+     */
+    public function expandAssetRefs(Artifact $artifact, mixed $value, ?string $requestBaseUrl = null): mixed
+    {
+        $assetBase = $this->assetsBaseUrl !== '' ? $this->assetsBaseUrl : ($requestBaseUrl ?? '');
+        if ($assetBase === '') {
+            return $value;
+        }
+
+        return ArtifactAssetRefs::expand(
+            $value,
+            $assetBase,
+            $artifact->getSlug(),
+            $this->assets->hashes($artifact),
+            $artifact->getVisibility() === ArtifactVisibility::Link ? $artifact->getLinkToken() : null,
+        );
+    }
+
+    /**
+     * Noms d'assets référencés (`@asset:<nom>`) dans une valeur mais absents de l'artefact.
+     *
+     * @return list<string>
+     */
+    public function missingAssetRefs(Artifact $artifact, mixed $value): array
+    {
+        $refs = ArtifactAssetRefs::find($value);
+        if ($refs === []) {
+            return [];
+        }
+        $hashes = $this->assets->hashes($artifact);
+        $missing = [];
+        foreach ($refs as [, $name]) {
+            if (!isset($hashes[$name])) {
+                $missing[$name] = true;
+            }
+        }
+
+        return array_keys($missing);
+    }
+
+    /**
      * Public / link / private (JWT member) read.
      *
      * @return array{body: array<string, mixed>, etag: string}
@@ -674,7 +719,7 @@ final class ArtifactService
             if (!preg_match(self::SLUG_PATTERN, $slug)) {
                 throw new BadRequestHttpException('slug invalide (^[a-z0-9][a-z0-9-]{2,63}$).');
             }
-            if ($this->artifacts->slugExists($slug)) {
+            if (\in_array($slug, self::RESERVED_SLUGS, true) || $this->artifacts->slugExists($slug)) {
                 throw new BadRequestHttpException('slug déjà utilisé.');
             }
 
@@ -687,7 +732,7 @@ final class ArtifactService
         }
         $candidate = $base;
         $i = 0;
-        while ($this->artifacts->slugExists($candidate)) {
+        while (\in_array($candidate, self::RESERVED_SLUGS, true) || $this->artifacts->slugExists($candidate)) {
             $suffix = substr(bin2hex(random_bytes(2)), 0, 4);
             $candidate = substr($base, 0, 58).'-'.$suffix;
             if (++$i > 20) {

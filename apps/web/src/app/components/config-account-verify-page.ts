@@ -16,6 +16,7 @@ import {
   navigateAfterAuth,
   readPendingInviteToken,
 } from "../utils/pending-invite";
+import {captureSisterReturnParam} from "../utils/sister-return";
 import {showError} from "../utils/modal-dialog";
 import tailwind from "../../css/tailwind";
 import "./config-scope-header";
@@ -39,6 +40,8 @@ export class ConfigAccountVerifyPage extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    // Le lien de confirmation porte l'adresse de retour (nouvel onglet : pas de sessionStorage).
+    captureSisterReturnParam();
     window.addEventListener(ACCOUNT_CHANGED_EVENT, this.onAccountChanged);
     void this.runVerify();
   }
