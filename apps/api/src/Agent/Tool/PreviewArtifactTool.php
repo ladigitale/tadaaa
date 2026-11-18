@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Agent\Tool;
 
 use App\Service\ArtifactDocumentValidator;
+use App\Service\ArtifactUiRules;
 
 /**
  * `preview_artifact` (atelier Artefacts) : valide un document `artifacts/1` et, s'il
@@ -72,6 +73,9 @@ final class PreviewArtifactTool implements AgentTool
         $context->sink->emit(['type' => 'CUSTOM', 'name' => self::EVENT, 'value' => ['document' => $draft]]);
         $this->drafts->save($context, $draft);
 
-        return ToolResult::json(['valid' => true, 'previewed' => true]);
+        // Avis d'interface (recettes Concorde contournées) : l'aperçu est affiché, le modèle peut corriger.
+        $warnings = ArtifactUiRules::lint(DraftStore::assoc($draft));
+
+        return ToolResult::json(['valid' => true, 'previewed' => true] + ($warnings !== [] ? ['warnings' => $warnings] : []));
     }
 }

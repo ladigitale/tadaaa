@@ -1,0 +1,122 @@
+{
+  "segments": {
+    "title": "Segments : 2 à 5 choix visibles",
+    "when": "Filtre, période, mode d'affichage : peu d'options, toutes visibles.",
+    "stores": {
+      "choix": {"initial": {"periode": "annee"}, "reducer": "$state"}
+    },
+    "node": {
+      "tagName": "sonic-group",
+      "attributes": {"formDataProvider": "choix"},
+      "nodes": [
+        {"tagName": "sonic-button", "attributes": {"radio": true, "name": "periode", "value": "mois", "size": "sm", "variant": "outline"}, "textContent": "Mois"},
+        {"tagName": "sonic-button", "attributes": {"radio": true, "name": "periode", "value": "trimestre", "size": "sm", "variant": "outline"}, "textContent": "Trimestre"},
+        {"tagName": "sonic-button", "attributes": {"radio": true, "name": "periode", "value": "annee", "size": "sm", "variant": "outline"}, "textContent": "Année"}
+      ]
+    },
+    "notes": "Le bouton actif est rendu par Concorde d'après choix.periode, y compris au chargement. Les valeurs sont des chaînes. Tout ce qui dépend du choix se dérive par sonic-jsonata inputProvider=\"choix\"."
+  },
+  "selecteur": {
+    "title": "Sélecteur : liste de choix dans un sonic-pop",
+    "when": "Plus de 4 options, ou place comptée. Remplace select et sonic-select, refusés par la validation.",
+    "stores": {
+      "choix": {"initial": {"lieu": "Tous"}, "reducer": "$state"}
+    },
+    "node": {
+      "tagName": "div",
+      "attributes": {"style": "display:flex;flex-direction:column;gap:4px"},
+      "nodes": [
+        {"tagName": "small", "attributes": {"style": "text-transform:uppercase;letter-spacing:.06em;opacity:.7"}, "textContent": "Lieu"},
+        {
+          "tagName": "sonic-pop",
+          "nodes": [
+            {
+              "tagName": "sonic-button",
+              "attributes": {"variant": "outline", "size": "sm", "minWidth": "11rem", "justify": "space-between"},
+              "nodes": [
+                {"tagName": "sonic-value", "attributes": {"dataProvider": "choix", "key": "lieu"}},
+                {"tagName": "sonic-icon", "attributes": {"library": "iconoir", "name": "nav-arrow-down", "slot": "suffix"}}
+              ]
+            },
+            {
+              "tagName": "sonic-menu",
+              "attributes": {"slot": "content", "direction": "column", "align": "left", "size": "sm", "min-width": "12rem"},
+              "nodes": [
+                {"tagName": "sonic-menu-item", "attributes": {"radio": true, "formDataProvider": "choix", "name": "lieu", "value": "Tous"}, "textContent": "Tous"},
+                {"tagName": "sonic-menu-item", "attributes": {"radio": true, "formDataProvider": "choix", "name": "lieu", "value": "Club"}, "textContent": "Club"},
+                {"tagName": "sonic-menu-item", "attributes": {"radio": true, "formDataProvider": "choix", "name": "lieu", "value": "Théâtre"}, "textContent": "Théâtre"},
+                {"tagName": "sonic-menu-item", "attributes": {"radio": true, "formDataProvider": "choix", "name": "lieu", "value": "Plein air"}, "textContent": "Plein air"},
+                {"tagName": "sonic-menu-item", "attributes": {"radio": true, "formDataProvider": "choix", "name": "lieu", "value": "Festival"}, "textContent": "Festival"}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "notes": "formDataProvider sur chaque sonic-menu-item : le contenu du pop ne voit pas ses ancêtres. Le menu se referme au clic et l'item choisi apparaît actif à la réouverture. Si value est un code, dériver le libellé affiché par une sonic-jsonata (choixVue) et le lire dans le déclencheur."
+  },
+  "onglets": {
+    "title": "Onglets : radios sur un DataProvider + sonic-states",
+    "when": "Plusieurs panneaux dans une même vue. Pour de vraies vues à hash d'URL, utiliser views[] (règle navigation).",
+    "stores": {
+      "etat": {"initial": {"onglet": "liste"}, "reducer": "$state"}
+    },
+    "node": {
+      "tagName": "div",
+      "attributes": {"style": "display:flex;flex-direction:column;gap:16px"},
+      "nodes": [
+        {
+          "tagName": "sonic-group",
+          "attributes": {"formDataProvider": "etat"},
+          "nodes": [
+            {"tagName": "sonic-button", "attributes": {"radio": true, "name": "onglet", "value": "liste", "size": "sm", "variant": "ghost"}, "textContent": "Liste"},
+            {"tagName": "sonic-button", "attributes": {"radio": true, "name": "onglet", "value": "carte", "size": "sm", "variant": "ghost"}, "textContent": "Carte"},
+            {"tagName": "sonic-button", "attributes": {"radio": true, "name": "onglet", "value": "reglages", "size": "sm", "variant": "ghost"}, "textContent": "Réglages"}
+          ]
+        },
+        {
+          "tagName": "sonic-states",
+          "attributes": {"dataProvider": "etat", "data-path": "onglet"},
+          "nodes": [
+            {"tagName": "template", "attributes": {"data-value": "^liste$"}, "nodes": [{"tagName": "p", "textContent": "Contenu de l'onglet Liste"}]},
+            {"tagName": "template", "attributes": {"data-value": "^carte$"}, "nodes": [{"tagName": "p", "textContent": "Contenu de l'onglet Carte"}]},
+            {"tagName": "template", "attributes": {"data-value": "^reglages$"}, "nodes": [{"tagName": "p", "textContent": "Contenu de l'onglet Réglages"}]}
+          ]
+        }
+      ]
+    },
+    "notes": "Pas de sonic-action pour changer d'onglet : la radio écrit etat.onglet et s'affiche active seule. data-value est une expression régulière testée sur la valeur : l'ancrer (^liste$). Seul le panneau qui correspond est rendu. Pour garder en vie un composant à état interne (carte, modal) d'un onglet à l'autre, préférer sonic-if dataProvider=\"etat\" key=\"onglet\" equals=\"carte\", qui garde son contenu dans le DOM."
+  },
+  "formulaire": {
+    "title": "Formulaire : sonic-fieldset + sonic-form-layout",
+    "when": "Tout groupe de champs, dans la page, un sonic-pop ou un sonic-modal (alors dans sonic-modal-content).",
+    "stores": {
+      "fiche": {"initial": {"nom": "", "email": "", "note": "", "enregistre": false}, "reducer": "$action.type = \"save\" ? $merge([$state, {\"enregistre\": true}]) : $state"}
+    },
+    "node": {
+      "tagName": "sonic-fieldset",
+      "attributes": {"label": "Contact", "description": "Utilisé pour la confirmation."},
+      "nodes": [
+        {
+          "tagName": "sonic-form-layout",
+          "nodes": [
+            {"tagName": "sonic-input", "attributes": {"formDataProvider": "fiche", "name": "nom", "label": "Nom", "autocomplete": "name"}},
+            {"tagName": "sonic-input", "attributes": {"formDataProvider": "fiche", "name": "email", "label": "E-mail", "type": "email", "autocomplete": "email"}},
+            {"tagName": "sonic-textarea", "attributes": {"formDataProvider": "fiche", "name": "note", "label": "Note", "rows": "3"}},
+            {
+              "tagName": "sonic-form-actions",
+              "nodes": [
+                {
+                  "tagName": "sonic-action",
+                  "attributes": {"target": "fiche", "type": "save"},
+                  "nodes": [{"tagName": "sonic-button", "attributes": {"type": "primary"}, "textContent": "Enregistrer"}]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "notes": "Chaque champ porte formDataProvider + name et écrit sa clé dans le store. sonic-form-layout met les sonic-input sur deux colonnes dès 440 px de large ; sonic-textarea et sonic-form-actions prennent toute la largeur. Un sonic-fieldset par groupe de champs liés. L'action save se traite dans le réducteur du store. Dans un modal : patron des deux modals de la compétence multivue."
+  }
+}
