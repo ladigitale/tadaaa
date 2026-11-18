@@ -86,6 +86,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         private readonly Resources $resources,
         private readonly ArtifactRunService $runs,
         private readonly \App\Service\ArtifactRunStreamService $streams,
+        private readonly ?\App\Service\ArtifactValidationStats $stats = null,
     ) {
     }
 
@@ -393,6 +394,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         $result = $this->validator->validate($document);
         $expanded = ArtifactFiles::expand($document);
         $result['warnings'] = $result['valid'] ? [...$this->validator->lint($expanded), ...$this->simulator->checkJsonata($expanded)] : [];
+        $this->stats?->record(ArtifactValidationStats::SOURCE_VALIDATE, $result, $result['warnings']);
 
         return $result;
     }

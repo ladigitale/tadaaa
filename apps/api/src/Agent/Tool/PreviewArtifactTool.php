@@ -6,6 +6,7 @@ namespace App\Agent\Tool;
 
 use App\Service\ArtifactDocumentValidator;
 use App\Service\ArtifactUiRules;
+use App\Service\ArtifactValidationStats;
 
 /**
  * `preview_artifact` (atelier Artefacts) : valide un document `artifacts/1` et, s'il
@@ -21,6 +22,7 @@ final class PreviewArtifactTool implements AgentTool
     public function __construct(
         private readonly ArtifactDocumentValidator $validator,
         ?DraftStore $drafts = null,
+        private readonly ?ArtifactValidationStats $stats = null,
     ) {
         $this->drafts = $drafts ?? new DraftStore();
     }
@@ -68,6 +70,8 @@ final class PreviewArtifactTool implements AgentTool
     {
         $result = $this->validator->validate(DraftStore::assoc($draft));
         if (!$result['valid']) {
+            $this->stats?->record(ArtifactValidationStats::SOURCE_ATELIER, $result);
+
             return ToolResult::json($result, true);
         }
         $context->sink->emit(['type' => 'CUSTOM', 'name' => self::EVENT, 'value' => ['document' => $draft]]);
@@ -75,6 +79,7 @@ final class PreviewArtifactTool implements AgentTool
 
         // Avis d'interface (recettes Concorde contournées) : l'aperçu est affiché, le modèle peut corriger.
         $warnings = ArtifactUiRules::lint(DraftStore::assoc($draft));
+        $this->stats?->record(ArtifactValidationStats::SOURCE_ATELIER, $result, $warnings);
 
         return ToolResult::json(['valid' => true, 'previewed' => true] + ($warnings !== [] ? ['warnings' => $warnings] : []));
     }

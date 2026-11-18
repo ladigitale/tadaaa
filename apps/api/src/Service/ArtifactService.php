@@ -43,6 +43,7 @@ final class ArtifactService
         /** Hôte public de l'API pour les URL d'assets ; vide = celui de la requête. */
         #[Autowire('%env(ARTIFACT_ASSETS_BASE_URL)%')]
         private readonly string $assetsBaseUrl = '',
+        private readonly ?ArtifactValidationStats $stats = null,
     ) {
     }
 
@@ -82,6 +83,7 @@ final class ArtifactService
         $dataset = $this->requireWritableDataset($user, $datasetId);
         $vis = $this->parseVisibility($visibility);
         $result = $this->validator->validate($document);
+        $this->stats?->record(ArtifactValidationStats::SOURCE_SAVE, $result, $result['valid'] ? ArtifactUiRules::lint($document) : []);
         if (!$result['valid']) {
             throw new BadRequestHttpException('Document SDUI invalide : '.$this->formatErrors($result['errors']));
         }
@@ -228,6 +230,7 @@ final class ArtifactService
     {
         $artifact = $this->requireWritableArtifact($user, $idOrSlug);
         $result = $this->validator->validate($document);
+        $this->stats?->record(ArtifactValidationStats::SOURCE_SAVE, $result, $result['valid'] ? ArtifactUiRules::lint($document) : []);
         if (!$result['valid']) {
             throw new BadRequestHttpException('Document SDUI invalide : '.$this->formatErrors($result['errors']));
         }
