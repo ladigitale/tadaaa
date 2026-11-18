@@ -266,6 +266,18 @@ n'a besoin ni de store de flux ni d'actions. 8 liens actifs au plus par run sour
 s'arrête quand l'un des deux runs se termine (`get_artifact_run` montre `links` avec leurs
 compteurs `forwarded`, `failed` et `lastError` ; `unlink_artifact_runs` en coupe un).
 
+**Démo « télécommande »** — `docs/examples/telecommande-regie.json` (six pads, émission seule)
+pilote la Régie en direct : lancer les deux runs (interactive), puis
+`link_artifact_runs {fromRunId: <télécommande>, toRunId: <régie>, map}` avec :
+
+```
+data.pad = "applaudir" ? {"type": "action", "name": "reaction", "payload": {"n": 25}}
+  : data.pad = "annonce" ? {"type": "action", "name": "annonce", "payload": {"texte": data.texte}}
+  : data.pad = "carte" ? {"type": "document.patch", "patch": [{"op": "add", "path": "/views/0/root/nodes/2/nodes/-", "value": {"tagName": "div", "attributes": {"style": "border:1px solid var(--sc-base-200);border-radius:.8rem;padding:.9rem 1rem"}, "nodes": [{"tagName": "div", "attributes": {"style": "font-weight:700;margin-bottom:.3rem"}, "textContent": "Depuis la télécommande"}, {"tagName": "div", "attributes": {"style": "font-size:.9rem;opacity:.85"}, "textContent": "Carte n° " & $substringAfter(id, "p") & ", envoyée par un autre artefact."}]}}]}
+  : data.pad = "drop" ? [{"type": "action", "name": "chapitre", "payload": {"nom": "Drop !", "soustitre": "Déclenché à distance."}}, {"type": "action", "name": "reaction", "payload": {"n": 100}}]
+  : data.pad = "fin" ? [{"type": "action", "name": "chapitre", "payload": {"nom": "Fin", "soustitre": "Merci d’avoir suivi le direct."}}, {"type": "score.stop"}, {"type": "end"}]
+```
+
 **Budget du store** — une action qui dépasse le budget du store est ignorée, et l'écran qui l'a
 sautée n'est plus synchrone : le viewer donne 50 ms au store du flux déclaré dans `data.stores` ;
 pour un `sonic-store` écrit dans la vue, mettre `budget-ms="50"`.

@@ -1,0 +1,263 @@
+{
+ "schema": "artifacts/1",
+ "title": "Télécommande de la régie",
+ "defaultView": "pads",
+ "page": {
+  "nav": "none"
+ },
+ "data": {
+  "stores": {
+   "pad": {
+    "budgetMs": 50,
+    "initial": {
+     "phase": "live",
+     "n": 0,
+     "sent": 0,
+     "outbox": []
+    },
+    "reducer": "$action.type = 'press' ? $merge([$state, {'n': $state.n + 1, 'outbox': $append($state.outbox, [{'id': 'p' & $string($state.n + 1), 'data': $action.payload}])}]) : $action.type = 'emit:ok' ? $merge([$state, {'sent': $state.sent + 1, 'outbox': [$filter($state.outbox, function($i) { $i.id != $action.payload.id })]}]) : $action.type = 'finish' ? $merge([$state, {'phase': 'done'}]) : $state"
+   }
+  }
+ },
+ "views": [
+  {
+   "id": "pads",
+   "title": "Pads",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "max-width:32rem;margin:1rem auto;padding:0 1rem;display:grid;gap:.8rem"
+      },
+      "nodes": [
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "font-size:1.3rem;font-weight:800"
+        },
+        "textContent": "Télécommande"
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "font-size:.9rem;opacity:.75"
+        },
+        "textContent": "Chaque bouton part dans le flux de la régie, relié côté serveur : aucune clé dans cette page."
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "display:grid;grid-template-columns:1fr 1fr;gap:.6rem"
+        },
+        "nodes": [
+         {
+          "tagName": "sonic-action",
+          "attributes": {
+           "target": "pad",
+           "type": "press",
+           "payload": "{\"pad\": \"applaudir\"}"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "type": "primary",
+             "size": "lg",
+             "shape": "block",
+             "style": "min-height:4.5rem;font-size:1.1rem"
+            },
+            "nodes": [
+             {
+              "tagName": "span",
+              "textContent": "♥ Applaudir"
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "tagName": "sonic-action",
+          "attributes": {
+           "target": "pad",
+           "type": "press",
+           "payload": "{\"pad\": \"annonce\", \"texte\": \"Bravo à la régie !\"}"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "type": "default",
+             "size": "lg",
+             "shape": "block",
+             "style": "min-height:4.5rem;font-size:1.1rem"
+            },
+            "nodes": [
+             {
+              "tagName": "span",
+              "textContent": "📣 Bravo !"
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "tagName": "sonic-action",
+          "attributes": {
+           "target": "pad",
+           "type": "press",
+           "payload": "{\"pad\": \"annonce\", \"texte\": \"On en veut encore !\"}"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "type": "default",
+             "size": "lg",
+             "shape": "block",
+             "style": "min-height:4.5rem;font-size:1.1rem"
+            },
+            "nodes": [
+             {
+              "tagName": "span",
+              "textContent": "🔁 On en veut encore"
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "tagName": "sonic-action",
+          "attributes": {
+           "target": "pad",
+           "type": "press",
+           "payload": "{\"pad\": \"carte\"}"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "type": "default",
+             "size": "lg",
+             "shape": "block",
+             "style": "min-height:4.5rem;font-size:1.1rem"
+            },
+            "nodes": [
+             {
+              "tagName": "span",
+              "textContent": "🃏 Envoyer une carte"
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "tagName": "sonic-action",
+          "attributes": {
+           "target": "pad",
+           "type": "press",
+           "payload": "{\"pad\": \"drop\"}"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "type": "warning",
+             "size": "lg",
+             "shape": "block",
+             "style": "min-height:4.5rem;font-size:1.1rem"
+            },
+            "nodes": [
+             {
+              "tagName": "span",
+              "textContent": "⚡ Drop !"
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "tagName": "sonic-action",
+          "attributes": {
+           "target": "pad",
+           "type": "press",
+           "payload": "{\"pad\": \"fin\"}"
+          },
+          "nodes": [
+           {
+            "tagName": "sonic-button",
+            "attributes": {
+             "type": "danger",
+             "size": "lg",
+             "shape": "block",
+             "style": "min-height:4.5rem;font-size:1.1rem"
+            },
+            "nodes": [
+             {
+              "tagName": "span",
+              "textContent": "⏹ Terminer le direct"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "tagName": "div",
+        "attributes": {
+         "style": "font-size:.85rem;opacity:.7"
+        },
+        "nodes": [
+         {
+          "tagName": "span",
+          "textContent": "Envoyés : "
+         },
+         {
+          "tagName": "sonic-value",
+          "attributes": {
+           "dataProvider": "pad",
+           "key": "sent"
+          }
+         },
+         {
+          "tagName": "span",
+          "textContent": " / "
+         },
+         {
+          "tagName": "sonic-value",
+          "attributes": {
+           "dataProvider": "pad",
+           "key": "n"
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "io": {
+  "title": "Télécommande de la régie",
+  "description": "Pads publiés dans la file pad.outbox ({id, data: {pad, …}}), à relier au run de la Régie en direct (link_artifact_runs).",
+  "modes": [
+   "interactive",
+   "embed"
+  ],
+  "output": {
+   "schema": {
+    "type": "integer"
+   },
+   "from": "pad.n",
+   "when": "phase = 'done'"
+  },
+  "stream": {
+   "emit": {
+    "from": "pad.outbox",
+    "ack": "pad"
+   }
+  }
+ }
+}
