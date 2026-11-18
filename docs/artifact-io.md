@@ -246,6 +246,26 @@ cartes) pilotée par un programme quelconque : `scripts/demo-direct-stream.mjs -
 <origine API + eventsUrl> --token <emitToken> [--minutes 3]` envoie deux partitions de 60 s,
 des chapitres, annonces et réactions, ajoute des cartes et réécrit le titre, puis `end`.
 
+**Relier deux artefacts** — un run peut en piloter un autre. L'artefact source déclare une file
+d'envoi `io.stream.emit = {from: "pad.outbox", ack?: "pad"}` : son réducteur ajoute des éléments
+`{id, data}` à la file, le viewer du run les publie (une fois par `id`) puis renvoie
+`{type: "emit:ok", payload: {id}}` au store `ack` pour qu'il les retire. Un **lien** créé par le
+propriétaire (`link_artifact_runs {fromRunId, toRunId, map?}`, ou
+`POST /api/artifacts/{slug}/runs/{id}/links {toRunId, map?}`) renvoie chaque élément dans le flux
+du run cible, avec les mêmes validations et le même débit qu'un émetteur. `map` (JSONata) est
+évalué sur `{id, data, from: {slug, runId}}` et rend un message, une liste de messages ou rien :
+
+```
+data.pad = "applaudir" ? {"type": "action", "name": "reaction", "payload": {"n": 20}}
+  : data.pad = "flash" ? {"type": "state.delta", "patch": [{"op": "replace", "path": "/param2", "value": 1}]}
+```
+
+Sans `map`, `data` doit déjà être un message du flux cible. Aucun jeton ne passe dans le
+navigateur ; un run qui ne fait qu'émettre (pas d'actions, d'état, de document ni de partition)
+n'a besoin ni de store de flux ni d'actions. 8 liens actifs au plus par run source ; un lien
+s'arrête quand l'un des deux runs se termine (`get_artifact_run` montre `links` avec leurs
+compteurs `forwarded`, `failed` et `lastError` ; `unlink_artifact_runs` en coupe un).
+
 **Budget du store** — une action qui dépasse le budget du store est ignorée, et l'écran qui l'a
 sautée n'est plus synchrone : le viewer donne 50 ms au store du flux déclaré dans `data.stores` ;
 pour un `sonic-store` écrit dans la vue, mettre `budget-ms="50"`.

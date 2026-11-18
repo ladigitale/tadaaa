@@ -208,6 +208,35 @@ final class ArtifactStreamTest extends TestCase
         self::assertNotContains('document.patch', array_column($plain['paths']['/api/public/artifacts/scene/runs/{runId}/events']['post']['requestBody']['content']['application/json']['schema']['properties']['events']['items']['oneOf'], 'title'));
     }
 
+    public function testEmitDeclaration(): void
+    {
+        // Télécommande : émission seule, sans store ni actions.
+        self::assertSame([], self::check(['emit' => ['from' => 'scene.outbox', 'ack' => 'scene']]));
+        self::assertSame('/io/stream/emit/from', self::check(['emit' => ['from' => 'ailleurs.file']])[0]['path']);
+        self::assertSame('/io/stream/emit/ack', self::check(['emit' => ['from' => 'scene.outbox', 'ack' => 'nope']])[0]['path']);
+        self::assertSame('/io/stream/emit', self::check(['emit' => ['from' => 'scene.outbox', 'to' => 'x']])[0]['path']);
+
+        $doc = self::document(['emit' => ['from' => 'scene.outbox']]);
+        self::assertTrue(ArtifactStream::emits($doc['io']));
+        self::assertFalse(ArtifactStream::accepts($doc['io']));
+        self::assertTrue(ArtifactIo::describe($doc)['stream']['emit']);
+        self::assertTrue(ArtifactStream::accepts(self::document(self::full())['io']));
+    }
+
+    public function testEmitOutMessages(): void
+    {
+        [$msg] = ArtifactStream::normalizeOut(self::obj('{"type":"emit","id":"p-3","data":{"pad":"feu"}}'));
+        self::assertSame('p-3', $msg->id);
+        self::assertSame('feu', $msg->data->pad);
+        [$msg] = ArtifactStream::normalizeOut(self::obj('{"type":"emit","id":7,"data":null}'));
+        self::assertSame(7, $msg->id);
+        [$msg, $errors] = ArtifactStream::normalizeOut(self::obj('{"type":"emit","data":1}'));
+        self::assertNull($msg);
+        self::assertStringContainsString('id', $errors[0]);
+        [$msg] = ArtifactStream::normalizeOut(self::obj('{"type":"emit","id":"","data":1}'));
+        self::assertNull($msg);
+    }
+
     public function testRunStreamTokens(): void
     {
         $run = (new \ReflectionClass(ArtifactRun::class))->newInstanceWithoutConstructor();

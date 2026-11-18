@@ -32,6 +32,7 @@ final class ArtifactController extends AbstractController
         private readonly ArtifactDocumentValidator $validator,
         private readonly ArtifactRunService $runs,
         private readonly \App\Service\ArtifactRunStreamService $streams,
+        private readonly \App\Service\ArtifactRunLinkService $runLinks,
     ) {
     }
 
@@ -383,6 +384,29 @@ final class ArtifactController extends AbstractController
         $body = json_decode($request->getContent() ?: 'null', false);
 
         return $this->json($this->streams->emitAsUser($user, $runId, $body), 202, [], self::JSON_CONTEXT);
+    }
+
+    /** Relie la file d'envoi de ce run au flux d'un autre : {"toRunId": "…", "map": "JSONata"?}. */
+    #[Route('/{id}/runs/{runId}/links', name: 'api_artifacts_runs_links_create', methods: ['POST'])]
+    public function createRunLink(string $id, string $runId, Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $body = json_decode($request->getContent() ?: '{}', true);
+        if (!\is_array($body) || !\is_string($body['toRunId'] ?? null)) {
+            return $this->json(['message' => 'JSON attendu : {"toRunId": "…", "map": "…"?}.'], 400);
+        }
+
+        return $this->json($this->runLinks->create($user, $runId, $body['toRunId'], \is_string($body['map'] ?? null) ? $body['map'] : null), 201, [], self::JSON_CONTEXT);
+    }
+
+    #[Route('/{id}/runs/{runId}/links/{linkId}', name: 'api_artifacts_runs_links_delete', methods: ['DELETE'])]
+    public function deleteRunLink(string $id, string $runId, string $linkId): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        return $this->json($this->runLinks->delete($user, $linkId), 200, [], self::JSON_CONTEXT);
     }
 
     #[Route('/{id}/runs/{runId}', name: 'api_artifacts_runs_get', methods: ['GET'])]

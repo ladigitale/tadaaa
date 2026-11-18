@@ -33,6 +33,8 @@ use App\Mcp\Tool\RunArtifactTool;
 use App\Mcp\Tool\GetArtifactRunTool;
 use App\Mcp\Tool\CancelArtifactRunTool;
 use App\Mcp\Tool\StreamArtifactEventsTool;
+use App\Mcp\Tool\LinkArtifactRunsTool;
+use App\Mcp\Tool\UnlinkArtifactRunsTool;
 use App\Mcp\Tool\ListArtifactToolsTool;
 use App\Mcp\Tool\UpdateArtifactTool;
 use App\Mcp\Tool\UploadArtifactAssetTool;
@@ -126,6 +128,16 @@ final class ArtifactMcpProcessor implements ProcessorInterface
                 // Messages bruts : les objets vides restent des objets (le SDK MCP les décode en []).
                 (object) ['events' => $this->rawArguments->rawArgument($context, 'stream_artifact_events', 'events')
                     ?? json_decode((string) json_encode($data->events ?? []), false)],
+            ),
+            $data instanceof LinkArtifactRunsTool => $this->runLinks->create(
+                $user,
+                $this->emptyToNull($data->fromRunId) ?? throw new BadRequestHttpException('fromRunId requis.'),
+                $this->emptyToNull($data->toRunId) ?? throw new BadRequestHttpException('toRunId requis.'),
+                $this->emptyToNull($data->map),
+            ),
+            $data instanceof UnlinkArtifactRunsTool => $this->runLinks->delete(
+                $user,
+                $this->emptyToNull($data->linkId) ?? throw new BadRequestHttpException('linkId requis.'),
             ),
             $data instanceof CancelArtifactRunTool => $this->runs->cancel($user, $this->emptyToNull($data->runId) ?? throw new BadRequestHttpException('runId requis.')),
             $data instanceof ListArtifactToolsTool => ['tools' => $this->runs->listTools($user, $this->emptyToNull($data->datasetId))],
@@ -824,6 +836,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof GetArtifactRunTool => 'get_artifact_run',
             $data instanceof CancelArtifactRunTool => 'cancel_artifact_run',
             $data instanceof StreamArtifactEventsTool => 'stream_artifact_events',
+            $data instanceof LinkArtifactRunsTool => 'link_artifact_runs',
+            $data instanceof UnlinkArtifactRunsTool => 'unlink_artifact_runs',
             $data instanceof ListArtifactToolsTool => 'list_artifact_tools',
             $data instanceof RenderArtifactTool => 'render_artifact',
             $data instanceof PublishArtifactTool => 'publish_artifact',
