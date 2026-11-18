@@ -394,7 +394,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         $result = $this->validator->validate($document);
         $expanded = ArtifactFiles::expand($document);
         $result['warnings'] = $result['valid'] ? [...$this->validator->lint($expanded), ...$this->simulator->checkJsonata($expanded)] : [];
-        $this->stats?->record(ArtifactValidationStats::SOURCE_VALIDATE, $result, $result['warnings']);
+        $this->stats?->record(\App\Service\ArtifactValidationStats::SOURCE_VALIDATE, $result, $result['warnings']);
 
         return $result;
     }
