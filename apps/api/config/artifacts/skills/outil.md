@@ -26,7 +26,7 @@ Toujours : sélection visible (fond accent 10 %), action de ligne explicite (« 
 
 ## 4. Détail et édition
 - Détail en `sonic-modal` (patron des deux modals de multivue) sur téléphone ; panneau latéral sur grand écran (`grid-template-columns:1fr minmax(20rem,28rem)`, panneau `position:sticky;top:12px`).
-- Formulaires : `sonic-form-layout` + `sonic-fieldset label="…"` par groupe ; champs en 2 colonnes `repeat(auto-fit,minmax(14rem,1fr))` ; `label` sur chaque champ, aide sous le champ (`description`), erreurs en `status="error"`. Actions en bas à droite : primaire (« Enregistrer »), secondaire ghost (« Annuler »). Action destructrice : `type="danger" variant="outline"`, isolée à gauche, confirmation par modal.
+- Formulaires (recette `recipes.formulaire`) : `sonic-form-layout` + `sonic-fieldset label="…"` par groupe ; champs en 2 colonnes `repeat(auto-fit,minmax(14rem,1fr))` ; `label` sur chaque champ, aide sous le champ (`description`), erreurs en `status="error"`. Actions en bas à droite : primaire (« Enregistrer »), secondaire ghost (« Annuler »). Action destructrice : `type="danger" variant="outline"`, isolée à gauche, confirmation par modal.
 - Formulaire long : étapes (store `{etape:1}` + `sonic-progress` + « Étape 2 sur 4 »), une question de décision par écran sur mobile.
 - Enregistrement : boîte d'envoi + `data.sinks` (rules.collecte) ; retour `sink:ok` → `sonic-toast`/`sonic-alert status="success"` ; brouillon local via le store.
 

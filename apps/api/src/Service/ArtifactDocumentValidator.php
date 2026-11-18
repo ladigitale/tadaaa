@@ -358,7 +358,7 @@ final class ArtifactDocumentValidator
         $data = $catalog ?? $this->loadJson($this->catalogPath);
         $tags = $data['safeHtmlTags'] ?? [];
         foreach ($data['components'] ?? [] as $component) {
-            if (isset($component['name']) && \is_string($component['name'])) {
+            if (isset($component['name']) && \is_string($component['name']) && ArtifactUiRules::replacedTagMessage($component['name']) === null) {
                 $tags[] = $component['name'];
             }
         }
@@ -384,7 +384,33 @@ final class ArtifactDocumentValidator
     /** @return array<string, mixed> */
     public function catalog(): array
     {
-        return $this->loadJson($this->catalogPath);
+        $catalog = $this->loadJson($this->catalogPath);
+        if (\is_array($catalog['components'] ?? null)) {
+            // Un composant refusé par la validation n'est pas proposé.
+            $catalog['components'] = array_values(array_filter(
+                $catalog['components'],
+                static fn (mixed $c): bool => !\is_array($c) || !\is_string($c['name'] ?? null) || ArtifactUiRules::replacedTagMessage($c['name']) === null,
+            ));
+        }
+
+        return $catalog;
+    }
+
+    /**
+     * Recettes d'interface nommées (fragments SDUI complets, à copier) : config/artifacts/recipes.json.
+     *
+     * @return array<string, array{title: string, when: string, stores?: array<string, mixed>, node: array<string, mixed>, notes?: string}>
+     */
+    public function recipes(): array
+    {
+        return $this->loadJson(\dirname($this->catalogPath).'/recipes.json');
+    }
+
+    private function recipesRule(): string
+    {
+        return 'Fragments SDUI validés, à copier puis adapter : '.implode(', ', array_keys($this->recipes()))
+            .' (rules=["recettes"] → clé recipes : stores, node, notes). '
+            .'select, sonic-select, button, input, textarea, form : refusés, le message d’erreur nomme la recette.';
     }
 
     /** @return array<string, mixed> */
@@ -447,6 +473,7 @@ final class ArtifactDocumentValidator
                 'interdit' => ['markup', 'innerHTML', 'js', 'css', 'prefix', 'suffix', 'javascript:', 'URL libre de script'],
                 'scripts' => 'Optionnel: tableau d’IDs du catalogue scripts (voir scripts.libraries[].id). Ex: ["chartjs","leaflet"]. Pas d’URL, pas de balise <script>.',
                 'tagName' => 'Uniquement composants Concorde (sonic-*) ou balises HTML sûres du catalogue.',
+                'recettes' => $this->recipesRule(),
                 'page' => 'Optionnel : cadre de la page, "page": {"padding": "none"|"compact"|"normal" (défaut normal : marge du viewer ; none = plein cadre, pour un jeu ou une scène), "background": couleur CSS du fond de toute la page (#hex, rgb(), hsl(), nom ou var(--sc-…)), "nav": "tabs"|"none" (défaut tabs : barre d’onglets du viewer quand il y a plusieurs vues ; none = le document dessine ses onglets, voir la règle « navigation »)}.',
                 'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent. views[].hidden = true : vue absente des onglets (accessible par son #id). '
                     .'Onglets : le viewer affiche un sonic-menu de sonic-menu-item radio branchés sur le DataProvider artifactView ({view} = id de la vue affichée), l’onglet actif est rendu par Concorde. Pour des onglets dans la palette de l’artefact : "page": {"nav": "none"} puis, dans les vues, {"tagName":"sonic-menu","attributes":{"direction":"row"},"nodes":[{"tagName":"sonic-menu-item","attributes":{"radio":true,"formDataProvider":"artifactView","name":"view","value":"stats"},"textContent":"Stats"}, …]} (à répéter dans chaque vue, ou dans une vue qui les contient toutes) ; lire la vue courante : sonic-value dataProvider="artifactView" key="view". Jamais de sonic-button à variant calculé pour des onglets.',
@@ -513,6 +540,9 @@ final class ArtifactDocumentValidator
             if (!isset($want['scripts'])) {
                 unset($payload['scripts']);
             }
+        }
+        if ($rules !== null && array_intersect($rules, ['recettes', 'design', 'outil', 'dashboard', 'multivue']) !== []) {
+            $payload['recipes'] = $this->recipes();
         }
         if ($rules !== null && $rules !== []) {
             $skills = $this->skills();
@@ -965,7 +995,7 @@ final class ArtifactDocumentValidator
             }
         }
 
-        return $warnings;
+        return [...$warnings, ...ArtifactUiRules::lint($document)];
     }
 
     /**
@@ -1044,6 +1074,8 @@ final class ArtifactDocumentValidator
         }
         if (!\is_string($tagName) || $tagName === '') {
             $errors[] = ['path' => $path.'/tagName', 'message' => 'tagName invalide.'];
+        } elseif (($replaced = ArtifactUiRules::replacedTagMessage($tagName)) !== null) {
+            $errors[] = ['path' => $path.'/tagName', 'message' => $replaced];
         } elseif (!isset($this->allowedTagSet[$tagName])) {
             $errors[] = ['path' => $path.'/tagName', 'message' => sprintf('Composant hors liste blanche : %s', $tagName)];
         } elseif (preg_match('/^script$/i', $tagName) || str_contains(strtolower($tagName), 'script')) {

@@ -16,7 +16,8 @@ Fondations communes à tous les artefacts. Lis ensuite UNE compétence d'archét
   2. **Palette d'auteur** (vitrine à identité forte, jeu, expérience) : `page.background` + une **palette de zone** sur le conteneur racine, qui recolore aussi les composants Concorde (les variables traversent leur shadow DOM) :
      `--sc-base:#101014;--sc-base-content:#ece8e1;--sc-base-100:#1c1c22;--sc-base-200:#26262e;--sc-base-300:#34343e;--sc-primary:#e8ff59;--sc-primary-content:#141600;--sc-input-bg:#1c1c22;--sc-input-color:#ece8e1;--sc-input-c:#ece8e1;--sc-input-border-color:#34343e;background:var(--sc-base);color:var(--sc-base-content)`
      Les champs de formulaire ne suivent PAS `--sc-base-100` redéfini localement : redéfinis les 4 `--sc-input-*`. Un `style="color:…"` posé sur un `sonic-button` est ignoré : passe par les jetons de zone. `--sc-btn-rounded` règle l'arrondi des boutons.
-- **Interdit : `select` natif et `sonic-select`.** Ne les utilise jamais dans un artefact (rendu et thème non maîtrisés, popup native hors du viewer). Voir §1 bis pour tout choix.
+- **Refusés par la validation : `select` natif et `sonic-select`** (rendu et thème non maîtrisés, popup native hors du viewer), comme `button`, `input`, `textarea` et `form` natifs. Voir §1 bis pour tout choix.
+- **Recettes à copier** : la clé `recipes` de cette réponse contient des fragments complets et validés (`segments`, `selecteur`, `onglets`, `formulaire` : `stores` à déclarer, `node` à placer, `notes`). Pars d'eux plutôt que de réécrire le patron.
 
 ## 1 bis. Choix et états sélectionnés : des radios Concorde branchées sur un DataProvider
 Tout choix (segment, filtre, onglet sans modal, réglage, tri, liste de communes…) passe par le DataProvider, jamais par `sonic-action` + `::variant` : l'état sélectionné est alors rendu par Concorde lui-même, sans rien lier.
