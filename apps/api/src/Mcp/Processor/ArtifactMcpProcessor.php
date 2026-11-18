@@ -32,6 +32,7 @@ use App\Mcp\Tool\SimulateStoreTool;
 use App\Mcp\Tool\RunArtifactTool;
 use App\Mcp\Tool\GetArtifactRunTool;
 use App\Mcp\Tool\CancelArtifactRunTool;
+use App\Mcp\Tool\StreamArtifactEventsTool;
 use App\Mcp\Tool\ListArtifactToolsTool;
 use App\Mcp\Tool\UpdateArtifactTool;
 use App\Mcp\Tool\UploadArtifactAssetTool;
@@ -84,6 +85,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         private readonly ArtifactFileFetcher $fetcher,
         private readonly Resources $resources,
         private readonly ArtifactRunService $runs,
+        private readonly \App\Service\ArtifactRunStreamService $streams,
     ) {
     }
 
@@ -117,6 +119,13 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof RenderArtifactTool => $this->render($user, $data, $png, $context),
             $data instanceof RunArtifactTool => $this->runArtifact($user, $data, $context),
             $data instanceof GetArtifactRunTool => $this->getRun($user, $data),
+            $data instanceof StreamArtifactEventsTool => $this->streams->emitAsUser(
+                $user,
+                $this->emptyToNull($data->runId) ?? throw new BadRequestHttpException('runId requis.'),
+                // Messages bruts : les objets vides restent des objets (le SDK MCP les décode en []).
+                (object) ['events' => $this->rawArguments->rawArgument($context, 'stream_artifact_events', 'events')
+                    ?? json_decode((string) json_encode($data->events ?? []), false)],
+            ),
             $data instanceof CancelArtifactRunTool => $this->runs->cancel($user, $this->emptyToNull($data->runId) ?? throw new BadRequestHttpException('runId requis.')),
             $data instanceof ListArtifactToolsTool => ['tools' => $this->runs->listTools($user, $this->emptyToNull($data->datasetId))],
             $data instanceof ValidateArtifactTool => $this->validateWithLint($data->document ?? []),
@@ -776,6 +785,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof RunArtifactTool => 'run_artifact',
             $data instanceof GetArtifactRunTool => 'get_artifact_run',
             $data instanceof CancelArtifactRunTool => 'cancel_artifact_run',
+            $data instanceof StreamArtifactEventsTool => 'stream_artifact_events',
             $data instanceof ListArtifactToolsTool => 'list_artifact_tools',
             $data instanceof RenderArtifactTool => 'render_artifact',
             $data instanceof PublishArtifactTool => 'publish_artifact',

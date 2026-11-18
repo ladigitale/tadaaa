@@ -149,6 +149,83 @@ l'API, les assets et les CDN épinglés ; caméra, micro et presse-papiers sont 
 refuser). Un artefact privé ne peut pas être intégré. Smoke : `scripts/smoke-mcp-app.mjs` dans
 ladigitale/artifacts (hôte simulé).
 
+## Flux en direct (`io.stream`)
+
+Un run interactive ou embed peut rester **ouvert à un flux** : n'importe quel émetteur (script,
+service, capteur, autre agent, Claude via MCP…) pousse des messages, le viewer qui exécute le
+run et les spectateurs les appliquent en direct. Trois niveaux, cumulables :
+
+1. **État** — `action` (réducteur du store), `state.snapshot` / `state.delta` (JSON Patch sur
+   l'état) : rapide, quelques dizaines de messages par seconde ;
+2. **Structure** — `document.patch` (JSON Patch sur le document affiché) : le serveur applique le
+   patch et valide le document comme une publication avant de le relayer ; `/io`, `/files` et
+   `/schema` ne bougent pas pendant un run ;
+3. **Partition** — `score` : états clés et événements joués *localement* par chaque viewer à
+   pleine vitesse, à partir de l'heure serveur du message (tous les spectateurs sont synchrones,
+   même arrivés en cours). C'est la bonne forme pour des évolutions longues ou rapides : on ne
+   streame que les changements de partition.
+
+```json
+"io": {
+  "modes": ["interactive", "embed"],
+  "output": {"schema": {"type": "number"}, "from": "scene.hue"},
+  "stream": {
+    "store": "scene",
+    "actions": {"palette": {"schema": {"type": "object", "properties": {"hue": {"type": "number"}}}}, "pulse": {}},
+    "state": true, "document": true, "score": true,
+    "rate": 30,
+    "progress": {"from": "scene.progress", "every": 1000}
+  }
+}
+```
+
+Le run (`run_artifact`, `POST /api/artifacts/{slug}/runs`) renvoie alors, une seule fois :
+
+```json
+"stream": {"emitToken": "…", "watchToken": "…", "eventsUrl": "/api/public/artifacts/{slug}/runs/{id}/events",
+           "joinUrl": "…/stream", "watchUrl": "https://…/{slug}?run=…&wt=…", "seq": 0, "messages": 0}
+```
+
+**Émettre** — `POST eventsUrl` avec `Authorization: Bearer <emitToken>` (ou l'outil MCP
+`stream_artifact_events`, ou `POST /api/artifacts/{slug}/runs/{id}/events` avec un compte) ;
+corps : un message, une liste ou `{"events": […]}` (64 au plus, 60 Ko). Un envoi est accepté ou
+refusé en entier (`202 {accepted, seq, firstSeq}`) ; débit limité à `io.stream.rate` messages/s
+par run (rafale de 2 s). Chaque message reçoit un numéro (`seq`) et l'heure serveur (`t`, ms).
+
+| Message | Effet |
+|---|---|
+| `{"type":"action","name":"palette","payload":{…}}` | `{type: name, payload}` envoyé au réducteur du store |
+| `{"type":"state.snapshot","state":{…}}` | remplace l'état du store (si `state`) |
+| `{"type":"state.delta","patch":[…]}` | JSON Patch sur l'état du store (si `state`) |
+| `{"type":"document.patch","patch":[…]}` | JSON Patch sur le document (si `document`) |
+| `{"type":"score","score":{…}}` / `{"type":"score.stop"}` | lance / arrête une partition (si `score`) |
+| `{"type":"end"}` | fin du flux : le viewer publie sa sortie, webhook `artifact.run.stream_ended` |
+
+AG-UI est accepté tel quel : `CUSTOM {name, value}`, `STATE_SNAPSHOT {snapshot}`,
+`STATE_DELTA {delta}`.
+
+**Partition** :
+
+```json
+{"duration": 8000, "loop": true, "speed": 1,
+ "events": [{"at": 0, "action": "pulse"}, {"at": 4000, "action": "palette", "payload": {"hue": 0.7}}],
+ "tracks": [{"path": "/hue", "keys": [{"at": 0, "value": 0.1}, {"at": 4000, "value": 0.9, "ease": "inOut"}, {"at": 8000, "value": 0.1}]}]}
+```
+
+`tracks` interpolent des nombres et des couleurs `#rrggbb` (le reste change par paliers) et les
+écrivent dans l'état du store au pointeur `path` ; `ease` : linear, in, out, inOut, step.
+
+**Suivre** — `GET joinUrl?wt=<watchToken>` (spectateur), `?rt=` (viewer du run) ou `?et=`
+(émetteur) : identifiants Mercure (`mercure.hubUrl`, `token`, `topics.in` / `topics.out`),
+document courant, partition en cours, dernier instantané d'état du viewer et messages à rejouer
+depuis cet instantané (`complete: false` si le journal ne remonte pas assez loin).
+`?after=<seq>` ne renvoie que les messages suivants : rattrapage après une coupure, ou suivi sans
+Mercure. Le topic `out` porte la progression publiée par le viewer (`io.stream.progress`),
+relayée aussi en webhook `artifact.run.progress` (au plus toutes les 10 s).
+
+**Durée** — chaque message prolonge le run de 24 h, dans la limite de 7 jours après sa création ;
+500 000 messages par run au plus (le serveur garde les 1 000 derniers pour les rattrapages).
+
 ## Workflows : enchaîner des artefacts
 
 Un workflow joue des artefacts-outils dans l'ordre ; la sortie d'une étape alimente la suivante.

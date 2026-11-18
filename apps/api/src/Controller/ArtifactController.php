@@ -31,6 +31,7 @@ final class ArtifactController extends AbstractController
         private readonly ArtifactDataService $artifactData,
         private readonly ArtifactDocumentValidator $validator,
         private readonly ArtifactRunService $runs,
+        private readonly \App\Service\ArtifactRunStreamService $streams,
     ) {
     }
 
@@ -367,6 +368,21 @@ final class ArtifactController extends AbstractController
         }
 
         return $this->json($this->runs->cancel($user, $runId), 200, [], self::JSON_CONTEXT);
+    }
+
+    /** Messages du flux d'un run (io.stream), envoyés par un membre du jeu. Corps : message, liste ou {events}. */
+    #[Route('/{id}/runs/{runId}/events', name: 'api_artifacts_runs_events', methods: ['POST'])]
+    public function streamEvents(string $id, string $runId, Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $run = $this->runs->get($user, $runId);
+        if ($run['slug'] !== $id && $run['artifactId'] !== $id) {
+            return $this->json(['message' => 'Run introuvable.'], 404);
+        }
+        $body = json_decode($request->getContent() ?: 'null', false);
+
+        return $this->json($this->streams->emitAsUser($user, $runId, $body), 202, [], self::JSON_CONTEXT);
     }
 
     #[Route('/{id}/runs/{runId}', name: 'api_artifacts_runs_get', methods: ['GET'])]
