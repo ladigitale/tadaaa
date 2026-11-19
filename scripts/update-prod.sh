@@ -6,6 +6,8 @@
 #
 # Merges missing .env keys (mail, quotas, …), rebuilds SPAs via ephemeral
 # node:22 (no host yarn), recreates containers, Doctrine migrate.
+# Checks free disk first (MIN_FREE_GB, default 5: prunes dangling images and
+# old build cache when below, stops if still short) and prunes again at the end.
 #
 # Optional cohost (.env) — re-applied on edge after the main stack up:
 #   GLANE_ROOT=/root/glane
@@ -172,6 +174,27 @@ fi
 need_cmd docker
 need_cmd curl
 
+# Espace disque : chaque déploiement laisse l'ancienne image (sans nom) et du cache de build.
+# On les retire, on vérifie qu'il reste assez de place AVANT de compiler, et on nettoie à la fin.
+MIN_FREE_GB="${MIN_FREE_GB:-5}"
+free_gb() {
+  local dir
+  dir="$(docker info -f '{{.DockerRootDir}}' 2>/dev/null || true)"
+  [[ -d "$dir" ]] || dir="$ROOT"
+  df -Pk "$dir" "$ROOT" | awk 'NR > 1 { if (min == "" || $4 < min) min = $4 } END { printf "%d", min / 1048576 }'
+}
+docker_cleanup() {
+  docker image prune -f >/dev/null 2>&1 || warn "docker image prune a échoué."
+  docker builder prune -f --filter until=72h >/dev/null 2>&1 || warn "docker builder prune a échoué."
+}
+info "Disque : $(free_gb) Go libres (minimum ${MIN_FREE_GB} Go)."
+if (( $(free_gb) < MIN_FREE_GB )); then
+  warn "Moins de ${MIN_FREE_GB} Go libres : retrait des images orphelines et du vieux cache de build…"
+  docker_cleanup
+  info "Disque après nettoyage : $(free_gb) Go libres."
+  (( $(free_gb) >= MIN_FREE_GB )) || die "Pas assez de place sur le disque ($(free_gb) Go < ${MIN_FREE_GB} Go) : libérer de l'espace (docker system df, yarn cache, journaux) puis relancer."
+fi
+
 info "Building front (VITE_API_BASE_URL=https://${api_host})…"
 # Use monorepo root yarn.lock (Concorde 4.9.x). Do not install from apps/web alone —
 # apps/web/yarn.lock can pin an older Concorde and break tsc (ApiResult, @post, …).
@@ -265,6 +288,10 @@ if curl -fsS --max-time 10 "https://${api_host}/api/health" >/dev/null 2>&1; the
 else
   warn "API not reachable yet — check DNS / logs: ${COMPOSE[*]} logs -f edge php"
 fi
+
+info "Nettoyage Docker (images orphelines, cache de build de plus de 72 h)…"
+docker_cleanup
+ok "Disque : $(free_gb) Go libres."
 
 say ""
 say "${BLD}Update complete.${RST}"
