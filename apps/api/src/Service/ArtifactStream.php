@@ -60,6 +60,10 @@ final class ArtifactStream
     public const EASES = ['linear', 'in', 'out', 'inOut', 'step'];
     public const IN_TYPES = ['action', 'state.snapshot', 'state.delta', 'document.patch', 'score', 'score.stop', 'end'];
     public const OUT_TYPES = ['progress', 'snapshot', 'emit'];
+    public const MAX_PAIRS = 32;
+    public const DEFAULT_PAIRS = 8;
+    public const DEFAULT_PAIR_TTL = 900;
+    public const MAX_PAIR_MAP = 4000;
     public const MAX_EMIT_ID = 64;
 
     private const ACTION = '/^[a-zA-Z][a-zA-Z0-9_:.-]{0,63}$/';
@@ -82,8 +86,8 @@ final class ArtifactStream
         }
         $errors = [];
         foreach (array_keys($stream) as $k) {
-            if (!\in_array($k, ['store', 'actions', 'state', 'document', 'score', 'rate', 'progress', 'emit'], true)) {
-                $errors[] = ['path' => $p.'/'.$k, 'message' => 'Clé non autorisée (store, actions, state, document, score, rate, progress, emit).'];
+            if (!\in_array($k, ['store', 'actions', 'state', 'document', 'score', 'rate', 'progress', 'emit', 'pair'], true)) {
+                $errors[] = ['path' => $p.'/'.$k, 'message' => 'Clé non autorisée (store, actions, state, document, score, rate, progress, emit, pair).'];
             }
         }
         $accepts = self::actionNames($stream) !== [] || ($stream['state'] ?? false) === true || ($stream['document'] ?? false) === true || ($stream['score'] ?? false) === true;
@@ -117,6 +121,9 @@ final class ArtifactStream
                     $errors[] = ['path' => $p.'/emit/ack', 'message' => 'ack : nom d’un store (reçoit {type: "emit:ok", payload: {id}}).'];
                 }
             }
+        }
+        if (\array_key_exists('pair', $stream)) {
+            $errors = [...$errors, ...self::checkPair($stream['pair'], $accepts, \array_key_exists('emit', $stream), $p.'/pair')];
         }
         if (\array_key_exists('rate', $stream) && (!\is_int($stream['rate']) || $stream['rate'] < 1 || $stream['rate'] > self::MAX_RATE)) {
             $errors[] = ['path' => $p.'/rate', 'message' => sprintf('rate : entier 1…%d (messages par seconde).', self::MAX_RATE)];
@@ -198,6 +205,7 @@ final class ArtifactStream
             'rate' => self::rate($stream),
             'progress' => \is_array($stream['progress'] ?? null),
             'emit' => \is_array($stream['emit'] ?? null),
+            'pair' => \is_array($stream['pair'] ?? null) ? ['remote' => $stream['pair']['remote'] ?? null, 'max' => $stream['pair']['max'] ?? self::DEFAULT_PAIRS] : null,
         ];
     }
 
@@ -440,6 +448,51 @@ final class ArtifactStream
                     break 2;
                 }
             }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Appairage : `pair = {remote, map?, back?, max?, ttl?, input?}` — le viewer du run montre un code
+     * (QR) ; l'ouvrir lance un run de l'artefact `remote` relié à celui-ci (`map` : remote → ce run,
+     * `back` : ce run → remote).
+     *
+     * @return list<array{path: string, message: string}>
+     */
+    private static function checkPair(mixed $pair, bool $accepts, bool $emits, string $p): array
+    {
+        if (!\is_array($pair) || array_is_list($pair)) {
+            return [['path' => $p, 'message' => 'pair : {remote: "slug", map?, back?, max?, ttl?, input?}.']];
+        }
+        $errors = [];
+        foreach (array_keys($pair) as $k) {
+            if (!\in_array($k, ['remote', 'map', 'back', 'max', 'ttl', 'input'], true)) {
+                $errors[] = ['path' => $p.'/'.$k, 'message' => 'Clé non autorisée (remote, map, back, max, ttl, input).'];
+            }
+        }
+        if (!\is_string($pair['remote'] ?? null) || !preg_match('/^[a-z0-9][a-z0-9-]{0,79}$/', $pair['remote'])) {
+            $errors[] = ['path' => $p.'/remote', 'message' => 'remote : slug de l’artefact ouvert par le code (même compte), qui déclare io.stream.'];
+        }
+        foreach (['map', 'back'] as $k) {
+            if (\array_key_exists($k, $pair) && (!\is_string($pair[$k]) || trim($pair[$k]) === '' || mb_strlen($pair[$k]) > self::MAX_PAIR_MAP)) {
+                $errors[] = ['path' => $p.'/'.$k, 'message' => sprintf('%s : expression JSONata (%d caractères au plus).', $k, self::MAX_PAIR_MAP)];
+            }
+        }
+        if (!$accepts) {
+            $errors[] = ['path' => $p, 'message' => 'pair : ce flux doit accepter les messages de la télécommande (actions, state, document ou score).'];
+        }
+        if (\array_key_exists('back', $pair) && !$emits) {
+            $errors[] = ['path' => $p.'/back', 'message' => 'back suppose une file d’envoi sur ce run (io.stream.emit).'];
+        }
+        if (\array_key_exists('max', $pair) && (!\is_int($pair['max']) || $pair['max'] < 1 || $pair['max'] > self::MAX_PAIRS)) {
+            $errors[] = ['path' => $p.'/max', 'message' => sprintf('max : entier 1…%d (appareils reliés par run).', self::MAX_PAIRS)];
+        }
+        if (\array_key_exists('ttl', $pair) && (!\is_int($pair['ttl']) || $pair['ttl'] < 60 || $pair['ttl'] > 86_400)) {
+            $errors[] = ['path' => $p.'/ttl', 'message' => 'ttl : entier 60…86400 (secondes de validité d’un code).'];
+        }
+        if (\array_key_exists('input', $pair) && (!\is_array($pair['input']) || (array_is_list($pair['input']) && $pair['input'] !== []))) {
+            $errors[] = ['path' => $p.'/input', 'message' => 'input : objet (entrée du run de la télécommande).'];
         }
 
         return $errors;
