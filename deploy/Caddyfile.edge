@@ -2,11 +2,128 @@
 	email {$ACME_EMAIL}
 }
 
+# Agent-ready static SPA (is-agentic.com): real 404s, markdown twins, discovery Link headers.
+# Usage inside a site block that sets `root`: define `@spa_route` (paths the SPA router owns),
+# then `import agent_ready`. Every file is optional: missing twin / discovery file → HTML / no Link.
+(agent_ready) {
+	@md_file {
+		path *.md
+		file
+	}
+	header @md_file Content-Type "text/markdown; charset=utf-8"
+
+	@txt_file {
+		path *.txt
+		file
+	}
+	header @txt_file Content-Type "text/plain; charset=utf-8"
+
+	@api_catalog {
+		path /.well-known/api-catalog
+		file
+	}
+	header @api_catalog Content-Type `application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"`
+
+	@well_known_json path /.well-known/*.json
+	header @well_known_json Access-Control-Allow-Origin *
+
+	rewrite /AGENTS.md /agents.md
+
+	# HTML pages negotiate with their markdown twin → caches must key on these.
+	@page not path_regexp \.[^/]*$
+	header @page +Vary "Accept, User-Agent"
+
+	@link_llms {
+		path /
+		file /llms.txt
+	}
+	header @link_llms +Link `</llms.txt>; rel="describedby"; type="text/plain"`
+	@link_ard {
+		path /
+		file /.well-known/ai-catalog.json
+	}
+	header @link_ard +Link `</.well-known/ai-catalog.json>; rel="ard"; type="application/json"`
+	@link_api_catalog {
+		path /
+		file /.well-known/api-catalog
+	}
+	header @link_api_catalog +Link `</.well-known/api-catalog>; rel="api-catalog"`
+	@link_md {
+		path /
+		file /index.md
+	}
+	header @link_md +Link `</index.md>; rel="alternate"; type="text/markdown"`
+	@link_sitemap {
+		path /
+		file /sitemap.xml
+	}
+	header @link_sitemap +Link `</sitemap.xml>; rel="sitemap"; type="application/xml"`
+
+	# Markdown twin (/ → /index.md, /x → /x.md) for Accept: text/markdown, ?mode=agent or agent UAs.
+	@md_twin {
+		not path_regexp \.[^/]*$
+		expression `{header.Accept}.contains("text/markdown") || {query.mode} == "agent" || {header.User-Agent}.matches("(?i)(chatgpt|claude|perplexity)-user")`
+		file {
+			try_files {path}.md {path}index.md
+		}
+	}
+	handle @md_twin {
+		rewrite * {file_match.relative}
+		header Content-Type "text/markdown; charset=utf-8"
+		file_server
+	}
+
+	# Files (extension or /.well-known/*) never fall back to the SPA shell.
+	@missing_file {
+		path_regexp (\.[^/]*$|^/\.well-known/)
+		not file
+	}
+	handle @missing_file {
+		respond "Not Found" 404
+	}
+
+	# Real files, plus static pages without extension (/about → about.html).
+	@static file {
+		try_files {path} {path}.html
+	}
+	handle @static {
+		rewrite * {file_match.relative}
+		file_server
+	}
+
+	handle @spa_route {
+		rewrite * /index.html
+		file_server
+	}
+
+	# Markdown-only page (/about → about.md): no HTML page and not an SPA route.
+	@md_page {
+		not path_regexp \.[^/]*$
+		file {
+			try_files {path}.md
+		}
+	}
+	handle @md_page {
+		rewrite * {file_match.relative}
+		header Content-Type "text/markdown; charset=utf-8"
+		file_server
+	}
+
+	# Unknown route: SPA shell (renders its own not-found) with a real 404 status.
+	handle {
+		rewrite * /index.html
+		file_server {
+			status 404
+		}
+	}
+}
+
 {$APP_SERVER_NAME:app.example.com} {
 	encode zstd gzip
 	root * /srv
-	try_files {path} /index.html
-	file_server
+	# Routes from apps/web/src/app/routes (generated router).
+	@spa_route path / /account* /connectivity* /data* /invite* /legal* /settings* /tache* /tags*
+	import agent_ready
 
 	header {
 		X-Content-Type-Options nosniff

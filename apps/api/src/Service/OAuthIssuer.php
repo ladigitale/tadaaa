@@ -95,7 +95,7 @@ final class OAuthIssuer
         $meta = $this->protectedResourceMetadataUrl();
 
         return sprintf(
-            'Bearer FAKESECRET_g3h4i5j6k7l8m9n0o1p2="%s", scope="mcp"',
+            'Bearer resource_metadata="%s", scope="mcp"',
             $meta,
         );
     }

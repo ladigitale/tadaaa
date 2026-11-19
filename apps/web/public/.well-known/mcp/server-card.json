@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/mcp-server-card/v1.json",
+  "version": "1.0",
+  "protocolVersion": "2025-06-18",
+  "serverInfo": {
+    "name": "tadaaa",
+    "title": "Tadaaa",
+    "version": "0.3.0"
+  },
+  "description": "Tadaaa todos and tags in the cloud (datasets, sharing, webhooks, link detectors) plus publication of Concorde SDUI artefacts.",
+  "iconUrl": "https://app.tadaaa.space/icons/icon-512.png",
+  "documentationUrl": "https://app.tadaaa.space/auth.md",
+  "transport": {
+    "type": "streamable-http",
+    "endpoint": "https://api.tadaaa.space/mcp"
+  },
+  "authentication": {
+    "required": true,
+    "schemes": ["oauth2", "bearer"]
+  },
+  "tools": "dynamic"
+}

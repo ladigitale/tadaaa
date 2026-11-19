@@ -1,0 +1,41 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "Tadaaa"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:app.tadaaa.space:server:tadaaa-mcp",
+      "displayName": "Tadaaa MCP server",
+      "type": "application/mcp-server-card+json",
+      "url": "https://app.tadaaa.space/.well-known/mcp/server-card.json",
+      "description": "Read and manage a user's Tadaaa todo lists, tags, datasets, webhooks, link detectors and artefacts (OAuth 2.1 or personal access token).",
+      "capabilities": [
+        "list_todos",
+        "create_todo",
+        "update_todo",
+        "bulk_update_todos",
+        "list_tags",
+        "create_tag",
+        "list_datasets",
+        "activate_dataset",
+        "list_webhooks",
+        "publish_artifact"
+      ],
+      "representativeQueries": [
+        "add a task to my Tadaaa list",
+        "what is left on my todo list",
+        "tag my overdue tasks as urgent",
+        "share my grocery list"
+      ],
+      "tags": [
+        "todo",
+        "tasks",
+        "productivity",
+        "mcp"
+      ],
+      "version": "0.3.0",
+      "updatedAt": "2026-11-19"
+    }
+  ]
+}

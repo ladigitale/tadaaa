@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="/src/css/app.css" />
     <link rel="stylesheet" href="/src/css/themes.css" />
     <script>
+      document.documentElement.classList.add("js");
       try {
         var t = localStorage.getItem("tada-theme");
         if (t && t !== "default") document.documentElement.setAttribute("data-theme", t);
@@ -29,10 +30,91 @@
         }
       } catch (e) {}
     </script>
-    <title>Tadaaa</title>
+    <title>Tadaaa — offline-first shared todo lists</title>
+    <link rel="canonical" href="https://app.tadaaa.space/" />
+    <link rel="alternate" type="text/markdown" href="/index.md" />
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Tadaaa" />
+    <meta property="og:title" content="Tadaaa — offline-first shared todo lists" />
+    <meta property="og:description" content="Free demo of shared todo lists: local-first, optional cloud sync, sharing, and an MCP server for AI agents." />
+    <meta property="og:url" content="https://app.tadaaa.space/" />
+    <meta property="og:image" content="https://app.tadaaa.space/icons/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Tadaaa — offline-first shared todo lists" />
+    <meta name="twitter:description" content="Free demo of shared todo lists: local-first, optional cloud sync, sharing, and an MCP server for AI agents." />
+    <meta name="twitter:image" content="https://app.tadaaa.space/icons/icon-512.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://app.tadaaa.space/#organization",
+            "name": "Tadaaa",
+            "url": "https://app.tadaaa.space/",
+            "logo": "https://app.tadaaa.space/icons/icon-512.png",
+            "email": "app@tadaaa.space",
+            "sameAs": ["https://github.com/ladigitale/tadaaa"]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://app.tadaaa.space/#website",
+            "name": "Tadaaa",
+            "url": "https://app.tadaaa.space/",
+            "inLanguage": ["en", "fr"],
+            "publisher": {"@id": "https://app.tadaaa.space/#organization"}
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://app.tadaaa.space/#app",
+            "name": "Tadaaa",
+            "url": "https://app.tadaaa.space/",
+            "applicationCategory": "ProductivityApplication",
+            "operatingSystem": "Web browser (installable PWA)",
+            "description": "Offline-first todo lists with optional cloud sync, dataset sharing, webhooks and an MCP server for AI agents.",
+            "license": "https://opensource.org/licenses/MIT",
+            "codeRepository": "https://github.com/ladigitale/tadaaa",
+            "isAccessibleForFree": true,
+            "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"},
+            "publisher": {"@id": "https://app.tadaaa.space/#organization"},
+            "isPartOf": {"@id": "https://app.tadaaa.space/#website"}
+          }
+        ]
+      }
+    </script>
+    <style>
+      .js #static-landing { display: none; }
+      #static-landing { max-width: 40rem; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, sans-serif; line-height: 1.5; }
+    </style>
   </head>
 
   <body class="m-0 h-full overflow-hidden p-0">
+    <!-- Readable without JavaScript (crawlers, agents); removed by initApp(). -->
+    <main id="static-landing">
+      <h1>Tadaaa — offline-first shared todo lists</h1>
+      <p>
+        Tadaaa keeps your task lists in your browser (IndexedDB) and works offline. Sign in when you want
+        cloud sync across devices, shared lists with invite links, webhooks and embeds — or keep exploring
+        without an account. It is a free demo and open source (MIT).
+      </p>
+      <ul>
+        <li>Local first: tasks and tags stored on this device, usable without a server</li>
+        <li>Optional cloud sync with near-realtime updates, dataset sharing (reader / writer roles)</li>
+        <li>MCP server for AI agents at <code>https://api.tadaaa.space/mcp</code> (OAuth or personal access token)</li>
+        <li>Calendar and due dates, simple recurrence, link detectors, installable PWA, English / French UI</li>
+      </ul>
+      <nav aria-label="Resources">
+        <a href="/about.md">About</a> ·
+        <a href="/contact.md">Contact</a> ·
+        <a href="/privacy.md">Privacy</a> ·
+        <a href="/pricing.md">Pricing</a> ·
+        <a href="/auth.md">Agent authentication</a> ·
+        <a href="/agents.md">Agent instructions</a> ·
+        <a href="/llms.txt">llms.txt</a> ·
+        <a href="https://github.com/ladigitale/tadaaa">Source &amp; docs (GitHub)</a>
+      </nav>
+    </main>
     <sonic-theme background color font>
       <app-router-host></app-router-host>
     </sonic-theme>

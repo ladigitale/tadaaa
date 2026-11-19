@@ -36,6 +36,7 @@ import {areWebNotificationsEnabled} from "./settings";
 import {subscribeServerPush} from "./notifications/push-subscribe";
 import {shortcuts} from "./shortcuts";
 import {tasksUiPrefs} from "./tasks-ui-prefs";
+import {registerWebMcpTools} from "./webmcp";
 
 export function initApp(): void {
   initAppLocale();
@@ -58,6 +59,9 @@ export function initApp(): void {
   // Avant tout fetch : sous Apache, /mock-api sans SW = index.html (JSON parse fail).
   installMockApiFetchFallback();
   initApiConfiguration();
+  registerWebMcpTools();
+  // index.html no-JS landing (crawlers / agents) — the SPA takes over.
+  document.getElementById("static-landing")?.remove();
   set(todosFilterKey.path, {
     q: "",
     ...tasksUiPrefs.filterDefaults(),

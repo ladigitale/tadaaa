@@ -1,0 +1,33 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://api.tadaaa.space/",
+      "service-doc": [
+        {
+          "href": "https://app.tadaaa.space/auth.md",
+          "type": "text/markdown"
+        },
+        {
+          "href": "https://github.com/ladigitale/tadaaa#readme",
+          "type": "text/html"
+        }
+      ],
+      "service-meta": [
+        {
+          "href": "https://api.tadaaa.space/.well-known/oauth-protected-resource",
+          "type": "application/json"
+        },
+        {
+          "href": "https://app.tadaaa.space/.well-known/mcp/server-card.json",
+          "type": "application/json"
+        }
+      ],
+      "status": [
+        {
+          "href": "https://api.tadaaa.space/api/health",
+          "type": "application/json"
+        }
+      ]
+    }
+  ]
+}
