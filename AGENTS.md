@@ -13,6 +13,8 @@
 
 Root scripts: `yarn dev`, `yarn ai:sync`, `yarn api:up`. MorseAttack: `yarn morse:dev` / `yarn morse:test` (port 3100).
 
+Prod edge (`deploy/Caddyfile.edge`): the `agent_ready` snippet serves the agent files of each SPA `public/` (robots, sitemap, llms.txt, `*.md`, `.well-known/`) and answers a real 404 outside `@spa_route`. A new top-level folder under `apps/web/src/app/routes/` must be added to `@spa_route` of the app site block.
+
 ---
 
 # Agents — Concorde + starter

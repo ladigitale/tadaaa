@@ -1,9 +1,9 @@
 {$ARTIFACTS_SERVER_NAME:artifacts.example.com} {
 	encode zstd gzip
 	root * /artifacts
-	# SPA : /slug et /slug/ → index.html (évite 404 / dossier fantôme)
-	try_files {path} {path}/index.html /index.html
-	file_server
+	# SPA : /, /admin…, /cloud…, /<slug> (même regex que l'API ; slug inconnu = 200, seul l'API le sait)
+	@spa_route path_regexp ^/(?:|admin(?:/.*)?|cloud(?:/.*)?|[a-z0-9][a-z0-9-]{2,63}/?)$
+	import agent_ready
 
 	# Intégration sur d'autres sites : <script src="/embed.js" data-artifact="…">.
 	# Le module (type=module), ses chunks, le worklet audio et les assets sont lus en CORS

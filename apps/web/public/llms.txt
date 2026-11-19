@@ -1,0 +1,29 @@
+# Tadaaa
+
+> Tadaaa is an open-source (MIT), offline-first todo list app: tasks and tags live in the browser, with optional cloud sync, shared lists, webhooks, embeds and an MCP server so AI agents can read and manage a user's tasks. The hosted instance at app.tadaaa.space is a free demo.
+
+Front: Lit / Concorde SPA at https://app.tadaaa.space. API + MCP: Symfony 8 / API Platform at https://api.tadaaa.space. UI in English and French.
+
+## Docs
+
+- [Homepage (markdown)](https://app.tadaaa.space/index.md): what Tadaaa does, features
+- [Agent instructions](https://app.tadaaa.space/agents.md): when and how an agent should use Tadaaa
+- [Agent authentication](https://app.tadaaa.space/auth.md): OAuth 2.1 (Claude.ai connector) or personal access token for the MCP server
+- [Pricing](https://app.tadaaa.space/pricing.md): free demo, quotas
+- [Source code and README](https://github.com/ladigitale/tadaaa): self-hosting, local API, deployment
+
+## API
+
+- [MCP server](https://api.tadaaa.space/mcp): streamable HTTP, authenticated (tools: list_todos, create_todo, update_todo, list_tags, list_datasets, webhooks, link detectors, artefacts)
+- [MCP server card](https://app.tadaaa.space/.well-known/mcp/server-card.json): machine-readable description of the MCP server
+- [OAuth authorization server metadata](https://api.tadaaa.space/.well-known/oauth-authorization-server): RFC 8414
+- [OAuth protected resource metadata](https://api.tadaaa.space/.well-known/oauth-protected-resource): RFC 9728
+- [API catalog](https://app.tadaaa.space/.well-known/api-catalog): RFC 9727 linkset
+- [Health check](https://api.tadaaa.space/api/health): public JSON status
+
+## Optional
+
+- [About](https://app.tadaaa.space/about.md)
+- [Contact](https://app.tadaaa.space/contact.md)
+- [Privacy](https://app.tadaaa.space/privacy.md)
+- [Security policy](https://github.com/ladigitale/tadaaa/blob/main/SECURITY.md)
