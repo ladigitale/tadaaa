@@ -88,6 +88,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         private readonly Resources $resources,
         private readonly ArtifactRunService $runs,
         private readonly \App\Service\ArtifactRunStreamService $streams,
+        private readonly \App\Service\ArtifactRunLinkService $runLinks,
         private readonly ?\App\Service\ArtifactValidationStats $stats = null,
     ) {
     }
