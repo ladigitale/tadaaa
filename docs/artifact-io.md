@@ -272,6 +272,20 @@ n'a besoin ni de store de flux ni d'actions. 8 liens actifs au plus par run sour
 s'arrête quand l'un des deux runs se termine (`get_artifact_run` montre `links` avec leurs
 compteurs `forwarded`, `failed` et `lastError` ; `unlink_artifact_runs` en coupe un).
 
+**Appairage (« scannez pour piloter »)** — plutôt que de relier les runs à la main, un run
+hôte peut se laisser appairer : `io.stream.pair = {remote, map?, back?, max?, ttl?, input?}`.
+Son viewer demande un code (`POST /api/public/artifacts/{slug}/runs/{id}/pair {rt}`) et le publie
+dans `artifactRun.pair = {code, url, expiresAt, remaining, max, paired}` ; le document l'affiche
+(`sonic-qr text-from="artifactRun.pair.url"`). Ouvrir `url` (l'artefact `remote` avec
+`?pair=<code>`) sur un autre appareil réclame le code (`POST /api/public/artifacts/{remote}/pair/{code}`) :
+Tadaaa lance un run de `remote` au nom du créateur de l'hôte et crée les liens — `map` (remote →
+hôte, si `remote` a une file d'envoi) et `back` (hôte → remote, si l'hôte en a une). Aucun jeton
+dans le code : il donne une place, `max` fois par run hôte (8 par défaut, 32 au plus), pendant `ttl`
+secondes (900 par défaut ; le viewer en redemande un avant l'expiration). `remote` doit être du même
+compte et en lien ou public. Les deux sens : une régie montre de quoi la piloter (`remote` =
+télécommande), ou de quoi ouvrir un écran récepteur (`remote` = récepteur, relié dans les deux
+sens, `from.runId` distingue les écrans dans `map`).
+
 **Démo « télécommande »** — `docs/examples/telecommande-regie.json` (six pads, émission seule)
 pilote la Régie en direct : lancer les deux runs (interactive), puis
 `link_artifact_runs {fromRunId: <télécommande>, toRunId: <régie>, map}` avec :
