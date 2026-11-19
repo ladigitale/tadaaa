@@ -87,6 +87,11 @@ class ArtifactRunLink
         return $this->map;
     }
 
+    public function getCreatedAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
     public function isActive(): bool
     {
         return $this->active;

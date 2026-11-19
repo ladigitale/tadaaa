@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\ArtifactRun;
 use App\Entity\User;
 use App\Event\ArtifactRunEmitted;
+use App\Event\ArtifactRunSeen;
 use App\Repository\ArtifactRunRepository;
 use App\Webhook\WebhookEventType;
 use Doctrine\DBAL\Connection;
@@ -174,6 +175,20 @@ final class ArtifactRunStreamService
     }
 
     /**
+     * Messages du serveur (présence…) : sans validation de contrat ni débit, jamais pour un flux
+     * terminé ; numérotés et relayés comme les autres.
+     *
+     * @param list<\stdClass> $messages
+     */
+    public function emitSystem(ArtifactRun $run, array $messages): void
+    {
+        if ($messages === [] || !$run->hasStream() || $run->getStatus() !== ArtifactRun::STATUS_PENDING || $run->isExpired() || $run->isStreamEnded()) {
+            return;
+        }
+        $this->emit($run, (object) ['events' => $messages], true);
+    }
+
+    /**
      * État du flux pour un viewer (jeton du run), un spectateur (jeton de spectateur) ou un
      * émetteur : identifiants Mercure, document et partition courants, messages à rejouer.
      *
@@ -235,6 +250,7 @@ final class ArtifactRunStreamService
                 $out['input'] = $run->getInput();
             }
             $out['progress'] = $run->getStreamMeta()['progress'] ?? null;
+            $out['presence'] = $run->getStreamMeta()['presence'] ?? null;
             // Lien « regarder » que le document peut afficher (artifactRun.watchUrl, QR code).
             if ($role !== 'emitter') {
                 $out['watchUrl'] = $this->watchUrl($run);
@@ -263,10 +279,15 @@ final class ArtifactRunStreamService
         $relay = [];
         $progress = null;
         $emitted = [];
+        $seen = null;
         foreach ($list as $i => $raw) {
             [$msg, $errors] = ArtifactStream::normalizeOut($raw);
             if ($msg === null) {
                 throw new BadRequestHttpException(sprintf('events[%d] : %s', $i, $errors[0]));
+            }
+            if ($msg->type === 'alive' || $msg->type === 'bye') {
+                $seen = $msg->type === 'alive' ? self::nowMs() : 0;
+                continue;
             }
             if ($msg->type === 'snapshot') {
                 if ($msg->seq > $run->getStreamSeq()) {
@@ -306,10 +327,16 @@ final class ArtifactRunStreamService
                 $run->getCreatedAt()->add(new \DateInterval(self::MAX_LIFETIME)),
             );
         }
-        if ($relay !== []) {
+        if ($seen !== null) {
+            $meta['seen'] = $seen;
+        }
+        if ($relay !== [] || $seen !== null) {
             $run->setStreamMeta($meta);
         }
         $this->em->flush();
+        if ($seen !== null) {
+            $this->events->dispatch(new ArtifactRunSeen($run));
+        }
         if ($relay !== []) {
             $this->publish($run, 'out', ['events' => $relay]);
         }
@@ -332,7 +359,7 @@ final class ArtifactRunStreamService
     /**
      * @return array<string, mixed>
      */
-    private function emit(ArtifactRun $run, mixed $body): array
+    private function emit(ArtifactRun $run, mixed $body, bool $system = false): array
     {
         $list = self::messages($body);
         if ($list === []) {
@@ -345,21 +372,24 @@ final class ArtifactRunStreamService
             throw new BadRequestHttpException(sprintf('Envoi trop volumineux (%d octets max, découper en plusieurs envois).', ArtifactStream::MAX_BATCH_BYTES));
         }
         $this->assertOpen($run, true);
-        if (!ArtifactStream::accepts($run->getIo() ?? [])) {
-            throw new BadRequestHttpException('Ce run n’accepte aucun message : son flux ne fait qu’émettre (io.stream.emit).');
-        }
         $stream = (array) ($run->getIo()['stream'] ?? []);
-
-        // Validation complète avant de toucher au run : un envoi est accepté ou refusé en entier.
-        $messages = [];
-        foreach ($list as $i => $raw) {
-            [$msg, $errors] = ArtifactStream::normalizeIn($stream, $raw);
-            if ($msg === null) {
-                throw new BadRequestHttpException(sprintf('events[%d] : %s', $i, implode(' ', $errors)));
+        if ($system) {
+            $messages = $list;
+        } else {
+            if (!ArtifactStream::accepts($run->getIo() ?? [])) {
+                throw new BadRequestHttpException('Ce run n’accepte aucun message : son flux ne fait qu’émettre (io.stream.emit).');
             }
-            $messages[] = $msg;
+            // Validation complète avant de toucher au run : un envoi est accepté ou refusé en entier.
+            $messages = [];
+            foreach ($list as $i => $raw) {
+                [$msg, $errors] = ArtifactStream::normalizeIn($stream, $raw);
+                if ($msg === null) {
+                    throw new BadRequestHttpException(sprintf('events[%d] : %s', $i, implode(' ', $errors)));
+                }
+                $messages[] = $msg;
+            }
+            $this->consumeRate($run, $stream, \count($messages));
         }
-        $this->consumeRate($run, $stream, \count($messages));
 
         $published = [];
         $ended = false;
