@@ -228,6 +228,12 @@ AG-UI est accepté tel quel : `CUSTOM {name, value}`, `STATE_SNAPSHOT {snapshot}
 `tracks` interpolent des nombres et des couleurs `#rrggbb` (le reste change par paliers) et les
 écrivent dans l'état du store au pointeur `path` ; `ease` : linear, in, out, inOut, step.
 
+**Lien spectateur dans l'artefact** — rejoindre le flux en viewer du run (`rt`) ou en spectateur
+renvoie aussi `watchUrl` : le viewer le publie dans le DataProvider `artifactRun`
+(`{runId, role, watchUrl, status}`), qu'un document affiche en lien ou en QR code
+(`sonic-qr text-from="artifactRun.watchUrl"`). Le jeton de spectateur est signé : le serveur
+sait le redonner, il reste en lecture seule.
+
 **Suivre** — `GET joinUrl?wt=<watchToken>` (spectateur), `?rt=` (viewer du run) ou `?et=`
 (émetteur) : identifiants Mercure (`mercure.hubUrl`, `token`, `topics.in` / `topics.out`),
 document courant, partition en cours, dernier instantané d'état du viewer et messages à rejouer

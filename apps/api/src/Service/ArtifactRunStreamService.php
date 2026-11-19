@@ -67,7 +67,43 @@ final class ArtifactRunStreamService
         private readonly EventDispatcherInterface $events,
         #[Autowire(service: 'cache.rate_limiter')]
         private readonly CacheItemPoolInterface $limiterPool,
+        #[Autowire('%kernel.secret%')]
+        private readonly string $secret = '',
     ) {
+    }
+
+    /**
+     * Jeton de spectateur d'un run : signé (HMAC du run et de sa clé de flux) plutôt que tiré au
+     * hasard, pour que le serveur puisse le redonner au viewer du run ou à un spectateur (lien
+     * « regarder » affiché par l'artefact lui-même, QR code). Lecture seule ; change si la clé change.
+     */
+    public function watchToken(ArtifactRun $run): string
+    {
+        $mac = hash_hmac('sha256', 'watch:'.$run->getId()->toRfc4122().':'.$run->getStreamKey(), $this->secret, true);
+
+        return rtrim(strtr(base64_encode(substr($mac, 0, 24)), '+/', '-_'), '=');
+    }
+
+    /** Spectateur : jeton signé, ou jeton tiré au hasard des runs ouverts avant les jetons signés. */
+    public function matchesWatch(ArtifactRun $run, string $token): bool
+    {
+        if ($token === '' || !$run->hasStream()) {
+            return false;
+        }
+
+        return hash_equals($this->watchToken($run), $token) || $run->matchesWatchToken($token);
+    }
+
+    /** Lien spectateur du viewer (null si l'artefact est privé : il faudrait un compte membre). */
+    public function watchUrl(ArtifactRun $run): ?string
+    {
+        if (!$run->hasStream()) {
+            return null;
+        }
+        $artifact = $run->getArtifact();
+        $linkToken = $artifact->getVisibility() === \App\Entity\ArtifactVisibility::Link ? $artifact->getLinkToken() : null;
+
+        return self::withParams($this->artifacts->publicUrl($artifact->getSlug(), $linkToken), ['run' => $run->getId()->toRfc4122(), 'wt' => $this->watchToken($run)]);
     }
 
     public static function topic(ArtifactRun $run, string $direction): string
@@ -84,13 +120,14 @@ final class ArtifactRunStreamService
     {
         $tokens = $run->openStream();
         $base = '/api/public/artifacts/'.$run->getArtifact()->getSlug().'/runs/'.$run->getId()->toRfc4122();
+        $watch = $this->watchToken($run);
 
         return array_filter([
             'emitToken' => $tokens['emitToken'],
-            'watchToken' => $tokens['watchToken'],
+            'watchToken' => $watch,
             'eventsUrl' => $base.'/events',
             'joinUrl' => $base.'/stream',
-            'watchUrl' => $viewerUrl !== null ? self::withParams($viewerUrl, ['run' => $run->getId()->toRfc4122(), 'wt' => $tokens['watchToken']]) : null,
+            'watchUrl' => $viewerUrl !== null ? self::withParams($viewerUrl, ['run' => $run->getId()->toRfc4122(), 'wt' => $watch]) : null,
         ], static fn (mixed $v): bool => $v !== null);
     }
 
@@ -147,7 +184,7 @@ final class ArtifactRunStreamService
         $run = $this->findRun($slug, $runId);
         $role = match (true) {
             $run->matchesToken($token) => 'performer',
-            $run->matchesWatchToken($token) => 'watcher',
+            $this->matchesWatch($run, $token) => 'watcher',
             $run->matchesEmitToken($token) => 'emitter',
             default => throw new NotFoundHttpException('Run introuvable.'),
         };
@@ -198,6 +235,10 @@ final class ArtifactRunStreamService
                 $out['input'] = $run->getInput();
             }
             $out['progress'] = $run->getStreamMeta()['progress'] ?? null;
+            // Lien « regarder » que le document peut afficher (artifactRun.watchUrl, QR code).
+            if ($role !== 'emitter') {
+                $out['watchUrl'] = $this->watchUrl($run);
+            }
         }
         if ($status === ArtifactRun::STATUS_PENDING) {
             $out['mercure'] = $this->subscriberCredentials($run);
