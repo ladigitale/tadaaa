@@ -352,7 +352,7 @@
         },
         "interval": {
           "type": "number",
-          "description": "intervalle minimal entre deux analyses (ms, 90)"
+          "description": "intervalle minimal entre deux analyses en recherche (ms, 90) ; une zone suivie est analysée à chaque image"
         },
         "max-size": {
           "type": "number",
@@ -401,10 +401,14 @@
         "within": {
           "type": "string",
           "description": "DP d'ids, ou état de sonic-geolocation (nearby) : lieux à essayer"
+        },
+        "no-worker": {
+          "type": "boolean",
+          "description": "analyse sur le fil principal (par défaut : dans un worker)"
         }
       },
       "addon": "anchor",
-      "description": "Retrouve en direct une ou plusieurs références (sorties de sonic-anchor-ref) dans l'image de la caméra. source (#camera), reference = DP d'une référence ou d'une liste (références, ou entrées {id, ref, …} enregistrées par sonic-anchor-ref : leurs autres champs sont publiés dans item), within = DP d'ids ou état de sonic-geolocation (nearby) pour ne garder que les lieux proches, embedding = DP de sortie d'un sonic-image-embedder (candidates essayées par ressemblance, top), gravity = DP d'état de sonic-orientation (filtre les rotations impossibles, gravity-tolerance degrés), active ou control {start, stop}, interval ms, smoothing, hold. État <id>State {status idle|searching|tracking|holding|error, found, refId, index, corners [{x,y}×4] en 0..1 de l'image, width, height, matches, inliers, confidence, rotation, ms, fps, references, candidates, item, similarity, frameSeq, latencyMs}. Image et contenu synchrones : caméra en hidden-preview, sonic-frame-sync for=\"cam\" sync=\"<id>State\" (montre l'image exacte analysée, frameSeq), affichée par un sonic-shader channel0 ; le contenu projeté tombe alors pile sur la zone.. debug dessine la zone (même fit que la caméra)."
+      "description": "Retrouve en direct une ou plusieurs références (sorties de sonic-anchor-ref) dans l'image de la caméra. source (#camera), reference = DP d'une référence ou d'une liste (références, ou entrées {id, ref, …} enregistrées par sonic-anchor-ref : leurs autres champs sont publiés dans item), within = DP d'ids ou état de sonic-geolocation (nearby) pour ne garder que les lieux proches, embedding = DP de sortie d'un sonic-image-embedder (candidates essayées par ressemblance, top), gravity = DP d'état de sonic-orientation (filtre les rotations impossibles, gravity-tolerance degrés), active ou control {start, stop}, interval ms, smoothing, hold. État <id>State {status idle|searching|tracking|holding|error, found, refId, index, corners [{x,y}×4] en 0..1 de l'image, width, height, matches, inliers, confidence, rotation, ms, fps, references, candidates, item, similarity, frameSeq, latencyMs, mode detect|track, engine worker|main, foundCount (+1 à chaque balise qui apparaît : trigger d'un son)}. Analyse dans un worker : détection par appariement, puis suivi image par image par flot optique (environ 8 fois moins cher), redétection quand le suivi s'appauvrit. Image et contenu synchrones : caméra en hidden-preview, sonic-frame-sync for=\"cam\" sync=\"<id>State\" (montre l'image exacte analysée, frameSeq), affichée par un sonic-shader channel0 ; le contenu projeté tombe alors pile sur la zone.. debug dessine la zone (même fit que la caméra)."
     },
     {
       "name": "sonic-anchor-ref",
@@ -480,10 +484,18 @@
         "embedding": {
           "type": "string",
           "description": "DP de sortie d'un sonic-image-embedder sur la caméra"
+        },
+        "attach": {
+          "type": "string",
+          "description": "pièces jointes « clé=source » séparées par des espaces : #id d'un sonic-sketch (dessin SVG) ou chemin DP d'un SonicMediaRef (prise audio…) ; blob: converti en data:"
+        },
+        "attach-max": {
+          "type": "number",
+          "description": "taille max d'une pièce jointe (octets, 400000)"
         }
       },
       "addon": "anchor",
-      "description": "Photographie un lieu et délimite la zone à ancrer. source (#camera) ; capture par control {capture:n} ou for (clic) ; 4 coins déplaçables au doigt (zone = DP facultatif en lecture/écriture) ; gravity = DP d'état de sonic-orientation (haut au moment de la prise) ; geo = DP d'état de sonic-geolocation (position) ; control {reset, clear, save}. Enregistrer : target = id d'un store, save-for = ids des boutons (ou control.save) → action {type: action (save), payload: {id, createdAt, lat, lon, accuracy, points, ref, …clés du DP extra}} ; embedding = DP de sortie d'un sonic-image-embedder sur la caméra (empreinte gardée dans ref). État <id>State {status, error, reference (JSON à stocker et à donner à sonic-anchor), zone, points, quality none|weak|ok|good, thumb (data URL), captures, saved, lastSaved}. Zone plane et texturée (façade, panneau, vitrine, sol) ; surface unie = weak."
+      "description": "Photographie un lieu et délimite la zone à ancrer. source (#camera) ; capture par control {capture:n} ou for (clic) ; 4 coins déplaçables au doigt (zone = DP facultatif en lecture/écriture) ; gravity = DP d'état de sonic-orientation (haut au moment de la prise) ; geo = DP d'état de sonic-geolocation (position) ; control {reset, clear, save}. Enregistrer : target = id d'un store, save-for = ids des boutons (ou control.save) → action {type: action (save), payload: {id, createdAt, lat, lon, accuracy, points, ref, …clés du DP extra}} ; embedding = DP de sortie d'un sonic-image-embedder sur la caméra (empreinte gardée dans ref). État <id>State {status, error, reference (JSON à stocker et à donner à sonic-anchor), zone, points, quality none|weak|ok|good, thumb (data URL), captures, saved, lastSaved, saving, zoneImage (la zone vue de face, SonicMediaRef JPEG : fond pour dessiner dessus)}. Zone plane et texturée (façade, panneau, vitrine, sol) ; surface unie = weak."
     },
     {
       "name": "sonic-anchor-view",
@@ -5642,10 +5654,34 @@
         },
         "out-data-provider": {
           "type": "string"
+        },
+        "image-provider": {
+          "type": "string",
+          "description": "DP où publier le code en image SVG (SonicMediaRef data:image/svg+xml) : sonic-still in-data-provider → sonic-label-printer"
+        },
+        "caption": {
+          "type": "string",
+          "description": "légende de l'image (lignes séparées par \\n)"
+        },
+        "caption-from": {
+          "type": "string",
+          "description": "DP de la légende (remplace caption)"
+        },
+        "caption-position": {
+          "type": "string",
+          "values": [
+            "right",
+            "below"
+          ],
+          "description": "légende à droite (étiquette en longueur, 2,5:1) ou dessous"
+        },
+        "image-size": {
+          "type": "number",
+          "description": "côté du code dans l'image (px, 240)"
         }
       },
       "addon": "qr",
-      "description": "QR code SVG : text (texte à encoder) ou text-from (DataProvider ou dp.chemin lu en direct, l'emporte sur text) ; ecc L|M|Q|H (défaut M) ; size (px, défaut 192 ; variable CSS --qr-size) ; margin (zone de silence en modules, défaut 2) ; color / background (défaut #000000 / #ffffff : garder un fort contraste) ; link (le code est aussi un lien quand le texte est une URL http/https) ; label (texte lu par les lecteurs d'écran) ; placeholder (affiché tant que le texte est vide) ; 1200 caractères au plus ; état {status ready|empty|error, text, version, modules, error} dans out-data-provider"
+      "description": "QR code SVG : text (texte à encoder) ou text-from (DataProvider ou dp.chemin lu en direct, l'emporte sur text) ; ecc L|M|Q|H (défaut M) ; size (px, défaut 192 ; variable CSS --qr-size) ; margin (zone de silence en modules, défaut 2) ; color / background (défaut #000000 / #ffffff : garder un fort contraste) ; link (le code est aussi un lien quand le texte est une URL http/https) ; label (texte lu par les lecteurs d'écran) ; placeholder (affiché tant que le texte est vide) ; 1200 caractères au plus ; état {status ready|empty|error, text, version, modules, error} dans out-data-provider ; image-provider publie le code en image SVG (avec caption à droite ou dessous) pour l'imprimer sur une étiquette (sonic-still in-data-provider puis sonic-label-printer source) ou la partager"
     },
     {
       "name": "sonic-queue",

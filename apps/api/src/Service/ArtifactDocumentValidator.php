@@ -476,6 +476,7 @@ final class ArtifactDocumentValidator
                 'scripts' => 'Optionnel: tableau d’IDs du catalogue scripts (voir scripts.libraries[].id). Ex: ["chartjs","leaflet"]. Pas d’URL, pas de balise <script>.',
                 'tagName' => 'Uniquement composants Concorde (sonic-*) ou balises HTML sûres du catalogue.',
                 'recettes' => $this->recipesRule(),
+                'icone' => 'Optionnel : icône d’application, "icon": {"emoji": "📍", "background": "#111", "color": "#fff"} (ou "text": 1 à 3 lettres ; ou "src": "@asset:icone.png", carré 512 px) : favicon de l’onglet, couleur du navigateur et icône quand on installe l’artefact sur l’écran d’accueil (manifeste servi par l’API). Sans icon : initiale du titre sur fond sombre.',
                 'page' => 'Optionnel : cadre de la page, "page": {"padding": "none"|"compact"|"normal" (défaut normal : marge du viewer ; none = plein cadre, pour un jeu ou une scène), "background": couleur CSS du fond de toute la page (#hex, rgb(), hsl(), nom ou var(--sc-…)), "nav": "tabs"|"none" (défaut tabs : barre d’onglets du viewer quand il y a plusieurs vues ; none = le document dessine ses onglets, voir la règle « navigation »)}.',
                 'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent. views[].hidden = true : vue absente des onglets (accessible par son #id). '
                     .'Onglets : le viewer affiche un sonic-menu de sonic-menu-item radio branchés sur le DataProvider artifactView ({view} = id de la vue affichée), l’onglet actif est rendu par Concorde. Pour des onglets dans la palette de l’artefact : "page": {"nav": "none"} puis, dans les vues, {"tagName":"sonic-menu","attributes":{"direction":"row"},"nodes":[{"tagName":"sonic-menu-item","attributes":{"radio":true,"formDataProvider":"artifactView","name":"view","value":"stats"},"textContent":"Stats"}, …]} (à répéter dans chaque vue, ou dans une vue qui les contient toutes) ; lire la vue courante : sonic-value dataProvider="artifactView" key="view". Jamais de sonic-button à variant calculé pour des onglets.',
@@ -866,6 +867,7 @@ final class ArtifactDocumentValidator
             'capabilities' => true,
             'page' => true,
             'io' => true,
+            'icon' => true,
         ];
         foreach (array_keys($document) as $key) {
             if (!isset($allowedTop[$key])) {
@@ -877,6 +879,9 @@ final class ArtifactDocumentValidator
         }
         if (\array_key_exists('io', $document)) {
             $errors = [...$errors, ...ArtifactIo::validateDeclaration($document['io'], $document)];
+        }
+        if (\array_key_exists('icon', $document)) {
+            $errors = [...$errors, ...ArtifactAppIcon::validate($document['icon'])];
         }
 
         return ['valid' => $errors === [], 'errors' => $errors];

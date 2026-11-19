@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Service\ArtifactAppIcon;
 use App\Service\ArtifactDataService;
 use App\Service\ArtifactService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -166,6 +167,66 @@ final class PublicArtifactController extends AbstractController
             return $response;
         }
         $response->setContent($data);
+
+        return $response;
+    }
+
+    /**
+     * Manifeste d'installation (PWA) d'un artefact : nom, couleurs et icônes tirés de `document.icon`,
+     * `start_url` = la page de l'artefact (avec son jeton de lien). Lu par le viewer (`<link rel="manifest">`).
+     */
+    #[Route('/{slug}/manifest.webmanifest', name: 'api_public_artifact_manifest', methods: ['GET'], requirements: ['slug' => '[a-z0-9][a-z0-9-]{2,63}'])]
+    public function manifest(string $slug, Request $request): JsonResponse
+    {
+        $this->consumeRate($request);
+        $user = $this->getUser();
+        $k = $request->query->getString('k') ?: null;
+        $result = $this->artifacts->publicRead($slug, $k, $user instanceof User ? $user : null, false, $request->getSchemeAndHttpHost());
+        $body = $result['body'];
+        $icon = ArtifactAppIcon::fromDocument($body['document'] ?? null);
+        $title = trim((string) ($body['title'] ?? $slug)) ?: $slug;
+        $start = $this->artifacts->publicUrl($slug, $k);
+        $iconUrl = $request->getSchemeAndHttpHost().'/api/public/artifacts/'.rawurlencode($slug).'/icon.svg'.($k ? '?k='.rawurlencode($k) : '');
+        $icons = [['src' => $iconUrl, 'sizes' => 'any', 'type' => 'image/svg+xml', 'purpose' => 'any']];
+        if ($icon['src'] !== null) {
+            array_unshift($icons, ['src' => $icon['src'], 'sizes' => '512x512', 'purpose' => 'any']);
+        }
+        $manifest = [
+            'id' => $this->artifacts->publicUrl($slug),
+            'name' => mb_substr($title, 0, 60),
+            'short_name' => mb_substr($title, 0, 12),
+            'description' => mb_substr((string) ($body['description'] ?? ''), 0, 300),
+            'start_url' => $start,
+            'scope' => $this->artifacts->publicUrl($slug),
+            'display' => 'standalone',
+            'background_color' => $icon['background'],
+            'theme_color' => $icon['background'],
+            'icons' => $icons,
+        ];
+        $response = $this->json($manifest);
+        $response->headers->set('Content-Type', 'application/manifest+json');
+        $response->headers->set('Access-Control-Allow-Origin', '*');
+        $response->headers->set('Cache-Control', 'public, max-age=300');
+
+        return $response;
+    }
+
+    /** Icône SVG d'un artefact (emoji ou lettres sur un fond), pour l'onglet et l'installation. */
+    #[Route('/{slug}/icon.svg', name: 'api_public_artifact_icon', methods: ['GET'], requirements: ['slug' => '[a-z0-9][a-z0-9-]{2,63}'])]
+    public function icon(string $slug, Request $request): Response
+    {
+        $this->consumeRate($request);
+        $user = $this->getUser();
+        $result = $this->artifacts->publicRead($slug, $request->query->getString('k') ?: null, $user instanceof User ? $user : null, false, $request->getSchemeAndHttpHost());
+        $body = $result['body'];
+        $svg = ArtifactAppIcon::svg(ArtifactAppIcon::fromDocument($body['document'] ?? null), (string) ($body['title'] ?? $slug));
+        $response = new Response($svg);
+        $response->headers->set('Content-Type', 'image/svg+xml');
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        $response->headers->set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'");
+        $response->headers->set('Access-Control-Allow-Origin', '*');
+        $response->headers->set('Cross-Origin-Resource-Policy', 'cross-origin');
+        $response->headers->set('Cache-Control', 'public, max-age=300');
 
         return $response;
     }
