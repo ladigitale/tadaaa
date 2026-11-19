@@ -36,6 +36,20 @@ This:
 4. `docker compose -f compose.prod.yaml up -d --build`
 5. Runs Doctrine migrations
 
+Each site — `tadaaa` (app + API), `artifacts`, `belts`, `glane` — is rebuilt only when its repository
+has a commit newer than the one last deployed (recorded in `var/ops/deployed/<site>`, written after a
+successful update). Unchanged sites are skipped; when nothing changed, containers and edge are left alone.
+
+```bash
+bash scripts/update-prod.sh --pull --only glane,artifacts   # only these sites
+bash scripts/update-prod.sh --pull --force                  # rebuild even without a new commit
+```
+
+Use `--force` for a change that is not a commit: an edited `.env`, a base image to refresh.
+With `GLANE_ROOT` set, Glane is updated by its own `scripts/update-prod.sh` (run with a clean
+environment, so Tadaaa's `.env` does not leak into Glane's compose). A Glane failure is reported
+but does not stop the Tadaaa update.
+
 ### Updating from MCP (super admin)
 
 The MCP tools `trigger_prod_update` and `get_prod_update_status` let the super admin account
@@ -59,9 +73,12 @@ docker compose -f compose.prod.yaml up -d php
 Guards:
 
 - Account must be `ROLE_ADMIN` **and** listed in `OPS_DEPLOY_USERS` (empty = nobody). Denied calls are audited.
-- Fixed command: no argument changes what runs (`reason` is only stored).
+- Closed set of options: `targets` (sites among `tadaaa`, `artifacts`, `belts`, `glane`) and `force`.
+  They are validated by the API, then again by the host runner, which reads them from fixed-format
+  lines of the request and never passes request content to the shell. `reason` is only stored.
 - One run at a time (queued/running blocks a new trigger; a run stuck `running` for 90 min is reported `stale`).
-- Final status: `succeeded`, `failed` (script exit ≠ 0), `unhealthy` (script OK but `/api/health` KO),
+- Final status: `succeeded`, `partial` (Tadaaa updated but another site failed — see `targets` in the
+  status), `failed` (script exit ≠ 0), `unhealthy` (script OK but `/api/health` KO),
   `interrupted` (host restarted mid-run). `fromSha` / `toSha` give the commit before / after for a manual rollback:
   `git checkout <fromSha> && bash scripts/update-prod.sh`.
 - The tools are not exposed to the built-in agent.

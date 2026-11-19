@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\User;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
@@ -18,6 +19,9 @@ use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
  * par une unité systemd `.path`) la prend, exécute la mise à jour et écrit l'état et le
  * journal dans `OPS_DIR/runs/`. L'état survit ainsi à la recréation du conteneur PHP.
  *
+ * Une demande peut restreindre les sites mis à jour (`only`) et forcer leur reconstruction
+ * (`force`). Le runner ne lit que ces deux champs, validés ici puis de nouveau côté hôte.
+ *
  * Réservé aux comptes ROLE_ADMIN dont l'e-mail figure dans `OPS_DEPLOY_USERS`.
  * Sans `OPS_DIR` ni `OPS_DEPLOY_USERS`, la fonction est désactivée.
  */
@@ -25,6 +29,9 @@ final class ProdDeploy
 {
     /** Au-delà, un run resté « running » est considéré comme interrompu. */
     public const STALE_AFTER_SECONDS = 5400;
+
+    /** Sites que `scripts/update-prod.sh --only` accepte (même liste dans le runner hôte). */
+    public const TARGETS = ['tadaaa', 'artifacts', 'belts', 'glane'];
 
     private const ID_PATTERN = '/^[A-Za-z0-9-]{8,64}$/';
     private const MAX_TAIL = 400;
@@ -64,10 +71,15 @@ final class ProdDeploy
         return $this->opsDir !== '' && is_dir($this->opsDir) && is_writable($this->opsDir);
     }
 
-    /** @return array<string, mixed> */
-    public function trigger(User $user, ?string $reason = null): array
+    /**
+     * @param list<mixed>|null $targets sites à mettre à jour ; null ou vide = tous ceux qui ont changé
+     *
+     * @return array<string, mixed>
+     */
+    public function trigger(User $user, ?string $reason = null, ?array $targets = null, bool $force = false): array
     {
         $this->assertAllowed($user);
+        $only = $this->normalizeTargets($targets);
         $this->ensureDirs();
 
         $lock = fopen($this->opsDir.'/.trigger.lock', 'c');
@@ -89,11 +101,18 @@ final class ProdDeploy
             $reason = $reason === null ? null : mb_substr(trim($reason), 0, self::REASON_MAX);
             $request = [
                 'id' => $id,
-                'command' => 'update-prod --pull',
+                'command' => 'update-prod --pull'.($only === null ? '' : ' --only '.$only).($force ? ' --force' : ''),
                 'requestedBy' => $user->getEmail(),
                 'requestedAt' => $now->format(\DateTimeInterface::ATOM),
                 'reason' => $reason === '' ? null : $reason,
             ];
+            // Champs lus par le runner hôte : absents quand ils ne changent rien.
+            if ($only !== null) {
+                $request['only'] = $only;
+            }
+            if ($force) {
+                $request['force'] = true;
+            }
             $this->writeJsonAtomic($this->opsDir.'/requests/'.$id.'.json', $request);
         } finally {
             flock($lock, LOCK_UN);
@@ -138,6 +157,29 @@ final class ProdDeploy
         }
 
         return $out;
+    }
+
+    /**
+     * @param list<mixed>|null $targets
+     *
+     * @return string|null liste séparée par des virgules, dans l'ordre de TARGETS
+     */
+    private function normalizeTargets(?array $targets): ?string
+    {
+        if ($targets === null || $targets === []) {
+            return null;
+        }
+        foreach ($targets as $target) {
+            if (!\is_string($target) || !\in_array($target, self::TARGETS, true)) {
+                throw new BadRequestHttpException(sprintf(
+                    'Site inconnu dans `targets` : %s (attendu : %s).',
+                    \is_string($target) ? '« '.$target.' »' : get_debug_type($target),
+                    implode(', ', self::TARGETS),
+                ));
+            }
+        }
+
+        return implode(',', array_values(array_intersect(self::TARGETS, $targets)));
     }
 
     /** @return array<string, mixed>|null run en attente ou en cours */
@@ -206,7 +248,7 @@ final class ProdDeploy
             return [];
         }
 
-        return array_intersect_key($run, array_flip(['id', 'status', 'requestedBy', 'requestedAt', 'finishedAt', 'fromSha', 'toSha', 'exitCode']));
+        return array_intersect_key($run, array_flip(['id', 'status', 'command', 'requestedBy', 'requestedAt', 'finishedAt', 'fromSha', 'toSha', 'exitCode']));
     }
 
     private function isStale(mixed $startedAt): bool
