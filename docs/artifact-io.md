@@ -286,6 +286,16 @@ compte et en lien ou public. Les deux sens : une régie montre de quoi la pilote
 télécommande), ou de quoi ouvrir un écran récepteur (`remote` = récepteur, relié dans les deux
 sens, `from.runId` distingue les écrans dans `map`).
 
+**Présence** — le viewer de chaque run en flux donne signe de vie toutes les 5 s (`alive`) et
+prévient quand la page se ferme (`bye`). Les membres d'un run sont les autres bouts de ses liens
+actifs (télécommandes, écrans appairés, dans un sens ou dans l'autre) dont le viewer s'est
+manifesté depuis moins de 15 s ; quand cet ensemble change, Tadaaa pousse dans son flux
+`{type: "presence", count, members: [{runId, slug, index, since, seen}]}`. Le viewer le publie dans
+`artifactRun.presence` (aussi rendu en rejoignant le flux, pour un spectateur qui arrive) et
+l'envoie au store du flux en action `{type: "presence", payload: {count, members}}` : le réducteur
+peut ranger une tuile par `runId` ou afficher « 6 écrans connectés ». `index` reste stable tant que
+le lien existe (« Écran 3 »).
+
 **Démo « télécommande »** — `docs/examples/telecommande-regie.json` (six pads, émission seule)
 pilote la Régie en direct : lancer les deux runs (interactive), puis
 `link_artifact_runs {fromRunId: <télécommande>, toRunId: <régie>, map}` avec :

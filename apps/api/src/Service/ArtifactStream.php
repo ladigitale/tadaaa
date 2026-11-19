@@ -59,7 +59,7 @@ final class ArtifactStream
     public const MIN_PROGRESS_EVERY = 100;
     public const EASES = ['linear', 'in', 'out', 'inOut', 'step'];
     public const IN_TYPES = ['action', 'state.snapshot', 'state.delta', 'document.patch', 'score', 'score.stop', 'end'];
-    public const OUT_TYPES = ['progress', 'snapshot', 'emit'];
+    public const OUT_TYPES = ['progress', 'snapshot', 'emit', 'alive', 'bye'];
     public const MAX_PAIRS = 32;
     public const DEFAULT_PAIRS = 8;
     public const DEFAULT_PAIR_TTL = 900;
@@ -310,14 +310,16 @@ final class ArtifactStream
     public static function normalizeOut(mixed $msg): array
     {
         if (!$msg instanceof \stdClass || !\in_array($msg->type ?? null, self::OUT_TYPES, true)) {
-            return [null, ['message attendu : {type: progress|snapshot|emit, …}.']];
+            return [null, ['message attendu : {type: progress|snapshot|emit|alive|bye, …}.']];
         }
         if (\strlen((string) json_encode($msg)) > self::MAX_MESSAGE_BYTES) {
             return [null, [sprintf('message trop volumineux (%d octets max).', self::MAX_MESSAGE_BYTES)]];
         }
         $out = new \stdClass();
         $out->type = $msg->type;
-        if ($msg->type === 'progress') {
+        if ($msg->type === 'alive' || $msg->type === 'bye') {
+            // Présence : signe de vie du viewer (toutes les 5 s) ou départ (fermeture de la page).
+        } elseif ($msg->type === 'progress') {
             $out->value = $msg->value ?? null;
         } elseif ($msg->type === 'emit') {
             $id = $msg->id ?? null;

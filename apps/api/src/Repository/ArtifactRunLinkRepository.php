@@ -38,6 +38,18 @@ class ArtifactRunLinkRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /** @return list<ArtifactRunLink> liens actifs où le run est source ou cible */
+    public function findActiveTouching(ArtifactRun $run): array
+    {
+        /** @var list<ArtifactRunLink> */
+        return $this->createQueryBuilder('l')
+            ->where('(l.fromRun = :r OR l.toRun = :r) AND l.active = true')
+            ->setParameter('r', $run)
+            ->orderBy('l.createdAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
     public function countActiveFrom(ArtifactRun $run): int
     {
         return $this->count(['fromRun' => $run, 'active' => true]);
