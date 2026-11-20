@@ -73,6 +73,15 @@ final class ArtifactUiRules
             if (\in_array($tag, self::REALTIME_TAGS, true)) {
                 $realtime = true;
             }
+            // Petit texte fixe estompé (aide, remarque, avertissement) : jamais lu, remplacé par un toast au bon moment.
+            if (\in_array($tag, ['small', 'p', 'span', 'div'], true) && \is_string($node['textContent'] ?? null) && mb_strlen(trim($node['textContent'])) >= 25
+                && \is_string($attrs['style'] ?? null) && preg_match('/(?:^|;)\s*opacity\s*:\s*0?\.([0-7])\d*\s*(?:;|$)/', $attrs['style']) === 1) {
+                $warnings[] = [
+                    'path' => $path,
+                    'rule' => 'avis:texte-gris',
+                    'message' => 'Texte d’aide ou d’alerte estompé affiché en permanence : il n’est pas lu. Le retirer, rendre le libellé du bouton explicite, ou montrer le message au moment utile avec sonic-notify (toast) ou un sonic-modal (règle « alertes »).',
+                ];
+            }
             if ($tag === 'sonic-action') {
                 if (($attrs['trigger'] ?? null) === 'pointerdown' && !\array_key_exists('hold-repeat', $attrs)) {
                     $pointerdown[] = $path;

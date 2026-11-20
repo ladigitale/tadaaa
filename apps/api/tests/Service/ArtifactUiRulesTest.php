@@ -79,6 +79,16 @@ final class ArtifactUiRulesTest extends TestCase
         self::assertSame([], $this->warnings($doc));
     }
 
+    public function testFadedPermanentHintIsFlagged(): void
+    {
+        $warnings = $this->warnings(self::doc([
+            ['tagName' => 'small', 'textContent' => 'Astuce : la position sert à trouver les balises proches.', 'attributes' => ['style' => 'opacity:.6']],
+            ['tagName' => 'small', 'textContent' => 'Court', 'attributes' => ['style' => 'opacity:.6']],
+            ['tagName' => 'p', 'textContent' => 'Un texte normal assez long pour compter quand même.', 'attributes' => ['style' => 'opacity:.9']],
+        ]));
+        self::assertCount(1, array_filter($warnings, static fn (string $m): bool => str_contains($m, 'sonic-notify')));
+    }
+
     public function testSonicSelectIsRefusedWithTheRecipe(): void
     {
         $errors = $this->errors(self::doc([['tagName' => 'sonic-select', 'attributes' => ['name' => 'lieu']]]));
