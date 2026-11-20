@@ -38,6 +38,9 @@ final class ArtifactPlaceService
     public const DAILY_PER_IP = 40;
     public const HIDE_AT = 3;
     private const SUMMARY_KEYS = 16;
+    /** Carte : au-delà, groupes par case de grille (MAP_GRID × MAP_GRID cases sur la zone). */
+    public const MAP_LIMIT = 300;
+    private const MAP_GRID = 16;
     private const SUMMARY_STRING = 200;
 
     public function __construct(
@@ -80,6 +83,47 @@ final class ArtifactPlaceService
         usort($items, static fn (array $a, array $b) => $a['distance'] <=> $b['distance']);
 
         return ['items' => \array_slice($items, 0, self::LIST_LIMIT), 'radius' => $r, 'moderator' => $moderator];
+    }
+
+    /**
+     * Lieux d'une zone de carte (bbox = [ouest, sud, est, nord] en degrés) : les lieux eux-mêmes (champs courts)
+     * jusqu'à MAP_LIMIT, au-delà des groupes par cases de grille {lat, lon, count} pour dézoomer sans tout charger.
+     *
+     * @param array{0: float, 1: float, 2: float, 3: float} $bbox
+     *
+     * @return array{items: list<array<string, mixed>>, clusters: list<array{lat: float, lon: float, count: int}>, total: int, bbox: list<float>}
+     */
+    public function listBox(string $slug, ?string $linkToken, string $collection, array $bbox, ?User $user): array
+    {
+        [$artifact] = $this->open($slug, $linkToken, $user, $collection);
+        [$w, $s, $e, $n] = $bbox;
+        foreach ($bbox as $v) {
+            if (!is_finite($v)) {
+                throw new BadRequestHttpException('bbox : quatre nombres ouest,sud,est,nord.');
+            }
+        }
+        $s = max(-90.0, min(90.0, $s));
+        $n = max(-90.0, min(90.0, $n));
+        if ($s > $n) {
+            [$s, $n] = [$n, $s];
+        }
+        // Zone à cheval sur l'antiméridien ou plus large que le globe : tout le tour.
+        if ($w > $e || $e - $w >= 360) {
+            [$w, $e] = [-180.0, 180.0];
+        }
+        $w = max(-180.0, $w);
+        $e = min(180.0, $e);
+        $total = $this->places->countInBox($artifact, $collection, $s, $n, $w, $e);
+        $box = [round($w, 6), round($s, 6), round($e, 6), round($n, 6)];
+        if ($total <= self::MAP_LIMIT) {
+            $rows = $this->places->findInBox($artifact, $collection, $s, $n, $w, $e, false, self::MAP_LIMIT);
+
+            return ['items' => array_map(fn (ArtifactPlace $p) => $this->row($p, null), $rows), 'clusters' => [], 'total' => $total, 'bbox' => $box];
+        }
+        $cellLat = max(1e-5, ($n - $s) / self::MAP_GRID);
+        $cellLon = max(1e-5, ($e - $w) / self::MAP_GRID);
+
+        return ['items' => [], 'clusters' => $this->places->clustersInBox($artifact, $collection, $s, $n, $w, $e, $cellLat, $cellLon, self::MAP_GRID * self::MAP_GRID), 'total' => $total, 'bbox' => $box];
     }
 
     /** @return array<string, mixed> */

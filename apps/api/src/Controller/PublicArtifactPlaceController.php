@@ -20,6 +20,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * Lieux partagés d'un artefact (`data.places.<nom>`), mêmes droits de lecture que l'artefact (`?k=` pour un lien) :
  *
  *   GET    /{slug}/places/{name}?lat=&lon=&radius=   lieux proches (champs courts), du plus proche au plus lointain
+ *   GET    /{slug}/places/{name}?bbox=o,s,e,n         lieux d'une zone de carte, ou groupes {lat, lon, count} si trop nombreux
  *   GET    /{slug}/places/{name}/{id}                 un lieu complet (body)
  *   POST   /{slug}/places/{name}                      {"lat", "lon", "body": {...}} → {id, deleteToken}
  *   DELETE /{slug}/places/{name}/{id}                 en-tête X-Place-Token (poseur), auteur connecté ou membre
@@ -47,6 +48,15 @@ final class PublicArtifactPlaceController extends AbstractController
     {
         $this->consume($this->readLimiter, $request);
         $q = $request->query;
+        if ($q->has('bbox')) {
+            $parts = array_map('trim', explode(',', $q->getString('bbox')));
+            if (\count($parts) !== 4 || \count(array_filter($parts, 'is_numeric')) !== 4) {
+                throw new BadRequestHttpException('bbox : ouest,sud,est,nord en degrés.');
+            }
+            $bbox = array_map('floatval', $parts);
+
+            return $this->noStore($this->json($this->places->listBox($slug, $this->link($request), $name, [$bbox[0], $bbox[1], $bbox[2], $bbox[3]], $this->user())));
+        }
         $num = static fn (string $k): ?float => is_numeric($q->get($k)) ? (float) $q->get($k) : null;
         $radius = is_numeric($q->get('radius')) ? (int) $q->get('radius') : null;
 
