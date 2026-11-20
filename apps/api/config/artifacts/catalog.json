@@ -3637,6 +3637,81 @@
       }
     },
     {
+      "name": "sonic-luma",
+      "props": {
+        "source": {
+          "type": "string",
+          "description": "#id d'une source d'images (sonic-camera, sonic-video, sonic-screen, sonic-shader…)"
+        },
+        "measure": {
+          "type": "string",
+          "values": [
+            "mean",
+            "peak"
+          ],
+          "description": "mean (défaut) : moyenne de la zone ; peak : point le plus clair"
+        },
+        "region": {
+          "type": "string",
+          "description": "zone analysée « x,y,w,h » en 0..1 de l'image (défaut : toute l'image)"
+        },
+        "resolution": {
+          "type": "number",
+          "description": "largeur de la grille d'analyse en cellules (8..160, défaut 64)"
+        },
+        "threshold": {
+          "type": "string",
+          "description": "auto (défaut) ou seuil fixe 0..1"
+        },
+        "min-contrast": {
+          "type": "number",
+          "description": "écart sombre / clair minimal (0..1, défaut 0.06) pour émettre des fronts"
+        },
+        "adapt-ms": {
+          "type": "number",
+          "description": "temps d'oubli des niveaux sombre et clair observés (défaut 5000)"
+        },
+        "hysteresis": {
+          "type": "number",
+          "description": "part de l'écart sombre / clair (0..0.8, défaut 0.2)"
+        },
+        "interval": {
+          "type": "number",
+          "description": "période de publication des niveaux en ms (défaut 100) ; les fronts sont publiés tout de suite"
+        },
+        "max-events": {
+          "type": "number",
+          "description": "fronts gardés dans events (défaut 32)"
+        },
+        "mark-from": {
+          "type": "string",
+          "description": "chemin d'un DataProvider booléen qui commande la lumière (ex. reglages.torch)"
+        },
+        "target": {
+          "type": "string",
+          "description": "store qui reçoit une action par front"
+        },
+        "type": {
+          "type": "string",
+          "description": "type de l'action (défaut edge)"
+        },
+        "params": {
+          "type": "string",
+          "description": "DP de réglages en direct, prioritaires sur les attributs"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage {reset: compteur}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP de sortie (défaut <id>State)"
+        }
+      },
+      "addon": "media",
+      "description": "Sonde de luminosité : mesure image par image la luminosité d'une source d'images (source=\"#cam\") et détecte les fronts allumé / éteint d'un signal lumineux (lampe, torche, écran qui clignote), horodatés à la capture de l'image ; measure mean (moyenne de la zone, défaut) | peak (point le plus clair : lampe lointaine), region « x,y,w,h » 0..1, seuil automatique (threshold=\"auto\") ou fixe 0..1, min-contrast, adapt-ms, hysteresis ; état dans out-data-provider (défaut <id>State) : {status idle|ready|error, error, active, level, peak, peakX, peakY, lo, hi, contrast, signal, on, edges, last, events[{n, on, t, dur, level, sinceMark, markGap}], fps, clock capture|frame|poll, settings} (t et dur en ms ; dur = durée de l'état qui se termine) ; target = store qui reçoit une action par front {type (défaut edge), payload: front + fps + clock} ; mark-from = chemin d'un DataProvider booléen qui commande la lumière (ex. reglages.torch, le DP adjust d'une sonic-camera) : sinceMark = délai commande → lumière, markGap = durée commandée ; params = réglages en direct {active, measure, region, resolution, threshold, minContrast, adaptMs, hysteresis, interval} ; control {reset: compteur} remet à zéro ; invisible"
+    },
+    {
       "name": "sonic-map",
       "props": {
         "dataProvider": {
@@ -8357,5 +8432,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; anchor (sonic-anchor-ref, sonic-anchor, sonic-anchor-view); animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); bluetooth (sonic-bluetooth, sonic-label-printer); color (sonic-palette, sonic-palette-editor); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-geolocation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); grbl (sonic-grbl, sonic-gcode, sonic-laser-pattern); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix, sonic-notify); map (sonic-map) [requires: maplibre-gl]; markdown (sonic-markdown); media (sonic-camera, sonic-video, sonic-frame-sync, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; qr (sonic-qr); scroll (sonic-scroll); serial (sonic-serial); shader (sonic-shader); sketch (sonic-sketch, sonic-sketch-guide, sonic-painterly); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; anchor (sonic-anchor-ref, sonic-anchor, sonic-anchor-view); animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); bluetooth (sonic-bluetooth, sonic-label-printer); color (sonic-palette, sonic-palette-editor); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-geolocation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); grbl (sonic-grbl, sonic-gcode, sonic-laser-pattern); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix, sonic-notify); map (sonic-map) [requires: maplibre-gl]; markdown (sonic-markdown); media (sonic-camera, sonic-video, sonic-frame-sync, sonic-luma, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; qr (sonic-qr); scroll (sonic-scroll); serial (sonic-serial); shader (sonic-shader); sketch (sonic-sketch, sonic-sketch-guide, sonic-painterly); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
