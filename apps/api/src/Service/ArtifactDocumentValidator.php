@@ -493,6 +493,9 @@ final class ArtifactDocumentValidator
                     .'(2) pas de textes dans le store relié par dataProvider à un composant qui en recopie les clés en propriétés (sonic-shader) : mets-les dans un store séparé ; '
                     .'(3) une liste de longueur variable (cartes, lignes, résultats filtrés) se fait en SDUI avec sonic-list et un gabarit <template> : voir la règle « listes ». '
                     .'DONNÉES RÉELLES : l’atelier récupère des données avec search_public_apis / fetch_public_api (catalogue d’APIs publiques, pas d’URL libre) et les copie dans data.stores.<nom>.initial : la page publiée affiche un instantané, elle n’appelle pas ces APIs.',
+                'alertes' => 'PAS DE TEXTE D’AIDE OU D’ALERTE GRIS PERMANENT (petit texte en opacité réduite, « astuce », « remarque », avertissements sous les boutons) : personne ne les lit. Interface au service de l’action en cours : un libellé de bouton clair suffit. '
+                    .'Un retour qui doit être vu passe au moment où il sert : <sonic-notify watch="store.notice" status="error|success|warning|info"> montre un toast quand la valeur change (texte ou {text, label, status}) — le réducteur écrit notice à l’événement (erreur, confirmation) ; '
+                    .'une décision ou un avertissement bloquant = sonic-modal dataProvider="dlg" (le réducteur met dlg.visible à true pour l’ouvrir ; sonic-modal-title / -content / -actions, un sonic-button hideModal dans sonic-modal-actions la ferme). Les demandes d’accès (caméra, micro, Bluetooth, position) partent d’un clic : le navigateur affiche sa propre demande, ne pas l’annoncer par un texte.',
                 'listes' => self::LIST_RULE,
                 'son' => self::SOUND_RULE,
                 'audio' => self::AUDIO_RULE,
