@@ -61,6 +61,12 @@ framework:
             limit: 120
             interval: '1 minute'
             lock_factory: null
+        # Lieux partagés (data.places) : poser, supprimer, signaler ; plafond quotidien par IP dans ArtifactPlaceService.
+        artifacts_places:
+            policy: sliding_window
+            limit: 20
+            interval: '1 minute'
+            lock_factory: null
         # Salons d'artefacts (créer, entrer, accepter, expulser, quitter) : par IP, large pour une classe derrière une même box.
         artifacts_rooms:
             policy: sliding_window

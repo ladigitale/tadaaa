@@ -966,6 +966,20 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertContains('/data/sinks/s/from', $paths);
     }
 
+    public function testValidatesPlaces(): void
+    {
+        $doc = $this->minimalDoc();
+        $doc['data'] = ['places' => [
+            'balises' => ['near' => 'geo', 'radius' => 300, 'fetch' => 6, 'from' => 'b.outbox', 'ack' => 'b'],
+            'bad' => ['radius' => 3, 'foo' => 1, 'maxBytes' => 999999],
+        ]];
+        $paths = array_column($this->validator->validate($doc)['errors'], 'path');
+        self::assertNotContains('/data/places/balises/radius', $paths);
+        self::assertContains('/data/places/bad/radius', $paths);
+        self::assertContains('/data/places/bad/foo', $paths);
+        self::assertContains('/data/places/bad/maxBytes', $paths);
+    }
+
     /** @return array<string, mixed> */
     public function testAcceptsA2uiView(): void
     {
