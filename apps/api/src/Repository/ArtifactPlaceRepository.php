@@ -41,6 +41,39 @@ class ArtifactPlaceRepository extends ServiceEntityRepository
         return $qb->getQuery()->getResult();
     }
 
+    public function countInBox(Artifact $artifact, string $collection, float $latMin, float $latMax, float $lonMin, float $lonMax): int
+    {
+        return (int) $this->createQueryBuilder('p')->select('COUNT(p.id)')
+            ->andWhere('p.artifact = :a')->setParameter('a', $artifact)
+            ->andWhere('p.collection = :c')->setParameter('c', $collection)
+            ->andWhere('p.hidden = false')
+            ->andWhere('p.lat BETWEEN :la0 AND :la1')->setParameter('la0', $latMin)->setParameter('la1', $latMax)
+            ->andWhere('p.lon BETWEEN :lo0 AND :lo1')->setParameter('lo0', $lonMin)->setParameter('lo1', $lonMax)
+            ->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * Regroupe les lieux visibles d'une zone par cases de grille (carte dézoomée) : centre moyen et nombre par case.
+     *
+     * @return list<array{lat: float, lon: float, count: int}>
+     */
+    public function clustersInBox(Artifact $artifact, string $collection, float $latMin, float $latMax, float $lonMin, float $lonMax, float $cellLat, float $cellLon, int $limit): array
+    {
+        $sql = 'SELECT AVG(lat) AS lat, AVG(lon) AS lon, COUNT(*) AS n FROM artifact_places
+                WHERE artifact_id = :a AND collection = :c AND hidden = false
+                  AND lat BETWEEN :la0 AND :la1 AND lon BETWEEN :lo0 AND :lo1
+                GROUP BY FLOOR(lat / :cl), FLOOR(lon / :co)
+                ORDER BY n DESC
+                LIMIT '.max(1, min(1000, $limit));
+        $rows = $this->getEntityManager()->getConnection()->fetchAllAssociative($sql, [
+            'a' => $artifact->getId()->toRfc4122(), 'c' => $collection,
+            'la0' => $latMin, 'la1' => $latMax, 'lo0' => $lonMin, 'lo1' => $lonMax,
+            'cl' => $cellLat, 'co' => $cellLon,
+        ]);
+
+        return array_map(static fn (array $r): array => ['lat' => round((float) $r['lat'], 6), 'lon' => round((float) $r['lon'], 6), 'count' => (int) $r['n']], $rows);
+    }
+
     /** @return list<ArtifactPlace> */
     public function findLatest(Artifact $artifact, string $collection, bool $withHidden, int $limit): array
     {
