@@ -45,7 +45,7 @@ final class PublicArtifactCorsSubscriberTest extends TestCase
         $preflight = new Response('', Response::HTTP_OK, ['Access-Control-Allow-Headers' => 'Content-Type, Authorization']);
         $response = $this->dispatch($this->request('/api/public/artifacts/mon-jeu/collections/scores/records', 'OPTIONS'), $preflight);
         self::assertSame('*', $response->headers->get('Access-Control-Allow-Origin'));
-        self::assertSame('GET, POST, OPTIONS', $response->headers->get('Access-Control-Allow-Methods'));
+        self::assertSame('GET, POST, DELETE, OPTIONS', $response->headers->get('Access-Control-Allow-Methods'));
         self::assertStringNotContainsString('Authorization', (string) $response->headers->get('Access-Control-Allow-Headers'));
     }
 
