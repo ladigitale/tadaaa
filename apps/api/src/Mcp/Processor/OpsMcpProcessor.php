@@ -65,8 +65,8 @@ final class OpsMcpProcessor implements ProcessorInterface
     /** @return array<string, mixed> */
     private function trigger(User $user, TriggerProdUpdateTool $data): array
     {
-        $run = $this->deploy->trigger($user, $data->reason);
-        $this->safeAudit($user, 'ops.prod_update_triggered', ['runId' => $run['id'], 'reason' => $run['reason']]);
+        $run = $this->deploy->trigger($user, $data->reason, $data->targets, $data->force ?? false);
+        $this->safeAudit($user, 'ops.prod_update_triggered', ['runId' => $run['id'], 'reason' => $run['reason'], 'command' => $run['command']]);
 
         return $run;
     }

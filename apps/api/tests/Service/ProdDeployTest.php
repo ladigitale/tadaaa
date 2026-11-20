@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Service\ProdDeploy;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
@@ -87,6 +88,49 @@ final class ProdDeployTest extends TestCase
         ]));
         self::assertSame('succeeded', $deploy->status($this->admin(), $id)['run']['status']);
         self::assertSame('queued', $deploy->trigger($this->admin())['status'], 'nouveau run possible');
+    }
+
+    public function testTargetsAndForceAreWrittenForTheRunner(): void
+    {
+        $deploy = new ProdDeploy($this->dir, 'boss@example.com');
+
+        $run = $deploy->trigger($this->admin());
+        self::assertSame('update-prod --pull', $run['command']);
+        $raw = (string) file_get_contents($this->dir.'/requests/'.$run['id'].'.json');
+        self::assertStringNotContainsString('"only"', $raw, 'sans cible : le runner met à jour ce qui a changé');
+        self::assertStringNotContainsString('"force"', $raw);
+        unlink($this->dir.'/requests/'.$run['id'].'.json');
+
+        // Ordre canonique, doublons retirés ; une ligne par champ, au format que lit le runner.
+        $run = $deploy->trigger($this->admin(), 'glane', ['glane', 'artifacts', 'glane'], true);
+        self::assertSame('update-prod --pull --only artifacts,glane --force', $run['command']);
+        $raw = (string) file_get_contents($this->dir.'/requests/'.$run['id'].'.json');
+        self::assertMatchesRegularExpression('/^ *"only": "artifacts,glane",?$/m', $raw);
+        self::assertMatchesRegularExpression('/^ *"force": true,?$/m', $raw);
+
+        // L'état du runner (résultat par site, statut partial) est rendu tel quel.
+        $id = $run['id'];
+        rename($this->dir."/requests/$id.json", $this->dir."/runs/$id.request.json");
+        file_put_contents($this->dir."/runs/$id.json", json_encode([
+            'status' => 'partial', 'startedAt' => gmdate('c'), 'finishedAt' => gmdate('c'),
+            'fromSha' => 'aaa', 'toSha' => 'aaa', 'exitCode' => 0, 'health' => 'ok',
+            'targets' => ['artifacts' => ['status' => 'updated', 'fromSha' => 'a1', 'toSha' => 'b2'], 'glane' => ['status' => 'failed']],
+        ]));
+        $status = $deploy->status($this->admin(), $id)['run'];
+        self::assertSame('partial', $status['status']);
+        self::assertSame('failed', $status['targets']['glane']['status']);
+        self::assertSame('artifacts,glane', $status['only']);
+    }
+
+    public function testUnknownTargetIsRejected(): void
+    {
+        $deploy = new ProdDeploy($this->dir, 'boss@example.com');
+        try {
+            $deploy->trigger($this->admin(), null, ['glane', 'glane; rm -rf /']);
+            self::fail('Cible inconnue acceptée');
+        } catch (BadRequestHttpException) {
+        }
+        self::assertSame([], glob($this->dir.'/requests/*.json') ?: [], 'aucune demande déposée');
     }
 
     public function testStaleRunDoesNotBlock(): void

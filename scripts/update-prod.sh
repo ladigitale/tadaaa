@@ -3,6 +3,12 @@
 # From repo root on the VPS:
 #   bash scripts/update-prod.sh
 #   bash scripts/update-prod.sh --pull   # git pull --ff-only first
+#   bash scripts/update-prod.sh --pull --only glane,artifacts   # only these sites
+#   bash scripts/update-prod.sh --force  # rebuild even when nothing changed
+#
+# Each site (tadaaa, artifacts, belts, glane) is rebuilt only when its commit differs
+# from the one last deployed (recorded under OPS_HOST_DIR/deployed/, default
+# var/ops/deployed/). A change that is not a commit (.env, base image) needs --force.
 #
 # Merges missing .env keys (mail, quotas, …), rebuilds SPAs via ephemeral
 # node:22 (no host yarn), recreates containers, Doctrine migrate.
@@ -32,6 +38,12 @@ source "$ROOT/scripts/lib/prod-env.sh"
 
 COMPOSE=(docker compose -f compose.prod.yaml)
 DO_PULL=0
+FORCE=0
+ONLY=""
+TARGETS=(tadaaa artifacts belts glane)
+# 1 dès qu'un site a été reconstruit : l'edge est alors recréé (Caddyfile, snippets, volumes).
+CHANGED=0
+RESULTS=()
 
 # Recreate edge with Glane / Belts overlays when configured in .env.
 recreate_cohost_edge() {
@@ -100,14 +112,29 @@ recreate_cohost_edge() {
   ok "Edge cohost ready."
 }
 
+expect_only=0
 for arg in "$@"; do
+  if [[ "$expect_only" -eq 1 ]]; then
+    ONLY="$arg"
+    expect_only=0
+    continue
+  fi
   case "$arg" in
     --pull) DO_PULL=1 ;;
+    --force) FORCE=1 ;;
+    --only) expect_only=1 ;;
+    --only=*) ONLY="${arg#--only=}" ;;
     -h|--help)
       cat <<'EOF'
-Usage: bash scripts/update-prod.sh [--pull]
+Usage: bash scripts/update-prod.sh [--pull] [--only LIST] [--force]
 
-  --pull   git pull --ff-only before building (fails if dirty/non-ff)
+  --pull        git pull --ff-only before building (fails if dirty/non-ff)
+  --only LIST   comma-separated sites to update: tadaaa, artifacts, belts, glane
+                (default: every configured site)
+  --force       rebuild the selected sites even when their commit is already deployed
+
+A site whose commit is already deployed is skipped. Glane (GLANE_ROOT) is updated
+with its own scripts/update-prod.sh; a Glane failure does not stop the Tadaaa update.
 
 Optional .env cohost (re-applied on edge after stack up):
   GLANE_ROOT=…  GLANE_APP_SERVER_NAME=…  GLANE_API_SERVER_NAME=…
@@ -125,6 +152,15 @@ EOF
       ;;
   esac
 done
+[[ "$expect_only" -eq 0 ]] || die "--only attend une liste (ex. --only glane,artifacts)"
+if [[ -n "$ONLY" ]]; then
+  IFS=, read -r -a only_list <<<"$ONLY"
+  for t in "${only_list[@]}"; do
+    [[ " ${TARGETS[*]} " == *" $t "* ]] || die "Site inconnu pour --only : « $t » (attendu : ${TARGETS[*]})"
+  done
+fi
+
+wants() { [[ -z "$ONLY" || ",$ONLY," == *",$1,"* ]]; }
 
 [[ -f "$ENV_FILE" ]] || die "Missing ${ENV_FILE}. Run scripts/install-prod.sh first."
 
@@ -157,6 +193,32 @@ if [[ "$DO_PULL" -eq 1 ]]; then
     UPDATE_PROD_REEXEC=1 exec bash "$ROOT/scripts/update-prod.sh" "$@"
   fi
 fi
+
+# Commit déployé par site : écrit seulement après une mise à jour réussie, donc un build
+# qui échoue après le pull sera retenté au prochain passage.
+STATE_DIR="${OPS_HOST_DIR:-$ROOT/var/ops}"
+[[ "$STATE_DIR" == /* ]] || STATE_DIR="$ROOT/${STATE_DIR#./}"
+STATE_DIR="$STATE_DIR/deployed"
+deployed_sha() { cat "$STATE_DIR/$1" 2>/dev/null || true; }
+mark_deployed() {
+  [[ -n "$2" ]] || return 0
+  mkdir -p "$STATE_DIR"
+  printf '%s\n' "$2" >"$STATE_DIR/$1"
+}
+head_sha() { git -C "$1" rev-parse HEAD 2>/dev/null || true; }
+# needs_update <site> <commit> : vrai si --force, commit inconnu ou différent du commit déployé.
+needs_update() {
+  [[ "$FORCE" -eq 1 || -z "$2" || "$2" != "$(deployed_sha "$1")" ]]
+}
+# report <site> <updated|unchanged|skipped|failed> [from] [to] — repris dans le résumé final et,
+# quand le runner hôte le demande (UPDATE_PROD_RESULT), dans l'état du run.
+report() {
+  local line="$1 $2 ${3:--} ${4:--}"
+  RESULTS+=("$line")
+  if [[ -n "${UPDATE_PROD_RESULT:-}" ]]; then
+    printf '%s\n' "$line" >>"$UPDATE_PROD_RESULT"
+  fi
+}
 
 info "Ensuring new .env defaults (mail, quotas, …)…"
 ensure_prod_env_defaults "$app_host" "$api_host" "${ACME_EMAIL:-noreply@${app_host#app.}}"
@@ -195,18 +257,32 @@ if (( $(free_gb) < MIN_FREE_GB )); then
   (( $(free_gb) >= MIN_FREE_GB )) || die "Pas assez de place sur le disque ($(free_gb) Go < ${MIN_FREE_GB} Go) : libérer de l'espace (docker system df, yarn cache, journaux) puis relancer."
 fi
 
-info "Building front (VITE_API_BASE_URL=https://${api_host})…"
-# Use monorepo root yarn.lock (Concorde 4.9.x). Do not install from apps/web alone —
-# apps/web/yarn.lock can pin an older Concorde and break tsc (ApiResult, @post, …).
-rm -rf "$ROOT/node_modules" "$ROOT/apps/web/node_modules"
-docker run --rm \
-  -v "$ROOT:/repo" \
-  -w /repo \
-  -e VITE_API_BASE_URL="https://${api_host}" \
-  node:22-bookworm \
-  bash -lc 'corepack enable && yarn install --frozen-lockfile && yarn --cwd apps/web build'
-[[ -f "$ROOT/apps/web/dist/index.html" ]] || die "Front build failed."
-ok "Front build ready."
+tadaaa_sha="$(head_sha "$ROOT")"
+tadaaa_from="$(deployed_sha tadaaa)"
+BUILD_TADAAA=0
+if ! wants tadaaa; then
+  report tadaaa skipped
+elif needs_update tadaaa "$tadaaa_sha" || [[ ! -f "$ROOT/apps/web/dist/index.html" ]]; then
+  BUILD_TADAAA=1
+else
+  ok "Tadaaa déjà à jour (${tadaaa_sha:0:12}) : rien à reconstruire."
+  report tadaaa unchanged "$tadaaa_sha" "$tadaaa_sha"
+fi
+
+if [[ "$BUILD_TADAAA" -eq 1 ]]; then
+  info "Building front (VITE_API_BASE_URL=https://${api_host})…"
+  # Use monorepo root yarn.lock (Concorde 4.9.x). Do not install from apps/web alone —
+  # apps/web/yarn.lock can pin an older Concorde and break tsc (ApiResult, @post, …).
+  rm -rf "$ROOT/node_modules" "$ROOT/apps/web/node_modules"
+  docker run --rm \
+    -v "$ROOT:/repo" \
+    -w /repo \
+    -e VITE_API_BASE_URL="https://${api_host}" \
+    node:22-bookworm \
+    bash -lc 'corepack enable && yarn install --frozen-lockfile && yarn --cwd apps/web build'
+  [[ -f "$ROOT/apps/web/dist/index.html" ]] || die "Front build failed."
+  ok "Front build ready."
+fi
 
 # Sibling SPAs (Artefacts / Belts) — même pattern node:22 éphémère, pas de yarn hôte.
 ensure_sibling_git() {
@@ -254,34 +330,109 @@ build_sibling_spa() {
   ok "$name → $dist"
 }
 
+# update_sibling_spa <site> <label> <src> <git url> <env hint> <dist> : pull puis build si le
+# commit a changé (ou si le dist est vide).
+update_sibling_spa() {
+  local site="$1" label="$2" src="$3" url="$4" hint="$5" dist="$6" from sha
+  if ! wants "$site"; then
+    report "$site" skipped
+    return 0
+  fi
+  ensure_sibling_git "$src" "$url" "$site" "$hint"
+  from="$(deployed_sha "$site")"
+  sha="$(head_sha "$src")"
+  if needs_update "$site" "$sha" || [[ ! -f "$dist/index.html" ]]; then
+    build_sibling_spa "$label" "$src" "$dist" "https://${api_host}"
+    mark_deployed "$site" "$sha"
+    report "$site" updated "$from" "$sha"
+    CHANGED=1
+  else
+    ok "$label déjà à jour (${sha:0:12}) : rien à reconstruire."
+    report "$site" unchanged "$sha" "$sha"
+  fi
+}
+
 if [[ -n "${ARTIFACTS_DIST:-}" ]]; then
   ARTIFACTS_SRC="${ARTIFACTS_SRC:-$ROOT/apps/artifacts}"
   ARTIFACTS_GIT_URL="${ARTIFACTS_GIT_URL:-https://github.com/ladigitale/artifacts.git}"
-  ensure_sibling_git "$ARTIFACTS_SRC" "$ARTIFACTS_GIT_URL" "artifacts" "ARTIFACTS_GIT_URL / ARTIFACTS_SRC"
-  build_sibling_spa "Artefacts" "$ARTIFACTS_SRC" "$ARTIFACTS_DIST" "https://${api_host}"
+  update_sibling_spa artifacts "Artefacts" "$ARTIFACTS_SRC" "$ARTIFACTS_GIT_URL" "ARTIFACTS_GIT_URL / ARTIFACTS_SRC" "$ARTIFACTS_DIST"
 fi
 
 if [[ -n "${BELTS_DIST:-}" && -n "${BELTS_SRC:-${BELTS_GIT_URL:-}}" ]]; then
   BELTS_SRC="${BELTS_SRC:-$ROOT/apps/belts}"
-  ensure_sibling_git "$BELTS_SRC" "${BELTS_GIT_URL:-}" "belts" "BELTS_GIT_URL / BELTS_SRC"
-  build_sibling_spa "Belts" "$BELTS_SRC" "$BELTS_DIST" "https://${api_host}"
+  update_sibling_spa belts "Belts" "$BELTS_SRC" "${BELTS_GIT_URL:-}" "BELTS_GIT_URL / BELTS_SRC" "$BELTS_DIST"
 elif [[ -n "${BELTS_DIST:-}" ]]; then
   warn "BELTS_DIST set but no BELTS_SRC/BELTS_GIT_URL — skip Belts build (using existing dist)."
 fi
 
+# Glane a sa propre stack (API, MCP, base) et son propre scripts/update-prod.sh : on le lance
+# quand son dépôt a avancé. Environnement vidé : les variables du .env de Tadaaa exportées ici
+# (hôtes, base, secrets) passeraient sinon devant celles du .env de Glane dans docker compose.
+# Un échec n'arrête pas la mise à jour de Tadaaa ; il est signalé dans le résumé.
+update_glane() {
+  [[ -n "${GLANE_ROOT:-}" ]] || return 0
+  if ! wants glane; then
+    report glane skipped
+    return 0
+  fi
+  local script="$GLANE_ROOT/scripts/update-prod.sh" from target to args=()
+  if [[ ! -d "$GLANE_ROOT/.git" || ! -f "$script" ]]; then
+    warn "GLANE_ROOT sans dépôt git ou sans scripts/update-prod.sh : Glane n'est pas mis à jour ici."
+    return 0
+  fi
+  from="$(deployed_sha glane)"
+  target="$(head_sha "$GLANE_ROOT")"
+  if [[ "$DO_PULL" -eq 1 ]]; then
+    args+=(--pull)
+    if git -C "$GLANE_ROOT" fetch --quiet; then
+      target="$(git -C "$GLANE_ROOT" rev-parse '@{upstream}' 2>/dev/null || printf '%s' "$target")"
+    else
+      warn "git fetch Glane a échoué : comparaison avec le commit local."
+    fi
+  fi
+  if ! needs_update glane "$target"; then
+    ok "Glane déjà à jour (${target:0:12}) : rien à reconstruire."
+    report glane unchanged "$target" "$target"
+    return 0
+  fi
+  info "Mise à jour de Glane (${from:0:12} → ${target:0:12})…"
+  if env -i PATH="$PATH" HOME="${HOME:-/root}" bash "$script" ${args[@]+"${args[@]}"}; then
+    to="$(head_sha "$GLANE_ROOT")"
+    mark_deployed glane "$to"
+    report glane updated "$from" "$to"
+    CHANGED=1
+    ok "Glane à jour (${to:0:12})."
+  else
+    warn "La mise à jour de Glane a échoué (voir plus haut) : Tadaaa continue, Glane sera retenté au prochain passage."
+    report glane failed "$from" "$target"
+  fi
+}
+update_glane
+
 # --pull : récupère l'image de base à jour (correctifs de sécurité PHP, ex. PHP2Shell CVE-2026-109618/109619).
 # Sans lui, `up --build` réutilise l'image FrankenPHP déjà en cache, donc un PHP non corrigé.
-info "Building images (base images pulled)…"
-"${COMPOSE[@]}" build --pull
-info "Recreating stack…"
-"${COMPOSE[@]}" up -d --build
-ok "Containers up."
+if [[ "$BUILD_TADAAA" -eq 1 ]]; then
+  info "Building images (base images pulled)…"
+  "${COMPOSE[@]}" build --pull
+  info "Recreating stack…"
+  "${COMPOSE[@]}" up -d --build
+  ok "Containers up."
+  CHANGED=1
+fi
 
-recreate_cohost_edge
+if [[ "$CHANGED" -eq 1 ]]; then
+  recreate_cohost_edge
+else
+  ok "Aucun site modifié : edge et conteneurs inchangés."
+fi
 
-info "Migrations…"
-"${COMPOSE[@]}" exec -T php bin/console doctrine:migrations:migrate --no-interaction
-ok "Migrations done."
+if [[ "$BUILD_TADAAA" -eq 1 ]]; then
+  info "Migrations…"
+  "${COMPOSE[@]}" exec -T php bin/console doctrine:migrations:migrate --no-interaction
+  ok "Migrations done."
+  mark_deployed tadaaa "$tadaaa_sha"
+  report tadaaa updated "$tadaaa_from" "$tadaaa_sha"
+fi
 
 if curl -fsS --max-time 10 "https://${api_host}/api/health" >/dev/null 2>&1; then
   ok "API healthy: https://${api_host}/api/health"
@@ -295,6 +446,15 @@ ok "Disque : $(free_gb) Go libres."
 
 say ""
 say "${BLD}Update complete.${RST}"
+for line in ${RESULTS[@]+"${RESULTS[@]}"}; do
+  read -r r_site r_status r_from r_to <<<"$line"
+  case "$r_status" in
+    updated) say "  ${r_site}: mis à jour (${r_from:0:12} → ${r_to:0:12})" ;;
+    unchanged) say "  ${r_site}: déjà à jour (${r_to:0:12})" ;;
+    skipped) say "  ${r_site}: non demandé" ;;
+    failed) say "  ${r_site}: ÉCHEC — voir le journal" ;;
+  esac
+done
 say "  Front: https://${app_host}"
 say "  API:   https://${api_host}/api"
 [[ -n "${GLANE_ROOT:-}" ]] && say "  Glane: https://${GLANE_APP_SERVER_NAME:-glane.tadaaa.space}"
