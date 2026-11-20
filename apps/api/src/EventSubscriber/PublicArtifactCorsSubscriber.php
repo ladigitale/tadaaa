@@ -58,10 +58,11 @@ final class PublicArtifactCorsSubscriber implements EventSubscriberInterface
         $response->headers->set('Access-Control-Expose-Headers', 'ETag, Cache-Control, Retry-After');
 
         if ($request->getMethod() === 'OPTIONS') {
-            // POST : envoi en collecte contrôlée (…/collections/{name}/records), salons (…/rooms/*) et
-            // flux des runs (…/runs/{id}/events : jeton d'émission en Authorization: Bearer).
-            $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-            $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, If-None-Match, Authorization');
+            // POST : envoi en collecte contrôlée (…/collections/{name}/records), salons (…/rooms/*),
+            // lieux partagés (…/places/*) et flux des runs (…/runs/{id}/events : jeton d'émission en
+            // Authorization: Bearer) ; DELETE + X-Place-Token : retrait d'un lieu par l'appareil qui l'a posé.
+            $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+            $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, If-None-Match, Authorization, X-Place-Token');
             $response->headers->set('Access-Control-Max-Age', '3600');
             if ($response->getStatusCode() === Response::HTTP_NO_CONTENT) {
                 $response->setContent('');
