@@ -8,6 +8,7 @@ use App\Entity\ArtifactRun;
 use App\Entity\ArtifactRunLink;
 use App\Event\ArtifactRunSeen;
 use App\Repository\ArtifactRunLinkRepository;
+use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -17,8 +18,10 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * (`alive`) et prévient quand il part (`bye`). Un run voit comme membres les autres bouts de ses
  * liens actifs (dans un sens ou dans l'autre) dont le viewer s'est manifesté depuis moins de
  * {@see self::ONLINE_MS}. Quand cet ensemble change, le serveur pousse dans son flux
- * `{type: "presence", count, members: [{runId, slug, index, since, seen}]}` (le viewer le publie
- * dans `artifactRun.presence` et l'envoie au store du flux en action `presence`).
+ * `{type: "presence", count, members: [{runId, slug, index, since, seen, role}]}` (le viewer le
+ * publie dans `artifactRun.presence` et l'envoie au store du flux en action `presence`). `index`
+ * est le rang d'arrivée (1, 2…), stable même quand un appareil part ou est retiré ; `role` est le
+ * rôle d'appairage de l'appareil (null hors appairage à rôles).
  */
 final class ArtifactRunPresenceService
 {
@@ -27,6 +30,7 @@ final class ArtifactRunPresenceService
     public function __construct(
         private readonly ArtifactRunLinkRepository $links,
         private readonly ArtifactRunStreamService $streams,
+        private readonly Connection $connection,
         private readonly EntityManagerInterface $em,
         private readonly LoggerInterface $logger,
     ) {
@@ -59,7 +63,11 @@ final class ArtifactRunPresenceService
             return;
         }
         $now = (int) floor(microtime(true) * 1000);
-        $members = self::members($this->links->findActiveTouching($host), $host, $now);
+        $roles = [];
+        foreach ($this->connection->fetchAllAssociative('SELECT remote_run_id, role FROM artifact_run_pair_claims WHERE host_run_id = :r', ['r' => $host->getId()->toRfc4122()]) as $row) {
+            $roles[strtolower((string) $row['remote_run_id'])] = (string) $row['role'];
+        }
+        $members = self::members($this->links->findActiveTouching($host), $host, $now, $this->links->findForRun($host), $roles);
         $key = implode(',', array_column($members, 'runId'));
         $meta = $host->getStreamMeta();
         if (($meta['presenceKey'] ?? null) === $key) {
@@ -74,24 +82,31 @@ final class ArtifactRunPresenceService
     }
 
     /**
-     * Membres en ligne d'un run, dans l'ordre des liens (index 1, 2… stable tant que les liens restent).
+     * Membres en ligne d'un run. `index` = rang d'arrivée parmi tous les runs qui lui ont été reliés
+     * (`$all`, liens inactifs compris : un départ ne décale pas les autres), sinon parmi les liens actifs.
      *
-     * @param list<ArtifactRunLink> $links liens actifs touchant le run
+     * @param list<ArtifactRunLink>  $links liens actifs touchant le run
+     * @param ?list<ArtifactRunLink> $all   tous les liens touchant le run, du plus ancien au plus récent
+     * @param array<string, string>  $roles rôle d'appairage par runId d'appareil
      *
-     * @return list<array{runId: string, slug: string, index: int, since: int, seen: int}>
+     * @return list<array{runId: string, slug: string, index: int, since: int, seen: int, role: ?string}>
      */
-    public static function members(array $links, ArtifactRun $host, int $now): array
+    public static function members(array $links, ArtifactRun $host, int $now, ?array $all = null, array $roles = []): array
     {
+        $rank = [];
+        foreach ($all ?? $links as $link) {
+            $id = self::other($link, $host)->getId()->toRfc4122();
+            $rank[$id] ??= \count($rank) + 1;
+        }
         $byRun = [];
-        $index = 0;
         foreach ($links as $link) {
             $other = self::other($link, $host);
             $id = $other->getId()->toRfc4122();
-            if (isset($byRun[$id])) {
+            if (\array_key_exists($id, $byRun)) {
                 continue;
             }
-            $index++;
             if ($other->getStatus() !== ArtifactRun::STATUS_PENDING || $other->isExpired()) {
+                $byRun[$id] = null;
                 continue;
             }
             $seen = (int) ($other->getStreamMeta()['seen'] ?? 0);
@@ -99,16 +114,20 @@ final class ArtifactRunPresenceService
                 $byRun[$id] = null;
                 continue;
             }
+            $role = $roles[$id] ?? '';
             $byRun[$id] = [
                 'runId' => $id,
                 'slug' => $other->getArtifact()->getSlug(),
-                'index' => $index,
+                'index' => $rank[$id] ?? \count($rank) + 1,
                 'since' => $link->getCreatedAt()->getTimestamp() * 1000,
                 'seen' => $seen,
+                'role' => $role === '' ? null : $role,
             ];
         }
+        $out = array_values(array_filter($byRun));
+        usort($out, static fn (array $a, array $b): int => $a['index'] <=> $b['index']);
 
-        return array_values(array_filter($byRun));
+        return $out;
     }
 
     private static function other(ArtifactRunLink $link, ArtifactRun $run): ArtifactRun

@@ -42,7 +42,10 @@ namespace App\Service;
  *   #rrggbb, ou paliers pour le reste) écrites dans l'état du store au pointeur `path`.
  *
  * Messages sortants (publiés par le viewer qui exécute le run) : progress {value}, snapshot
- * {seq, state} (pour les spectateurs qui arrivent en cours), emit {id, data} (file d'envoi).
+ * {seq, state} (pour les spectateurs qui arrivent en cours), emit {id, data, to?} (file d'envoi ;
+ * `to` = runId ou liste de runIds : seuls les liens vers ces runs le reçoivent), ou une commande
+ * d'appairage dans la même file : emit {id, op: "kick", runId} (libère la place de cet appareil et
+ * termine son run), emit {id, op: "lock" | "unlock"} (ferme / rouvre les inscriptions).
  */
 final class ArtifactStream
 {
@@ -65,6 +68,11 @@ final class ArtifactStream
     public const DEFAULT_PAIR_TTL = 900;
     public const MAX_PAIR_MAP = 4000;
     public const MAX_EMIT_ID = 64;
+    public const MAX_EMIT_TO = 64;
+    public const MAX_PAIR_ROLES = 4;
+    public const EMIT_OPS = ['kick', 'lock', 'unlock'];
+    private const UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
+    private const ROLE = '/^[a-z][a-z0-9_-]{0,23}$/';
 
     private const ACTION = '/^[a-zA-Z][a-zA-Z0-9_:.-]{0,63}$/';
     private const DOTTED = '/^[a-zA-Z][a-zA-Z0-9_-]{0,63}(\.[a-zA-Z0-9_-]{1,64}){0,8}$/';
@@ -205,7 +213,7 @@ final class ArtifactStream
             'rate' => self::rate($stream),
             'progress' => \is_array($stream['progress'] ?? null),
             'emit' => \is_array($stream['emit'] ?? null),
-            'pair' => \is_array($stream['pair'] ?? null) ? ['remote' => $stream['pair']['remote'] ?? null, 'max' => $stream['pair']['max'] ?? self::DEFAULT_PAIRS] : null,
+            'pair' => self::describePair(self::pairEntries($stream)),
         ];
     }
 
@@ -327,7 +335,37 @@ final class ArtifactStream
                 return [null, [sprintf('emit : {id (texte de %d car. au plus ou entier), data}.', self::MAX_EMIT_ID)]];
             }
             $out->id = $id;
+            $op = $msg->op ?? null;
+            if ($op !== null) {
+                if (!\in_array($op, self::EMIT_OPS, true)) {
+                    return [null, ['emit : op vaut kick (avec runId), lock ou unlock.']];
+                }
+                $out->op = $op;
+                if ($op === 'kick') {
+                    $rid = $msg->runId ?? null;
+                    if (!\is_string($rid) || !preg_match(self::UUID, strtolower($rid))) {
+                        return [null, ['emit : op kick attend runId (run de l’appareil à retirer).']];
+                    }
+                    $out->runId = strtolower($rid);
+                }
+
+                return [$out, []];
+            }
             $out->data = $msg->data ?? null;
+            if (isset($msg->to)) {
+                $to = \is_string($msg->to) ? [$msg->to] : $msg->to;
+                if (!\is_array($to) || $to === [] || \count($to) > self::MAX_EMIT_TO) {
+                    return [null, [sprintf('emit : to = runId ou liste de 1 à %d runIds.', self::MAX_EMIT_TO)]];
+                }
+                $ids = [];
+                foreach ($to as $r) {
+                    if (!\is_string($r) || !preg_match(self::UUID, strtolower($r))) {
+                        return [null, ['emit : to contient un runId invalide.']];
+                    }
+                    $ids[] = strtolower($r);
+                }
+                $out->to = array_values(array_unique($ids));
+            }
         } else {
             if (!\is_int($msg->seq ?? null) || $msg->seq < 0) {
                 return [null, ['snapshot : {seq, state} (seq = dernier message appliqué).']];
@@ -456,7 +494,8 @@ final class ArtifactStream
     }
 
     /**
-     * Appairage : `pair = {remote, map?, back?, max?, ttl?, input?}` — le viewer du run montre un code
+     * Appairage : `pair = {remote, map?, back?, max?, ttl?, input?}` ou une liste de ces objets avec
+     * `role` (un code par rôle : équipes, types d'appareils) — le viewer du run montre un code
      * (QR) ; l'ouvrir lance un run de l'artefact `remote` relié à celui-ci (`map` : remote → ce run,
      * `back` : ce run → remote).
      *
@@ -464,13 +503,86 @@ final class ArtifactStream
      */
     private static function checkPair(mixed $pair, bool $accepts, bool $emits, string $p): array
     {
+        if (\is_array($pair) && array_is_list($pair) && $pair !== []) {
+            // Plusieurs rôles (équipes, types d'appareils) : un code chacun.
+            if (\count($pair) > self::MAX_PAIR_ROLES) {
+                return [['path' => $p, 'message' => sprintf('pair : %d rôles au plus.', self::MAX_PAIR_ROLES)]];
+            }
+            $errors = [];
+            $roles = [];
+            foreach ($pair as $i => $entry) {
+                $role = \is_array($entry) ? ($entry['role'] ?? null) : null;
+                if (!\is_string($role) || !preg_match(self::ROLE, $role)) {
+                    $errors[] = ['path' => $p.'/'.$i.'/role', 'message' => 'role : nom du rôle (minuscules, chiffres, _ -, 24 car.), obligatoire quand pair est une liste.'];
+                } elseif (isset($roles[$role])) {
+                    $errors[] = ['path' => $p.'/'.$i.'/role', 'message' => sprintf('role « %s » en double.', $role)];
+                } else {
+                    $roles[$role] = true;
+                }
+                $errors = [...$errors, ...self::checkPairEntry($entry, $accepts, $emits, $p.'/'.$i, true)];
+            }
+
+            return $errors;
+        }
+
+        return self::checkPairEntry($pair, $accepts, $emits, $p, false);
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $entries
+     *
+     * @return array<string, mixed>|list<array<string, mixed>>|null
+     */
+    private static function describePair(array $entries): ?array
+    {
+        if ($entries === []) {
+            return null;
+        }
+        $out = [];
+        foreach ($entries as $role => $e) {
+            $out[] = ($role === '' ? [] : ['role' => $role]) + ['remote' => $e['remote'] ?? null, 'max' => $e['max'] ?? self::DEFAULT_PAIRS];
+        }
+
+        return array_keys($entries) === [''] ? $out[0] : $out;
+    }
+
+    /**
+     * Rôles d'appairage déclarés : [role => entrée] (rôle "" pour la forme objet).
+     *
+     * @param array<string, mixed> $stream bloc io.stream
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function pairEntries(array $stream): array
+    {
+        $pair = $stream['pair'] ?? null;
+        if (!\is_array($pair) || $pair === []) {
+            return [];
+        }
+        if (!array_is_list($pair)) {
+            return ['' => $pair];
+        }
+        $out = [];
+        foreach ($pair as $entry) {
+            if (\is_array($entry) && \is_string($entry['role'] ?? null)) {
+                $out[$entry['role']] = $entry;
+            }
+        }
+
+        return $out;
+    }
+
+    /** @return list<array{path: string, message: string}> */
+    private static function checkPairEntry(mixed $pair, bool $accepts, bool $emits, string $p, bool $withRole): array
+    {
         if (!\is_array($pair) || array_is_list($pair)) {
-            return [['path' => $p, 'message' => 'pair : {remote: "slug", map?, back?, max?, ttl?, input?}.']];
+            return [['path' => $p, 'message' => 'pair : {remote: "slug", map?, back?, max?, ttl?, input?} ou liste de {role, remote, …}.']];
         }
         $errors = [];
+        $allowed = ['remote', 'map', 'back', 'max', 'ttl', 'input', ...($withRole ? ['role'] : [])];
         foreach (array_keys($pair) as $k) {
-            if (!\in_array($k, ['remote', 'map', 'back', 'max', 'ttl', 'input'], true)) {
-                $errors[] = ['path' => $p.'/'.$k, 'message' => 'Clé non autorisée (remote, map, back, max, ttl, input).'];
+            if (!\in_array($k, $allowed, true)) {
+                $errors[] = ['path' => $p.'/'.$k, 'message' => sprintf('Clé non autorisée (%s).', implode(', ', $allowed))];
             }
         }
         if (!\is_string($pair['remote'] ?? null) || !preg_match('/^[a-z0-9][a-z0-9-]{0,79}$/', $pair['remote'])) {

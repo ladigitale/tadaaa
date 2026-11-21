@@ -6,8 +6,14 @@ namespace App\Service;
 
 use App\Entity\ArtifactRun;
 use App\Entity\ArtifactVisibility;
+use App\Event\ArtifactRunFinished;
+use App\Event\ArtifactRunPairOps;
+use App\Repository\ArtifactRunLinkRepository;
 use App\Repository\ArtifactRunRepository;
 use Doctrine\DBAL\Connection;
+use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\GoneHttpException;
@@ -23,6 +29,11 @@ use Symfony\Component\Uid\Uuid;
  *
  * Les deux sens d'usage : une régie montre de quoi la piloter (remote = télécommande), ou de quoi
  * ouvrir un écran récepteur (remote = récepteur, relié dans les deux sens).
+ *
+ * Rôles : `pair` peut être une liste de {role, remote, …} (équipes, types d'appareils), un code par rôle.
+ * Places : un appareil retiré par l'hôte (`{op: "kick", runId}` dans sa file d'envoi), terminé, ou
+ * absent depuis plus de {@see self::ABSENT_MS} libère sa place ; l'hôte peut fermer les inscriptions
+ * (`{op: "lock"}`, `{op: "unlock"}`). Quand l'hôte se termine, ses appareils reçoivent `end`.
  */
 final class ArtifactRunPairingService
 {
@@ -31,14 +42,21 @@ final class ArtifactRunPairingService
     private const CODE_LENGTH = 8;
     /** Un code qui expire dans moins de 60 s n'est plus montré : on en tire un neuf. */
     private const REUSE_MARGIN = 60;
+    /** Un appareil sans signe de vie depuis 2 min (ou jamais ouvert) ne compte plus dans les places. */
+    public const ABSENT_MS = 120_000;
 
     public function __construct(
         private readonly ArtifactRunRepository $runs,
         private readonly ArtifactService $artifacts,
         private readonly ArtifactRunService $runService,
         private readonly ArtifactRunLinkService $links,
+        private readonly ArtifactRunLinkRepository $linkRepository,
+        private readonly ArtifactRunStreamService $streams,
+        private readonly ArtifactRunPresenceService $presence,
         private readonly DatasetAccessService $access,
         private readonly Connection $connection,
+        private readonly EntityManagerInterface $em,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -47,29 +65,32 @@ final class ArtifactRunPairingService
      *
      * @return array<string, mixed>
      */
-    public function issue(string $slug, string $runId, string $runToken): array
+    public function issue(string $slug, string $runId, string $runToken, ?string $role = null): array
     {
         $host = $this->findRun($slug, $runId);
         if (!$host->matchesToken($runToken)) {
             throw new NotFoundHttpException('Run introuvable.');
         }
-        $pair = $this->openHost($host);
+        [$role, $pair] = $this->openHost($host, $role);
         $remote = $this->remoteArtifact($host, $pair);
         $max = (int) ($pair['max'] ?? ArtifactStream::DEFAULT_PAIRS);
-        $paired = $this->claimCount($host);
+        $paired = $this->claimCount($host, $role);
+        $locked = self::isLocked($host);
         $base = [
+            'role' => $role === '' ? null : $role,
             'max' => $max,
             'paired' => $paired,
             'remaining' => max(0, $max - $paired),
             'remote' => $remote->getSlug(),
+            'locked' => $locked,
         ];
-        if ($paired >= $max) {
+        if ($paired >= $max || $locked) {
             return $base + ['code' => null, 'url' => null, 'expiresAt' => null];
         }
 
         $row = $this->connection->fetchAssociative(
-            'SELECT code, expires_at FROM artifact_run_pair_codes WHERE host_run_id = :r AND expires_at > :t ORDER BY expires_at DESC LIMIT 1',
-            ['r' => $host->getId()->toRfc4122(), 't' => (new \DateTimeImmutable('+'.self::REUSE_MARGIN.' seconds'))->format('Y-m-d H:i:s')],
+            'SELECT code, expires_at FROM artifact_run_pair_codes WHERE host_run_id = :r AND role = :role AND expires_at > :t ORDER BY expires_at DESC LIMIT 1',
+            ['r' => $host->getId()->toRfc4122(), 'role' => $role, 't' => (new \DateTimeImmutable('+'.self::REUSE_MARGIN.' seconds'))->format('Y-m-d H:i:s')],
         );
         if ($row) {
             $code = (string) $row['code'];
@@ -81,6 +102,7 @@ final class ArtifactRunPairingService
             $this->connection->insert('artifact_run_pair_codes', [
                 'code' => $code,
                 'host_run_id' => $host->getId()->toRfc4122(),
+                'role' => $role,
                 'expires_at' => $expires->format('Y-m-d H:i:s'),
                 'created_at' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
             ]);
@@ -110,7 +132,7 @@ final class ArtifactRunPairingService
         if (!preg_match('/^['.self::ALPHABET.']{'.self::CODE_LENGTH.'}$/', $code)) {
             throw new NotFoundHttpException('Code inconnu.');
         }
-        $row = $this->connection->fetchAssociative('SELECT host_run_id, expires_at FROM artifact_run_pair_codes WHERE code = :c', ['c' => $code]);
+        $row = $this->connection->fetchAssociative('SELECT host_run_id, role, expires_at FROM artifact_run_pair_codes WHERE code = :c', ['c' => $code]);
         if (!$row) {
             throw new NotFoundHttpException('Code inconnu.');
         }
@@ -121,13 +143,16 @@ final class ArtifactRunPairingService
         if (!$host instanceof ArtifactRun) {
             throw new NotFoundHttpException('Code inconnu.');
         }
-        $pair = $this->openHost($host);
+        [$role, $pair] = $this->openHost($host, (string) $row['role']);
         $remote = $this->remoteArtifact($host, $pair);
         if ($remote->getSlug() !== $remoteSlug) {
             throw new NotFoundHttpException('Ce code n’ouvre pas cet artefact.');
         }
+        if (self::isLocked($host)) {
+            throw new ConflictHttpException('Les inscriptions à cet écran sont fermées.');
+        }
         $max = (int) ($pair['max'] ?? ArtifactStream::DEFAULT_PAIRS);
-        if ($this->claimCount($host) >= $max) {
+        if ($this->claimCount($host, $role) >= $max) {
             throw new ConflictHttpException(sprintf('Toutes les places sont prises (%d appareils au plus).', $max));
         }
         $user = $host->getCreatedBy() ?? throw new ConflictHttpException('Le run de cet écran n’a plus de propriétaire.');
@@ -145,7 +170,8 @@ final class ArtifactRunPairingService
             $linked['toHost'] = $this->links->create($user, $remoteRunId, $hostId, \is_string($pair['map'] ?? null) ? $pair['map'] : null)['linkId'] ?? null;
         }
         if (\is_string($pair['back'] ?? null) && ArtifactStream::emits($host->getIo() ?? [])) {
-            $linked['fromHost'] = $this->links->create($user, $hostId, $remoteRunId, $pair['back'])['linkId'] ?? null;
+            // L'hôte a un lien retour par appareil : la limite est celle de l'appairage (tous rôles).
+            $linked['fromHost'] = $this->links->create($user, $hostId, $remoteRunId, $pair['back'], $this->pairCapacity($host))['linkId'] ?? null;
         }
         if ($linked === []) {
             throw new ConflictHttpException(sprintf('« %s » ne peut pas être relié : il lui faut une file d’envoi (io.stream.emit), ou back + une file d’envoi sur l’écran.', $remote->getSlug()));
@@ -154,6 +180,7 @@ final class ArtifactRunPairingService
             'host_run_id' => $hostId,
             'remote_run_id' => $remoteRunId,
             'code' => $code,
+            'role' => $role,
             'created_at' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
         ]);
 
@@ -163,24 +190,150 @@ final class ArtifactRunPairingService
             'url' => $created['url'] ?? null,
             'slug' => $remote->getSlug(),
             'host' => ['slug' => $host->getArtifact()->getSlug(), 'runId' => $hostId],
+            'role' => $role === '' ? null : $role,
             'links' => $linked,
             'expiresAt' => $created['expiresAt'] ?? null,
         ];
     }
 
-    /** Appareils déjà reliés à un run hôte. */
-    public function claimCount(ArtifactRun $host): int
+    /**
+     * Places prises sur un run hôte (pour un rôle, ou tous rôles si null) : appareils ni retirés, ni
+     * terminés, ni absents depuis plus de {@see self::ABSENT_MS}.
+     */
+    public function claimCount(ArtifactRun $host, ?string $role = null): int
     {
-        return (int) $this->connection->fetchOne('SELECT COUNT(*) FROM artifact_run_pair_claims WHERE host_run_id = :r', ['r' => $host->getId()->toRfc4122()]);
+        $sql = 'SELECT remote_run_id, created_at FROM artifact_run_pair_claims WHERE host_run_id = :r AND released_at IS NULL';
+        $params = ['r' => $host->getId()->toRfc4122()];
+        if ($role !== null) {
+            $sql .= ' AND role = :role';
+            $params['role'] = $role;
+        }
+        $now = (int) floor(microtime(true) * 1000);
+        $n = 0;
+        foreach ($this->connection->fetchAllAssociative($sql, $params) as $row) {
+            $remote = $this->runs->find(Uuid::fromString((string) $row['remote_run_id']));
+            if (!$remote instanceof ArtifactRun || $remote->getStatus() !== ArtifactRun::STATUS_PENDING || $remote->isExpired() || $remote->isStreamEnded()) {
+                continue;
+            }
+            $seen = (int) ($remote->getStreamMeta()['seen'] ?? 0);
+            $since = (new \DateTimeImmutable((string) $row['created_at']))->getTimestamp() * 1000;
+            if ($now - max($seen, $since) <= self::ABSENT_MS) {
+                $n++;
+            }
+        }
+
+        return $n;
     }
 
-    /** @return array<string, mixed> */
-    private function openHost(ArtifactRun $host): array
+    /** Liens retour possibles depuis l'hôte : somme des places de tous ses rôles (8 au moins). */
+    private function pairCapacity(ArtifactRun $host): int
     {
-        $pair = $host->getIo()['stream']['pair'] ?? null;
-        if (!\is_array($pair) || !$host->hasStream()) {
+        $total = 0;
+        foreach (ArtifactStream::pairEntries($host->getIo()['stream'] ?? []) as $entry) {
+            $total += (int) ($entry['max'] ?? ArtifactStream::DEFAULT_PAIRS);
+        }
+
+        return max(ArtifactRunLinkService::MAX_LINKS_PER_RUN, $total);
+    }
+
+    public static function isLocked(ArtifactRun $host): bool
+    {
+        return ($host->getStreamMeta()['pairLocked'] ?? false) === true;
+    }
+
+    /**
+     * Commandes d'appairage publiées par le viewer de l'hôte : `kick` retire un appareil (sa place
+     * se libère, ses liens avec l'hôte sont coupés, son run reçoit `end`).
+     */
+    #[AsEventListener]
+    public function onPairOps(ArtifactRunPairOps $event): void
+    {
+        $host = $event->run;
+        $changed = false;
+        foreach ($event->ops as $op) {
+            if (($op->op ?? null) !== 'kick' || !\is_string($op->runId ?? null)) {
+                continue;
+            }
+            $changed = $this->release($host, $op->runId, true) || $changed;
+        }
+        if ($changed) {
+            $this->em->flush();
+            $this->presence->refresh($host);
+        }
+    }
+
+    /** Fin d'un run : un hôte termine ses appareils ; un appareil terminé libère sa place. */
+    #[AsEventListener]
+    public function onFinished(ArtifactRunFinished $event): void
+    {
+        $run = $event->run;
+        $id = $run->getId()->toRfc4122();
+        try {
+            $remotes = $this->connection->fetchFirstColumn('SELECT remote_run_id FROM artifact_run_pair_claims WHERE host_run_id = :r AND released_at IS NULL', ['r' => $id]);
+            foreach ($remotes as $remoteId) {
+                $this->release($run, (string) $remoteId, true);
+            }
+            $hosts = $this->connection->fetchFirstColumn('SELECT host_run_id FROM artifact_run_pair_claims WHERE remote_run_id = :r AND released_at IS NULL', ['r' => $id]);
+            if ($hosts !== []) {
+                $this->connection->executeStatement('UPDATE artifact_run_pair_claims SET released_at = :t WHERE remote_run_id = :r AND released_at IS NULL', ['t' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'), 'r' => $id]);
+            }
+            $this->em->flush();
+            foreach ($hosts as $hostId) {
+                $host = $this->runs->find(Uuid::fromString((string) $hostId));
+                if ($host instanceof ArtifactRun) {
+                    $this->presence->refresh($host);
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warning('Appairage : fin de run non répercutée', ['run' => $id, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /** Libère la place d'un appareil : liens coupés dans les deux sens, `end` envoyé à son run. */
+    private function release(ArtifactRun $host, string $remoteId, bool $end): bool
+    {
+        if (!Uuid::isValid($remoteId)) {
+            return false;
+        }
+        $updated = $this->connection->executeStatement(
+            'UPDATE artifact_run_pair_claims SET released_at = :t WHERE host_run_id = :h AND remote_run_id = :r AND released_at IS NULL',
+            ['t' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'), 'h' => $host->getId()->toRfc4122(), 'r' => strtolower($remoteId)],
+        );
+        if ($updated === 0) {
+            return false;
+        }
+        $remote = $this->runs->find(Uuid::fromString($remoteId));
+        if (!$remote instanceof ArtifactRun) {
+            return true;
+        }
+        foreach ($this->linkRepository->findActiveTouching($remote) as $link) {
+            if ($link->getFromRun() === $host || $link->getToRun() === $host) {
+                $link->deactivate();
+            }
+        }
+        if ($end) {
+            try {
+                $this->streams->emitSystem($remote, [(object) ['type' => 'end']]);
+            } catch (\Throwable $e) {
+                $this->logger->info('Appairage : fin non transmise à l’appareil', ['run' => $remoteId, 'error' => $e->getMessage()]);
+            }
+        }
+
+        return true;
+    }
+
+    /** @return array{0: string, 1: array<string, mixed>} rôle retenu et son entrée de io.stream.pair */
+    private function openHost(ArtifactRun $host, ?string $role = null): array
+    {
+        $entries = ArtifactStream::pairEntries($host->getIo()['stream'] ?? []);
+        if ($entries === [] || !$host->hasStream()) {
             throw new BadRequestHttpException('Ce run ne propose pas d’appairage (io.stream.pair).');
         }
+        $role ??= (string) array_key_first($entries);
+        if (!\array_key_exists($role, $entries)) {
+            throw new BadRequestHttpException(sprintf('Rôle d’appairage inconnu : « %s » (%s).', $role, implode(', ', array_filter(array_keys($entries), 'strlen')) ?: 'aucun rôle'));
+        }
+        $pair = $entries[$role];
         if ($host->getStatus() !== ArtifactRun::STATUS_PENDING) {
             throw new ConflictHttpException('Cet écran est terminé.');
         }
@@ -188,7 +341,7 @@ final class ArtifactRunPairingService
             throw new GoneHttpException('Cet écran a expiré.');
         }
 
-        return $pair;
+        return [$role, $pair];
     }
 
     /** @param array<string, mixed> $pair */

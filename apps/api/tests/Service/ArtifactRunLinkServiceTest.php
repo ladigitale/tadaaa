@@ -89,4 +89,27 @@ final class ArtifactRunLinkServiceTest extends TestCase
         $this->expectException(BadRequestHttpException::class);
         $this->service->transform(self::link('"juste un texte"'), self::items('[{"id":1,"data":{}}]'));
     }
+
+    public function testTargetedItemsOnlyReachListedRuns(): void
+    {
+        $a = '01a1f29a-f242-76b7-a2e0-1d86f2d1a22f';
+        $b = '01a1f29a-f242-76b7-a2e0-1d86f2d1a230';
+        $items = self::items('[{"id":1,"data":{}},{"id":2,"data":{},"to":["'.$a.'"]},{"id":3,"data":{},"to":["'.$b.'","'.$a.'"]}]');
+        self::assertSame([0, 1, 2], ArtifactRunLinkService::itemsFor($items, $a));
+        self::assertSame([0, 2], ArtifactRunLinkService::itemsFor($items, strtoupper($b)));
+        self::assertSame([0], ArtifactRunLinkService::itemsFor($items, '01a1f29a-0000-7000-8000-000000000000'));
+    }
+
+    public function testMapKeepsOneResultPerItem(): void
+    {
+        if (!$this->jsonataAvailable()) {
+            self::assertTrue(true);
+
+            return;
+        }
+        $out = $this->service->transform(self::link('data.n > 1 ? [{"type": "action", "name": "a"}, {"type": "action", "name": "b"}] : (data.n = 1 ? {"type": "action", "name": "seul"})'), self::items('[{"id":1,"data":{"n":0}},{"id":2,"data":{"n":1}},{"id":3,"data":{"n":2}}]'));
+        self::assertSame(['seul', 'a', 'b'], array_map(static fn (\stdClass $m): string => $m->name, $out));
+        $one = $this->service->transform(self::link('{"type": "action", "name": "x"}'), self::items('[{"id":1,"data":{}}]'));
+        self::assertCount(1, $one);
+    }
 }

@@ -293,8 +293,42 @@ manifesté depuis moins de 15 s ; quand cet ensemble change, Tadaaa pousse dans 
 `{type: "presence", count, members: [{runId, slug, index, since, seen}]}`. Le viewer le publie dans
 `artifactRun.presence` (aussi rendu en rejoignant le flux, pour un spectateur qui arrive) et
 l'envoie au store du flux en action `{type: "presence", payload: {count, members}}` : le réducteur
-peut ranger une tuile par `runId` ou afficher « 6 écrans connectés ». `index` reste stable tant que
-le lien existe (« Écran 3 »).
+peut ranger une tuile par `runId` ou afficher « 6 écrans connectés ». `index` est le rang
+d'arrivée (« Écran 3 ») : il ne bouge pas quand un autre appareil part ou est retiré, et un
+appareil qui recharge sa page garde son run (l'adresse porte `?run=&rt=`), donc son rang et sa
+tuile. `role` est le rôle d'appairage de l'appareil (voir plus bas).
+
+**Places** — `remaining` compte les appareils encore là : un appareil retiré, terminé, ou sans
+signe de vie depuis 2 min libère sa place. Quand l'hôte se termine (sortie publiée, annulé,
+expiré), ses appareils reçoivent `end`.
+
+**Envoi ciblé et commandes** — la file d'envoi de l'hôte porte aussi :
+
+| Élément | Effet |
+| --- | --- |
+| `{id, data}` | envoyé à tous les runs reliés (par leur lien `back` / `map`) |
+| `{id, to: "<runId>" \| ["<runId>", …], data}` | envoyé seulement à ces runs (64 au plus) |
+| `{id, op: "kick", runId}` | retire l'appareil : liens coupés, place libérée, son run reçoit `end` |
+| `{id, op: "lock"}` / `{id, op: "unlock"}` | ferme / rouvre les inscriptions (`artifactRun.pair.locked`, plus de code) |
+
+Le `runId` d'un appareil vient de `presence.members` (ou de `from.runId` dans `map`). Avec
+plusieurs liens retour, `map` n'est évalué qu'une fois par expression : une diffusion vers
+30 écrans ne refait pas 30 fois le calcul.
+
+**Rôles (équipes, types d'appareils)** — `io.stream.pair` peut être une liste (4 rôles au plus) :
+
+```json
+"pair": [
+  {"role": "rouge", "remote": "ecran-recepteur", "input": {"equipe": "rouge"}, "max": 8, "map": "…", "back": "data"},
+  {"role": "bleu", "remote": "ecran-recepteur", "input": {"equipe": "bleu"}, "max": 8, "map": "…", "back": "data"}
+]
+```
+
+Le viewer demande un code par rôle (`{rt, role}`) et publie `artifactRun.pairs.<role>`
+(`artifactRun.pair` = le premier rôle) : un QR par équipe
+(`sonic-qr text-from="artifactRun.pairs.bleu.url"`). Chaque rôle a ses places (`max`), son
+artefact `remote`, son entrée (`input`) et ses expressions ; l'hôte a autant de liens retour que de
+places déclarées (au-delà de la limite de 8 liens d'un lien manuel).
 
 **Démo « télécommande »** — `docs/examples/telecommande-regie.json` (six pads, émission seule)
 pilote la Régie en direct : lancer les deux runs (interactive), puis
@@ -307,6 +341,15 @@ data.pad = "applaudir" ? {"type": "action", "name": "reaction", "payload": {"n":
   : data.pad = "drop" ? [{"type": "action", "name": "chapitre", "payload": {"nom": "Drop !", "soustitre": "Déclenché à distance."}}, {"type": "action", "name": "reaction", "payload": {"n": 100}}]
   : data.pad = "fin" ? [{"type": "action", "name": "chapitre", "payload": {"nom": "Fin", "soustitre": "Merci d’avoir suivi le direct."}}, {"type": "score.stop"}, {"type": "end"}]
 ```
+
+**Démo « Régie · écrans »** — `docs/examples/regie-ecrans.json` (hôte) et
+`docs/examples/ecran-recepteur.json` (téléphone) : deux QR d'équipe, 8 places chacun ; chaque
+téléphone saisit un nom puis tape « Toc ! », son score arrive sur sa tuile (couleur de l'équipe),
+« Nouvelle manche » repart vers tous, le menu d'une tuile envoie un défi à ce seul téléphone ou le
+retire, « Fermer les inscriptions » bloque les codes, « Terminer la partie » publie la sortie
+(classement et manches) et termine les téléphones. Publier d'abord le récepteur (slug
+`ecran-recepteur`, en lien), puis la régie, et lancer la régie en `interactive`. Les kits `regie`
+et `appareil` construisent le même couple avec d'autres libellés.
 
 **Budget du store** — une action qui dépasse le budget du store est ignorée, et l'écran qui l'a
 sautée n'est plus synchrone : le viewer donne 50 ms au store du flux déclaré dans `data.stores` ;

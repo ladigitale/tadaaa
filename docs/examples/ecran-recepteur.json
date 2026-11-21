@@ -1,0 +1,317 @@
+{
+ "schema": "artifacts/1",
+ "title": "Écran récepteur",
+ "defaultView": "ecran",
+ "page": {
+  "nav": "none"
+ },
+ "data": {
+  "stores": {
+   "ecran": {
+    "budgetMs": 50,
+    "initial": {
+     "phase": "live",
+     "etape": "nom",
+     "nom": "",
+     "equipe": "",
+     "score": 0,
+     "manche": 1,
+     "n": 0,
+     "outbox": [],
+     "notice": null
+    },
+    "reducer": "(\n  $t := $action.type;\n  $p := $action.payload;\n  $n := $state.n + 1;\n  $envoi := function($s) { [{\"id\": \"e\" & $string($n), \"data\": {\"nom\": $s.nom, \"score\": $s.score}}] };\n  $t = 'io:input'\n    ? $merge([$state, {\"equipe\": $p.equipe ? $p.equipe : \"\"}])\n  : $t = 'rejoindre'\n    ? (\n        $nom := $substring($trim($state.nom ? $state.nom : \"\"), 0, 20);\n        $nom = \"\"\n          ? $merge([$state, {\"n\": $n, \"notice\": {\"text\": \"Choisis un nom pour rejoindre la partie.\", \"status\": \"warning\", \"n\": $n}}])\n          : (\n              $s := $merge([$state, {\"nom\": $nom, \"etape\": \"jeu\", \"n\": $n}]);\n              $merge([$s, {\"outbox\": $envoi($s)}])\n            )\n      )\n  : $t = 'tap' and $state.etape = 'jeu'\n    ? ($s := $merge([$state, {\"score\": $state.score + 1, \"n\": $n}]); $merge([$s, {\"outbox\": $envoi($s)}]))\n  : $t = 'manche'\n    ? (\n        $s := $merge([$state, {\"score\": 0, \"manche\": $p.n, \"n\": $n, \"notice\": {\"text\": \"Manche \" & $string($p.n) & \" : c'est reparti !\", \"status\": \"info\", \"n\": $n}}]);\n        $state.etape = 'jeu' ? $merge([$s, {\"outbox\": $envoi($s)}]) : $s\n      )\n  : $t = 'defi'\n    ? $merge([$state, {\"n\": $n, \"notice\": {\"text\": $p.texte, \"label\": \"Défi\", \"status\": \"warning\", \"n\": $n}}])\n  : $t = 'fin'\n    ? $merge([$state, {\"etape\": \"fin\", \"phase\": \"done\", \"n\": $n}])\n  : $t = 'emit:ok'\n    ? $merge([$state, {\"outbox\": [$filter($state.outbox, function($i) { $i.id != $p.id })]}])\n  : $t = 'finish' ? $merge([$state, {\"etape\": \"fin\", \"phase\": \"done\"}])\n  : $state\n)"
+   }
+  }
+ },
+ "views": [
+  {
+   "id": "ecran",
+   "title": "Écran",
+   "root": {
+    "nodes": [
+     {
+      "tagName": "sonic-notify",
+      "attributes": {
+       "watch": "ecran.notice",
+       "status": "info"
+      }
+     },
+     {
+      "tagName": "div",
+      "attributes": {
+       "style": "max-width:26rem;margin:1rem auto;padding:0 1rem;display:grid;gap:1rem;text-align:center"
+      },
+      "nodes": [
+       {
+        "tagName": "sonic-states",
+        "attributes": {
+         "dataProvider": "ecran",
+         "data-path": "etape"
+        },
+        "nodes": [
+         {
+          "tagName": "template",
+          "attributes": {
+           "data-value": "^nom$"
+          },
+          "nodes": [
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:grid;gap:1rem;text-align:left"
+            },
+            "nodes": [
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "font-size:1.4rem;font-weight:800;text-align:center"
+              },
+              "textContent": "Écran récepteur"
+             },
+             {
+              "tagName": "sonic-fieldset",
+              "attributes": {
+               "label": "Ton nom"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-form-layout",
+                "nodes": [
+                 {
+                  "tagName": "sonic-input",
+                  "attributes": {
+                   "formDataProvider": "ecran",
+                   "name": "nom",
+                   "label": "Nom",
+                   "autocomplete": "nickname",
+                   "maxlength": "20"
+                  }
+                 },
+                 {
+                  "tagName": "sonic-form-actions",
+                  "nodes": [
+                   {
+                    "tagName": "sonic-action",
+                    "attributes": {
+                     "target": "ecran",
+                     "type": "rejoindre"
+                    },
+                    "nodes": [
+                     {
+                      "tagName": "sonic-button",
+                      "attributes": {
+                       "type": "primary"
+                      },
+                      "nodes": [
+                       {
+                        "tagName": "span",
+                        "textContent": "Rejoindre"
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "tagName": "template",
+          "attributes": {
+           "data-value": "^jeu$"
+          },
+          "nodes": [
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:grid;gap:1rem"
+            },
+            "nodes": [
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "font-size:1.1rem"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "ecran",
+                 "key": "nom",
+                 "style": "font-weight:800"
+                }
+               },
+               {
+                "tagName": "span",
+                "textContent": " · manche "
+               },
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "ecran",
+                 "key": "manche",
+                 "style": "font-weight:800"
+                }
+               }
+              ]
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "font-size:5rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "ecran",
+                 "key": "score"
+                }
+               }
+              ]
+             },
+             {
+              "tagName": "sonic-action",
+              "attributes": {
+               "target": "ecran",
+               "type": "tap"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-button",
+                "attributes": {
+                 "type": "primary",
+                 "shape": "block",
+                 "size": "2xl",
+                 "style": "min-height:9rem"
+                },
+                "nodes": [
+                 {
+                  "tagName": "span",
+                  "textContent": "Toc !"
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "tagName": "template",
+          "attributes": {
+           "data-value": "^fin$"
+          },
+          "nodes": [
+           {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:grid;gap:.6rem;padding-top:2rem"
+            },
+            "nodes": [
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "font-size:1.5rem;font-weight:800"
+              },
+              "textContent": "Partie terminée"
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "font-size:1.1rem"
+              },
+              "nodes": [
+               {
+                "tagName": "span",
+                "textContent": "Ton dernier score : "
+               },
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "ecran",
+                 "key": "score",
+                 "style": "font-weight:800"
+                }
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "io": {
+  "title": "Écran récepteur",
+  "description": "Écran d'une régie (kit regie) : nom puis bouton ; envoie {nom, score} par sa file, reçoit manche, defi, fin.",
+  "modes": [
+   "interactive",
+   "embed"
+  ],
+  "input": {
+   "schema": {
+    "type": "object",
+    "properties": {
+     "equipe": {
+      "type": "string"
+     }
+    }
+   },
+   "store": "ecran"
+  },
+  "output": {
+   "schema": {
+    "type": "integer"
+   },
+   "from": "ecran.score",
+   "when": "phase = 'done'"
+  },
+  "stream": {
+   "store": "ecran",
+   "actions": {
+    "manche": {
+     "schema": {
+      "type": "object",
+      "properties": {
+       "n": {
+        "type": "integer"
+       }
+      }
+     }
+    },
+    "defi": {
+     "schema": {
+      "type": "object",
+      "properties": {
+       "texte": {
+        "type": "string"
+       }
+      }
+     }
+    },
+    "fin": {},
+    "finish": {}
+   },
+   "rate": 30,
+   "emit": {
+    "from": "ecran.outbox",
+    "ack": "ecran"
+   }
+  }
+ }
+}

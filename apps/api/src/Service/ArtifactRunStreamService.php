@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\ArtifactRun;
 use App\Entity\User;
 use App\Event\ArtifactRunEmitted;
+use App\Event\ArtifactRunPairOps;
 use App\Event\ArtifactRunSeen;
 use App\Repository\ArtifactRunRepository;
 use App\Webhook\WebhookEventType;
@@ -264,7 +265,8 @@ final class ArtifactRunStreamService
     }
 
     /**
-     * Messages du viewer qui exécute le run (jeton du run) : progress, snapshot.
+     * Messages du viewer qui exécute le run (jeton du run) : progress, snapshot, emit (file d'envoi,
+     * commandes d'appairage comprises), alive / bye.
      *
      * @return array<string, mixed>
      */
@@ -280,6 +282,8 @@ final class ArtifactRunStreamService
         $progress = null;
         $emitted = [];
         $seen = null;
+        $ops = [];
+        $locked = null;
         foreach ($list as $i => $raw) {
             [$msg, $errors] = ArtifactStream::normalizeOut($raw);
             if ($msg === null) {
@@ -296,6 +300,15 @@ final class ArtifactRunStreamService
                 $current = $run->getStreamSnapshot();
                 if (!$current instanceof \stdClass || ($current->seq ?? -1) <= $msg->seq) {
                     $run->setStreamSnapshot(['seq' => $msg->seq, 'state' => $msg->state, 'at' => self::nowMs()]);
+                }
+                continue;
+            }
+            if ($msg->type === 'emit' && isset($msg->op)) {
+                // Commande d'appairage dans la file d'envoi : fermer / rouvrir les inscriptions, retirer un appareil.
+                if ($msg->op === 'kick') {
+                    $ops[] = $msg;
+                } else {
+                    $locked = $msg->op === 'lock';
                 }
                 continue;
             }
@@ -330,7 +343,10 @@ final class ArtifactRunStreamService
         if ($seen !== null) {
             $meta['seen'] = $seen;
         }
-        if ($relay !== [] || $seen !== null) {
+        if ($locked !== null) {
+            $meta['pairLocked'] = $locked;
+        }
+        if ($relay !== [] || $seen !== null || $locked !== null) {
             $run->setStreamMeta($meta);
         }
         $this->em->flush();
@@ -343,6 +359,9 @@ final class ArtifactRunStreamService
         if ($emitted !== []) {
             // Liens entre runs : renvoyés dans les flux cibles (erreurs consignées sur le lien).
             $this->events->dispatch(new ArtifactRunEmitted($run, $emitted));
+        }
+        if ($ops !== []) {
+            $this->events->dispatch(new ArtifactRunPairOps($run, $ops));
         }
         if ($hook) {
             $this->webhooks->dispatch($run->getArtifact()->getDataset(), WebhookEventType::ARTIFACT_RUN_PROGRESS, [

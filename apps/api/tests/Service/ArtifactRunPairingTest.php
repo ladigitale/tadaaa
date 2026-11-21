@@ -50,6 +50,25 @@ final class ArtifactRunPairingTest extends TestCase
         self::assertContains('/io/stream/pair/map', $paths(self::check(['store' => 'scene', 'actions' => ['a'], 'pair' => ['remote' => 'r', 'map' => str_repeat('x', ArtifactStream::MAX_PAIR_MAP + 1)]])));
     }
 
+    public function testPairRoles(): void
+    {
+        $stream = ['store' => 'scene', 'actions' => ['vote'], 'emit' => ['from' => 'out.q', 'ack' => 'out'], 'pair' => [
+            ['role' => 'rouge', 'remote' => 'ecran', 'back' => 'data', 'input' => ['equipe' => 'rouge'], 'max' => 4],
+            ['role' => 'bleu', 'remote' => 'ecran', 'back' => 'data', 'input' => ['equipe' => 'bleu']],
+        ]];
+        self::assertSame([], self::check($stream));
+        self::assertSame(['rouge', 'bleu'], array_keys(ArtifactStream::pairEntries($stream)));
+        self::assertSame([['role' => 'rouge', 'remote' => 'ecran', 'max' => 4], ['role' => 'bleu', 'remote' => 'ecran', 'max' => ArtifactStream::DEFAULT_PAIRS]], ArtifactStream::describe($stream)['pair']);
+        self::assertSame([''], array_keys(ArtifactStream::pairEntries(['pair' => ['remote' => 'ecran']])));
+
+        $paths = static fn (array $errors): array => array_column($errors, 'path');
+        $base = ['store' => 'scene', 'actions' => ['a']];
+        self::assertContains('/io/stream/pair/0/role', $paths(self::check($base + ['pair' => [['remote' => 'r']]])), 'rôle obligatoire dans une liste');
+        self::assertContains('/io/stream/pair/1/role', $paths(self::check($base + ['pair' => [['role' => 'a', 'remote' => 'r'], ['role' => 'a', 'remote' => 'r']]])), 'rôle en double');
+        self::assertContains('/io/stream/pair/role', $paths(self::check($base + ['pair' => ['role' => 'a', 'remote' => 'r']])), 'pas de rôle dans la forme objet');
+        self::assertContains('/io/stream/pair', $paths(self::check($base + ['pair' => array_fill(0, 5, ['role' => 'x', 'remote' => 'r'])])), '4 rôles au plus');
+    }
+
     public function testCodes(): void
     {
         $seen = [];
