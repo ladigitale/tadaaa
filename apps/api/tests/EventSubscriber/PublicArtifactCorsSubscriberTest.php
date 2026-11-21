@@ -40,16 +40,21 @@ final class PublicArtifactCorsSubscriberTest extends TestCase
         self::assertNull($response->headers->get('Access-Control-Allow-Credentials'));
     }
 
-    public function testPreflightAllowsIntakeWithoutAuthorization(): void
+    public function testPreflightAllowsPublicWritesFromAnyOrigin(): void
     {
         $preflight = new Response('', Response::HTTP_OK, ['Access-Control-Allow-Headers' => 'Content-Type, Authorization']);
         $response = $this->dispatch($this->request('/api/public/artifacts/mon-jeu/collections/scores/records', 'OPTIONS'), $preflight);
         self::assertSame('*', $response->headers->get('Access-Control-Allow-Origin'));
         self::assertSame('GET, POST, DELETE, OPTIONS', $response->headers->get('Access-Control-Allow-Methods'));
-        self::assertStringNotContainsString('Authorization', (string) $response->headers->get('Access-Control-Allow-Headers'));
+        // Authorization : jeton d'émission des flux de runs (…/runs/{id}/events) ; X-Place-Token : retrait d'un lieu
+        // ou d'un message par l'appareil qui l'a posé. Jamais de cookies (pas d'Allow-Credentials).
+        $headers = (string) $response->headers->get('Access-Control-Allow-Headers');
+        self::assertStringContainsString('Content-Type', $headers);
+        self::assertStringContainsString('X-Place-Token', $headers);
+        self::assertNull($response->headers->get('Access-Control-Allow-Credentials'));
     }
 
-    public function testRoomsAreReachableFromAnyOriginWithoutAuthorizationHeader(): void
+    public function testRoomsAreReachableFromAnyOrigin(): void
     {
         // Salons (sonic-p2p) : l'identité du participant est dans le corps JSON, jamais en en-tête.
         $get = $this->dispatch($this->request('/api/public/artifacts/mon-jeu/rooms'));
@@ -59,7 +64,7 @@ final class PublicArtifactCorsSubscriberTest extends TestCase
         $response = $this->dispatch($this->request('/api/public/artifacts/mon-jeu/rooms/join', 'OPTIONS'), $preflight);
         self::assertSame('*', $response->headers->get('Access-Control-Allow-Origin'));
         self::assertStringContainsString('POST', (string) $response->headers->get('Access-Control-Allow-Methods'));
-        self::assertStringNotContainsString('Authorization', (string) $response->headers->get('Access-Control-Allow-Headers'));
+        self::assertNull($response->headers->get('Access-Control-Allow-Credentials'));
     }
 
     public function testKeepsNelmioHeadersForConfiguredOrigins(): void

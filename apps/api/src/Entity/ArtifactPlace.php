@@ -61,6 +61,10 @@ class ArtifactPlace
     #[ORM\Column]
     private int $reports = 0;
 
+    /** Messages visibles de la discussion du lieu (ArtifactPlaceMessage). */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $messageCount = 0;
+
     #[ORM\Column]
     private bool $hidden = false;
 
@@ -97,6 +101,8 @@ class ArtifactPlace
     public function getAuthor(): ?User { return $this->author; }
     public function setAuthor(?User $author): void { $this->author = $author; }
     public function getReports(): int { return $this->reports; }
+    public function getMessageCount(): int { return $this->messageCount; }
+    public function addMessages(int $n): void { $this->messageCount = max(0, $this->messageCount + $n); }
     public function isHidden(): bool { return $this->hidden; }
     public function setHidden(bool $hidden): void { $this->hidden = $hidden; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }

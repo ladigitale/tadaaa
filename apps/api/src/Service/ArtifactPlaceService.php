@@ -6,8 +6,10 @@ namespace App\Service;
 
 use App\Entity\Artifact;
 use App\Entity\ArtifactPlace;
+use App\Entity\ArtifactPlaceMessage;
 use App\Entity\ArtifactVisibility;
 use App\Entity\User;
+use App\Repository\ArtifactPlaceMessageRepository;
 use App\Repository\ArtifactPlaceRepository;
 use App\Repository\ArtifactRepository;
 use App\Repository\ArtifactVersionRepository;
@@ -38,6 +40,9 @@ final class ArtifactPlaceService
     public const DAILY_PER_IP = 40;
     /** Surfaces de remplacement gardées par lieu (sonic-anchor en lit autant). */
     public const MAX_EXTRA_REFS = 4;
+    /** Discussion d'un lieu : messages servis (les plus récents), plafond quotidien par réseau et par artefact. */
+    public const THREAD_LIMIT = 100;
+    public const DAILY_MESSAGES_PER_IP = 200;
     public const HIDE_AT = 3;
     private const SUMMARY_KEYS = 16;
     /** Carte : au-delà, groupes par case de grille (MAP_GRID × MAP_GRID cases sur la zone). */
@@ -49,6 +54,7 @@ final class ArtifactPlaceService
         private readonly ArtifactRepository $artifacts,
         private readonly ArtifactVersionRepository $versions,
         private readonly ArtifactPlaceRepository $places,
+        private readonly ArtifactPlaceMessageRepository $messages,
         private readonly DatasetAccessService $access,
         private readonly EntityManagerInterface $em,
     ) {
@@ -212,6 +218,134 @@ final class ArtifactPlaceService
         return ['refs' => \is_array($refs) ? \count($refs) : 0, 'sizeBytes' => $size];
     }
 
+    /**
+     * Discussion d'un lieu : le message posé avec le lieu (`body.message`) en tête, puis les messages des visiteurs.
+     *
+     * @return array{place: string, messages: list<array<string, mixed>>, count: int}
+     */
+    public function thread(string $slug, ?string $linkToken, string $collection, string $id, ?User $user): array
+    {
+        [$artifact] = $this->open($slug, $linkToken, $user, $collection);
+        $p = $this->find($artifact, $collection, $id);
+        if ($p->isHidden()) {
+            throw new NotFoundHttpException('Lieu introuvable.');
+        }
+        $out = [];
+        $at = $p->getCreatedAt()->format(\DateTimeInterface::ATOM);
+        $body = $p->getBody();
+        // Ce qui a été posé avec le lieu ouvre la discussion (média inclus : deux au plus).
+        if (\is_string($body['message'] ?? null) && trim($body['message']) !== '' && ($body['effet'] ?? 'message') !== 'dessin') {
+            $out[] = ['id' => 'origine', 'kind' => 'text', 'text' => mb_substr($body['message'], 0, ArtifactPlaceMessage::MAX_TEXT), 'pseudo' => null, 'at' => $at, 'origin' => true];
+        }
+        if (self::mediaKind($body['dessin'] ?? null) === 'drawing') {
+            $out[] = ['id' => 'origine-dessin', 'kind' => 'drawing', 'text' => '', 'pseudo' => null, 'at' => $at, 'origin' => true, 'media' => $body['dessin'], 'cadre' => $body['cadreDessin'] ?? null];
+        }
+        if (self::mediaKind($body['voix'] ?? null) === 'voice') {
+            $out[] = ['id' => 'origine-voix', 'kind' => 'voice', 'text' => '', 'pseudo' => null, 'at' => $at, 'origin' => true, 'media' => $body['voix']];
+        }
+        foreach ($this->messages->latestFor($p, self::THREAD_LIMIT) as $m) {
+            $row = ['id' => $m->getId()->toRfc4122(), 'kind' => $m->getKind(), 'text' => $m->getText(), 'pseudo' => $m->getPseudo(), 'at' => $m->getCreatedAt()->format(\DateTimeInterface::ATOM)];
+            if ($m->getMedia() !== null) {
+                $row['hasMedia'] = true;
+            }
+            $out[] = $row;
+        }
+
+        return ['place' => $p->getId()->toRfc4122(), 'messages' => $out, 'count' => $p->getMessageCount()];
+    }
+
+    /** Média d'un message (vocal ou dessin), servi à part pour que la liste reste légère. @return array{id: string, kind: string, media: string} */
+    public function messageMedia(string $slug, ?string $linkToken, string $collection, string $id, string $messageId, ?User $user): array
+    {
+        [$artifact] = $this->open($slug, $linkToken, $user, $collection);
+        $p = $this->find($artifact, $collection, $id);
+        $m = Uuid::isValid($messageId) ? $this->messages->find(Uuid::fromString($messageId)) : null;
+        if ($m === null || $m->isHidden() || $p->isHidden() || !$m->getPlace()->getId()->equals($p->getId()) || $m->getMedia() === null) {
+            throw new NotFoundHttpException('Média introuvable.');
+        }
+
+        return ['id' => $m->getId()->toRfc4122(), 'kind' => $m->getKind(), 'media' => $m->getMedia()];
+    }
+
+    /** voice | drawing pour une data: URL base64 acceptée, sinon null. */
+    public static function mediaKind(mixed $v): ?string
+    {
+        if (!\is_string($v) || \strlen($v) > ArtifactPlaceMessage::MAX_MEDIA) {
+            return null;
+        }
+        if (preg_match('#^data:image/(svg\+xml|png|jpeg|webp)(;[a-z0-9=.-]+)*(;base64)?,#i', $v) === 1) {
+            return 'drawing';
+        }
+        if (preg_match('#^data:audio/(webm|ogg|mp4|mpeg|wav|aac|x-m4a)(;[a-z0-9=.-]+)*;base64,#i', $v) === 1) {
+            return 'voice';
+        }
+
+        return null;
+    }
+
+    /** @return array{id: string, deleteToken: string, at: string} */
+    public function postMessage(string $slug, ?string $linkToken, string $collection, string $id, mixed $text, mixed $pseudo, ?User $user, string $ip, mixed $media = null): array
+    {
+        [$artifact] = $this->open($slug, $linkToken, $user, $collection);
+        $p = $this->find($artifact, $collection, $id);
+        if ($p->isHidden()) {
+            throw new NotFoundHttpException('Lieu introuvable.');
+        }
+        $text = \is_string($text) ? trim(preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $text) ?? '') : '';
+        $kind = 'text';
+        if ($media !== null && $media !== '') {
+            $kind = self::mediaKind($media);
+            if ($kind === null) {
+                throw new BadRequestHttpException(sprintf('media : vocal (data:audio/…;base64) ou dessin (data:image/…) de %d Ko au plus.', intdiv(ArtifactPlaceMessage::MAX_MEDIA, 1024)));
+            }
+        } elseif ($text === '') {
+            throw new BadRequestHttpException('text : message vide.');
+        }
+        if (mb_strlen($text) > ArtifactPlaceMessage::MAX_TEXT) {
+            throw new BadRequestHttpException(sprintf('Message trop long (%d caractères au plus).', ArtifactPlaceMessage::MAX_TEXT));
+        }
+        $pseudo = \is_string($pseudo) ? trim(preg_replace('/[\x00-\x1F\x7F]/u', '', $pseudo) ?? '') : '';
+        $pseudo = $pseudo === '' ? null : mb_substr($pseudo, 0, ArtifactPlaceMessage::MAX_PSEUDO);
+        $ipHash = hash('sha256', $artifact->getId()->toRfc4122().'|'.$ip);
+        if ($this->messages->countRecentByIp($p, $ipHash, new \DateTimeImmutable('-1 day')) >= self::DAILY_MESSAGES_PER_IP) {
+            throw new TooManyRequestsHttpException(3600, 'Trop de messages aujourd’hui depuis ce réseau.');
+        }
+        $token = rtrim(strtr(base64_encode(random_bytes(24)), '+/', '-_'), '=');
+        $m = new ArtifactPlaceMessage($p, $kind, $text, $kind === 'text' ? null : (string) $media, $pseudo, $ipHash, hash('sha256', $token));
+        $p->addMessages(1);
+        $this->em->persist($m);
+        $this->em->flush();
+
+        return ['id' => $m->getId()->toRfc4122(), 'kind' => $kind, 'deleteToken' => $token, 'at' => $m->getCreatedAt()->format(\DateTimeInterface::ATOM)];
+    }
+
+    /** Signale un message (masqué au 3e signalement) ; ou le retire, avec le jeton de l'appareil qui l'a posé. */
+    public function moderateMessage(string $slug, ?string $linkToken, string $collection, string $id, string $messageId, ?string $deleteToken, ?User $user): void
+    {
+        [$artifact] = $this->open($slug, $linkToken, $user, $collection);
+        $p = $this->find($artifact, $collection, $id);
+        $m = Uuid::isValid($messageId) ? $this->messages->find(Uuid::fromString($messageId)) : null;
+        if ($m === null || !$m->getPlace()->getId()->equals($p->getId())) {
+            throw new NotFoundHttpException('Message introuvable.');
+        }
+        $wasVisible = !$m->isHidden();
+        if ($deleteToken !== null && $deleteToken !== '') {
+            if (!hash_equals($m->getDeleteTokenHash(), hash('sha256', $deleteToken)) && !$this->isModerator($artifact, $user)) {
+                throw new AccessDeniedHttpException('Seul l’auteur ou un membre de l’artefact peut retirer ce message.');
+            }
+            $this->em->remove($m);
+            if ($wasVisible) {
+                $p->addMessages(-1);
+            }
+        } else {
+            $m->report(self::HIDE_AT);
+            if ($wasVisible && $m->isHidden()) {
+                $p->addMessages(-1);
+            }
+        }
+        $this->em->flush();
+    }
+
     /** @return array{reports: int, hidden: bool} */
     public function report(string $slug, ?string $linkToken, string $collection, string $id, ?User $user): array
     {
@@ -303,6 +437,7 @@ final class ArtifactPlaceService
             'lon' => $p->getLon(),
             'createdAt' => $p->getCreatedAt()->format(\DateTimeInterface::ATOM),
             'sizeBytes' => $p->getSizeBytes(),
+            'messages' => $p->getMessageCount(),
         ];
         if ($distance !== null) {
             $row['distance'] = round($distance, 1);
