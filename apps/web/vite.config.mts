@@ -2,7 +2,7 @@ import {defineConfig} from "vite";
 import concordeConf, {autoRoutesPlugin} from "@supersoniks/concorde/vite-config";
 import basicSsl from "@vitejs/plugin-basic-ssl";
 import path from "path";
-import tsConfig from "./tsconfig.json";
+import tsConfig from "./tsconfig.json" with {type: "json"};
 import postcssLit from "rollup-plugin-postcss-lit";
 import {demoApiVitePlugin} from "./scripts/demo-api-vite-plugin";
 
@@ -50,7 +50,7 @@ const config = {
   ],
   resolve: {
     alias: {
-      "@tailwind": path.resolve(__dirname, "./src/css/tailwind.ts"),
+      "@tailwind": path.resolve(import.meta.dirname, "./src/css/tailwind.ts"),
     },
   },
 };

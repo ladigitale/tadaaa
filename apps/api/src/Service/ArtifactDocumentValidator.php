@@ -324,7 +324,7 @@ final class ArtifactDocumentValidator
     /** @var array<string, true> */
     private array $allowedTagSet;
 
-    private const DEFAULT_CONCORDE_VERSION = '5.1.3';
+    private const DEFAULT_CONCORDE_VERSION = '7.0.1';
 
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
     /** Compétences (config/artifacts/skills/*.md) : servies à la demande par rules=["design", "<archétype>"], jamais par défaut. */
