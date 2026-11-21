@@ -48,7 +48,11 @@ final class ArtifactRunLinkService
     }
 
     /** @return array<string, mixed> */
-    public function create(User $user, string $fromRunId, string $toRunId, ?string $map): array
+    /**
+     * @param ?int $maxFrom limite des liens actifs depuis la source (défaut {@see self::MAX_LINKS_PER_RUN} ;
+     *                      l'appairage la porte au nombre de places déclarées)
+     */
+    public function create(User $user, string $fromRunId, string $toRunId, ?string $map, ?int $maxFrom = null): array
     {
         $from = $this->writableRun($user, $fromRunId, 'fromRunId');
         $to = $this->writableRun($user, $toRunId, 'toRunId');
@@ -66,8 +70,9 @@ final class ArtifactRunLinkService
         if (!ArtifactStream::accepts($to->getIo() ?? [])) {
             throw new BadRequestHttpException(sprintf('« %s » n’accepte aucun message (io.stream : actions, state, document ou score).', $to->getArtifact()->getSlug()));
         }
-        if ($this->links->countActiveFrom($from) >= self::MAX_LINKS_PER_RUN) {
-            throw new ConflictHttpException(sprintf('%d liens actifs au plus par run source.', self::MAX_LINKS_PER_RUN));
+        $limit = $maxFrom ?? self::MAX_LINKS_PER_RUN;
+        if ($this->links->countActiveFrom($from) >= $limit) {
+            throw new ConflictHttpException(sprintf('%d liens actifs au plus par run source.', $limit));
         }
         $map = $map !== null && trim($map) !== '' ? trim($map) : null;
         if ($map !== null) {
@@ -105,7 +110,11 @@ final class ArtifactRunLinkService
         return array_map(static fn (ArtifactRunLink $l): array => $l->serialize(), $this->links->findForRun($run));
     }
 
-    /** Éléments publiés par la file d'envoi d'un run : renvoyés par ses liens actifs. */
+    /**
+     * Éléments publiés par la file d'envoi d'un run : renvoyés par ses liens actifs. Un élément qui
+     * porte `to` (runIds) ne part que vers ces runs ; `map` n'est évalué qu'une fois par expression
+     * (une régie qui diffuse vers 30 écrans ne refait pas 30 fois le même calcul).
+     */
     #[AsEventListener]
     public function onEmitted(ArtifactRunEmitted $event): void
     {
@@ -113,14 +122,26 @@ final class ArtifactRunLinkService
             return;
         }
         $from = $event->run;
+        /** @var array<string, list<list<\stdClass>>> $byMap messages par élément, par expression map */
+        $byMap = [];
         foreach ($this->links->findActiveFrom($from) as $link) {
             $to = $link->getToRun();
             if ($to->getStatus() !== ArtifactRun::STATUS_PENDING || $to->isExpired() || $to->isStreamEnded()) {
                 $link->deactivate();
                 continue;
             }
+            $target = $to->getId()->toRfc4122();
+            $mine = self::itemsFor($event->items, $target);
+            if ($mine === []) {
+                continue;
+            }
             try {
-                $messages = $this->transform($link, $event->items);
+                $key = $link->getMap() ?? '';
+                $byMap[$key] ??= $this->transformEach($link, $event->items);
+                $messages = [];
+                foreach ($mine as $i) {
+                    array_push($messages, ...$byMap[$key][$i]);
+                }
                 foreach (array_chunk($messages, ArtifactStream::MAX_BATCH) as $chunk) {
                     $this->streams->emitFromLink($to, $chunk);
                 }
@@ -139,11 +160,37 @@ final class ArtifactRunLinkService
     }
 
     /**
+     * Rangs des éléments destinés à un run : sans `to`, à tous ; avec `to`, aux runs listés.
+     *
+     * @param list<\stdClass> $items éléments {id, data, to?}
+     *
+     * @return list<int>
+     */
+    public static function itemsFor(array $items, string $runId): array
+    {
+        $runId = strtolower($runId);
+
+        return array_keys(array_filter($items, static fn (\stdClass $i): bool => !isset($i->to) || \in_array($runId, (array) $i->to, true)));
+    }
+
+    /**
      * @param list<\stdClass> $items éléments {id, data}
      *
      * @return list<\stdClass> messages pour le flux cible
      */
     public function transform(ArtifactRunLink $link, array $items): array
+    {
+        return array_merge(...array_values($this->transformEach($link, $items)) ?: [[]]);
+    }
+
+    /**
+     * Messages produits par chaque élément (même ordre que `$items`).
+     *
+     * @param list<\stdClass> $items éléments {id, data}
+     *
+     * @return list<list<\stdClass>>
+     */
+    private function transformEach(ArtifactRunLink $link, array $items): array
     {
         $from = $link->getFromRun();
         $context = array_map(static fn (\stdClass $i): \stdClass => (object) [
@@ -153,23 +200,30 @@ final class ArtifactRunLinkService
         ], $items);
 
         if ($link->getMap() === null) {
-            $results = array_map(static fn (\stdClass $c): mixed => $c->data, $context);
-        } else {
-            $eval = $this->jsonata->evaluate(['map' => self::wrap($link->getMap())], (object) ['items' => $context]);
-            if ($eval['errors'] !== []) {
-                throw new BadRequestHttpException('map (JSONata) : '.$eval['errors'][0]['message']);
-            }
-            $results = $eval['results']['map'] ?? [];
-            $results = \is_array($results) ? $results : [$results];
+            return array_map(static fn (\stdClass $c): array => self::flatten([$c->data]), $context);
+        }
+        $eval = $this->jsonata->evaluate(['map' => self::wrap($link->getMap())], (object) ['items' => $context]);
+        if ($eval['errors'] !== []) {
+            throw new BadRequestHttpException('map (JSONata) : '.$eval['errors'][0]['message']);
+        }
+        $results = $eval['results']['map'] ?? [];
+        $results = \is_array($results) ? $results : [$results];
+        $out = [];
+        foreach (array_keys($items) as $i) {
+            $r = $results[$i] ?? null;
+            $out[] = self::flatten([$r instanceof \stdClass && property_exists($r, 'r') ? $r->r : null]);
         }
 
-        return self::flatten($results);
+        return $out;
     }
 
-    /** Applique `map` à chaque élément ; le résultat est toujours une liste (un élément = une entrée). */
+    /**
+     * Applique `map` à chaque élément : une entrée {r} par élément (r absent = rien à envoyer), pour
+     * garder l'ordre des éléments.
+     */
     private static function wrap(string $map): string
     {
-        return '$map(items, function($it) { $it.(' . $map . ') })';
+        return '$map(items, function($it) { {"r": $it.(' . $map . ')} })';
     }
 
     /** @return list<\stdClass> */

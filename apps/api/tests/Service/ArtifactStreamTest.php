@@ -237,6 +237,30 @@ final class ArtifactStreamTest extends TestCase
         self::assertNull($msg);
     }
 
+    public function testTargetedEmitAndPairOps(): void
+    {
+        $id = '01A1F29A-F242-76B7-A2E0-1D86F2D1A22F';
+        [$msg] = ArtifactStream::normalizeOut(self::obj('{"type":"emit","id":"m1","data":{"type":"end"},"to":"'.$id.'"}'));
+        self::assertSame([strtolower($id)], $msg->to);
+        [$msg, $errors] = ArtifactStream::normalizeOut(self::obj('{"type":"emit","id":"m1","data":{},"to":["pas-un-run"]}'));
+        self::assertNull($msg);
+        self::assertStringContainsString('to', $errors[0]);
+        [$msg, $errors] = ArtifactStream::normalizeOut(self::obj('{"type":"emit","id":"m1","data":{},"to":[]}'));
+        self::assertNull($msg);
+
+        [$msg] = ArtifactStream::normalizeOut(self::obj('{"type":"emit","id":"k1","op":"kick","runId":"'.$id.'"}'));
+        self::assertSame('kick', $msg->op);
+        self::assertSame(strtolower($id), $msg->runId);
+        self::assertObjectNotHasProperty('data', $msg);
+        [$msg] = ArtifactStream::normalizeOut(self::obj('{"type":"emit","id":"l1","op":"lock"}'));
+        self::assertSame('lock', $msg->op);
+        [$msg, $errors] = ArtifactStream::normalizeOut(self::obj('{"type":"emit","id":"k2","op":"kick"}'));
+        self::assertNull($msg);
+        self::assertStringContainsString('runId', $errors[0]);
+        [$msg] = ArtifactStream::normalizeOut(self::obj('{"type":"emit","id":"x","op":"detruire"}'));
+        self::assertNull($msg);
+    }
+
     public function testRunStreamTokens(): void
     {
         $run = (new \ReflectionClass(ArtifactRun::class))->newInstanceWithoutConstructor();

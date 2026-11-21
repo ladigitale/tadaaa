@@ -28,15 +28,16 @@ final class PublicArtifactPairController extends AbstractController
     ) {
     }
 
-    /** Code d'appairage d'un run hôte : {"rt": "<jeton du run>"}. */
+    /** Code d'appairage d'un run hôte : {"rt": "<jeton du run>", "role"?: "<rôle de io.stream.pair>"}. */
     #[Route('/runs/{runId}/pair', name: 'api_public_artifact_run_pair', requirements: ['runId' => '[0-9a-fA-F-]{36}'], methods: ['POST'])]
     public function issue(string $slug, string $runId, Request $request): JsonResponse
     {
         $this->consume($request);
         $body = json_decode($request->getContent() ?: 'null', true);
         $rt = \is_array($body) && \is_string($body['rt'] ?? null) ? $body['rt'] : '';
+        $role = \is_array($body) && \is_string($body['role'] ?? null) ? $body['role'] : null;
 
-        return $this->noStore($this->json($this->pairing->issue($slug, $runId, $rt)));
+        return $this->noStore($this->json($this->pairing->issue($slug, $runId, $rt, $role)));
     }
 
     /** Réclamer un code : lance le run de cet artefact, relié à l'écran qui a montré le code. */

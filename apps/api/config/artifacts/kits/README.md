@@ -16,6 +16,8 @@ Le sommaire des kits (une ligne par kit, avec la signature de ses paramètres) e
 | `sentinel` | Veille locale : un capteur (objet, visage, geste de la main, son) déclenche alerte, compteur et journal optionnel dans une collecte anonyme, via `sonic-trigger` | `presence`, `bruit`, `geste` |
 | `gestemidi` | Instrument gestuel : la main devant la caméra joue des notes (son interne `sonic-patch` et/ou sortie MIDI), via `sonic-motion` et `sonic-trigger` ; vitesse du geste = vélocité | `frappe`, `doigts`, `tenue` |
 | `direct` | Shader plein cadre piloté en direct par le flux d’un run (`io.stream`) : réglages `param0…3` (action `set`, `state.delta`, partitions), légende `#legende` (`document.patch`) | `plasma` |
+| `regie` | Régie appairée par QR à des téléphones (`io.stream.pair` à rôles : un QR par équipe) : tuile nom + score par écran, manches diffusées, défi ciblé (`to`), retrait (`kick`), inscriptions fermables (`lock`), classement en sortie | `deux-equipes`, `solo` |
+| `appareil` | Téléphone d'une régie : nom, gros bouton qui compte, score envoyé par la file d'envoi ; reçoit `manche`, `defi`, `fin` | — |
 
 ## Format d'un fichier `<id>.json`
 

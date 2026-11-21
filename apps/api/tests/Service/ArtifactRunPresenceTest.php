@@ -50,6 +50,22 @@ final class ArtifactRunPresenceTest extends TestCase
         self::assertSame($now - 1_000, $members[1]['seen']);
     }
 
+    public function testIndexStaysStableWhenADeviceLeaves(): void
+    {
+        $now = 1_000_000;
+        $host = self::run('regie', $now);
+        $a = self::run('ecran', $now - 1_000);
+        $b = self::run('ecran', $now - 1_000);
+        $c = self::run('ecran', $now - 1_000);
+        $la = new ArtifactRunLink($a, $host, null, null);
+        $lb = new ArtifactRunLink($b, $host, null, null);
+        $lc = new ArtifactRunLink($c, $host, null, null);
+        // b retiré : son lien n'est plus actif, c garde le rang 3.
+        $members = ArtifactRunPresenceService::members([$la, $lc], $host, $now, [$la, $lb, $lc], [$c->getId()->toRfc4122() => 'bleu']);
+        self::assertSame([1, 3], array_column($members, 'index'));
+        self::assertSame([null, 'bleu'], array_column($members, 'role'));
+    }
+
     public function testHeartbeatMessages(): void
     {
         foreach (['alive', 'bye'] as $type) {

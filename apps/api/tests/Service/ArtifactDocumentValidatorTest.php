@@ -797,7 +797,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
         $filtered = $this->validator->mcpCatalogPayload(true, null, ['__none__'], false);
         $encodedFiltered = json_encode($filtered, JSON_UNESCAPED_UNICODE);
         self::assertNotFalse($encodedFiltered);
-        self::assertLessThan(14_000, strlen($encodedFiltered));
+        self::assertLessThan(14_500, strlen($encodedFiltered));
 
         // Sans filtre : toutes les règles longues (a2ui, son, audio, media, physique, 3d, 2d, procgen, monde, monde2d, animation,
         // mobilier, appareil, salons, ia, collecte). Plafond large, pour repérer une dérive de taille (environ 101 400 octets
@@ -806,7 +806,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
         $payload = $this->validator->mcpCatalogPayload(true);
         $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE);
         self::assertNotFalse($encoded);
-        self::assertLessThan(156_000, strlen($encoded));
+        self::assertLessThan(162_000, strlen($encoded));
         self::assertArrayHasKey('commonProps', $payload['catalog']);
     }
 
@@ -882,7 +882,7 @@ final class ArtifactDocumentValidatorTest extends TestCase
 
         // Sommaire pour le prompt système : tous les composants et les thèmes de règles (~2,5k tokens).
         $index = $validator->catalogIndex();
-        self::assertLessThan(18_000, \strlen($index));
+        self::assertLessThan(18_500, \strlen($index));
         foreach (['sonic-button', 'sonic-store', 'sonic-physics', 'a2ui', 'chartjs', 'div', 'addon animation', 'addon device', 'addon p2p', 'addon bluetooth', 'animation, appareil, bluetooth, salons'] as $needle) {
             self::assertStringContainsString($needle, $index);
         }

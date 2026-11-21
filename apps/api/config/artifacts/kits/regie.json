@@ -1,0 +1,914 @@
+{
+ "id": "regie",
+ "title": "Régie multi-écrans (appairage par QR)",
+ "description": "Régie appairée par QR à des téléphones (un QR par équipe) : tuile nom + score par écran, manches, défi ciblé, retrait, inscriptions fermables, classement en sortie.",
+ "use": "jeu de salle à plusieurs téléphones ; publier d'abord un kit appareil (son slug = remote), puis la régie, run interactive",
+ "params": {
+  "type": "object",
+  "required": [
+   "title",
+   "remote",
+   "teams"
+  ],
+  "properties": {
+   "preset": {
+    "type": "string",
+    "enum": [
+     "deux-equipes",
+     "solo"
+    ]
+   },
+   "title": {
+    "type": "string",
+    "maxLength": 80
+   },
+   "remote": {
+    "type": "string",
+    "maxLength": 80,
+    "description": "slug de l'artefact appareil"
+   },
+   "teams": {
+    "type": "array",
+    "minItems": 1,
+    "maxItems": 4,
+    "description": "un QR par équipe",
+    "items": {
+     "type": "object",
+     "required": [
+      "role",
+      "label",
+      "titre",
+      "color"
+     ],
+     "properties": {
+      "role": {
+       "type": "string",
+       "maxLength": 24,
+       "description": "minuscules, chiffres, _ -"
+      },
+      "label": {
+       "type": "string",
+       "maxLength": 24,
+       "description": "nom court"
+      },
+      "titre": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "au-dessus du QR"
+      },
+      "color": {
+       "type": "string",
+       "maxLength": 7,
+       "description": "#rrggbb"
+      },
+      "max": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 32,
+       "default": 8
+      }
+     }
+    }
+   },
+   "defi": {
+    "type": "string",
+    "maxLength": 120,
+    "default": "10 tocs en 5 secondes, go !",
+    "description": "texte du bouton Défi"
+   },
+   "qrSize": {
+    "type": "integer",
+    "minimum": 100,
+    "maximum": 260,
+    "default": 150
+   },
+   "regarder": {
+    "type": "boolean",
+    "default": true,
+    "description": "QR spectateur"
+   }
+  }
+ },
+ "presets": {
+  "deux-equipes": {
+   "title": "Régie · écrans",
+   "remote": "ecran-recepteur",
+   "teams": [
+    {
+     "role": "rouge",
+     "label": "rouge",
+     "titre": "Équipe rouge",
+     "color": "#e5262a",
+     "max": 8
+    },
+    {
+     "role": "bleu",
+     "label": "bleue",
+     "titre": "Équipe bleue",
+     "color": "#2563eb",
+     "max": 8
+    }
+   ]
+  },
+  "solo": {
+   "title": "Régie",
+   "remote": "ecran-recepteur",
+   "teams": [
+    {
+     "role": "joueurs",
+     "label": "joueurs",
+     "titre": "Scannez pour jouer",
+     "color": "#0d9488",
+     "max": 16
+    }
+   ]
+  }
+ },
+ "document": {
+  "schema": "artifacts/1",
+  "title": {
+   "$param": "title"
+  },
+  "defaultView": "regie",
+  "page": {
+   "nav": "none"
+  },
+  "data": {
+   "stores": {
+    "regie": {
+     "budgetMs": 80,
+     "initial": {
+      "phase": "live",
+      "manche": 1,
+      "inscriptions": "ouvertes",
+      "fin": false,
+      "scores": {},
+      "noms": {},
+      "equipes": {},
+      "membres": [],
+      "tuiles": [],
+      "connectes": 0,
+      "seq": 0,
+      "outbox": [],
+      "totaux": {
+       "$eachKey": "teams",
+       "key": {
+        "$item": "role"
+       },
+       "template": 0
+      },
+      "record": 0,
+      "historique": [],
+      "notice": null,
+      "resultat": {
+       "manches": [],
+       "classement": []
+      },
+      "teams": {
+       "$each": "teams",
+       "template": {
+        "role": {
+         "$item": "role"
+        },
+        "label": {
+         "$item": "label"
+        }
+       }
+      },
+      "defiTexte": {
+       "$param": "defi"
+      }
+     },
+     "reducer": "(\n  $t := $action.type;\n  $p := $action.payload;\n  $seq := $state.seq + 1;\n  $nomDe := function($id) { $lookup($state.noms, $id) ? $lookup($state.noms, $id) : \"Un écran\" };\n  $equipeDe := function($id) { $lookup($state.equipes, $id) };\n  $diffuse := function($msg) { [{\"id\": \"m\" & $string($seq), \"data\": $msg}] };\n  $roleDe := function($r) { $r in $state.teams.role ? $r : $state.teams[0].role };\n  $bilan := function($s) {(\n    $lignes := [$map($s.membres, function($m) { {\"nom\": $lookup($s.noms, $m.runId) ? $lookup($s.noms, $m.runId) : \"Écran \" & $string($m.index), \"equipe\": $roleDe($m.role), \"score\": $exists($lookup($s.scores, $m.runId)) ? $lookup($s.scores, $m.runId) : 0} })];\n    {\"manche\": $s.manche, \"totaux\": $s.totaux, \"scores\": $lignes}\n  )};\n  $next := $t = 'presence'\n    ? (\n        $avant := $state.membres.runId;\n        $apres := $p.members.runId;\n        $partis := [$filter($avant, function($id) { $not($id in $apres) })];\n        $membres := $p.members ? [$sort([$p.members], function($a, $b) { $a.index > $b.index })] : [];\n        $equipes := $merge([$state.equipes, $merge([$map($membres, function($m) { {$m.runId: $roleDe($m.role)} })])]);\n        $merge([$state, {\"membres\": $membres, \"equipes\": $equipes, \"connectes\": $p.count ? $p.count : 0}, $count($partis) > 0\n          ? {\"seq\": $seq, \"notice\": {\"text\": $join([$map($partis, $nomDe)], \", \") & ($count($partis) > 1 ? \" sont partis.\" : \" est parti.\"), \"status\": \"info\", \"n\": $seq}}\n          : {}])\n      )\n  : $t = 'resultat'\n    ? (\n        $nouveau := $not($exists($lookup($state.noms, $p.id)));\n        $nom := $p.nom ? $p.nom : \"Un écran\";\n        $lab := $count($state.teams) > 1 ? $state.teams[role = $equipeDe($p.id)].label : \"\";\n        $merge([$state, {\"scores\": $merge([$state.scores, {$p.id: $p.score}]), \"noms\": $merge([$state.noms, {$p.id: $nom}])}, $nouveau\n          ? {\"seq\": $seq, \"notice\": {\"text\": $nom & ($lab ? \" rejoint l'équipe \" & $lab : \" rejoint la partie\") & \".\", \"status\": \"success\", \"n\": $seq}}\n          : {}])\n      )\n  : $t = 'manche'\n    ? $merge([$state, {\"historique\": $append($state.historique, [$bilan($state)]), \"manche\": $state.manche + 1, \"scores\": {}, \"seq\": $seq,\n        \"outbox\": $append($state.outbox, $diffuse({\"type\": \"action\", \"name\": \"manche\", \"payload\": {\"n\": $state.manche + 1}})),\n        \"notice\": {\"text\": \"Manche \" & $string($state.manche + 1) & \" lancée sur tous les écrans.\", \"status\": \"info\", \"n\": $seq}}])\n  : $t = 'defi'\n    ? $merge([$state, {\"seq\": $seq,\n        \"outbox\": $append($state.outbox, [{\"id\": \"d\" & $string($seq), \"to\": $p, \"data\": {\"type\": \"action\", \"name\": \"defi\", \"payload\": {\"texte\": $state.defiTexte}}}]),\n        \"notice\": {\"text\": \"Défi envoyé à \" & $nomDe($p) & \".\", \"status\": \"success\", \"n\": $seq}}])\n  : $t = 'retirer'\n    ? $merge([$state, {\"seq\": $seq,\n        \"outbox\": $append($state.outbox, [{\"id\": \"k\" & $string($seq), \"op\": \"kick\", \"runId\": $p}]),\n        \"notice\": {\"text\": $nomDe($p) & \" est retiré de la partie.\", \"status\": \"warning\", \"n\": $seq}}])\n  : $t = 'fermer'\n    ? $merge([$state, {\"inscriptions\": \"fermees\", \"seq\": $seq, \"outbox\": $append($state.outbox, [{\"id\": \"l\" & $string($seq), \"op\": \"lock\"}]),\n        \"notice\": {\"text\": \"Inscriptions fermées : les codes ne marchent plus.\", \"status\": \"info\", \"n\": $seq}}])\n  : $t = 'ouvrir'\n    ? $merge([$state, {\"inscriptions\": \"ouvertes\", \"seq\": $seq, \"outbox\": $append($state.outbox, [{\"id\": \"u\" & $string($seq), \"op\": \"unlock\"}]),\n        \"notice\": {\"text\": \"Inscriptions rouvertes.\", \"status\": \"info\", \"n\": $seq}}])\n  : $t = 'terminer' and $state.fin = false\n    ? $merge([$state, {\"fin\": true, \"historique\": $append($state.historique, [$bilan($state)]), \"seq\": $seq,\n        \"outbox\": $append($state.outbox, [{\"id\": \"fin\", \"data\": {\"type\": \"action\", \"name\": \"fin\"}}])}])\n  : $t = 'emit:ok'\n    ? $merge([$state, {\"outbox\": [$filter($state.outbox, function($i) { $i.id != $p.id })]}, $p.id = \"fin\" ? {\"phase\": \"done\"} : {}])\n  : $t = 'finish' ? $merge([$state, {\"phase\": \"done\"}])\n  : $state;\n  $sc := function($id) { $exists($lookup($next.scores, $id)) ? $lookup($next.scores, $id) : 0 };\n  $tuiles := [$map($next.membres, function($m) { {\n    \"runId\": $m.runId,\n    \"nom\": $lookup($next.noms, $m.runId) ? $lookup($next.noms, $m.runId) : \"Écran \" & $string($m.index),\n    \"score\": $string($sc($m.runId)),\n    \"t\": $roleDe($m.role)\n  } })];\n  $totaux := $merge([$map($next.teams, function($e) { {$e.role: $sum([$map([$filter($next.membres, function($m) { $roleDe($m.role) = $e.role })], function($m) { $sc($m.runId) })])} })]);\n  $classement := [$sort([$map($next.membres, function($m) { {\"nom\": $lookup($next.noms, $m.runId) ? $lookup($next.noms, $m.runId) : \"Écran \" & $string($m.index), \"equipe\": $roleDe($m.role), \"score\": $sc($m.runId)} })], function($a, $b) { $a.score < $b.score })];\n  $merge([$next, {\n    \"tuiles\": $tuiles, \"totaux\": $totaux,\n    \"record\": $max([$next.record, $map($next.membres, function($m) { $sc($m.runId) })]),\n    \"resultat\": {\"manches\": $next.historique, \"classement\": $classement}\n  }])\n)"
+    },
+    "dlg": {
+     "initial": {
+      "visible": false
+     },
+     "reducer": "$action.type = 'ouvrir' ? {\"visible\": true} : $action.type = 'fermer' ? {\"visible\": false} : $state"
+    }
+   }
+  },
+  "views": [
+   {
+    "id": "regie",
+    "title": "Régie",
+    "root": {
+     "nodes": [
+      {
+       "tagName": "sonic-notify",
+       "attributes": {
+        "watch": "regie.notice",
+        "status": "info"
+       }
+      },
+      {
+       "tagName": "sonic-jsonata",
+       "attributes": {
+        "inputProvider": "regie",
+        "outputProvider": "tuiles",
+        "expression": "$append([], $input.tuiles)"
+       }
+      },
+      {
+       "tagName": "sonic-jsonata",
+       "attributes": {
+        "inputProvider": "regie",
+        "outputProvider": "classement",
+        "expression": "$append([], $input.resultat.classement)"
+       }
+      },
+      {
+       "tagName": "div",
+       "attributes": {
+        "style": "max-width:76rem;margin:1rem auto;padding:0 1rem;display:grid;gap:1rem"
+       },
+       "nodes": [
+        {
+         "tagName": "div",
+         "attributes": {
+          "style": "display:flex;flex-wrap:wrap;gap:.6rem 1.4rem;align-items:baseline;justify-content:space-between"
+         },
+         "nodes": [
+          {
+           "tagName": "div",
+           "attributes": {
+            "style": "font-size:1.6rem;font-weight:800"
+           },
+           "textContent": {
+            "$param": "title"
+           }
+          },
+          {
+           "tagName": "div",
+           "attributes": {
+            "style": "display:flex;flex-wrap:wrap;gap:.4rem 1.2rem;font-size:1.05rem;font-variant-numeric:tabular-nums"
+           },
+           "nodes": [
+            {
+             "tagName": "span",
+             "nodes": [
+              {
+               "tagName": "span",
+               "textContent": "Manche "
+              },
+              {
+               "tagName": "sonic-value",
+               "attributes": {
+                "dataProvider": "regie",
+                "key": "manche",
+                "style": "font-weight:800"
+               }
+              }
+             ]
+            },
+            {
+             "tagName": "span",
+             "nodes": [
+              {
+               "tagName": "span",
+               "textContent": "Connectés "
+              },
+              {
+               "tagName": "sonic-value",
+               "attributes": {
+                "dataProvider": "artifactRun",
+                "key": "presence.count",
+                "style": "font-weight:800"
+               }
+              }
+             ]
+            },
+            {
+             "$each": "teams",
+             "template": {
+              "tagName": "span",
+              "nodes": [
+               {
+                "tagName": "span",
+                "attributes": {
+                 "style": {
+                  "$text": "color:{{.color}};font-weight:600"
+                 }
+                },
+                "textContent": {
+                 "$text": "{{.label}} "
+                }
+               },
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "regie",
+                 "key": {
+                  "$text": "totaux.{{.role}}"
+                 },
+                 "style": "font-weight:800"
+                }
+               }
+              ]
+             }
+            },
+            {
+             "tagName": "span",
+             "nodes": [
+              {
+               "tagName": "span",
+               "textContent": "Record "
+              },
+              {
+               "tagName": "sonic-value",
+               "attributes": {
+                "dataProvider": "regie",
+                "key": "record",
+                "style": "font-weight:800"
+               }
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "tagName": "sonic-states",
+         "attributes": {
+          "dataProvider": "regie",
+          "data-path": "phase"
+         },
+         "nodes": [
+          {
+           "tagName": "template",
+           "attributes": {
+            "data-value": "^live$"
+           },
+           "nodes": [
+            {
+             "tagName": "div",
+             "attributes": {
+              "style": "display:flex;flex-wrap:wrap;gap:1.2rem;align-items:flex-start"
+             },
+             "nodes": [
+              {
+               "tagName": "div",
+               "attributes": {
+                "style": "flex:0 1 24rem;display:grid;gap:.9rem;border:1px solid var(--sc-base-200);border-radius:1rem;padding:1rem"
+               },
+               "nodes": [
+                {
+                 "tagName": "div",
+                 "attributes": {
+                  "style": "display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-around"
+                 },
+                 "nodes": [
+                  {
+                   "$each": "teams",
+                   "template": {
+                    "tagName": "div",
+                    "attributes": {
+                     "style": "display:grid;gap:.35rem;justify-items:center;text-align:center;min-width:0"
+                    },
+                    "nodes": [
+                     {
+                      "tagName": "div",
+                      "attributes": {
+                       "style": {
+                        "$text": "font-weight:700;color:{{.color}}"
+                       }
+                      },
+                      "textContent": {
+                       "$text": "{{.titre}}"
+                      }
+                     },
+                     {
+                      "tagName": "sonic-qr",
+                      "attributes": {
+                       "text-from": {
+                        "$text": "artifactRun.pairs.{{.role}}.url"
+                       },
+                       "ecc": "Q",
+                       "size": {
+                        "$param": "qrSize",
+                        "default": 150
+                       },
+                       "link": true,
+                       "placeholder": "…",
+                       "label": {
+                        "$text": "QR code : {{.titre}}"
+                       }
+                      }
+                     },
+                     {
+                      "tagName": "div",
+                      "attributes": {
+                       "style": "font-size:.85rem;font-variant-numeric:tabular-nums"
+                      },
+                      "nodes": [
+                       {
+                        "tagName": "sonic-value",
+                        "attributes": {
+                         "dataProvider": "artifactRun",
+                         "key": {
+                          "$text": "pairs.{{.role}}.code"
+                         },
+                         "style": "font-weight:700;letter-spacing:.08em"
+                        }
+                       },
+                       {
+                        "tagName": "span",
+                        "textContent": " · "
+                       },
+                       {
+                        "tagName": "sonic-value",
+                        "attributes": {
+                         "dataProvider": "artifactRun",
+                         "key": {
+                          "$text": "pairs.{{.role}}.remaining"
+                         },
+                         "style": "font-weight:700"
+                        }
+                       },
+                       {
+                        "tagName": "span",
+                        "textContent": " places"
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  }
+                 ]
+                },
+                {
+                 "tagName": "sonic-action",
+                 "attributes": {
+                  "target": "regie",
+                  "type": "manche"
+                 },
+                 "nodes": [
+                  {
+                   "tagName": "sonic-button",
+                   "attributes": {
+                    "type": "primary",
+                    "shape": "block"
+                   },
+                   "nodes": [
+                    {
+                     "tagName": "span",
+                     "textContent": "Nouvelle manche"
+                    }
+                   ]
+                  }
+                 ]
+                },
+                {
+                 "tagName": "sonic-states",
+                 "attributes": {
+                  "dataProvider": "regie",
+                  "data-path": "inscriptions"
+                 },
+                 "nodes": [
+                  {
+                   "tagName": "template",
+                   "attributes": {
+                    "data-value": "^ouvertes$"
+                   },
+                   "nodes": [
+                    {
+                     "tagName": "sonic-action",
+                     "attributes": {
+                      "target": "regie",
+                      "type": "fermer"
+                     },
+                     "nodes": [
+                      {
+                       "tagName": "sonic-button",
+                       "attributes": {
+                        "variant": "outline",
+                        "shape": "block"
+                       },
+                       "nodes": [
+                        {
+                         "tagName": "span",
+                         "textContent": "Fermer les inscriptions"
+                        }
+                       ]
+                      }
+                     ]
+                    }
+                   ]
+                  },
+                  {
+                   "tagName": "template",
+                   "attributes": {
+                    "data-value": "^fermees$"
+                   },
+                   "nodes": [
+                    {
+                     "tagName": "sonic-action",
+                     "attributes": {
+                      "target": "regie",
+                      "type": "ouvrir"
+                     },
+                     "nodes": [
+                      {
+                       "tagName": "sonic-button",
+                       "attributes": {
+                        "variant": "outline",
+                        "shape": "block"
+                       },
+                       "nodes": [
+                        {
+                         "tagName": "span",
+                         "textContent": "Rouvrir les inscriptions"
+                        }
+                       ]
+                      }
+                     ]
+                    }
+                   ]
+                  }
+                 ]
+                },
+                {
+                 "tagName": "sonic-action",
+                 "attributes": {
+                  "target": "dlg",
+                  "type": "ouvrir"
+                 },
+                 "nodes": [
+                  {
+                   "tagName": "sonic-button",
+                   "attributes": {
+                    "variant": "ghost",
+                    "shape": "block"
+                   },
+                   "nodes": [
+                    {
+                     "tagName": "span",
+                     "textContent": "Terminer la partie"
+                    }
+                   ]
+                  }
+                 ]
+                },
+                {
+                 "$if": "regarder",
+                 "then": {
+                  "tagName": "div",
+                  "attributes": {
+                   "style": "display:flex;gap:.8rem;align-items:center;justify-content:center"
+                  },
+                  "nodes": [
+                   {
+                    "tagName": "sonic-qr",
+                    "attributes": {
+                     "text-from": "artifactRun.watchUrl",
+                     "size": 84,
+                     "link": true,
+                     "placeholder": "…",
+                     "label": "QR code pour regarder sans jouer"
+                    }
+                   },
+                   {
+                    "tagName": "span",
+                    "attributes": {
+                     "style": "font-size:.95rem"
+                    },
+                    "textContent": "Regarder sans jouer"
+                   }
+                  ]
+                 }
+                }
+               ]
+              },
+              {
+               "tagName": "div",
+               "attributes": {
+                "style": "flex:1 1 22rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(10.5rem,1fr));gap:.8rem;align-content:start"
+               },
+               "nodes": [
+                {
+                 "tagName": "sonic-list",
+                 "attributes": {
+                  "dataProvider": "tuiles",
+                  "templateKey": "t",
+                  "displayContents": true
+                 },
+                 "nodes": [
+                  {
+                   "$each": "teams",
+                   "template": {
+                    "tagName": "template",
+                    "attributes": {
+                     "data-value": {
+                      "$item": "role"
+                     }
+                    },
+                    "nodes": [
+                     {
+                      "tagName": "div",
+                      "attributes": {
+                       "style": {
+                        "$text": "border-radius:.9rem;padding:.7rem .9rem;background:{{.color}}1f;border:2px solid {{.color}};display:grid;gap:.15rem;min-height:7.5rem;align-content:start"
+                       }
+                      },
+                      "nodes": [
+                       {
+                        "tagName": "div",
+                        "attributes": {
+                         "style": {
+                          "$text": "font-weight:700;color:{{.color}};overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                         }
+                        },
+                        "nodes": [
+                         {
+                          "tagName": "sonic-value",
+                          "attributes": {
+                           "key": "nom"
+                          }
+                         }
+                        ]
+                       },
+                       {
+                        "tagName": "div",
+                        "attributes": {
+                         "style": "font-size:2.6rem;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums"
+                        },
+                        "nodes": [
+                         {
+                          "tagName": "sonic-value",
+                          "attributes": {
+                           "key": "score"
+                          }
+                         }
+                        ]
+                       },
+                       {
+                        "tagName": "div",
+                        "attributes": {
+                         "style": "display:flex;gap:.3rem;margin-top:.25rem"
+                        },
+                        "nodes": [
+                         {
+                          "tagName": "sonic-action",
+                          "attributes": {
+                           "target": "regie",
+                           "type": "defi",
+                           "data-bind": "",
+                           "::payload": "$runId"
+                          },
+                          "nodes": [
+                           {
+                            "tagName": "sonic-button",
+                            "attributes": {
+                             "size": "xs",
+                             "variant": "outline"
+                            },
+                            "nodes": [
+                             {
+                              "tagName": "span",
+                              "textContent": "Défi"
+                             }
+                            ]
+                           }
+                          ]
+                         },
+                         {
+                          "tagName": "sonic-action",
+                          "attributes": {
+                           "target": "regie",
+                           "type": "retirer",
+                           "data-bind": "",
+                           "::payload": "$runId"
+                          },
+                          "nodes": [
+                           {
+                            "tagName": "sonic-button",
+                            "attributes": {
+                             "size": "xs",
+                             "variant": "ghost"
+                            },
+                            "nodes": [
+                             {
+                              "tagName": "span",
+                              "textContent": "Retirer"
+                             }
+                            ]
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  },
+                  {
+                   "tagName": "template",
+                   "attributes": {
+                    "data-value": "no-item"
+                   },
+                   "nodes": [
+                    {
+                     "tagName": "div",
+                     "attributes": {
+                      "style": "grid-column:1/-1;font-size:1.1rem;padding:2rem 0"
+                     },
+                     "textContent": "Scannez un QR code avec un téléphone pour ouvrir le premier écran."
+                    }
+                   ]
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "tagName": "template",
+           "attributes": {
+            "data-value": "^done$"
+           },
+           "nodes": [
+            {
+             "tagName": "div",
+             "attributes": {
+              "style": "display:grid;gap:.6rem;max-width:32rem"
+             },
+             "nodes": [
+              {
+               "tagName": "div",
+               "attributes": {
+                "style": "font-size:1.3rem;font-weight:800"
+               },
+               "textContent": "Partie terminée : classement"
+              },
+              {
+               "tagName": "sonic-list",
+               "attributes": {
+                "dataProvider": "classement",
+                "displayContents": true
+               },
+               "nodes": [
+                {
+                 "tagName": "template",
+                 "nodes": [
+                  {
+                   "tagName": "div",
+                   "attributes": {
+                    "style": "display:flex;justify-content:space-between;gap:1rem;padding:.5rem .8rem;margin-bottom:.4rem;border:1px solid var(--sc-base-200);border-radius:.6rem;font-variant-numeric:tabular-nums"
+                   },
+                   "nodes": [
+                    {
+                     "tagName": "sonic-value",
+                     "attributes": {
+                      "key": "nom"
+                     }
+                    },
+                    {
+                     "tagName": "sonic-value",
+                     "attributes": {
+                      "key": "score",
+                      "style": "font-weight:800"
+                     }
+                    }
+                   ]
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "tagName": "sonic-modal",
+       "attributes": {
+        "dataProvider": "dlg",
+        "resetDataProviderOnHide": "dlg",
+        "maxWidth": "min(100vw, 28rem)"
+       },
+       "nodes": [
+        {
+         "tagName": "sonic-modal-title",
+         "textContent": "Terminer la partie ?"
+        },
+        {
+         "tagName": "sonic-modal-content",
+         "textContent": "Les téléphones passent à l'écran de fin et le classement est enregistré."
+        },
+        {
+         "tagName": "sonic-modal-actions",
+         "nodes": [
+          {
+           "tagName": "sonic-button",
+           "attributes": {
+            "hideModal": true,
+            "variant": "ghost"
+           },
+           "nodes": [
+            {
+             "tagName": "span",
+             "textContent": "Continuer"
+            }
+           ]
+          },
+          {
+           "tagName": "sonic-action",
+           "attributes": {
+            "target": "dlg",
+            "type": "fermer"
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-action",
+             "attributes": {
+              "target": "regie",
+              "type": "terminer"
+             },
+             "nodes": [
+              {
+               "tagName": "sonic-button",
+               "attributes": {
+                "type": "danger"
+               },
+               "nodes": [
+                {
+                 "tagName": "span",
+                 "textContent": "Terminer"
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ],
+  "io": {
+   "title": {
+    "$param": "title"
+   },
+   "description": "Régie appairée par QR (un code par équipe) : présence, score par écran, manches diffusées, défi ciblé, retrait, inscriptions fermables, classement en sortie.",
+   "modes": [
+    "interactive"
+   ],
+   "output": {
+    "schema": {
+     "type": "object"
+    },
+    "from": "regie.resultat",
+    "when": "phase = 'done'"
+   },
+   "stream": {
+    "store": "regie",
+    "actions": {
+     "resultat": {},
+     "finish": {}
+    },
+    "rate": 120,
+    "emit": {
+     "from": "regie.outbox",
+     "ack": "regie"
+    },
+    "pair": {
+     "$each": "teams",
+     "template": {
+      "role": {
+       "$item": "role"
+      },
+      "remote": {
+       "$param": "remote"
+      },
+      "max": {
+       "$item": "max",
+       "default": 8
+      },
+      "ttl": 1800,
+      "input": {
+       "equipe": {
+        "$item": "role"
+       }
+      },
+      "map": "{\"type\": \"action\", \"name\": \"resultat\", \"payload\": {\"id\": from.runId, \"nom\": data.nom, \"score\": data.score}}",
+      "back": "data"
+     }
+    }
+   }
+  }
+ }
+}
