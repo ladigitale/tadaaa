@@ -36,6 +36,8 @@ final class ArtifactPlaceService
     public const MAX_RADIUS = 5000;
     public const LIST_LIMIT = 80;
     public const DAILY_PER_IP = 40;
+    /** Surfaces de remplacement gardées par lieu (sonic-anchor en lit autant). */
+    public const MAX_EXTRA_REFS = 4;
     public const HIDE_AT = 3;
     private const SUMMARY_KEYS = 16;
     /** Carte : au-delà, groupes par case de grille (MAP_GRID × MAP_GRID cases sur la zone). */
@@ -185,6 +187,29 @@ final class ArtifactPlaceService
         }
         $this->em->remove($p);
         $this->em->flush();
+    }
+
+    /**
+     * Surface de remplacement d'un lieu (mur repeint, affiche changée) : n'importe quel visiteur peut en ajouter
+     * une ; la référence d'origine reste, les MAX_EXTRA_REFS plus récentes sont gardées.
+     *
+     * @return array{refs: int, sizeBytes: int}
+     */
+    public function addRef(string $slug, ?string $linkToken, string $collection, string $id, mixed $ref, ?User $user): array
+    {
+        [$artifact, $conf] = $this->open($slug, $linkToken, $user, $collection);
+        if (!\is_array($ref) || $ref === [] || array_is_list($ref)) {
+            throw new BadRequestHttpException('ref : objet JSON attendu (référence de sonic-anchor-ref).');
+        }
+        $p = $this->find($artifact, $collection, $id);
+        $size = $p->addRef($ref, self::MAX_EXTRA_REFS, $conf['maxBytes']);
+        if ($size === null) {
+            throw new BadRequestHttpException(sprintf('Surface trop volumineuse pour ce lieu (%d Ko au plus).', intdiv($conf['maxBytes'], 1024)));
+        }
+        $this->em->flush();
+        $refs = $p->getBody()['refs'] ?? [];
+
+        return ['refs' => \is_array($refs) ? \count($refs) : 0, 'sizeBytes' => $size];
     }
 
     /** @return array{reports: int, hidden: bool} */

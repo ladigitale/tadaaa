@@ -101,6 +101,35 @@ class ArtifactPlace
     public function setHidden(bool $hidden): void { $this->hidden = $hidden; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
 
+    /**
+     * Ajoute une surface de remplacement (`body.refs`, les $maxExtra plus récentes) ; retire les plus anciennes
+     * tant que le corps dépasse $maxBytes. Retourne la taille finale, ou null si la nouvelle seule ne tient pas.
+     *
+     * @param array<string, mixed> $ref
+     */
+    public function addRef(array $ref, int $maxExtra, int $maxBytes): ?int
+    {
+        $body = $this->body;
+        $refs = \is_array($body['refs'] ?? null) && array_is_list($body['refs']) ? $body['refs'] : [];
+        $refs[] = $ref;
+        $refs = \array_slice($refs, -$maxExtra);
+        while (true) {
+            $body['refs'] = $refs;
+            $size = \strlen((string) json_encode($body, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES));
+            if ($size <= $maxBytes) {
+                break;
+            }
+            if (\count($refs) <= 1) {
+                return null;
+            }
+            array_shift($refs);
+        }
+        $this->body = $body;
+        $this->sizeBytes = $size;
+
+        return $size;
+    }
+
     public function report(int $hideAt): void
     {
         ++$this->reports;

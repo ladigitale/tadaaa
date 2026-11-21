@@ -20,6 +20,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * Lieux partagés d'un artefact (`data.places.<nom>`), mêmes droits de lecture que l'artefact (`?k=` pour un lien) :
  *
  *   GET    /{slug}/places/{name}?lat=&lon=&radius=   lieux proches (champs courts), du plus proche au plus lointain
+ *   POST   /{slug}/places/{name}/{id}/refs          {ref} : surface de remplacement (lieu qui a changé)
  *   GET    /{slug}/places/{name}?bbox=o,s,e,n         lieux d'une zone de carte, ou groupes {lat, lon, count} si trop nombreux
  *   GET    /{slug}/places/{name}/{id}                 un lieu complet (body)
  *   POST   /{slug}/places/{name}                      {"lat", "lon", "body": {...}} → {id, deleteToken}
@@ -109,6 +110,23 @@ final class PublicArtifactPlaceController extends AbstractController
         return $this->noStore($this->json($this->places->report($slug, $this->link($request), $name, $id, $this->user())));
     }
 
+    #[Route('/{slug}/places/{name}/{id}/refs', name: 'api_public_artifact_places_refs', methods: ['POST'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID])]
+    public function refs(string $slug, string $name, string $id, Request $request): JsonResponse
+    {
+        $this->consume($this->limiter, $request);
+        $raw = $request->getContent();
+        if (\strlen($raw) > ArtifactPlaceService::HARD_MAX_BYTES + 2048) {
+            throw new BadRequestHttpException('Surface trop volumineuse.');
+        }
+        /** @var mixed $in */
+        $in = json_decode($raw, true);
+        if (!\is_array($in) || !\array_key_exists('ref', $in)) {
+            throw new BadRequestHttpException('Corps attendu : {"ref": {...}}.');
+        }
+
+        return $this->noStore($this->json($this->places->addRef($slug, $this->link($request), $name, $id, $in['ref'], $this->user()), 201));
+    }
+
     #[Route('/{slug}/places/{name}/{id}/hidden', name: 'api_public_artifact_places_hidden', methods: ['POST'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID])]
     public function hidden(string $slug, string $name, string $id, Request $request): Response
     {
@@ -122,7 +140,7 @@ final class PublicArtifactPlaceController extends AbstractController
 
     #[Route('/{slug}/places/{name}', name: 'api_public_artifact_places_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME])]
     #[Route('/{slug}/places/{name}/{id}', name: 'api_public_artifact_places_item_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID])]
-    #[Route('/{slug}/places/{name}/{id}/{action}', name: 'api_public_artifact_places_action_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'action' => 'report|hidden'])]
+    #[Route('/{slug}/places/{name}/{id}/{action}', name: 'api_public_artifact_places_action_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'action' => 'report|hidden|refs'])]
     public function options(): Response
     {
         return new Response('', Response::HTTP_NO_CONTENT);
