@@ -20,6 +20,10 @@ use Symfony\Component\Routing\Attribute\Route;
  * Lieux partagés d'un artefact (`data.places.<nom>`), mêmes droits de lecture que l'artefact (`?k=` pour un lien) :
  *
  *   GET    /{slug}/places/{name}?lat=&lon=&radius=   lieux proches (champs courts), du plus proche au plus lointain
+ *   GET    /{slug}/places/{name}/{id}/messages      discussion du lieu (message d'origine puis messages)
+ *   POST   /{slug}/places/{name}/{id}/messages      {text?, media?, pseudo?} : message, vocal ou dessin (n'importe qui)
+ *   GET    /{slug}/places/{name}/{id}/messages/{m}  média (vocal, dessin) d'un message
+ *   POST   /{slug}/places/{name}/{id}/messages/{m}  signale ; DELETE + X-Place-Token : retrait par l'auteur
  *   POST   /{slug}/places/{name}/{id}/refs          {ref} : surface de remplacement (lieu qui a changé)
  *   GET    /{slug}/places/{name}?bbox=o,s,e,n         lieux d'une zone de carte, ou groupes {lat, lon, count} si trop nombreux
  *   GET    /{slug}/places/{name}/{id}                 un lieu complet (body)
@@ -127,6 +131,62 @@ final class PublicArtifactPlaceController extends AbstractController
         return $this->noStore($this->json($this->places->addRef($slug, $this->link($request), $name, $id, $in['ref'], $this->user()), 201));
     }
 
+    #[Route('/{slug}/places/{name}/{id}/messages', name: 'api_public_artifact_places_thread', methods: ['GET'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID])]
+    public function thread(string $slug, string $name, string $id, Request $request): JsonResponse
+    {
+        $this->consume($this->readLimiter, $request);
+
+        return $this->noStore($this->json($this->places->thread($slug, $this->link($request), $name, $id, $this->user())));
+    }
+
+    #[Route('/{slug}/places/{name}/{id}/messages', name: 'api_public_artifact_places_message', methods: ['POST'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID])]
+    public function message(string $slug, string $name, string $id, Request $request): JsonResponse
+    {
+        $this->consume($this->limiter, $request);
+        $raw = $request->getContent();
+        if (\strlen($raw) > \App\Entity\ArtifactPlaceMessage::MAX_MEDIA + 8192) {
+            throw new BadRequestHttpException('Message trop volumineux.');
+        }
+        /** @var mixed $in */
+        $in = json_decode($raw, true);
+        if (!\is_array($in)) {
+            throw new BadRequestHttpException('Corps attendu : {"text"?, "media"?, "pseudo"?}.');
+        }
+        $out = $this->places->postMessage($slug, $this->link($request), $name, $id, $in['text'] ?? null, $in['pseudo'] ?? null, $this->user(), $request->getClientIp() ?: 'anon', $in['media'] ?? null);
+
+        return $this->noStore($this->json($out, 201));
+    }
+
+    #[Route('/{slug}/places/{name}/{id}/messages/{messageId}', name: 'api_public_artifact_places_message_media', methods: ['GET'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'messageId' => self::ID])]
+    public function messageMedia(string $slug, string $name, string $id, string $messageId, Request $request): JsonResponse
+    {
+        $this->consume($this->readLimiter, $request);
+        $res = $this->json($this->places->messageMedia($slug, $this->link($request), $name, $id, $messageId, $this->user()));
+        $res->headers->set('Cache-Control', 'private, max-age=3600');
+
+        return $res;
+    }
+
+    /** Signalement (sans jeton) ou retrait par l'auteur (X-Place-Token). */
+    #[Route('/{slug}/places/{name}/{id}/messages/{messageId}', name: 'api_public_artifact_places_message_moderate', methods: ['POST', 'DELETE'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'messageId' => self::ID])]
+    public function moderateMessage(string $slug, string $name, string $id, string $messageId, Request $request): Response
+    {
+        $this->consume($this->limiter, $request);
+        $token = $request->isMethod('DELETE') ? ($request->headers->get('X-Place-Token') ?? '') : null;
+        if ($request->isMethod('DELETE') && $token === '') {
+            throw new BadRequestHttpException('X-Place-Token requis pour retirer un message.');
+        }
+        $this->places->moderateMessage($slug, $this->link($request), $name, $id, $messageId, $token, $this->user());
+
+        return new Response(null, 204);
+    }
+
+    #[Route('/{slug}/places/{name}/{id}/messages/{messageId}', name: 'api_public_artifact_places_message_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'messageId' => self::ID])]
+    public function messageOptions(): Response
+    {
+        return $this->options();
+    }
+
     #[Route('/{slug}/places/{name}/{id}/hidden', name: 'api_public_artifact_places_hidden', methods: ['POST'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID])]
     public function hidden(string $slug, string $name, string $id, Request $request): Response
     {
@@ -140,7 +200,7 @@ final class PublicArtifactPlaceController extends AbstractController
 
     #[Route('/{slug}/places/{name}', name: 'api_public_artifact_places_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME])]
     #[Route('/{slug}/places/{name}/{id}', name: 'api_public_artifact_places_item_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID])]
-    #[Route('/{slug}/places/{name}/{id}/{action}', name: 'api_public_artifact_places_action_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'action' => 'report|hidden|refs'])]
+    #[Route('/{slug}/places/{name}/{id}/{action}', name: 'api_public_artifact_places_action_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'action' => 'report|hidden|refs|messages'])]
     public function options(): Response
     {
         return new Response('', Response::HTTP_NO_CONTENT);
