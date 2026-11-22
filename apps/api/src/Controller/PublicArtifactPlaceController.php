@@ -152,7 +152,7 @@ final class PublicArtifactPlaceController extends AbstractController
         if (!\is_array($in)) {
             throw new BadRequestHttpException('Corps attendu : {"text"?, "media"?, "pseudo"?, "at"?: {"lat", "lon", "accuracy", "seen"}}.');
         }
-        $out = $this->places->postMessage($slug, $this->link($request), $name, $id, $in['text'] ?? null, $in['pseudo'] ?? null, $this->user(), $request->getClientIp() ?: 'anon', $in['media'] ?? null, $in['at'] ?? null, $in['cadre'] ?? null);
+        $out = $this->places->postMessage($slug, $this->link($request), $name, $id, $in['text'] ?? null, $in['pseudo'] ?? null, $this->user(), $request->getClientIp() ?: 'anon', $in['media'] ?? null, $in['at'] ?? null, $in['cadre'] ?? null, $in['refId'] ?? null);
 
         return $this->noStore($this->json($out, 201));
     }
@@ -181,7 +181,46 @@ final class PublicArtifactPlaceController extends AbstractController
         return new Response(null, 204);
     }
 
+    /** Retouche d'un message par son auteur (X-Place-Token : jeton reçu à la pose). */
+    #[Route('/{slug}/places/{name}/{id}/messages/{messageId}/edit', name: 'api_public_artifact_places_message_edit', methods: ['POST'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'messageId' => self::ID])]
+    public function editMessage(string $slug, string $name, string $id, string $messageId, Request $request): JsonResponse
+    {
+        $this->consume($this->limiter, $request);
+        $raw = $request->getContent();
+        if (\strlen($raw) > \App\Entity\ArtifactPlaceMessage::MAX_MEDIA + 8192) {
+            throw new BadRequestHttpException('Message trop volumineux.');
+        }
+        /** @var mixed $in */
+        $in = json_decode($raw, true);
+        if (!\is_array($in)) {
+            throw new BadRequestHttpException('Corps attendu : {"text"?, "media"?, "at"?, "cadre"?, "refId"?}.');
+        }
+        $out = $this->places->editMessage($slug, $this->link($request), $name, $id, $messageId, $request->headers->get('X-Place-Token'), $in['text'] ?? null, $in['media'] ?? null, $in['at'] ?? null, $in['cadre'] ?? null, $in['refId'] ?? null, $this->user());
+
+        return $this->noStore($this->json($out));
+    }
+
+    /** Retouche d'une balise par son poseur (X-Place-Token) : {body: {message?, effet?, dessin?, cadreDessin?, voix?}, at?}. */
+    #[Route('/{slug}/places/{name}/{id}/edit', name: 'api_public_artifact_places_edit', methods: ['POST'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID])]
+    public function edit(string $slug, string $name, string $id, Request $request): JsonResponse
+    {
+        $this->consume($this->limiter, $request);
+        $raw = $request->getContent();
+        if (\strlen($raw) > ArtifactPlaceService::HARD_MAX_BYTES + 2048) {
+            throw new BadRequestHttpException('Balise trop volumineuse.');
+        }
+        /** @var mixed $in */
+        $in = json_decode($raw, true);
+        if (!\is_array($in) || !\array_key_exists('body', $in)) {
+            throw new BadRequestHttpException('Corps attendu : {"body": {...}, "at"?: {...}}.');
+        }
+        $out = $this->places->updatePlace($slug, $this->link($request), $name, $id, $request->headers->get('X-Place-Token'), $in['body'], $in['at'] ?? null, $this->user());
+
+        return $this->noStore($this->json($out));
+    }
+
     #[Route('/{slug}/places/{name}/{id}/messages/{messageId}', name: 'api_public_artifact_places_message_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'messageId' => self::ID])]
+    #[Route('/{slug}/places/{name}/{id}/messages/{messageId}/edit', name: 'api_public_artifact_places_message_edit_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'messageId' => self::ID])]
     public function messageOptions(): Response
     {
         return $this->options();
@@ -200,7 +239,7 @@ final class PublicArtifactPlaceController extends AbstractController
 
     #[Route('/{slug}/places/{name}', name: 'api_public_artifact_places_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME])]
     #[Route('/{slug}/places/{name}/{id}', name: 'api_public_artifact_places_item_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID])]
-    #[Route('/{slug}/places/{name}/{id}/{action}', name: 'api_public_artifact_places_action_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'action' => 'report|hidden|refs|messages'])]
+    #[Route('/{slug}/places/{name}/{id}/{action}', name: 'api_public_artifact_places_action_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'action' => 'report|hidden|refs|messages|edit'])]
     public function options(): Response
     {
         return new Response('', Response::HTTP_NO_CONTENT);
