@@ -271,13 +271,14 @@ fi
 
 if [[ "$BUILD_TADAAA" -eq 1 ]]; then
   info "Building front (VITE_API_BASE_URL=https://${api_host})…"
-  # Use monorepo root yarn.lock (Concorde 4.9.x). Do not install from apps/web alone —
+  # Use monorepo root yarn.lock (Concorde 7.x). Do not install from apps/web alone —
   # apps/web/yarn.lock can pin an older Concorde and break tsc (ApiResult, @post, …).
   rm -rf "$ROOT/node_modules" "$ROOT/apps/web/node_modules"
   docker run --rm \
     -v "$ROOT:/repo" \
     -w /repo \
     -e VITE_API_BASE_URL="https://${api_host}" \
+    --pull always \
     node:22-bookworm \
     bash -lc 'corepack enable && yarn install --frozen-lockfile && yarn --cwd apps/web build'
   [[ -f "$ROOT/apps/web/dist/index.html" ]] || die "Front build failed."
@@ -315,6 +316,7 @@ build_sibling_spa() {
     -v "$src:/repo" \
     -w /repo \
     -e VITE_API_BASE_URL="$api_base" \
+    --pull always \
     node:22-bookworm \
     bash -lc 'corepack enable && yarn install --frozen-lockfile && yarn build'
   [[ -f "$src/dist/index.html" ]] || die "$name build failed ($src/dist/index.html missing)."

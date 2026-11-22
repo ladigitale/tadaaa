@@ -190,13 +190,14 @@ prompt_mail_config() {
 build_front() {
   local api_host="$1"
   info "Building front (VITE_API_BASE_URL=https://${api_host})…"
-  # Monorepo root yarn.lock pins Concorde (4.9.x). Installing only apps/web can
+  # Monorepo root yarn.lock pins Concorde (7.x). Installing only apps/web can
   # resolve an older lock and fail tsc (missing ApiResult / @post / …).
   rm -rf "$ROOT/node_modules" "$ROOT/apps/web/node_modules"
   docker run --rm \
     -v "$ROOT:/repo" \
     -w /repo \
     -e VITE_API_BASE_URL="https://${api_host}" \
+    --pull always \
     node:22-bookworm \
     bash -lc 'corepack enable && yarn install --frozen-lockfile && yarn --cwd apps/web build'
   [[ -f "$ROOT/apps/web/dist/index.html" ]] || die "Front build failed (apps/web/dist/index.html missing)."

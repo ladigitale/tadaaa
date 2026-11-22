@@ -53,7 +53,7 @@ Novembre 2026. Constats tirés du code de `tadaaa`, `artifacts` et `creative-sta
 **Corrigé.**
 - **`render_artifact` ne marchait jamais** (« Impossible de joindre https://api.tadaaa.space ») : le viewer construit appelle son API en URL absolue, et la garde anti-SSRF de l'outil bloque tout ce qui n'est pas local ; le serveur local de prévisualisation n'était donc jamais appelé. L'outil sert maintenant ces chemins localement quel que soit l'hôte (`render-artifact.mjs`, les deux copies) et laisse passer les seules URL CDN des `scripts` déclarés par le document (résolues par `ArtifactRenderer` via le catalogue). Vérifié contre un build de prod du viewer : liste, liaisons, clic, refus des liaisons dangereuses, exemple BITD.
 - **Réponses MCP deux fois trop lourdes** : `TextContent` encodait les tableaux en JSON indenté avec accents et `/` échappés. Le catalogue compact passait de 96 Ko à 213 Ko. Les outils renvoient désormais du JSON compact non échappé (`ArtifactMcpProcessor`).
-- Concorde 5.1.3 dans le viewer et le catalogue ; MapLibre 5.24 (globe) dans le catalogue de scripts.
+- Concorde 7.0.1 dans le viewer et le catalogue ; MapLibre 5.24 (globe) dans le catalogue de scripts.
 
 **À faire.**
 - Le catalogue reste lourd : 96 Ko sans filtre, 53 Ko même sans règles ni exemples (141 composants). Proposer l'index (`catalogIndex`, 9 Ko) par défaut et exiger `components` pour le détail.

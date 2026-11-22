@@ -1,7 +1,7 @@
 {
-  "concordeVersion": "5.1.3",
+  "concordeVersion": "7.0.1",
   "creativeStackVersion": "0.1.0",
-  "generatedFrom": "@supersoniks/concorde 5.1.3 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, anchor, animation, audio, blobs, bluetooth, color, controller, cursor, device, grbl, hugging-face-infer, interactive, map, markdown, media, ocr, p2p, paint, physics, plot, predict, procgen, qr, scroll, serial, shader, sketch, sound, stage, tape, text, vector, vectorize, vision, webgpu)",
+  "generatedFrom": "@supersoniks/concorde 7.0.1 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, anchor, animation, audio, blobs, bluetooth, color, controller, cursor, device, grbl, hugging-face-infer, interactive, map, markdown, media, ocr, p2p, paint, physics, plot, predict, procgen, qr, scroll, serial, shader, sketch, sound, stage, tape, text, vector, vectorize, vision, webgpu)",
   "components": [
     {
       "name": "sonic-2d",
@@ -1391,8 +1391,7 @@
           "type": "string",
           "default": "https://altcha.supersoniks.org/get-challenge"
         }
-      },
-      "description": "Un bouton simple avec deux slots, un nommé préfix et un nomé suffix de manière à pouvoir mettre (par exemple) une icone avant ou après le contenu."
+      }
     },
     {
       "name": "sonic-caption",
@@ -3627,6 +3626,11 @@
         },
         "items": {
           "type": "string"
+        },
+        "filtered": {
+          "type": "boolean",
+          "default": "false",
+          "description": "Indique que les données ont été obtenues avec un filtre actif (positionné par Queue)."
         },
         "loadingSize": {
           "type": "object",
@@ -6035,6 +6039,11 @@
         "noItems": {
           "type": "string",
           "default": "null"
+        },
+        "noResults": {
+          "type": "string",
+          "default": "null",
+          "description": "Rendu à la place de noItems quand le premier lot est vide alors qu'un filtre est actif."
         },
         "skeleton": {
           "type": "string",
