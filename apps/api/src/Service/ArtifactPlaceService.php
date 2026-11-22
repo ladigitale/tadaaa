@@ -489,6 +489,26 @@ final class ArtifactPlaceService
         return $row;
     }
 
+    /**
+     * Pour les parcours : la collection ouverte au visiteur, ses lieux et la modération.
+     *
+     * @return array{0: Artifact, 1: array{maxBytes: int, maxRecords: int, radius: int}}
+     */
+    public function openCollection(string $slug, ?string $linkToken, ?User $user, string $collection): array
+    {
+        return $this->open($slug, $linkToken, $user, $collection);
+    }
+
+    public function findPlace(Artifact $artifact, string $collection, string $id): ArtifactPlace
+    {
+        return $this->find($artifact, $collection, $id);
+    }
+
+    public function canModerate(Artifact $artifact, ?User $user): bool
+    {
+        return $this->isModerator($artifact, $user);
+    }
+
     private function find(Artifact $artifact, string $collection, string $id): ArtifactPlace
     {
         if (!Uuid::isValid($id)) {
