@@ -342,14 +342,34 @@ data.pad = "applaudir" ? {"type": "action", "name": "reaction", "payload": {"n":
   : data.pad = "fin" ? [{"type": "action", "name": "chapitre", "payload": {"nom": "Fin", "soustitre": "Merci d’avoir suivi le direct."}}, {"type": "score.stop"}, {"type": "end"}]
 ```
 
-**Démo « Régie · écrans »** — `docs/examples/regie-ecrans.json` (hôte) et
-`docs/examples/ecran-recepteur.json` (téléphone) : deux QR d'équipe, 8 places chacun ; chaque
+**Guichet d'inscription** — pour séparer la régie (sur l'appareil de l'animateur) de l'écran de
+salle qui montre les QR, la régie déclare `io.stream.desk` :
+
+```json
+"desk": {"remote": "inscription-ecrans", "max": 2}
+```
+
+Le viewer de la régie publie `artifactRun.desk = {code, url, …}` : un QR ou un lien qui ouvre le
+guichet (artefact `remote`, son contrat déclare `io.stream.inscription: true`). Le run guichet est
+relié à la régie dans le sens régie → guichet (`back` = `data`) : il reçoit les publications de la
+régie (éléments de la file sans `to`, ou `to` = son runId). Son viewer lit les codes de la régie
+avec son propre jeton (`POST …/runs/{runId}/desk {rt}`, toutes les 10 s) et les publie dans
+`artifactRun.pairs.<role>` / `artifactRun.pair`, comme sur la régie. Fermer les inscriptions
+bloque les téléphones, pas les guichets. Les guichets ouverts sont listés à part dans la présence
+(`presence.desks = [{runId, slug, seen}]`) et ne prennent pas de rang (« Écran 1 » reste le
+premier téléphone).
+
+**Démo « Régie · écrans »** — `docs/examples/regie-ecrans.json` (régie maître),
+`docs/examples/inscription-ecrans.json` (guichet, écran de salle) et
+`docs/examples/ecran-recepteur.json` (téléphone) : la régie montre le QR du guichet et y publie des
+annonces ; le guichet montre deux QR d'équipe (8 places chacun) et la liste des inscrits ; chaque
 téléphone saisit un nom puis tape « Toc ! », son score arrive sur sa tuile (couleur de l'équipe),
 « Nouvelle manche » repart vers tous, le menu d'une tuile envoie un défi à ce seul téléphone ou le
 retire, « Fermer les inscriptions » bloque les codes, « Terminer la partie » publie la sortie
-(classement et manches) et termine les téléphones. Publier d'abord le récepteur (slug
-`ecran-recepteur`, en lien), puis la régie, et lancer la régie en `interactive`. Les kits `regie`
-et `appareil` construisent le même couple avec d'autres libellés.
+(classement et manches) et termine les téléphones. Publier d'abord le récepteur
+(`ecran-recepteur`) et le guichet (`inscription-ecrans`), en lien, puis la régie, et lancer la
+régie en `interactive`. Les kits `regie`, `inscription` et `appareil` construisent le même trio
+avec d'autres libellés (sans `guichet`, les QR restent sur la régie).
 
 **Budget du store** — une action qui dépasse le budget du store est ignorée, et l'écran qui l'a
 sautée n'est plus synchrone : le viewer donne 50 ms au store du flux déclaré dans `data.stores` ;

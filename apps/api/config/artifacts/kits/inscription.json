@@ -1,0 +1,359 @@
+{
+ "id": "inscription",
+ "title": "Écran d'inscription d'une régie",
+ "description": "Écran de salle d'une régie (kit regie) : QR de chaque équipe, places, inscrits, annonces publiées par la régie.",
+ "use": "publié en lien ou public, son slug = paramètre guichet de la régie ; ouvert par le QR de la régie",
+ "params": {
+  "type": "object",
+  "required": [
+   "title",
+   "teams"
+  ],
+  "properties": {
+   "preset": {
+    "type": "string",
+    "enum": [
+     "deux-equipes"
+    ]
+   },
+   "title": {
+    "type": "string",
+    "maxLength": 80
+   },
+   "teams": {
+    "type": "array",
+    "minItems": 1,
+    "maxItems": 4,
+    "description": "mêmes rôles que la régie",
+    "items": {
+     "type": "object",
+     "required": [
+      "role",
+      "titre",
+      "color"
+     ],
+     "properties": {
+      "role": {
+       "type": "string",
+       "maxLength": 24
+      },
+      "titre": {
+       "type": "string",
+       "maxLength": 40
+      },
+      "color": {
+       "type": "string",
+       "maxLength": 7
+      }
+     }
+    }
+   },
+   "qrSize": {
+    "type": "integer",
+    "minimum": 140,
+    "maximum": 360,
+    "default": 240
+   }
+  }
+ },
+ "presets": {
+  "deux-equipes": {
+   "title": "Rejoignez la partie",
+   "teams": [
+    {
+     "role": "rouge",
+     "titre": "Équipe rouge",
+     "color": "#e5262a"
+    },
+    {
+     "role": "bleu",
+     "titre": "Équipe bleue",
+     "color": "#2563eb"
+    }
+   ]
+  }
+ },
+ "document": {
+  "schema": "artifacts/1",
+  "title": {
+   "$param": "title"
+  },
+  "defaultView": "guichet",
+  "page": {
+   "nav": "none"
+  },
+  "data": {
+   "stores": {
+    "guichet": {
+     "budgetMs": 50,
+     "initial": {
+      "phase": "live",
+      "annonce": "",
+      "manche": 1,
+      "inscrits": [],
+      "nombre": 0,
+      "n": 0,
+      "notice": null
+     },
+     "reducer": "(\n  $t := $action.type;\n  $p := $action.payload;\n  $n := $state.n + 1;\n  $t = 'inscrits'\n    ? $merge([$state, {\"inscrits\": $p.liste ? [$p.liste] : [], \"nombre\": $count($p.liste)}])\n  : $t = 'annonce'\n    ? $merge([$state, {\"annonce\": $p.texte, \"n\": $n, \"notice\": {\"text\": $p.texte, \"label\": \"Annonce\", \"status\": \"info\", \"n\": $n}}])\n  : $t = 'manche'\n    ? $merge([$state, {\"annonce\": \"Manche \" & $string($p.n) & \" : c'est parti !\", \"manche\": $p.n}])\n  : $t = 'fin'\n    ? $merge([$state, {\"annonce\": \"Partie terminée, merci !\", \"phase\": \"done\"}])\n  : $t = 'finish' ? $merge([$state, {\"phase\": \"done\"}])\n  : $state\n)"
+    }
+   }
+  },
+  "views": [
+   {
+    "id": "guichet",
+    "title": "Inscription",
+    "root": {
+     "nodes": [
+      {
+       "tagName": "sonic-notify",
+       "attributes": {
+        "watch": "guichet.notice",
+        "status": "info"
+       }
+      },
+      {
+       "tagName": "sonic-jsonata",
+       "attributes": {
+        "inputProvider": "guichet",
+        "outputProvider": "inscrits",
+        "expression": "$append([], $input.inscrits)"
+       }
+      },
+      {
+       "tagName": "div",
+       "attributes": {
+        "style": "max-width:80rem;margin:1.5rem auto;padding:0 1.5rem;display:grid;gap:1.5rem"
+       },
+       "nodes": [
+        {
+         "tagName": "div",
+         "attributes": {
+          "style": "display:flex;flex-wrap:wrap;gap:.5rem 2rem;align-items:baseline;justify-content:space-between"
+         },
+         "nodes": [
+          {
+           "tagName": "div",
+           "attributes": {
+            "style": "font-size:2.2rem;font-weight:800"
+           },
+           "textContent": {
+            "$param": "title"
+           }
+          },
+          {
+           "tagName": "div",
+           "attributes": {
+            "style": "font-size:1.8rem;font-weight:700"
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-value",
+             "attributes": {
+              "dataProvider": "guichet",
+              "key": "annonce"
+             }
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "tagName": "div",
+         "attributes": {
+          "style": "display:flex;flex-wrap:wrap;gap:2rem;justify-content:space-around"
+         },
+         "nodes": [
+          {
+           "$each": "teams",
+           "template": {
+            "tagName": "div",
+            "attributes": {
+             "style": "display:grid;gap:.5rem;justify-items:center;text-align:center"
+            },
+            "nodes": [
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": {
+                "$text": "font-size:1.6rem;font-weight:800;color:{{.color}}"
+               }
+              },
+              "textContent": {
+               "$text": "{{.titre}}"
+              }
+             },
+             {
+              "tagName": "sonic-qr",
+              "attributes": {
+               "text-from": {
+                "$text": "artifactRun.pairs.{{.role}}.url"
+               },
+               "ecc": "Q",
+               "size": {
+                "$param": "qrSize",
+                "default": 240
+               },
+               "placeholder": "…",
+               "label": {
+                "$text": "QR code : {{.titre}}"
+               }
+              }
+             },
+             {
+              "tagName": "div",
+              "attributes": {
+               "style": "font-size:1.05rem;font-variant-numeric:tabular-nums"
+              },
+              "nodes": [
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "artifactRun",
+                 "key": {
+                  "$text": "pairs.{{.role}}.code"
+                 },
+                 "style": "font-weight:800;letter-spacing:.1em"
+                }
+               },
+               {
+                "tagName": "span",
+                "textContent": " · "
+               },
+               {
+                "tagName": "sonic-value",
+                "attributes": {
+                 "dataProvider": "artifactRun",
+                 "key": {
+                  "$text": "pairs.{{.role}}.remaining"
+                 },
+                 "style": "font-weight:800"
+                }
+               },
+               {
+                "tagName": "span",
+                "textContent": " places"
+               }
+              ]
+             }
+            ]
+           }
+          }
+         ]
+        },
+        {
+         "tagName": "div",
+         "attributes": {
+          "style": "display:grid;gap:.6rem"
+         },
+         "nodes": [
+          {
+           "tagName": "div",
+           "attributes": {
+            "style": "font-size:1.3rem;font-weight:700"
+           },
+           "nodes": [
+            {
+             "tagName": "span",
+             "textContent": "Inscrits : "
+            },
+            {
+             "tagName": "sonic-value",
+             "attributes": {
+              "dataProvider": "guichet",
+              "key": "nombre"
+             }
+            }
+           ]
+          },
+          {
+           "tagName": "div",
+           "nodes": [
+            {
+             "tagName": "sonic-list",
+             "attributes": {
+              "dataProvider": "inscrits",
+              "templateKey": "t",
+              "displayContents": true
+             },
+             "nodes": [
+              {
+               "$each": "teams",
+               "template": {
+                "tagName": "template",
+                "attributes": {
+                 "data-value": {
+                  "$item": "role"
+                 }
+                },
+                "nodes": [
+                 {
+                  "tagName": "div",
+                  "attributes": {
+                   "style": {
+                    "$text": "display:inline-block;margin:0 .4rem .4rem 0;padding:.35rem .8rem;border-radius:999px;background:{{.color}};color:#fff;font-weight:700;font-size:1.1rem"
+                   }
+                  },
+                  "nodes": [
+                   {
+                    "tagName": "sonic-value",
+                    "attributes": {
+                     "key": "nom"
+                    }
+                   }
+                  ]
+                 }
+                ]
+               }
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ],
+  "io": {
+   "title": {
+    "$param": "title"
+   },
+   "description": "Écran d'inscription d'une régie (kit regie, paramètre guichet) : QR de ses équipes, inscrits, annonces.",
+   "modes": [
+    "interactive"
+   ],
+   "output": {
+    "schema": {
+     "type": "string"
+    },
+    "from": "guichet.annonce",
+    "when": "phase = 'done'"
+   },
+   "stream": {
+    "store": "guichet",
+    "inscription": true,
+    "actions": {
+     "inscrits": {},
+     "annonce": {
+      "schema": {
+       "type": "object",
+       "properties": {
+        "texte": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "manche": {},
+     "fin": {},
+     "finish": {}
+    },
+    "rate": 30
+   }
+  }
+ }
+}

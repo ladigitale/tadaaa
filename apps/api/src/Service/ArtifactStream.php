@@ -70,6 +70,10 @@ final class ArtifactStream
     public const MAX_EMIT_ID = 64;
     public const MAX_EMIT_TO = 64;
     public const MAX_PAIR_ROLES = 4;
+    /** Rôle réservé des guichets d'inscription (un rôle déclaré commence par une lettre). */
+    public const DESK_ROLE = '_guichet';
+    public const DEFAULT_DESKS = 2;
+    public const MAX_DESKS = 4;
     public const EMIT_OPS = ['kick', 'lock', 'unlock'];
     private const UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
     private const ROLE = '/^[a-z][a-z0-9_-]{0,23}$/';
@@ -94,7 +98,7 @@ final class ArtifactStream
         }
         $errors = [];
         foreach (array_keys($stream) as $k) {
-            if (!\in_array($k, ['store', 'actions', 'state', 'document', 'score', 'rate', 'progress', 'emit', 'pair'], true)) {
+            if (!\in_array($k, ['store', 'actions', 'state', 'document', 'score', 'rate', 'progress', 'emit', 'pair', 'desk', 'inscription'], true)) {
                 $errors[] = ['path' => $p.'/'.$k, 'message' => 'Clé non autorisée (store, actions, state, document, score, rate, progress, emit, pair).'];
             }
         }
@@ -132,6 +136,12 @@ final class ArtifactStream
         }
         if (\array_key_exists('pair', $stream)) {
             $errors = [...$errors, ...self::checkPair($stream['pair'], $accepts, \array_key_exists('emit', $stream), $p.'/pair')];
+        }
+        if (\array_key_exists('desk', $stream)) {
+            $errors = [...$errors, ...self::checkDesk($stream, $p.'/desk')];
+        }
+        if (\array_key_exists('inscription', $stream) && !\is_bool($stream['inscription'])) {
+            $errors[] = ['path' => $p.'/inscription', 'message' => 'inscription : booléen (ce run est le guichet d’inscription d’une régie : il affiche ses codes).'];
         }
         if (\array_key_exists('rate', $stream) && (!\is_int($stream['rate']) || $stream['rate'] < 1 || $stream['rate'] > self::MAX_RATE)) {
             $errors[] = ['path' => $p.'/rate', 'message' => sprintf('rate : entier 1…%d (messages par seconde).', self::MAX_RATE)];
@@ -214,6 +224,7 @@ final class ArtifactStream
             'progress' => \is_array($stream['progress'] ?? null),
             'emit' => \is_array($stream['emit'] ?? null),
             'pair' => self::describePair(self::pairEntries($stream)),
+            'desk' => self::deskEntry($stream) === null ? null : ['remote' => self::deskEntry($stream)['remote'], 'max' => self::deskEntry($stream)['max']],
         ];
     }
 
@@ -544,6 +555,61 @@ final class ArtifactStream
         }
 
         return array_keys($entries) === [''] ? $out[0] : $out;
+    }
+
+    /**
+     * Guichet d'inscription d'une régie : `desk = {remote, max?, ttl?, input?}`. Le run hôte montre un
+     * code (artifactRun.desk) qui ouvre un run de `remote` relié à l'hôte (sens hôte → guichet, `back`
+     * = data : le guichet reçoit les publications de l'hôte) ; ce run lit les codes d'appairage de
+     * l'hôte sans son jeton. Les guichets ne comptent pas parmi les membres de la présence.
+     *
+     * @param array<string, mixed> $stream bloc io.stream
+     *
+     * @return ?array<string, mixed> entrée d'appairage du guichet (rôle {@see self::DESK_ROLE})
+     */
+    public static function deskEntry(array $stream): ?array
+    {
+        $desk = $stream['desk'] ?? null;
+        if (!\is_array($desk) || !\is_string($desk['remote'] ?? null)) {
+            return null;
+        }
+
+        return ['remote' => $desk['remote'], 'max' => (int) ($desk['max'] ?? self::DEFAULT_DESKS), 'ttl' => $desk['ttl'] ?? null, 'input' => $desk['input'] ?? null, 'back' => 'data'];
+    }
+
+    /** @return list<array{path: string, message: string}> */
+    private static function checkDesk(array $stream, string $p): array
+    {
+        $desk = $stream['desk'];
+        if (!\is_array($desk) || array_is_list($desk)) {
+            return [['path' => $p, 'message' => 'desk : {remote: "slug du guichet", max?, ttl?, input?}.']];
+        }
+        $errors = [];
+        foreach (array_keys($desk) as $k) {
+            if (!\in_array($k, ['remote', 'max', 'ttl', 'input'], true)) {
+                $errors[] = ['path' => $p.'/'.$k, 'message' => 'Clé non autorisée (remote, max, ttl, input).'];
+            }
+        }
+        if (!\is_string($desk['remote'] ?? null) || !preg_match('/^[a-z0-9][a-z0-9-]{0,79}$/', $desk['remote'])) {
+            $errors[] = ['path' => $p.'/remote', 'message' => 'remote : slug de l’artefact guichet (io.stream.inscription = true).'];
+        }
+        if (\array_key_exists('max', $desk) && (!\is_int($desk['max']) || $desk['max'] < 1 || $desk['max'] > self::MAX_DESKS)) {
+            $errors[] = ['path' => $p.'/max', 'message' => sprintf('max : guichets ouverts en même temps (1 à %d).', self::MAX_DESKS)];
+        }
+        if (\array_key_exists('ttl', $desk) && (!\is_int($desk['ttl']) || $desk['ttl'] < 60 || $desk['ttl'] > 86400)) {
+            $errors[] = ['path' => $p.'/ttl', 'message' => 'ttl : durée d’un code en secondes (60 à 86400).'];
+        }
+        if (\array_key_exists('input', $desk) && (!\is_array($desk['input']) || ($desk['input'] !== [] && array_is_list($desk['input'])))) {
+            $errors[] = ['path' => $p.'/input', 'message' => 'input : objet (entrée du run guichet).'];
+        }
+        if (self::pairEntries($stream) === []) {
+            $errors[] = ['path' => $p, 'message' => 'desk demande pair : le guichet affiche les codes d’appairage de la régie.'];
+        }
+        if (!\array_key_exists('emit', $stream)) {
+            $errors[] = ['path' => $p, 'message' => 'desk demande emit : le guichet reçoit les publications de la régie par sa file d’envoi.'];
+        }
+
+        return $errors;
     }
 
     /**

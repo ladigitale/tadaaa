@@ -71,11 +71,52 @@ final class ArtifactRunPairingService
         if (!$host->matchesToken($runToken)) {
             throw new NotFoundHttpException('Run introuvable.');
         }
+
+        return $this->issueFor($host, $role);
+    }
+
+    /**
+     * Codes de la régie, lus par un de ses guichets d'inscription (jeton du run guichet) : tous les
+     * rôles d'appairage, sans le jeton de la régie.
+     *
+     * @return array<string, mixed> {host: {slug, runId}, locked, pair, pairs: {rôle: code}}
+     */
+    public function deskPairs(string $slug, string $runId, string $runToken): array
+    {
+        $desk = $this->findRun($slug, $runId);
+        if (!$desk->matchesToken($runToken)) {
+            throw new NotFoundHttpException('Run introuvable.');
+        }
+        $hostId = $this->connection->fetchOne(
+            'SELECT host_run_id FROM artifact_run_pair_claims WHERE remote_run_id = :r AND role = :role AND released_at IS NULL ORDER BY created_at DESC LIMIT 1',
+            ['r' => $desk->getId()->toRfc4122(), 'role' => ArtifactStream::DESK_ROLE],
+        );
+        $host = $hostId ? $this->runs->find(Uuid::fromString((string) $hostId)) : null;
+        if (!$host instanceof ArtifactRun) {
+            throw new NotFoundHttpException('Ce run n’est le guichet d’aucune régie.');
+        }
+        $pairs = [];
+        foreach (array_keys(ArtifactStream::pairEntries($host->getIo()['stream'] ?? [])) as $role) {
+            $pairs[(string) $role] = $this->issueFor($host, (string) $role);
+        }
+
+        return [
+            'host' => ['slug' => $host->getArtifact()->getSlug(), 'runId' => $host->getId()->toRfc4122()],
+            'locked' => self::isLocked($host),
+            'pair' => $pairs === [] ? null : reset($pairs),
+            'pairs' => array_filter($pairs, static fn (string $r): bool => $r !== '', \ARRAY_FILTER_USE_KEY),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function issueFor(ArtifactRun $host, ?string $role): array
+    {
         [$role, $pair] = $this->openHost($host, $role);
         $remote = $this->remoteArtifact($host, $pair);
         $max = (int) ($pair['max'] ?? ArtifactStream::DEFAULT_PAIRS);
         $paired = $this->claimCount($host, $role);
-        $locked = self::isLocked($host);
+        // Fermer les inscriptions bloque les appareils, pas les guichets.
+        $locked = $role !== ArtifactStream::DESK_ROLE && self::isLocked($host);
         $base = [
             'role' => $role === '' ? null : $role,
             'max' => $max,
@@ -148,7 +189,7 @@ final class ArtifactRunPairingService
         if ($remote->getSlug() !== $remoteSlug) {
             throw new NotFoundHttpException('Ce code n’ouvre pas cet artefact.');
         }
-        if (self::isLocked($host)) {
+        if ($role !== ArtifactStream::DESK_ROLE && self::isLocked($host)) {
             throw new ConflictHttpException('Les inscriptions à cet écran sont fermées.');
         }
         $max = (int) ($pair['max'] ?? ArtifactStream::DEFAULT_PAIRS);
@@ -228,8 +269,9 @@ final class ArtifactRunPairingService
     /** Liens retour possibles depuis l'hôte : somme des places de tous ses rôles (8 au moins). */
     private function pairCapacity(ArtifactRun $host): int
     {
-        $total = 0;
-        foreach (ArtifactStream::pairEntries($host->getIo()['stream'] ?? []) as $entry) {
+        $stream = $host->getIo()['stream'] ?? [];
+        $total = (int) (ArtifactStream::deskEntry($stream)['max'] ?? 0);
+        foreach (ArtifactStream::pairEntries($stream) as $entry) {
             $total += (int) ($entry['max'] ?? ArtifactStream::DEFAULT_PAIRS);
         }
 
@@ -325,13 +367,17 @@ final class ArtifactRunPairingService
     /** @return array{0: string, 1: array<string, mixed>} rôle retenu et son entrée de io.stream.pair */
     private function openHost(ArtifactRun $host, ?string $role = null): array
     {
-        $entries = ArtifactStream::pairEntries($host->getIo()['stream'] ?? []);
+        $stream = $host->getIo()['stream'] ?? [];
+        $entries = ArtifactStream::pairEntries($stream);
+        if (($desk = ArtifactStream::deskEntry($stream)) !== null) {
+            $entries[ArtifactStream::DESK_ROLE] = $desk;
+        }
         if ($entries === [] || !$host->hasStream()) {
             throw new BadRequestHttpException('Ce run ne propose pas d’appairage (io.stream.pair).');
         }
         $role ??= (string) array_key_first($entries);
         if (!\array_key_exists($role, $entries)) {
-            throw new BadRequestHttpException(sprintf('Rôle d’appairage inconnu : « %s » (%s).', $role, implode(', ', array_filter(array_keys($entries), 'strlen')) ?: 'aucun rôle'));
+            throw new BadRequestHttpException(sprintf('Rôle d’appairage inconnu : « %s » (%s).', $role, implode(', ', array_filter(array_map('strval', array_keys($entries)), static fn (string $r): bool => $r !== '' && $r !== ArtifactStream::DESK_ROLE)) ?: 'aucun rôle'));
         }
         $pair = $entries[$role];
         if ($host->getStatus() !== ArtifactRun::STATUS_PENDING) {

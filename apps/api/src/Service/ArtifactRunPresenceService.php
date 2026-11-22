@@ -67,18 +67,24 @@ final class ArtifactRunPresenceService
         foreach ($this->connection->fetchAllAssociative('SELECT remote_run_id, role FROM artifact_run_pair_claims WHERE host_run_id = :r', ['r' => $host->getId()->toRfc4122()]) as $row) {
             $roles[strtolower((string) $row['remote_run_id'])] = (string) $row['role'];
         }
-        $members = self::members($this->links->findActiveTouching($host), $host, $now, $this->links->findForRun($host), $roles);
-        $key = implode(',', array_column($members, 'runId'));
+        $active = $this->links->findActiveTouching($host);
+        $all = $this->links->findForRun($host);
+        $members = self::members($active, $host, $now, $all, $roles);
+        $desks = array_map(
+            static fn (array $d): array => ['runId' => $d['runId'], 'slug' => $d['slug'], 'seen' => $d['seen']],
+            self::members($active, $host, $now, $all, $roles, true),
+        );
+        $key = implode(',', array_column($members, 'runId')).'|'.implode(',', array_column($desks, 'runId'));
         $meta = $host->getStreamMeta();
         if (($meta['presenceKey'] ?? null) === $key) {
             return;
         }
-        $presence = ['count' => \count($members), 'members' => $members, 'at' => $now];
+        $presence = ['count' => \count($members), 'members' => $members, 'desks' => $desks, 'at' => $now];
         $meta['presenceKey'] = $key;
         $meta['presence'] = $presence;
         $host->setStreamMeta($meta);
         $this->em->flush();
-        $this->streams->emitSystem($host, [(object) ['type' => 'presence', 'count' => $presence['count'], 'members' => $members]]);
+        $this->streams->emitSystem($host, [(object) ['type' => 'presence', 'count' => $presence['count'], 'members' => $members, 'desks' => $desks]]);
     }
 
     /**
@@ -88,15 +94,18 @@ final class ArtifactRunPresenceService
      * @param list<ArtifactRunLink>  $links liens actifs touchant le run
      * @param ?list<ArtifactRunLink> $all   tous les liens touchant le run, du plus ancien au plus récent
      * @param array<string, string>  $roles rôle d'appairage par runId d'appareil
+     * @param bool                   $desks true : les guichets d'inscription seulement (exclus sinon)
      *
      * @return list<array{runId: string, slug: string, index: int, since: int, seen: int, role: ?string}>
      */
-    public static function members(array $links, ArtifactRun $host, int $now, ?array $all = null, array $roles = []): array
+    public static function members(array $links, ArtifactRun $host, int $now, ?array $all = null, array $roles = [], bool $desks = false): array
     {
         $rank = [];
         foreach ($all ?? $links as $link) {
             $id = self::other($link, $host)->getId()->toRfc4122();
-            $rank[$id] ??= \count($rank) + 1;
+            if (($roles[$id] ?? '') !== ArtifactStream::DESK_ROLE) {
+                $rank[$id] ??= \count($rank) + 1;
+            }
         }
         $byRun = [];
         foreach ($links as $link) {
@@ -124,7 +133,7 @@ final class ArtifactRunPresenceService
                 'role' => $role === '' ? null : $role,
             ];
         }
-        $out = array_values(array_filter($byRun));
+        $out = array_values(array_filter($byRun, static fn (?array $m): bool => $m !== null && ($m['role'] === ArtifactStream::DESK_ROLE) === $desks));
         usort($out, static fn (array $a, array $b): int => $a['index'] <=> $b['index']);
 
         return $out;

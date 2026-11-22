@@ -76,7 +76,7 @@ final class ArtifactKitsTest extends TestCase
     public function testShippedKitsBuildValidDocuments(): void
     {
         $kits = new ArtifactKits(self::API.'/config/artifacts/kits');
-        self::assertSame(['appareil', 'direct', 'gestemidi', 'grid', 'onepage', 'quiz', 'regie', 'sentinel', 'shader', 'survey'], $kits->ids());
+        self::assertSame(['appareil', 'direct', 'gestemidi', 'grid', 'inscription', 'onepage', 'quiz', 'regie', 'sentinel', 'shader', 'survey'], $kits->ids());
         $validator = new ArtifactDocumentValidator(
             self::API.'/config/artifacts/catalog.json',
             self::API.'/config/artifacts/sdui.schema.json',
@@ -94,8 +94,8 @@ final class ArtifactKitsTest extends TestCase
         }
 
         $summary = $kits->summary();
-        self::assertLessThan(7800, \strlen($summary));
-        foreach (['quiz :', 'grid :', 'Presets : snake', 'correct: integer', 'shader :', 'survey :', 'sentinel :', 'Presets : presence, bruit, geste', 'gestemidi :', 'Presets : frappe, doigts, tenue', 'direct :', 'regie :', 'Presets : deux-equipes, solo', 'appareil :'] as $needle) {
+        self::assertLessThan(8400, \strlen($summary));
+        foreach (['quiz :', 'grid :', 'Presets : snake', 'correct: integer', 'shader :', 'survey :', 'sentinel :', 'Presets : presence, bruit, geste', 'gestemidi :', 'Presets : frappe, doigts, tenue', 'direct :', 'regie :', 'Presets : deux-equipes, solo', 'appareil :', 'inscription :'] as $needle) {
             self::assertStringContainsString($needle, $summary);
         }
     }
@@ -103,7 +103,7 @@ final class ArtifactKitsTest extends TestCase
     public function testRegieDeclaresOneCodePerTeam(): void
     {
         $kits = new ArtifactKits(self::API.'/config/artifacts/kits');
-        $built = $kits->build('regie', json_decode('{"preset":"deux-equipes","remote":"mon-ecran","teams":[{"role":"a","label":"A","titre":"Équipe A","color":"#112233","max":20},{"role":"b","label":"B","titre":"Équipe B","color":"#445566"},{"role":"c","label":"C","titre":"Équipe C","color":"#778899"}]}', false));
+        $built = $kits->build('regie', json_decode('{"preset":"deux-equipes","remote":"mon-ecran","guichet":"","teams":[{"role":"a","label":"A","titre":"Équipe A","color":"#112233","max":20},{"role":"b","label":"B","titre":"Équipe B","color":"#445566"},{"role":"c","label":"C","titre":"Équipe C","color":"#778899"}]}', false));
         self::assertSame([], $built['errors']);
         $doc = json_decode((string) json_encode($built['document']), true);
         self::assertSame(['a', 'b', 'c'], array_column($doc['io']['stream']['pair'], 'role'));
@@ -113,6 +113,15 @@ final class ArtifactKitsTest extends TestCase
         $json = (string) json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         self::assertStringContainsString('artifactRun.pairs.c.url', $json);
         self::assertStringContainsString('"data-value":"c"', $json);
+        self::assertArrayNotHasKey('desk', $doc['io']['stream'], 'sans guichet : QR sur la régie');
+        self::assertStringContainsString('artifactRun.pairs.a.url', $json);
+
+        $built = $kits->build('regie', json_decode('{"preset":"deux-equipes"}', false));
+        $doc = json_decode((string) json_encode($built['document']), true);
+        self::assertSame(['remote' => 'inscription-ecrans', 'max' => 2, 'ttl' => 3600], $doc['io']['stream']['desk']);
+        $json = (string) json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        self::assertStringContainsString('artifactRun.desk.url', $json);
+        self::assertStringNotContainsString('"text-from":"artifactRun.pairs.', $json, 'avec guichet : les QR d’équipe passent sur le guichet');
     }
 
     public function testSentinelWiresEachSensorToTheTrigger(): void
