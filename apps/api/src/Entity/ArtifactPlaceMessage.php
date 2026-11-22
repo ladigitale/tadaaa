@@ -20,7 +20,7 @@ class ArtifactPlaceMessage
     public const MAX_TEXT = 500;
     public const MAX_PSEUDO = 40;
     /** Vocal ou dessin joint (data: URL), en octets. */
-    public const MAX_MEDIA = 350_000;
+    public const MAX_MEDIA = 900_000;
     public const KINDS = ['text', 'voice', 'drawing'];
 
     #[ORM\Id]
