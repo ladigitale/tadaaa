@@ -128,7 +128,7 @@ final class PublicArtifactPlaceController extends AbstractController
             throw new BadRequestHttpException('Corps attendu : {"ref": {...}}.');
         }
 
-        return $this->noStore($this->json($this->places->addRef($slug, $this->link($request), $name, $id, $in['ref'], $this->user()), 201));
+        return $this->noStore($this->json($this->places->addRef($slug, $this->link($request), $name, $id, $in['ref'], $this->user(), $in['at'] ?? null), 201));
     }
 
     #[Route('/{slug}/places/{name}/{id}/messages', name: 'api_public_artifact_places_thread', methods: ['GET'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID])]
@@ -150,9 +150,9 @@ final class PublicArtifactPlaceController extends AbstractController
         /** @var mixed $in */
         $in = json_decode($raw, true);
         if (!\is_array($in)) {
-            throw new BadRequestHttpException('Corps attendu : {"text"?, "media"?, "pseudo"?}.');
+            throw new BadRequestHttpException('Corps attendu : {"text"?, "media"?, "pseudo"?, "at"?: {"lat", "lon", "accuracy", "seen"}}.');
         }
-        $out = $this->places->postMessage($slug, $this->link($request), $name, $id, $in['text'] ?? null, $in['pseudo'] ?? null, $this->user(), $request->getClientIp() ?: 'anon', $in['media'] ?? null);
+        $out = $this->places->postMessage($slug, $this->link($request), $name, $id, $in['text'] ?? null, $in['pseudo'] ?? null, $this->user(), $request->getClientIp() ?: 'anon', $in['media'] ?? null, $in['at'] ?? null);
 
         return $this->noStore($this->json($out, 201));
     }
