@@ -12,8 +12,10 @@
 #
 # Merges missing .env keys (mail, quotas, …), rebuilds SPAs via ephemeral
 # node:22 (no host yarn), recreates containers, Doctrine migrate.
-# Checks free disk first (MIN_FREE_GB, default 5: prunes dangling images and
-# old build cache when below, stops if still short) and prunes again at the end.
+# Checks free disk before building and again right before the image build
+# (MIN_FREE_GB, default 10): prunes dangling images and old build cache, then
+# all build cache and unused images if still short, stops if still short.
+# At the end, prunes again and caps the build cache (BUILD_CACHE_GB, default 8).
 #
 # Optional cohost (.env) — re-applied on edge after the main stack up:
 #   GLANE_ROOT=/root/glane
@@ -238,7 +240,8 @@ need_cmd curl
 
 # Espace disque : chaque déploiement laisse l'ancienne image (sans nom) et du cache de build.
 # On les retire, on vérifie qu'il reste assez de place AVANT de compiler, et on nettoie à la fin.
-MIN_FREE_GB="${MIN_FREE_GB:-5}"
+MIN_FREE_GB="${MIN_FREE_GB:-10}"
+BUILD_CACHE_GB="${BUILD_CACHE_GB:-8}"
 free_gb() {
   local dir
   dir="$(docker info -f '{{.DockerRootDir}}' 2>/dev/null || true)"
@@ -248,14 +251,32 @@ free_gb() {
 docker_cleanup() {
   docker image prune -f >/dev/null 2>&1 || warn "docker image prune a échoué."
   docker builder prune -f --filter until=72h >/dev/null 2>&1 || warn "docker builder prune a échoué."
+  # Plusieurs déploiements par jour : le cache récent grossit sans limite si on ne le plafonne pas.
+  docker builder prune -f --reserved-space "${BUILD_CACHE_GB}gb" >/dev/null 2>&1 \
+    || docker builder prune -f --keep-storage "${BUILD_CACHE_GB}gb" >/dev/null 2>&1 \
+    || warn "plafond du cache de build non appliqué."
 }
-info "Disque : $(free_gb) Go libres (minimum ${MIN_FREE_GB} Go)."
-if (( $(free_gb) < MIN_FREE_GB )); then
+# Nettoyage complet : tout le cache de build, les conteneurs arrêtés et les images qu'aucun conteneur
+# n'utilise (celles de la pile en marche restent ; les images de base seront retéléchargées).
+docker_deep_cleanup() {
+  docker container prune -f >/dev/null 2>&1 || true
+  docker builder prune -af >/dev/null 2>&1 || warn "docker builder prune -a a échoué."
+  docker image prune -af >/dev/null 2>&1 || warn "docker image prune -a a échoué."
+}
+ensure_space() {
+  local when="$1"
+  info "Disque ${when} : $(free_gb) Go libres (minimum ${MIN_FREE_GB} Go)."
+  (( $(free_gb) >= MIN_FREE_GB )) && return 0
   warn "Moins de ${MIN_FREE_GB} Go libres : retrait des images orphelines et du vieux cache de build…"
   docker_cleanup
   info "Disque après nettoyage : $(free_gb) Go libres."
+  (( $(free_gb) >= MIN_FREE_GB )) && return 0
+  warn "Toujours court : retrait de tout le cache de build et des images inutilisées…"
+  docker_deep_cleanup
+  info "Disque après nettoyage complet : $(free_gb) Go libres."
   (( $(free_gb) >= MIN_FREE_GB )) || die "Pas assez de place sur le disque ($(free_gb) Go < ${MIN_FREE_GB} Go) : libérer de l'espace (docker system df, yarn cache, journaux) puis relancer."
-fi
+}
+ensure_space "avant la mise à jour"
 
 tadaaa_sha="$(head_sha "$ROOT")"
 tadaaa_from="$(deployed_sha tadaaa)"
@@ -415,6 +436,7 @@ update_glane
 # Sans lui, `up --build` réutilise l'image FrankenPHP déjà en cache, donc un PHP non corrigé.
 if [[ "$BUILD_TADAAA" -eq 1 ]]; then
   info "Building images (base images pulled)…"
+  ensure_space "avant la construction des images"
   "${COMPOSE[@]}" build --pull
   info "Recreating stack…"
   "${COMPOSE[@]}" up -d --build
@@ -442,7 +464,7 @@ else
   warn "API not reachable yet — check DNS / logs: ${COMPOSE[*]} logs -f edge php"
 fi
 
-info "Nettoyage Docker (images orphelines, cache de build de plus de 72 h)…"
+info "Nettoyage Docker (images orphelines, cache de build de plus de 72 h, cache plafonné à ${BUILD_CACHE_GB} Go)…"
 docker_cleanup
 ok "Disque : $(free_gb) Go libres."
 
