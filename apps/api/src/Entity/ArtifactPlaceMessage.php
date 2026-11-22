@@ -65,9 +65,14 @@ class ArtifactPlaceMessage
     #[ORM\Column(options: ['default' => true])]
     private bool $onSite;
 
-    public function __construct(ArtifactPlace $place, string $kind, string $text, ?string $media, ?string $pseudo, string $ipHash, string $deleteTokenHash, bool $onSite = true)
+    /** Dessin : son cadre en fois la zone (1 = la zone, 3 = la zone et autant tout autour). */
+    #[ORM\Column(type: 'smallint', nullable: true)]
+    private ?int $frame;
+
+    public function __construct(ArtifactPlace $place, string $kind, string $text, ?string $media, ?string $pseudo, string $ipHash, string $deleteTokenHash, bool $onSite = true, ?int $frame = null)
     {
         $this->onSite = $onSite;
+        $this->frame = $kind === 'drawing' && $frame !== null ? max(1, min(5, $frame)) : null;
         $this->id = Uuid::v7();
         $this->place = $place;
         $this->kind = $kind;
@@ -88,6 +93,7 @@ class ArtifactPlaceMessage
     public function getDeleteTokenHash(): string { return $this->deleteTokenHash; }
     public function isHidden(): bool { return $this->hidden; }
     public function isOnSite(): bool { return $this->onSite; }
+    public function getFrame(): ?int { return $this->frame; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
 
     public function report(int $hideAt): void
