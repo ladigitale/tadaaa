@@ -69,6 +69,23 @@ final class ArtifactRunPairingTest extends TestCase
         self::assertContains('/io/stream/pair', $paths(self::check($base + ['pair' => array_fill(0, 5, ['role' => 'x', 'remote' => 'r'])])), '4 rôles au plus');
     }
 
+    public function testDesk(): void
+    {
+        $base = ['store' => 'scene', 'actions' => ['vote'], 'emit' => ['from' => 'out.q', 'ack' => 'out'], 'pair' => [['role' => 'rouge', 'remote' => 'ecran', 'back' => 'data']]];
+        self::assertSame([], self::check($base + ['desk' => ['remote' => 'guichet', 'max' => 2]]));
+        self::assertSame(['remote' => 'guichet', 'max' => 2, 'ttl' => null, 'input' => null, 'back' => 'data'], ArtifactStream::deskEntry($base + ['desk' => ['remote' => 'guichet', 'max' => 2]]));
+        self::assertSame(['remote' => 'guichet', 'max' => ArtifactStream::DEFAULT_DESKS], ArtifactStream::describe($base + ['desk' => ['remote' => 'guichet']])['desk']);
+        self::assertNull(ArtifactStream::deskEntry($base));
+        $paths = static fn (array $errors): array => array_column($errors, 'path');
+        self::assertContains('/io/stream/desk/max', $paths(self::check($base + ['desk' => ['remote' => 'guichet', 'max' => 9]])));
+        self::assertContains('/io/stream/desk/back', $paths(self::check($base + ['desk' => ['remote' => 'guichet', 'back' => 'data']])));
+        unset($base['pair']);
+        self::assertContains('/io/stream/desk', $paths(self::check($base + ['desk' => ['remote' => 'guichet']])), 'desk sans pair');
+        self::assertContains('/io/stream/inscription', $paths(self::check(['store' => 'scene', 'actions' => ['a'], 'inscription' => 'oui'])));
+        self::assertSame([], self::check(['store' => 'scene', 'actions' => ['a'], 'inscription' => true]));
+        self::assertSame('_guichet', ArtifactStream::DESK_ROLE, 'rôle réservé : un rôle déclaré commence par une lettre');
+    }
+
     public function testCodes(): void
     {
         $seen = [];

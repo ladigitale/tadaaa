@@ -43,9 +43,12 @@
        "label": "bleue"
       }
      ],
-     "defiTexte": "10 tocs en 5 secondes, go !"
+     "defiTexte": "10 tocs en 5 secondes, go !",
+     "guichets": [],
+     "cleGuichets": "",
+     "annonceTexte": ""
     },
-    "reducer": "(\n  $t := $action.type;\n  $p := $action.payload;\n  $seq := $state.seq + 1;\n  $nomDe := function($id) { $lookup($state.noms, $id) ? $lookup($state.noms, $id) : \"Un écran\" };\n  $equipeDe := function($id) { $lookup($state.equipes, $id) };\n  $diffuse := function($msg) { [{\"id\": \"m\" & $string($seq), \"data\": $msg}] };\n  $roleDe := function($r) { $r in $state.teams.role ? $r : $state.teams[0].role };\n  $bilan := function($s) {(\n    $lignes := [$map($s.membres, function($m) { {\"nom\": $lookup($s.noms, $m.runId) ? $lookup($s.noms, $m.runId) : \"Écran \" & $string($m.index), \"equipe\": $roleDe($m.role), \"score\": $exists($lookup($s.scores, $m.runId)) ? $lookup($s.scores, $m.runId) : 0} })];\n    {\"manche\": $s.manche, \"totaux\": $s.totaux, \"scores\": $lignes}\n  )};\n  $next := $t = 'presence'\n    ? (\n        $avant := $state.membres.runId;\n        $apres := $p.members.runId;\n        $partis := [$filter($avant, function($id) { $not($id in $apres) })];\n        $membres := $p.members ? [$sort([$p.members], function($a, $b) { $a.index > $b.index })] : [];\n        $equipes := $merge([$state.equipes, $merge([$map($membres, function($m) { {$m.runId: $roleDe($m.role)} })])]);\n        $merge([$state, {\"membres\": $membres, \"equipes\": $equipes, \"connectes\": $p.count ? $p.count : 0}, $count($partis) > 0\n          ? {\"seq\": $seq, \"notice\": {\"text\": $join([$map($partis, $nomDe)], \", \") & ($count($partis) > 1 ? \" sont partis.\" : \" est parti.\"), \"status\": \"info\", \"n\": $seq}}\n          : {}])\n      )\n  : $t = 'resultat'\n    ? (\n        $nouveau := $not($exists($lookup($state.noms, $p.id)));\n        $nom := $p.nom ? $p.nom : \"Un écran\";\n        $lab := $count($state.teams) > 1 ? $state.teams[role = $equipeDe($p.id)].label : \"\";\n        $merge([$state, {\"scores\": $merge([$state.scores, {$p.id: $p.score}]), \"noms\": $merge([$state.noms, {$p.id: $nom}])}, $nouveau\n          ? {\"seq\": $seq, \"notice\": {\"text\": $nom & ($lab ? \" rejoint l'équipe \" & $lab : \" rejoint la partie\") & \".\", \"status\": \"success\", \"n\": $seq}}\n          : {}])\n      )\n  : $t = 'manche'\n    ? $merge([$state, {\"historique\": $append($state.historique, [$bilan($state)]), \"manche\": $state.manche + 1, \"scores\": {}, \"seq\": $seq,\n        \"outbox\": $append($state.outbox, $diffuse({\"type\": \"action\", \"name\": \"manche\", \"payload\": {\"n\": $state.manche + 1}})),\n        \"notice\": {\"text\": \"Manche \" & $string($state.manche + 1) & \" lancée sur tous les écrans.\", \"status\": \"info\", \"n\": $seq}}])\n  : $t = 'defi'\n    ? $merge([$state, {\"seq\": $seq,\n        \"outbox\": $append($state.outbox, [{\"id\": \"d\" & $string($seq), \"to\": $p, \"data\": {\"type\": \"action\", \"name\": \"defi\", \"payload\": {\"texte\": $state.defiTexte}}}]),\n        \"notice\": {\"text\": \"Défi envoyé à \" & $nomDe($p) & \".\", \"status\": \"success\", \"n\": $seq}}])\n  : $t = 'retirer'\n    ? $merge([$state, {\"seq\": $seq,\n        \"outbox\": $append($state.outbox, [{\"id\": \"k\" & $string($seq), \"op\": \"kick\", \"runId\": $p}]),\n        \"notice\": {\"text\": $nomDe($p) & \" est retiré de la partie.\", \"status\": \"warning\", \"n\": $seq}}])\n  : $t = 'fermer'\n    ? $merge([$state, {\"inscriptions\": \"fermees\", \"seq\": $seq, \"outbox\": $append($state.outbox, [{\"id\": \"l\" & $string($seq), \"op\": \"lock\"}]),\n        \"notice\": {\"text\": \"Inscriptions fermées : les codes ne marchent plus.\", \"status\": \"info\", \"n\": $seq}}])\n  : $t = 'ouvrir'\n    ? $merge([$state, {\"inscriptions\": \"ouvertes\", \"seq\": $seq, \"outbox\": $append($state.outbox, [{\"id\": \"u\" & $string($seq), \"op\": \"unlock\"}]),\n        \"notice\": {\"text\": \"Inscriptions rouvertes.\", \"status\": \"info\", \"n\": $seq}}])\n  : $t = 'terminer' and $state.fin = false\n    ? $merge([$state, {\"fin\": true, \"historique\": $append($state.historique, [$bilan($state)]), \"seq\": $seq,\n        \"outbox\": $append($state.outbox, [{\"id\": \"fin\", \"data\": {\"type\": \"action\", \"name\": \"fin\"}}])}])\n  : $t = 'emit:ok'\n    ? $merge([$state, {\"outbox\": [$filter($state.outbox, function($i) { $i.id != $p.id })]}, $p.id = \"fin\" ? {\"phase\": \"done\"} : {}])\n  : $t = 'finish' ? $merge([$state, {\"phase\": \"done\"}])\n  : $state;\n  $sc := function($id) { $exists($lookup($next.scores, $id)) ? $lookup($next.scores, $id) : 0 };\n  $tuiles := [$map($next.membres, function($m) { {\n    \"runId\": $m.runId,\n    \"nom\": $lookup($next.noms, $m.runId) ? $lookup($next.noms, $m.runId) : \"Écran \" & $string($m.index),\n    \"score\": $string($sc($m.runId)),\n    \"t\": $roleDe($m.role)\n  } })];\n  $totaux := $merge([$map($next.teams, function($e) { {$e.role: $sum([$map([$filter($next.membres, function($m) { $roleDe($m.role) = $e.role })], function($m) { $sc($m.runId) })])} })]);\n  $classement := [$sort([$map($next.membres, function($m) { {\"nom\": $lookup($next.noms, $m.runId) ? $lookup($next.noms, $m.runId) : \"Écran \" & $string($m.index), \"equipe\": $roleDe($m.role), \"score\": $sc($m.runId)} })], function($a, $b) { $a.score < $b.score })];\n  $merge([$next, {\n    \"tuiles\": $tuiles, \"totaux\": $totaux,\n    \"record\": $max([$next.record, $map($next.membres, function($m) { $sc($m.runId) })]),\n    \"resultat\": {\"manches\": $next.historique, \"classement\": $classement}\n  }])\n)"
+    "reducer": "(\n  $t := $action.type;\n  $p := $action.payload;\n  $seq := $state.seq + 1;\n  $nomDe := function($id) { $lookup($state.noms, $id) ? $lookup($state.noms, $id) : \"Un écran\" };\n  $equipeDe := function($id) { $lookup($state.equipes, $id) };\n  $diffuse := function($msg) { [{\"id\": \"m\" & $string($seq), \"data\": $msg}] };\n  $roleDe := function($r) { $r in $state.teams.role ? $r : $state.teams[0].role };\n  $bilan := function($s) {(\n    $lignes := [$map($s.membres, function($m) { {\"nom\": $lookup($s.noms, $m.runId) ? $lookup($s.noms, $m.runId) : \"Écran \" & $string($m.index), \"equipe\": $roleDe($m.role), \"score\": $exists($lookup($s.scores, $m.runId)) ? $lookup($s.scores, $m.runId) : 0} })];\n    {\"manche\": $s.manche, \"totaux\": $s.totaux, \"scores\": $lignes}\n  )};\n  $next := $t = 'presence'\n    ? (\n        $avant := $state.membres.runId;\n        $apres := $p.members.runId;\n        $partis := [$filter($avant, function($id) { $not($id in $apres) })];\n        $membres := $p.members ? [$sort([$p.members], function($a, $b) { $a.index > $b.index })] : [];\n        $equipes := $merge([$state.equipes, $merge([$map($membres, function($m) { {$m.runId: $roleDe($m.role)} })])]);\n        $merge([$state, {\"membres\": $membres, \"equipes\": $equipes, \"connectes\": $p.count ? $p.count : 0, \"guichets\": [$p.desks.runId]}, $count($partis) > 0\n          ? {\"seq\": $seq, \"notice\": {\"text\": $join([$map($partis, $nomDe)], \", \") & ($count($partis) > 1 ? \" sont partis.\" : \" est parti.\"), \"status\": \"info\", \"n\": $seq}}\n          : {}])\n      )\n  : $t = 'resultat'\n    ? (\n        $nouveau := $not($exists($lookup($state.noms, $p.id)));\n        $nom := $p.nom ? $p.nom : \"Un écran\";\n        $lab := $count($state.teams) > 1 ? $state.teams[role = $equipeDe($p.id)].label : \"\";\n        $merge([$state, {\"scores\": $merge([$state.scores, {$p.id: $p.score}]), \"noms\": $merge([$state.noms, {$p.id: $nom}])}, $nouveau\n          ? {\"seq\": $seq, \"notice\": {\"text\": $nom & ($lab ? \" rejoint l'équipe \" & $lab : \" rejoint la partie\") & \".\", \"status\": \"success\", \"n\": $seq}}\n          : {}])\n      )\n  : $t = 'manche'\n    ? $merge([$state, {\"historique\": $append($state.historique, [$bilan($state)]), \"manche\": $state.manche + 1, \"scores\": {}, \"seq\": $seq,\n        \"outbox\": $append($state.outbox, $diffuse({\"type\": \"action\", \"name\": \"manche\", \"payload\": {\"n\": $state.manche + 1}})),\n        \"notice\": {\"text\": \"Manche \" & $string($state.manche + 1) & \" lancée sur tous les écrans.\", \"status\": \"info\", \"n\": $seq}}])\n  : $t = 'defi'\n    ? $merge([$state, {\"seq\": $seq,\n        \"outbox\": $append($state.outbox, [{\"id\": \"d\" & $string($seq), \"to\": $p, \"data\": {\"type\": \"action\", \"name\": \"defi\", \"payload\": {\"texte\": $state.defiTexte}}}]),\n        \"notice\": {\"text\": \"Défi envoyé à \" & $nomDe($p) & \".\", \"status\": \"success\", \"n\": $seq}}])\n  : $t = 'retirer'\n    ? $merge([$state, {\"seq\": $seq,\n        \"outbox\": $append($state.outbox, [{\"id\": \"k\" & $string($seq), \"op\": \"kick\", \"runId\": $p}]),\n        \"notice\": {\"text\": $nomDe($p) & \" est retiré de la partie.\", \"status\": \"warning\", \"n\": $seq}}])\n  : $t = 'fermer'\n    ? $merge([$state, {\"inscriptions\": \"fermees\", \"seq\": $seq, \"outbox\": $append($state.outbox, [{\"id\": \"l\" & $string($seq), \"op\": \"lock\"}]),\n        \"notice\": {\"text\": \"Inscriptions fermées : les codes ne marchent plus.\", \"status\": \"info\", \"n\": $seq}}])\n  : $t = 'ouvrir'\n    ? $merge([$state, {\"inscriptions\": \"ouvertes\", \"seq\": $seq, \"outbox\": $append($state.outbox, [{\"id\": \"u\" & $string($seq), \"op\": \"unlock\"}]),\n        \"notice\": {\"text\": \"Inscriptions rouvertes.\", \"status\": \"info\", \"n\": $seq}}])\n  : $t = 'terminer' and $state.fin = false\n    ? $merge([$state, {\"fin\": true, \"historique\": $append($state.historique, [$bilan($state)]), \"seq\": $seq,\n        \"outbox\": $append($state.outbox, [{\"id\": \"fin\", \"data\": {\"type\": \"action\", \"name\": \"fin\"}}])}])\n  : $t = 'annoncer'\n    ? (\n        $texte := $substring($trim($state.annonceTexte ? $state.annonceTexte : \"\"), 0, 140);\n        $texte = \"\"\n          ? $merge([$state, {\"seq\": $seq, \"notice\": {\"text\": \"Écris d'abord l'annonce.\", \"status\": \"warning\", \"n\": $seq}}])\n          : $count($state.guichets) = 0\n            ? $merge([$state, {\"seq\": $seq, \"notice\": {\"text\": \"Aucun écran d'inscription ouvert.\", \"status\": \"warning\", \"n\": $seq}}])\n            : $merge([$state, {\"seq\": $seq, \"annonceTexte\": \"\",\n                \"outbox\": $append($state.outbox, [{\"id\": \"a\" & $string($seq), \"to\": $state.guichets, \"data\": {\"type\": \"action\", \"name\": \"annonce\", \"payload\": {\"texte\": $texte}}}]),\n                \"notice\": {\"text\": \"Annonce publiée.\", \"status\": \"success\", \"n\": $seq}}])\n      )\n  : $t = 'emit:ok'\n    ? $merge([$state, {\"outbox\": [$filter($state.outbox, function($i) { $i.id != $p.id })]}, $p.id = \"fin\" ? {\"phase\": \"done\"} : {}])\n  : $t = 'finish' ? $merge([$state, {\"phase\": \"done\"}])\n  : $state;\n  $sc := function($id) { $exists($lookup($next.scores, $id)) ? $lookup($next.scores, $id) : 0 };\n  $tuiles := [$map($next.membres, function($m) { {\n    \"runId\": $m.runId,\n    \"nom\": $lookup($next.noms, $m.runId) ? $lookup($next.noms, $m.runId) : \"Écran \" & $string($m.index),\n    \"score\": $string($sc($m.runId)),\n    \"t\": $roleDe($m.role)\n  } })];\n  $totaux := $merge([$map($next.teams, function($e) { {$e.role: $sum([$map([$filter($next.membres, function($m) { $roleDe($m.role) = $e.role })], function($m) { $sc($m.runId) })])} })]);\n  $classement := [$sort([$map($next.membres, function($m) { {\"nom\": $lookup($next.noms, $m.runId) ? $lookup($next.noms, $m.runId) : \"Écran \" & $string($m.index), \"equipe\": $roleDe($m.role), \"score\": $sc($m.runId)} })], function($a, $b) { $a.score < $b.score })];\n  $liste := [$map($tuiles, function($x) { {\"nom\": $x.nom, \"t\": $x.t} })];\n  $cle := $string({\"l\": $liste, \"g\": $next.guichets});\n  $sync := $count($next.guichets) > 0 and $cle != $next.cleGuichets\n    ? {\"cleGuichets\": $cle, \"outbox\": $append($next.outbox, [{\"id\": \"i\" & $string($next.seq + 1), \"to\": $next.guichets, \"data\": {\"type\": \"action\", \"name\": \"inscrits\", \"payload\": {\"liste\": $liste}}}]), \"seq\": $next.seq + 1}\n    : {};\n  $merge([$next, $sync, {\n    \"tuiles\": $tuiles, \"totaux\": $totaux,\n    \"record\": $max([$next.record, $map($next.membres, function($m) { $sc($m.runId) })]),\n    \"resultat\": {\"manches\": $next.historique, \"classement\": $classement}\n  }])\n)"
    },
    "dlg": {
     "initial": {
@@ -232,45 +235,88 @@
                {
                 "tagName": "div",
                 "attributes": {
-                 "style": "display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-around"
+                 "style": "display:grid;gap:.7rem"
                 },
                 "nodes": [
                  {
                   "tagName": "div",
                   "attributes": {
-                   "style": "display:grid;gap:.35rem;justify-items:center;text-align:center;min-width:0"
+                   "style": "display:flex;gap:.9rem;align-items:center"
                   },
                   "nodes": [
                    {
-                    "tagName": "div",
-                    "attributes": {
-                     "style": "font-weight:700;color:#e5262a"
-                    },
-                    "textContent": "Équipe rouge"
-                   },
-                   {
                     "tagName": "sonic-qr",
                     "attributes": {
-                     "text-from": "artifactRun.pairs.rouge.url",
+                     "text-from": "artifactRun.desk.url",
                      "ecc": "Q",
-                     "size": 150,
+                     "size": 110,
                      "link": true,
                      "placeholder": "…",
-                     "label": "QR code : Équipe rouge"
+                     "label": "QR code : ouvrir l'écran d'inscription"
                     }
                    },
                    {
                     "tagName": "div",
                     "attributes": {
-                     "style": "font-size:.85rem;font-variant-numeric:tabular-nums"
+                     "style": "display:grid;gap:.2rem"
                     },
                     "nodes": [
+                     {
+                      "tagName": "div",
+                      "attributes": {
+                       "style": "font-weight:700"
+                      },
+                      "textContent": "Écran d'inscription"
+                     },
+                     {
+                      "tagName": "div",
+                      "attributes": {
+                       "style": "font-size:.9rem"
+                      },
+                      "nodes": [
+                       {
+                        "tagName": "span",
+                        "textContent": "À ouvrir sur l'écran de salle · code "
+                       },
+                       {
+                        "tagName": "sonic-value",
+                        "attributes": {
+                         "dataProvider": "artifactRun",
+                         "key": "desk.code",
+                         "style": "font-weight:700;letter-spacing:.06em"
+                        }
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "tagName": "div",
+                  "attributes": {
+                   "style": "display:flex;flex-wrap:wrap;gap:.3rem 1rem;font-size:.9rem;font-variant-numeric:tabular-nums"
+                  },
+                  "nodes": [
+                   {
+                    "tagName": "span",
+                    "attributes": {
+                     "style": "white-space:nowrap"
+                    },
+                    "nodes": [
+                     {
+                      "tagName": "span",
+                      "attributes": {
+                       "style": "color:#e5262a;font-weight:700"
+                      },
+                      "textContent": "Équipe rouge "
+                     },
                      {
                       "tagName": "sonic-value",
                       "attributes": {
                        "dataProvider": "artifactRun",
                        "key": "pairs.rouge.code",
-                       "style": "font-weight:700;letter-spacing:.08em"
+                       "style": "font-weight:700;letter-spacing:.06em"
                       }
                      },
                      {
@@ -290,45 +336,26 @@
                       "textContent": " places"
                      }
                     ]
-                   }
-                  ]
-                 },
-                 {
-                  "tagName": "div",
-                  "attributes": {
-                   "style": "display:grid;gap:.35rem;justify-items:center;text-align:center;min-width:0"
-                  },
-                  "nodes": [
-                   {
-                    "tagName": "div",
-                    "attributes": {
-                     "style": "font-weight:700;color:#2563eb"
-                    },
-                    "textContent": "Équipe bleue"
                    },
                    {
-                    "tagName": "sonic-qr",
+                    "tagName": "span",
                     "attributes": {
-                     "text-from": "artifactRun.pairs.bleu.url",
-                     "ecc": "Q",
-                     "size": 150,
-                     "link": true,
-                     "placeholder": "…",
-                     "label": "QR code : Équipe bleue"
-                    }
-                   },
-                   {
-                    "tagName": "div",
-                    "attributes": {
-                     "style": "font-size:.85rem;font-variant-numeric:tabular-nums"
+                     "style": "white-space:nowrap"
                     },
                     "nodes": [
+                     {
+                      "tagName": "span",
+                      "attributes": {
+                       "style": "color:#2563eb;font-weight:700"
+                      },
+                      "textContent": "Équipe bleue "
+                     },
                      {
                       "tagName": "sonic-value",
                       "attributes": {
                        "dataProvider": "artifactRun",
                        "key": "pairs.bleu.code",
-                       "style": "font-weight:700;letter-spacing:.08em"
+                       "style": "font-weight:700;letter-spacing:.06em"
                       }
                      },
                      {
@@ -346,6 +373,54 @@
                      {
                       "tagName": "span",
                       "textContent": " places"
+                     }
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "tagName": "sonic-fieldset",
+                  "attributes": {
+                   "label": "Annonce sur l'écran d'inscription"
+                  },
+                  "nodes": [
+                   {
+                    "tagName": "sonic-form-layout",
+                    "nodes": [
+                     {
+                      "tagName": "sonic-input",
+                      "attributes": {
+                       "formDataProvider": "regie",
+                       "name": "annonceTexte",
+                       "label": "Texte",
+                       "maxlength": "140"
+                      }
+                     },
+                     {
+                      "tagName": "sonic-form-actions",
+                      "nodes": [
+                       {
+                        "tagName": "sonic-action",
+                        "attributes": {
+                         "target": "regie",
+                         "type": "annoncer"
+                        },
+                        "nodes": [
+                         {
+                          "tagName": "sonic-button",
+                          "attributes": {
+                           "variant": "outline"
+                          },
+                          "nodes": [
+                           {
+                            "tagName": "span",
+                            "textContent": "Publier"
+                           }
+                          ]
+                         }
+                        ]
+                       }
+                      ]
                      }
                     ]
                    }
@@ -885,6 +960,11 @@
    "emit": {
     "from": "regie.outbox",
     "ack": "regie"
+   },
+   "desk": {
+    "remote": "inscription-ecrans",
+    "max": 2,
+    "ttl": 3600
    },
    "pair": [
     {

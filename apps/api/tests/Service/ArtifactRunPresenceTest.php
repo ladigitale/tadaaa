@@ -66,6 +66,22 @@ final class ArtifactRunPresenceTest extends TestCase
         self::assertSame([null, 'bleu'], array_column($members, 'role'));
     }
 
+    public function testDesksAreListedApart(): void
+    {
+        $now = 1_000_000;
+        $host = self::run('regie', $now);
+        $desk = self::run('guichet', $now - 1_000);
+        $a = self::run('ecran', $now - 1_000);
+        $ld = new ArtifactRunLink($host, $desk, null, null);
+        $la = new ArtifactRunLink($a, $host, null, null);
+        $roles = [$desk->getId()->toRfc4122() => '_guichet', $a->getId()->toRfc4122() => 'rouge'];
+        $members = ArtifactRunPresenceService::members([$ld, $la], $host, $now, [$ld, $la], $roles);
+        self::assertSame([$a->getId()->toRfc4122()], array_column($members, 'runId'));
+        self::assertSame([1], array_column($members, 'index'), 'le guichet ne prend pas de rang');
+        $desks = ArtifactRunPresenceService::members([$ld, $la], $host, $now, [$ld, $la], $roles, true);
+        self::assertSame([$desk->getId()->toRfc4122()], array_column($desks, 'runId'));
+    }
+
     public function testHeartbeatMessages(): void
     {
         foreach (['alive', 'bye'] as $type) {

@@ -16,7 +16,8 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * Appairage (io.stream.pair) : code demandé par le viewer d'un run hôte, puis réclamé par l'appareil
- * qui ouvre l'artefact `remote` avec `?pair=<code>`.
+ * qui ouvre l'artefact `remote` avec `?pair=<code>`. Un guichet d'inscription (io.stream.desk) lit
+ * les codes de sa régie avec son propre jeton.
  */
 #[Route('/api/public/artifacts/{slug}', requirements: ['slug' => '[a-z0-9][a-z0-9-]{2,63}'])]
 final class PublicArtifactPairController extends AbstractController
@@ -40,6 +41,17 @@ final class PublicArtifactPairController extends AbstractController
         return $this->noStore($this->json($this->pairing->issue($slug, $runId, $rt, $role)));
     }
 
+    /** Codes de la régie lus par son guichet d'inscription (io.stream.desk) : {"rt": "<jeton du run guichet>"}. */
+    #[Route('/runs/{runId}/desk', name: 'api_public_artifact_run_desk', requirements: ['runId' => '[0-9a-fA-F-]{36}'], methods: ['POST'])]
+    public function desk(string $slug, string $runId, Request $request): JsonResponse
+    {
+        $this->consume($request);
+        $body = json_decode($request->getContent() ?: 'null', true);
+        $rt = \is_array($body) && \is_string($body['rt'] ?? null) ? $body['rt'] : '';
+
+        return $this->noStore($this->json($this->pairing->deskPairs($slug, $runId, $rt)));
+    }
+
     /** Réclamer un code : lance le run de cet artefact, relié à l'écran qui a montré le code. */
     #[Route('/pair/{code}', name: 'api_public_artifact_pair_claim', requirements: ['code' => '[A-Za-z0-9]{4,16}'], methods: ['POST'])]
     public function claim(string $slug, string $code, Request $request): JsonResponse
@@ -50,6 +62,7 @@ final class PublicArtifactPairController extends AbstractController
     }
 
     #[Route('/runs/{runId}/pair', name: 'api_public_artifact_run_pair_options', requirements: ['runId' => '[0-9a-fA-F-]{36}'], methods: ['OPTIONS'])]
+    #[Route('/runs/{runId}/desk', name: 'api_public_artifact_run_desk_options', requirements: ['runId' => '[0-9a-fA-F-]{36}'], methods: ['OPTIONS'])]
     #[Route('/pair/{code}', name: 'api_public_artifact_pair_claim_options', requirements: ['code' => '[A-Za-z0-9]{4,16}'], methods: ['OPTIONS'])]
     public function options(): Response
     {
