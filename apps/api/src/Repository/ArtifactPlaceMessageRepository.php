@@ -23,7 +23,6 @@ final class ArtifactPlaceMessageRepository extends ServiceEntityRepository
         /** @var list<ArtifactPlaceMessage> $rows */
         $rows = $this->createQueryBuilder('m')
             ->andWhere('m.place = :p')->setParameter('p', $place)
-            ->andWhere('m.hidden = false')
             ->orderBy('m.createdAt', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()->getResult();
