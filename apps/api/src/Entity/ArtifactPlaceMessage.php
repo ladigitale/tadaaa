@@ -69,6 +69,22 @@ class ArtifactPlaceMessage
     #[ORM\Column(type: 'smallint', nullable: true)]
     private ?int $frame;
 
+    /** Référence du mur (id de la surface reconnue) sur laquelle le dessin a été calé. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $refId = null;
+
+    /** Retouché par son auteur. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $editedAt = null;
+
+    /** Retiré : la ligne reste dans le fil, vide, pour qu'on sache qu'il y avait quelque chose. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $deletedAt = null;
+
+    /** Qui l'a retiré : `auteur` ou `moderation`. */
+    #[ORM\Column(length: 16, nullable: true)]
+    private ?string $deletedBy = null;
+
     public function __construct(ArtifactPlace $place, string $kind, string $text, ?string $media, ?string $pseudo, string $ipHash, string $deleteTokenHash, bool $onSite = true, ?int $frame = null)
     {
         $this->onSite = $onSite;
@@ -95,6 +111,37 @@ class ArtifactPlaceMessage
     public function isOnSite(): bool { return $this->onSite; }
     public function getFrame(): ?int { return $this->frame; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
+    public function getRefId(): ?string { return $this->refId; }
+    public function setRefId(?string $refId): void { $this->refId = $refId; }
+    public function getEditedAt(): ?\DateTimeImmutable { return $this->editedAt; }
+    public function getDeletedAt(): ?\DateTimeImmutable { return $this->deletedAt; }
+    public function getDeletedBy(): ?string { return $this->deletedBy; }
+    public function isDeleted(): bool { return $this->deletedAt !== null; }
+
+    /** Contenu effacé, trace gardée (`auteur` ou `moderation`). */
+    public function markDeleted(string $by): void
+    {
+        $this->text = '';
+        $this->media = null;
+        $this->deletedAt = new \DateTimeImmutable();
+        $this->deletedBy = $by === 'moderation' ? 'moderation' : 'auteur';
+    }
+
+    /** Retouche par l'auteur : texte, ou média du même genre (dessin, vocal), cadre et référence du mur. */
+    public function edit(string $text, ?string $media, ?int $frame, ?string $refId): void
+    {
+        $this->text = $text;
+        if ($this->kind !== 'text' && $media !== null) {
+            $this->media = $media;
+        }
+        if ($this->kind === 'drawing' && $frame !== null) {
+            $this->frame = max(1, min(5, $frame));
+        }
+        if ($this->kind === 'drawing' && $refId !== null) {
+            $this->refId = $refId;
+        }
+        $this->editedAt = new \DateTimeImmutable();
+    }
 
     public function report(int $hideAt): void
     {

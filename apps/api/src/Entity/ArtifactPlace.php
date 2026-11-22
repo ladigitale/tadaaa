@@ -136,6 +136,19 @@ class ArtifactPlace
         return $size;
     }
 
+    /**
+     * Corps retouché par le poseur (texte, dessin, vocal) : résumé et taille recalculés.
+     *
+     * @param array<string, mixed> $body
+     * @param array<string, mixed> $summary
+     */
+    public function replaceBody(array $body, array $summary, int $sizeBytes): void
+    {
+        $this->body = $body;
+        $this->summary = $summary;
+        $this->sizeBytes = $sizeBytes;
+    }
+
     public function report(int $hideAt): void
     {
         ++$this->reports;

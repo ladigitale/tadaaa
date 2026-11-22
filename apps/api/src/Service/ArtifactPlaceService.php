@@ -45,6 +45,8 @@ final class ArtifactPlaceService
     public const MAX_EXTRA_REFS = 4;
     /** Discussion d'un lieu : messages servis (les plus récents), plafond quotidien par réseau et par artefact. */
     public const THREAD_LIMIT = 100;
+    /** Champs d'un lieu que son poseur peut retoucher. */
+    public const EDITABLE = ['message', 'effet', 'dessin', 'cadreDessin', 'voix'];
     public const DAILY_MESSAGES_PER_IP = 200;
     public const HIDE_AT = 3;
     private const SUMMARY_KEYS = 16;
@@ -252,6 +254,18 @@ final class ArtifactPlaceService
         }
         foreach ($this->messages->latestFor($p, self::THREAD_LIMIT) as $m) {
             $row = ['id' => $m->getId()->toRfc4122(), 'kind' => $m->getKind(), 'text' => $m->getText(), 'pseudo' => $m->getPseudo(), 'at' => $m->getCreatedAt()->format(\DateTimeInterface::ATOM), 'onSite' => $m->isOnSite()];
+            // Retiré ou masqué : une trace sans contenu, pour qu'on sache qu'il y avait quelque chose.
+            if ($m->isDeleted() || $m->isHidden()) {
+                $out[] = ['id' => $row['id'], 'kind' => $m->getKind(), 'text' => '', 'pseudo' => null, 'at' => $row['at'], 'onSite' => $m->isOnSite(),
+                    'deleted' => $m->isDeleted() ? $m->getDeletedBy() : 'signalements', 'deletedAt' => $m->getDeletedAt()?->format(\DateTimeInterface::ATOM)];
+                continue;
+            }
+            if ($m->getEditedAt() !== null) {
+                $row['editedAt'] = $m->getEditedAt()->format(\DateTimeInterface::ATOM);
+            }
+            if ($m->getRefId() !== null) {
+                $row['refId'] = $m->getRefId();
+            }
             if ($m->getMedia() !== null) {
                 $row['hasMedia'] = true;
             }
@@ -270,7 +284,7 @@ final class ArtifactPlaceService
         [$artifact] = $this->open($slug, $linkToken, $user, $collection);
         $p = $this->find($artifact, $collection, $id);
         $m = Uuid::isValid($messageId) ? $this->messages->find(Uuid::fromString($messageId)) : null;
-        if ($m === null || $m->isHidden() || $p->isHidden() || !$m->getPlace()->getId()->equals($p->getId()) || $m->getMedia() === null) {
+        if ($m === null || $m->isHidden() || $m->isDeleted() || $p->isHidden() || !$m->getPlace()->getId()->equals($p->getId()) || $m->getMedia() === null) {
             throw new NotFoundHttpException('Média introuvable.');
         }
 
@@ -299,7 +313,7 @@ final class ArtifactPlaceService
      * `at.seen` : le mur a été reconnu par la caméra) : texte, vocal ou dessin. À distance : un commentaire
      * texte seulement, marqué `onSite: false` dans le fil.
      */
-    public function postMessage(string $slug, ?string $linkToken, string $collection, string $id, mixed $text, mixed $pseudo, ?User $user, string $ip, mixed $media = null, mixed $at = null, mixed $frame = null): array
+    public function postMessage(string $slug, ?string $linkToken, string $collection, string $id, mixed $text, mixed $pseudo, ?User $user, string $ip, mixed $media = null, mixed $at = null, mixed $frame = null, mixed $refId = null): array
     {
         [$artifact] = $this->open($slug, $linkToken, $user, $collection);
         $p = $this->find($artifact, $collection, $id);
@@ -331,6 +345,9 @@ final class ArtifactPlaceService
         }
         $token = rtrim(strtr(base64_encode(random_bytes(24)), '+/', '-_'), '=');
         $m = new ArtifactPlaceMessage($p, $kind, $text, $kind === 'text' ? null : (string) $media, $pseudo, $ipHash, hash('sha256', $token), $onSite, is_numeric($frame) ? (int) $frame : null);
+        if ($kind === 'drawing') {
+            $m->setRefId(self::refId($refId));
+        }
         $p->addMessages(1);
         $this->em->persist($m);
         $this->em->flush();
@@ -349,10 +366,15 @@ final class ArtifactPlaceService
         }
         $wasVisible = !$m->isHidden();
         if ($deleteToken !== null && $deleteToken !== '') {
-            if (!hash_equals($m->getDeleteTokenHash(), hash('sha256', $deleteToken)) && !$this->isModerator($artifact, $user)) {
+            $byAuthor = hash_equals($m->getDeleteTokenHash(), hash('sha256', $deleteToken));
+            if (!$byAuthor && !$this->isModerator($artifact, $user)) {
                 throw new AccessDeniedHttpException('Seul l’auteur ou un membre de l’artefact peut retirer ce message.');
             }
-            $this->em->remove($m);
+            if ($m->isDeleted()) {
+                return;
+            }
+            // Le contenu part ; la ligne reste dans le fil (« retiré par son auteur / par la modération »).
+            $m->markDeleted($byAuthor ? 'auteur' : 'moderation');
             if ($wasVisible) {
                 $p->addMessages(-1);
             }
@@ -363,6 +385,105 @@ final class ArtifactPlaceService
             }
         }
         $this->em->flush();
+    }
+
+    /**
+     * Retouche d'un message par son auteur (jeton de l'appareil qui l'a posé). Texte : nouveau texte. Vocal et dessin :
+     * nouveau média du même genre, sur place seulement (comme à la pose) ; un dessin garde ou change son cadre et la
+     * référence du mur. Le fil le marque « modifié ».
+     *
+     * @return array{id: string, editedAt: string}
+     */
+    public function editMessage(string $slug, ?string $linkToken, string $collection, string $id, string $messageId, ?string $token, mixed $text, mixed $media, mixed $at, mixed $frame, mixed $refId, ?User $user): array
+    {
+        [$artifact] = $this->open($slug, $linkToken, $user, $collection);
+        $p = $this->find($artifact, $collection, $id);
+        $m = Uuid::isValid($messageId) ? $this->messages->find(Uuid::fromString($messageId)) : null;
+        if ($m === null || $p->isHidden() || $m->isHidden() || $m->isDeleted() || !$m->getPlace()->getId()->equals($p->getId())) {
+            throw new NotFoundHttpException('Message introuvable.');
+        }
+        if ($token === null || $token === '' || !hash_equals($m->getDeleteTokenHash(), hash('sha256', $token))) {
+            throw new AccessDeniedHttpException('Seul l’auteur peut retoucher ce message, depuis l’appareil qui l’a posé.');
+        }
+        $text = \is_string($text) ? trim(preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $text) ?? '') : $m->getText();
+        if (mb_strlen($text) > ArtifactPlaceMessage::MAX_TEXT) {
+            throw new BadRequestHttpException(sprintf('Message trop long (%d caractères au plus).', ArtifactPlaceMessage::MAX_TEXT));
+        }
+        $newMedia = null;
+        if ($m->getKind() === 'text') {
+            if ($text === '') {
+                throw new BadRequestHttpException('text : message vide.');
+            }
+        } elseif ($media !== null && $media !== '') {
+            if (self::mediaKind($media) !== $m->getKind()) {
+                throw new BadRequestHttpException($m->getKind() === 'drawing' ? 'media : un dessin (data:image/…) est attendu.' : 'media : un vocal (data:audio/…;base64) est attendu.');
+            }
+            if (!(self::near($p, $at) && \is_array($at) && ($at['seen'] ?? false) === true)) {
+                throw new AccessDeniedHttpException('Pour retoucher un vocal ou un dessin, va sur place et vise le mur.');
+            }
+            $newMedia = (string) $media;
+        }
+        $m->edit($text, $newMedia, is_numeric($frame) ? (int) $frame : null, $refId === null ? null : self::refId($refId));
+        $this->em->flush();
+
+        return ['id' => $m->getId()->toRfc4122(), 'editedAt' => $m->getEditedAt()?->format(\DateTimeInterface::ATOM) ?? ''];
+    }
+
+    /**
+     * Retouche d'un lieu par son poseur (jeton de l'appareil, ou compte auteur) : texte, effet, dessin (et son cadre),
+     * vocal. Un nouveau dessin ou vocal demande d'être sur place, mur reconnu. Les surfaces (refs) ne changent pas ici.
+     *
+     * @return array{id: string, editedAt: string}
+     */
+    public function updatePlace(string $slug, ?string $linkToken, string $collection, string $id, ?string $token, mixed $patch, mixed $at, ?User $user): array
+    {
+        [$artifact, $conf] = $this->open($slug, $linkToken, $user, $collection);
+        $p = $this->find($artifact, $collection, $id);
+        $byToken = $token !== null && $token !== '' && hash_equals($p->getDeleteTokenHash(), hash('sha256', $token));
+        $byAuthor = $user !== null && $p->getAuthor() !== null && $p->getAuthor()->getId()->equals($user->getId());
+        if (!$byToken && !$byAuthor) {
+            throw new AccessDeniedHttpException('Seul le poseur peut retoucher cette balise, depuis l’appareil qui l’a posée.');
+        }
+        if (!\is_array($patch) || $patch === [] || array_is_list($patch)) {
+            throw new BadRequestHttpException('body : objet JSON attendu.');
+        }
+        $allowed = array_intersect_key($patch, array_flip(self::EDITABLE));
+        if ($allowed === []) {
+            throw new BadRequestHttpException(sprintf('Champs modifiables : %s.', implode(', ', self::EDITABLE)));
+        }
+        if (\array_key_exists('message', $allowed)) {
+            $t = \is_string($allowed['message']) ? trim(preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $allowed['message']) ?? '') : '';
+            if (mb_strlen($t) > ArtifactPlaceMessage::MAX_TEXT) {
+                throw new BadRequestHttpException(sprintf('Message trop long (%d caractères au plus).', ArtifactPlaceMessage::MAX_TEXT));
+            }
+            $allowed['message'] = $t;
+        }
+        foreach (['dessin' => 'drawing', 'voix' => 'voice'] as $k => $kind) {
+            if (!\array_key_exists($k, $allowed) || $allowed[$k] === null || $allowed[$k] === '') {
+                continue;
+            }
+            if (self::mediaKind($allowed[$k]) !== $kind) {
+                throw new BadRequestHttpException(sprintf('%s : %s attendu.', $k, $kind === 'drawing' ? 'un dessin (data:image/…)' : 'un vocal (data:audio/…;base64)'));
+            }
+            if (!(self::near($p, $at) && \is_array($at) && ($at['seen'] ?? false) === true)) {
+                throw new AccessDeniedHttpException('Pour changer le dessin ou le vocal, va sur place et vise le mur.');
+            }
+        }
+        $body = array_merge($p->getBody(), $allowed, ['editedAt' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM)]);
+        $size = \strlen((string) json_encode($body, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES));
+        if ($size > $conf['maxBytes']) {
+            throw new BadRequestHttpException(sprintf('Lieu trop volumineux (%d Ko au plus).', intdiv($conf['maxBytes'], 1024)));
+        }
+        $p->replaceBody($body, self::summary($body), $size);
+        $this->em->flush();
+
+        return ['id' => $p->getId()->toRfc4122(), 'editedAt' => $body['editedAt']];
+    }
+
+    /** Référence de surface (id de sonic-anchor-ref) : courte, sûre, sinon null. */
+    private static function refId(mixed $v): ?string
+    {
+        return \is_string($v) && preg_match('/^[A-Za-z0-9_.:-]{1,64}$/', $v) === 1 ? $v : null;
     }
 
     /** @return array{reports: int, hidden: bool} */
