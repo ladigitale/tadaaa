@@ -61,8 +61,13 @@ class ArtifactPlaceMessage
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
-    public function __construct(ArtifactPlace $place, string $kind, string $text, ?string $media, ?string $pseudo, string $ipHash, string $deleteTokenHash)
+    /** Posé sur place (position vérifiée par le serveur et mur reconnu) ; sinon commentaire à distance. */
+    #[ORM\Column(options: ['default' => true])]
+    private bool $onSite;
+
+    public function __construct(ArtifactPlace $place, string $kind, string $text, ?string $media, ?string $pseudo, string $ipHash, string $deleteTokenHash, bool $onSite = true)
     {
+        $this->onSite = $onSite;
         $this->id = Uuid::v7();
         $this->place = $place;
         $this->kind = $kind;
@@ -82,6 +87,7 @@ class ArtifactPlaceMessage
     public function getPseudo(): ?string { return $this->pseudo; }
     public function getDeleteTokenHash(): string { return $this->deleteTokenHash; }
     public function isHidden(): bool { return $this->hidden; }
+    public function isOnSite(): bool { return $this->onSite; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
 
     public function report(int $hideAt): void

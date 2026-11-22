@@ -31,6 +31,9 @@ use Symfony\Component\Uid\Uuid;
  */
 final class ArtifactPlaceService
 {
+    /** Rayon autour du lieu pour participer sur place (mètres), plus la précision GPS plafonnée. */
+    public const ON_SITE_METERS = 150;
+    public const ON_SITE_ACCURACY_CAP = 100.0;
     public const HARD_MAX_BYTES = 400_000;
     public const DEFAULT_MAX_BYTES = 150_000;
     public const HARD_MAX_RECORDS = 5000;
@@ -201,13 +204,17 @@ final class ArtifactPlaceService
      *
      * @return array{refs: int, sizeBytes: int}
      */
-    public function addRef(string $slug, ?string $linkToken, string $collection, string $id, mixed $ref, ?User $user): array
+    public function addRef(string $slug, ?string $linkToken, string $collection, string $id, mixed $ref, ?User $user, mixed $at = null): array
     {
         [$artifact, $conf] = $this->open($slug, $linkToken, $user, $collection);
         if (!\is_array($ref) || $ref === [] || array_is_list($ref)) {
             throw new BadRequestHttpException('ref : objet JSON attendu (référence de sonic-anchor-ref).');
         }
         $p = $this->find($artifact, $collection, $id);
+        // le mur a changé : il n'est plus reconnu, seule la position compte
+        if (!self::near($p, $at)) {
+            throw new AccessDeniedHttpException('Pour remplacer la surface, il faut être devant le mur.');
+        }
         $size = $p->addRef($ref, self::MAX_EXTRA_REFS, $conf['maxBytes']);
         if ($size === null) {
             throw new BadRequestHttpException(sprintf('Surface trop volumineuse pour ce lieu (%d Ko au plus).', intdiv($conf['maxBytes'], 1024)));
@@ -235,16 +242,16 @@ final class ArtifactPlaceService
         $body = $p->getBody();
         // Ce qui a été posé avec le lieu ouvre la discussion (média inclus : deux au plus).
         if (\is_string($body['message'] ?? null) && trim($body['message']) !== '' && ($body['effet'] ?? 'message') !== 'dessin') {
-            $out[] = ['id' => 'origine', 'kind' => 'text', 'text' => mb_substr($body['message'], 0, ArtifactPlaceMessage::MAX_TEXT), 'pseudo' => null, 'at' => $at, 'origin' => true];
+            $out[] = ['id' => 'origine', 'kind' => 'text', 'text' => mb_substr($body['message'], 0, ArtifactPlaceMessage::MAX_TEXT), 'pseudo' => null, 'at' => $at, 'origin' => true, 'onSite' => true];
         }
         if (self::mediaKind($body['dessin'] ?? null) === 'drawing') {
-            $out[] = ['id' => 'origine-dessin', 'kind' => 'drawing', 'text' => '', 'pseudo' => null, 'at' => $at, 'origin' => true, 'media' => $body['dessin'], 'cadre' => $body['cadreDessin'] ?? null];
+            $out[] = ['id' => 'origine-dessin', 'kind' => 'drawing', 'text' => '', 'pseudo' => null, 'at' => $at, 'origin' => true, 'onSite' => true, 'media' => $body['dessin'], 'cadre' => $body['cadreDessin'] ?? null];
         }
         if (self::mediaKind($body['voix'] ?? null) === 'voice') {
-            $out[] = ['id' => 'origine-voix', 'kind' => 'voice', 'text' => '', 'pseudo' => null, 'at' => $at, 'origin' => true, 'media' => $body['voix']];
+            $out[] = ['id' => 'origine-voix', 'kind' => 'voice', 'text' => '', 'pseudo' => null, 'at' => $at, 'origin' => true, 'onSite' => true, 'media' => $body['voix']];
         }
         foreach ($this->messages->latestFor($p, self::THREAD_LIMIT) as $m) {
-            $row = ['id' => $m->getId()->toRfc4122(), 'kind' => $m->getKind(), 'text' => $m->getText(), 'pseudo' => $m->getPseudo(), 'at' => $m->getCreatedAt()->format(\DateTimeInterface::ATOM)];
+            $row = ['id' => $m->getId()->toRfc4122(), 'kind' => $m->getKind(), 'text' => $m->getText(), 'pseudo' => $m->getPseudo(), 'at' => $m->getCreatedAt()->format(\DateTimeInterface::ATOM), 'onSite' => $m->isOnSite()];
             if ($m->getMedia() !== null) {
                 $row['hasMedia'] = true;
             }
@@ -284,7 +291,12 @@ final class ArtifactPlaceService
     }
 
     /** @return array{id: string, deleteToken: string, at: string} */
-    public function postMessage(string $slug, ?string $linkToken, string $collection, string $id, mixed $text, mixed $pseudo, ?User $user, string $ip, mixed $media = null): array
+    /**
+     * Message dans la discussion d'un lieu. Sur place (position `at` = {lat, lon, accuracy} près du lieu, et
+     * `at.seen` : le mur a été reconnu par la caméra) : texte, vocal ou dessin. À distance : un commentaire
+     * texte seulement, marqué `onSite: false` dans le fil.
+     */
+    public function postMessage(string $slug, ?string $linkToken, string $collection, string $id, mixed $text, mixed $pseudo, ?User $user, string $ip, mixed $media = null, mixed $at = null): array
     {
         [$artifact] = $this->open($slug, $linkToken, $user, $collection);
         $p = $this->find($artifact, $collection, $id);
@@ -301,6 +313,10 @@ final class ArtifactPlaceService
         } elseif ($text === '') {
             throw new BadRequestHttpException('text : message vide.');
         }
+        $onSite = self::near($p, $at) && \is_array($at) && ($at['seen'] ?? false) === true;
+        if ($kind !== 'text' && !$onSite) {
+            throw new AccessDeniedHttpException('Pour laisser un vocal ou un dessin, va sur place et vise le mur.');
+        }
         if (mb_strlen($text) > ArtifactPlaceMessage::MAX_TEXT) {
             throw new BadRequestHttpException(sprintf('Message trop long (%d caractères au plus).', ArtifactPlaceMessage::MAX_TEXT));
         }
@@ -311,12 +327,12 @@ final class ArtifactPlaceService
             throw new TooManyRequestsHttpException(3600, 'Trop de messages aujourd’hui depuis ce réseau.');
         }
         $token = rtrim(strtr(base64_encode(random_bytes(24)), '+/', '-_'), '=');
-        $m = new ArtifactPlaceMessage($p, $kind, $text, $kind === 'text' ? null : (string) $media, $pseudo, $ipHash, hash('sha256', $token));
+        $m = new ArtifactPlaceMessage($p, $kind, $text, $kind === 'text' ? null : (string) $media, $pseudo, $ipHash, hash('sha256', $token), $onSite);
         $p->addMessages(1);
         $this->em->persist($m);
         $this->em->flush();
 
-        return ['id' => $m->getId()->toRfc4122(), 'kind' => $kind, 'deleteToken' => $token, 'at' => $m->getCreatedAt()->format(\DateTimeInterface::ATOM)];
+        return ['id' => $m->getId()->toRfc4122(), 'kind' => $kind, 'onSite' => $onSite, 'deleteToken' => $token, 'at' => $m->getCreatedAt()->format(\DateTimeInterface::ATOM)];
     }
 
     /** Signale un message (masqué au 3e signalement) ; ou le retire, avec le jeton de l'appareil qui l'a posé. */
@@ -382,6 +398,26 @@ final class ArtifactPlaceService
             'maxRecords' => max(1, min(self::HARD_MAX_RECORDS, \is_int($d['maxRecords'] ?? null) ? $d['maxRecords'] : self::DEFAULT_MAX_RECORDS)),
             'radius' => max(10, min(self::MAX_RADIUS, \is_int($d['radius'] ?? null) ? $d['radius'] : 300)),
         ];
+    }
+
+    /**
+     * Position déclarée `{lat, lon, accuracy?}` à moins de ON_SITE_METERS du lieu, plus la précision annoncée
+     * (plafonnée à ON_SITE_ACCURACY_CAP) : le GPS en ville dérive de quelques dizaines de mètres.
+     */
+    public static function near(ArtifactPlace $p, mixed $at): bool
+    {
+        if (!\is_array($at) || !is_numeric($at['lat'] ?? null) || !is_numeric($at['lon'] ?? null)) {
+            return false;
+        }
+        $lat = (float) $at['lat'];
+        $lon = (float) $at['lon'];
+        if (!is_finite($lat) || !is_finite($lon) || abs($lat) > 90 || abs($lon) > 180) {
+            return false;
+        }
+        $acc = is_numeric($at['accuracy'] ?? null) ? (float) $at['accuracy'] : 50.0;
+        $acc = is_finite($acc) ? min(self::ON_SITE_ACCURACY_CAP, max(0.0, $acc)) : self::ON_SITE_ACCURACY_CAP;
+
+        return self::distance($lat, $lon, $p->getLat(), $p->getLon()) <= self::ON_SITE_METERS + $acc;
     }
 
     /** Distance en mètres (haversine). */
