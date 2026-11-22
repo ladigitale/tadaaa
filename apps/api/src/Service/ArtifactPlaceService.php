@@ -255,6 +255,9 @@ final class ArtifactPlaceService
             if ($m->getMedia() !== null) {
                 $row['hasMedia'] = true;
             }
+            if ($m->getFrame() !== null) {
+                $row['cadre'] = $m->getFrame();
+            }
             $out[] = $row;
         }
 
@@ -296,7 +299,7 @@ final class ArtifactPlaceService
      * `at.seen` : le mur a été reconnu par la caméra) : texte, vocal ou dessin. À distance : un commentaire
      * texte seulement, marqué `onSite: false` dans le fil.
      */
-    public function postMessage(string $slug, ?string $linkToken, string $collection, string $id, mixed $text, mixed $pseudo, ?User $user, string $ip, mixed $media = null, mixed $at = null): array
+    public function postMessage(string $slug, ?string $linkToken, string $collection, string $id, mixed $text, mixed $pseudo, ?User $user, string $ip, mixed $media = null, mixed $at = null, mixed $frame = null): array
     {
         [$artifact] = $this->open($slug, $linkToken, $user, $collection);
         $p = $this->find($artifact, $collection, $id);
@@ -327,7 +330,7 @@ final class ArtifactPlaceService
             throw new TooManyRequestsHttpException(3600, 'Trop de messages aujourd’hui depuis ce réseau.');
         }
         $token = rtrim(strtr(base64_encode(random_bytes(24)), '+/', '-_'), '=');
-        $m = new ArtifactPlaceMessage($p, $kind, $text, $kind === 'text' ? null : (string) $media, $pseudo, $ipHash, hash('sha256', $token), $onSite);
+        $m = new ArtifactPlaceMessage($p, $kind, $text, $kind === 'text' ? null : (string) $media, $pseudo, $ipHash, hash('sha256', $token), $onSite, is_numeric($frame) ? (int) $frame : null);
         $p->addMessages(1);
         $this->em->persist($m);
         $this->em->flush();

@@ -152,7 +152,7 @@ final class PublicArtifactPlaceController extends AbstractController
         if (!\is_array($in)) {
             throw new BadRequestHttpException('Corps attendu : {"text"?, "media"?, "pseudo"?, "at"?: {"lat", "lon", "accuracy", "seen"}}.');
         }
-        $out = $this->places->postMessage($slug, $this->link($request), $name, $id, $in['text'] ?? null, $in['pseudo'] ?? null, $this->user(), $request->getClientIp() ?: 'anon', $in['media'] ?? null, $in['at'] ?? null);
+        $out = $this->places->postMessage($slug, $this->link($request), $name, $id, $in['text'] ?? null, $in['pseudo'] ?? null, $this->user(), $request->getClientIp() ?: 'anon', $in['media'] ?? null, $in['at'] ?? null, $in['cadre'] ?? null);
 
         return $this->noStore($this->json($out, 201));
     }
