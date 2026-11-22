@@ -2518,6 +2518,61 @@
       "description": "Dessin → programme G-code. source=\"#id\" : un sonic-sketch (son SVG : surfaces hachurées, traits suivis) ou une source d'images (sonic-still, sonic-paint… : gravure par balayage) ; svg-from : DP d'un fichier SVG (ref-provider de sonic-file-open) ou du SVG en texte. Réglages par défaut power (%), speed (mm/min), passes, mode (auto : trait pour un contour, hachures pour un remplissage | line : suit le trait ou le contour | fill | skip), interval (mm entre deux lignes), kerf (mm, compensation du trait de coupe sur les contours fermés) ; par couleur : ops=[{color:\"#ff0000\", mode:\"line\", power:90, speed:300, passes:2}], exécutées dans l'ordre (hachures d'abord, découpe en dernier ; intérieurs avant extérieurs). Le blanc ne brûle pas. Taille width-mm / height-mm (proportions gardées ; sans elles : taille réelle du SVG, 50 mm pour une image), position x-mm / y-mm, origine en bas à gauche. Image : préparation dans la source (sonic-shader de la bibliothèque : niveaux = luminosité, contraste, gamma, éclairage local ; pile-effets = encre, contour, crayonné, peinture, aplats, hachures, points, négatif… ; sobel ; halftone), puis rendu dither = tramages floyd | atkinson | jarvis | stucki | burkes | sierra | sierra-lite | bayer | random | threshold | adaptive (seuil local), gray (puissance selon le gris, min-power), ou traits hatch (hachures croisées) | waves (ondes) | spiral | isolines (lignes de niveau, levels) | stipple (pointillisme), écart line-spacing mm. Photo en aplats vectoriels : sonic-vectorize puis svg-from=\"<id>State.file\". tool=pen : traits seulement, stylo baissé par M3. Commandes control {build:n, download:n (fichier .gcode), clear:n} et les réglages en direct {power, speed, passes, mode, interval, kerf, ops, widthMm, heightMm, xMm, yMm, frame, maxS, dither, threshold, minPower, input, tool} ; auto reconstruit à chaque changement. État <id>State {status, error, ready, seq (compteur), kind vector|image, colors [{color, fill, stroke}] (couleurs du SVG, pour les attribuer à des opérations par ops), lines, bbox{x,y,w,h} mm, sizeMm{w,h}, estimateS, burnMm, travelMm, issues[], skipped{}, settings}. show-preview dessine les parcours, chaque opération dans sa couleur (c'est aussi une source d'images #id). Lu par sonic-grbl source=\"#id\""
     },
     {
+      "name": "sonic-gcode-view",
+      "props": {
+        "source": {
+          "type": "string",
+          "description": "#id du sonic-gcode"
+        },
+        "machine": {
+          "type": "string",
+          "description": "Profil de machine pour le plateau (atomstack-a5-pro)"
+        },
+        "bed": {
+          "type": "string",
+          "description": "Plateau en mm : \"410 400\""
+        },
+        "state-from": {
+          "type": "string",
+          "description": "DP d'état du sonic-grbl"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP {fit, bed, zoomIn, zoomOut, upTo, travel, beamMm}"
+        },
+        "drag-job": {
+          "type": "boolean",
+          "description": "Glisser l'emprise pour la placer"
+        },
+        "target": {
+          "type": "string",
+          "description": "Store qui reçoit l'action place {dx, dy}"
+        },
+        "show-travel": {
+          "type": "boolean",
+          "description": "Déplacements à vide en pointillés"
+        },
+        "beam-mm": {
+          "type": "number",
+          "description": "Largeur du faisceau en mm (0.1)"
+        },
+        "no-controls": {
+          "type": "boolean",
+          "description": "Masque les boutons de zoom intégrés"
+        },
+        "gestures": {
+          "type": "string",
+          "description": "auto, capture ou cooperative"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        }
+      },
+      "addon": "grbl",
+      "description": "Contrôle du programme réel avant gravure, sans JS : parcours de source=\"#id\" (sonic-gcode) à zoom libre (molette, pincement, glisser, double-clic = tout voir, boutons intégrés) avec repère en millimètres : grille adaptée au zoom, règles cotées, axes et origine du travail, plateau de la machine (machine ou bed), emprise cotée, coordonnées du pointeur, trait à la largeur du faisceau. state-from = état d'un sonic-grbl : tête, origine posée, avancement de la tâche. control {fit, bed, zoomIn, zoomOut (compteurs), upTo 0..1 (simulation), travel (déplacements à vide)}. drag-job + target : glisser l'emprise envoie {type: \"place\", payload: {dx, dy}} en mm au store. État {status, pointer, zoom, bbox, segments, lines, bed}."
+    },
+    {
       "name": "sonic-geolocation",
       "props": {
         "control": {
@@ -2710,7 +2765,7 @@
         }
       },
       "addon": "grbl",
-      "description": "Machine GRBL 1.1 derrière un sonic-serial (transport=\"#id\", profil ch340 ou grbl). Lit version et réglages à la connexion. Commandes control {run:n | {n, gcode} (programme de source=\"#id\" d'un sonic-gcode, ou texte G-code), hold:n, resume:n, stop:n (pause, attente de l'arrêt, remise à zéro : position gardée), frame:n | {n, power (0..5 %), feed} (tour de l'emprise du programme, faisceau éteint par défaut), jog:{n, x, y, feed} (relatif, mm), goto:{n, x, y, feed} (point de travail), jogCancel:n, setOrigin:n (l'origine de travail devient la position courante), clearOrigin:n, home:n (si la machine a des fins de course), unlock:n (après une alarme), reset:n, refresh:n, send:{n, line} (console ; écriture de réglages $n= refusée sans allow-settings)}. for=\"idBouton\" lance run. État <id>State {status, error, active, connected, firmware, machine, machineState (Idle|Run|Hold|Jog|Alarm|Door|Check|Home|Sleep|unknown), alarm{code, message}, pos{x,y,z} (travail), mpos{x,y,z}, feed, power (S en cours), area{x,y} mm, maxS ($30), laserMode ($32), homing ($22), settings{\"30\":1000…}, job{kind job|frame, lines, sent, acked, progress 0..1, running, paused, elapsedS, estimateS, bbox{x,y,w,h}}, jobs (compteur), issues[], console[] (dernières lignes échangées)}. Événements sonic-grbl-ready, sonic-grbl-start, sonic-grbl-done, sonic-grbl-stop, sonic-grbl-error {line, message}. Sécurité : run et le cadrage faisceau allumé exigent un geste ; en tool=laser, M3 est remplacé par M4 et une machine en $32=0 est refusée ; max-power plafonne S ; la tâche est arrêtée à la fermeture de la page. Non validé sur matériel"
+      "description": "Machine GRBL 1.1 derrière un sonic-serial (transport=\"#id\", profil ch340 ou grbl). Lit version et réglages à la connexion. Commandes control {run:n | {n, gcode (sinon programme de source=\"#id\" d'un sonic-gcode), from (reprise à une ligne), dry}, dryRun:{n, speed 1..4} (essai à vide, faisceau coupé) hold:n, resume:n, stop:n (pause, attente de l'arrêt, remise à zéro : position gardée), frame:n | {n, power (0..5 %), feed, shape box|hull (contour réel), loops} (tour de l'emprise du programme, faisceau éteint par défaut), jog:{n, x, y, feed} (relatif, mm), goto:{n, x, y, feed} (point de travail), jogCancel:n, setOrigin:n (l'origine de travail devient la position courante), clearOrigin:n, home:n (si la machine a des fins de course), unlock:n (après une alarme), reset:n, refresh:n, send:{n, line} (console ; écriture de réglages $n= refusée sans allow-settings)}. for=\"idBouton\" lance run. État <id>State {status, error, active, connected, firmware, machine, machineState (Idle|Run|Hold|Jog|Alarm|Door|Check|Home|Sleep|unknown), alarm{code, message}, pos{x,y,z} (travail), mpos{x,y,z}, feed, power (S en cours), area{x,y} mm, maxS ($30), laserMode ($32), homing ($22), settings{\"30\":1000…}, job{kind job|frame, lines, sent, acked, progress 0..1, running, paused, elapsedS, estimateS, bbox{x,y,w,h}}, jobs (compteur), issues[], console[] (dernières lignes échangées)}. Événements sonic-grbl-ready, sonic-grbl-start, sonic-grbl-done, sonic-grbl-stop, sonic-grbl-error {line, message}. Sécurité : run et le cadrage faisceau allumé exigent un geste ; en tool=laser, M3 est remplacé par M4 et une machine en $32=0 est refusée ; max-power plafonne S ; la tâche est arrêtée à la fermeture de la page. Non validé sur matériel Après un arrêt ou une erreur, état lastStop {line, resumeAt} : reprendre par run {n, from: resumeAt}."
     },
     {
       "name": "sonic-group",
@@ -8673,5 +8728,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; anchor (sonic-anchor-ref, sonic-anchor, sonic-anchor-view); animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-audio-player, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); bluetooth (sonic-bluetooth, sonic-label-printer); color (sonic-palette, sonic-palette-editor); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-geolocation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); grbl (sonic-grbl, sonic-gcode, sonic-laser-pattern); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix, sonic-notify); map (sonic-map) [requires: maplibre-gl]; markdown (sonic-markdown); media (sonic-camera, sonic-video, sonic-frame-sync, sonic-luma, sonic-morse, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; qr (sonic-qr, sonic-qr-reader, sonic-qr-sender, sonic-qr-receiver); scroll (sonic-scroll); serial (sonic-serial); shader (sonic-shader); sketch (sonic-sketch, sonic-sketch-guide, sonic-painterly); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; anchor (sonic-anchor-ref, sonic-anchor, sonic-anchor-view); animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-audio-player, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); bluetooth (sonic-bluetooth, sonic-label-printer); color (sonic-palette, sonic-palette-editor); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-geolocation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); grbl (sonic-grbl, sonic-gcode, sonic-laser-pattern, sonic-gcode-view); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix, sonic-notify); map (sonic-map) [requires: maplibre-gl]; markdown (sonic-markdown); media (sonic-camera, sonic-video, sonic-frame-sync, sonic-luma, sonic-morse, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; qr (sonic-qr, sonic-qr-reader, sonic-qr-sender, sonic-qr-receiver); scroll (sonic-scroll); serial (sonic-serial); shader (sonic-shader); sketch (sonic-sketch, sonic-sketch-guide, sonic-painterly); sound (sonic-sound, sonic-sfx); stage (sonic-stage); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
