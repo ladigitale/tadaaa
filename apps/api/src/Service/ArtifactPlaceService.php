@@ -246,11 +246,14 @@ final class ArtifactPlaceService
         if (\is_string($body['message'] ?? null) && trim($body['message']) !== '' && ($body['effet'] ?? 'message') !== 'dessin') {
             $out[] = ['id' => 'origine', 'kind' => 'text', 'text' => mb_substr($body['message'], 0, ArtifactPlaceMessage::MAX_TEXT), 'pseudo' => null, 'at' => $at, 'origin' => true, 'onSite' => true];
         }
-        if (self::mediaKind($body['dessin'] ?? null) === 'drawing') {
-            $out[] = ['id' => 'origine-dessin', 'kind' => 'drawing', 'text' => '', 'pseudo' => null, 'at' => $at, 'origin' => true, 'onSite' => true, 'media' => $body['dessin'], 'cadre' => $body['cadreDessin'] ?? null];
+        // Pièces jointes à la pose : data: URL, ou {url, mime, …} (sonic-anchor-ref).
+        $dessin = self::mediaUrl($body['dessin'] ?? null);
+        if ($dessin !== null && self::mediaKind($dessin) === 'drawing') {
+            $out[] = ['id' => 'origine-dessin', 'kind' => 'drawing', 'text' => '', 'pseudo' => null, 'at' => $at, 'origin' => true, 'onSite' => true, 'media' => $dessin, 'cadre' => $body['cadreDessin'] ?? null];
         }
-        if (self::mediaKind($body['voix'] ?? null) === 'voice') {
-            $out[] = ['id' => 'origine-voix', 'kind' => 'voice', 'text' => '', 'pseudo' => null, 'at' => $at, 'origin' => true, 'onSite' => true, 'media' => $body['voix']];
+        $voix = self::mediaUrl($body['voix'] ?? null);
+        if ($voix !== null && self::mediaKind($voix) === 'voice') {
+            $out[] = ['id' => 'origine-voix', 'kind' => 'voice', 'text' => '', 'pseudo' => null, 'at' => $at, 'origin' => true, 'onSite' => true, 'media' => $voix];
         }
         foreach ($this->messages->latestFor($p, self::THREAD_LIMIT) as $m) {
             $row = ['id' => $m->getId()->toRfc4122(), 'kind' => $m->getKind(), 'text' => $m->getText(), 'pseudo' => $m->getPseudo(), 'at' => $m->getCreatedAt()->format(\DateTimeInterface::ATOM), 'onSite' => $m->isOnSite()];
@@ -289,6 +292,19 @@ final class ArtifactPlaceService
         }
 
         return ['id' => $m->getId()->toRfc4122(), 'kind' => $m->getKind(), 'media' => $m->getMedia()];
+    }
+
+    /** URL d'un média joint : la chaîne elle-même, ou le champ `url` d'un objet {url, mime, …}. */
+    public static function mediaUrl(mixed $v): ?string
+    {
+        if (\is_string($v)) {
+            return $v;
+        }
+        if (\is_array($v) && \is_string($v['url'] ?? null)) {
+            return $v['url'];
+        }
+
+        return null;
     }
 
     /** voice | drawing pour une data: URL base64 acceptée, sinon null. */
