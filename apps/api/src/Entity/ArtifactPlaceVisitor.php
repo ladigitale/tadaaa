@@ -18,8 +18,8 @@ use Symfony\Component\Uid\Uuid;
 class ArtifactPlaceVisitor
 {
     public const MAX_PSEUDO = 40;
-    /** Avatar SVG (data: URL), en octets. */
-    public const MAX_AVATAR = 40_000;
+    /** Avatar SVG (data: URL, source des traits de sonic-sketch comprise), en octets. */
+    public const MAX_AVATAR = 300_000;
     public const HIDE_AT_REPORTS = 3;
 
     #[ORM\Id]

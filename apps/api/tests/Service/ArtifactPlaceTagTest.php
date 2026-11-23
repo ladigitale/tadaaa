@@ -47,7 +47,7 @@ final class ArtifactPlaceTagTest extends TestCase
 
     public function testRejectsOtherFormatsAndHugeFiles(): void
     {
-        foreach (['data:image/png;base64,AAAA', 'https://x.test/a.svg', 'data:image/svg+xml;base64,'.str_repeat('A', 50_000)] as $bad) {
+        foreach (['data:image/png;base64,AAAA', 'https://x.test/a.svg', 'data:image/svg+xml;base64,'.str_repeat('A', 400_000)] as $bad) {
             try {
                 ArtifactPlaceTagService::cleanAvatar($bad);
                 self::fail('accepté : '.substr($bad, 0, 30));
