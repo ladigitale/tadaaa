@@ -239,7 +239,7 @@ final class PublicArtifactPlaceController extends AbstractController
 
     #[Route('/{slug}/places/{name}', name: 'api_public_artifact_places_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME])]
     #[Route('/{slug}/places/{name}/{id}', name: 'api_public_artifact_places_item_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID])]
-    #[Route('/{slug}/places/{name}/{id}/{action}', name: 'api_public_artifact_places_action_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'action' => 'report|hidden|refs|messages|edit'])]
+    #[Route('/{slug}/places/{name}/{id}/{action}', name: 'api_public_artifact_places_action_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'action' => 'report|hidden|refs|messages|edit|tags'])]
     public function options(): Response
     {
         return new Response('', Response::HTTP_NO_CONTENT);

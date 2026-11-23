@@ -22,7 +22,7 @@ nelmio_cors:
             allow_origin: ['%env(CORS_ALLOW_ORIGIN)%']
             # POST : collecte contrôlée, sauvegardes, lieux partagés ; DELETE : retrait d'un lieu par son poseur.
             allow_methods: ['GET', 'OPTIONS', 'POST', 'DELETE']
-            allow_headers: ['Content-Type', 'Authorization', 'If-None-Match', 'X-Place-Token']
+            allow_headers: ['Content-Type', 'Authorization', 'If-None-Match', 'X-Place-Token', 'X-Place-Device']
             expose_headers: ['ETag', 'Cache-Control']
             max_age: 3600
         '^/': null
