@@ -166,6 +166,16 @@ final class ArtifactDocumentValidatorTest extends TestCase
         self::assertStringContainsString('liste blanche', $result['errors'][0]['message']);
     }
 
+    public function testSonicButtonTypeIsAColour(): void
+    {
+        $doc = $this->docWithNodes([['tagName' => 'sonic-button', 'attributes' => ['type' => 'button'], 'textContent' => 'OK']]);
+        $result = $this->validator->validate($doc);
+        self::assertFalse($result['valid']);
+        self::assertStringContainsString('pas le type HTML', $result['errors'][0]['message']);
+        $ok = $this->docWithNodes([['tagName' => 'sonic-button', 'attributes' => ['type' => 'primary'], 'textContent' => 'OK']]);
+        self::assertTrue($this->validator->validate($ok)['valid']);
+    }
+
     public function testRejectsScriptTag(): void
     {
         $doc = $this->minimalDoc();

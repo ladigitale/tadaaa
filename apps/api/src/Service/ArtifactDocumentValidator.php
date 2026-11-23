@@ -1479,11 +1479,18 @@ final class ArtifactDocumentValidator
         return null;
     }
 
+    /** Valeurs de type d'un sonic-button (Concorde ButtonType). */
+    private const BUTTON_TYPES = ['default', 'primary', 'neutral', 'warning', 'danger', 'success', 'info'];
+
     private function validateAttributeValue(string $tagName, string $attr, string $value): ?string
     {
         $attrLower = strtolower($attr);
         if (str_contains(strtolower($value), 'javascript:')) {
             return 'Valeur javascript: interdite.';
+        }
+        // sonic-button : type = couleur (Concorde), pas le type HTML d'un <button> ; une autre valeur s'affiche mal.
+        if ($tagName === 'sonic-button' && $attrLower === 'type' && !\in_array(trim($value), self::BUTTON_TYPES, true)) {
+            return sprintf('type="%s" n’existe pas sur sonic-button : type = couleur (%s), défaut default ; ce n’est pas le type HTML d’un <button> (pas de button / submit / reset). Forme : variant (default, ghost, outline, link) ; état choisi : radio + formDataProvider / name / value.', $value, implode(', ', self::BUTTON_TYPES));
         }
         if (\in_array($attrLower, self::SHADER_SOURCE_ATTRS, true) || $attrLower === 'reducer') {
             $max = $attrLower === 'reducer' ? self::MAX_REDUCER : self::MAX_SHADER_SOURCE;
