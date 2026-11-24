@@ -36,7 +36,7 @@ final class SuperAdminNotifier
     {
         $title = $hidden ? 'Contenu masqué après signalements' : 'Nouveau signalement';
         $body = sprintf('%s — %s (%d signalement%s)', $artifactTitle, $what, $reports, $reports > 1 ? 's' : '');
-        $this->notify(NotificationEventType::ADMIN_REPORT, $title, $body, rtrim($this->artifactsUrl, '/').'/moderation', 'tada-admin-report');
+        $this->notify(NotificationEventType::ADMIN_REPORT, $title, $body, rtrim($this->artifactsUrl, '/').'/admin/moderation', 'tada-admin-report');
     }
 
     public function accountRequested(User $user): void
