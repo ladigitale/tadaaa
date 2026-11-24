@@ -64,6 +64,7 @@ final class ArtifactPlaceService
         private readonly DatasetAccessService $access,
         private readonly EntityManagerInterface $em,
         private readonly ArtifactPlaceVisitors $visitors,
+        private readonly ModerationService $moderation,
     ) {
     }
 
@@ -410,6 +411,11 @@ final class ArtifactPlaceService
             if ($wasVisible && $m->isHidden()) {
                 $p->addMessages(-1);
             }
+            $this->em->flush();
+            $this->moderation->reported($artifact, 'message', $m->getId(), $m->getReports(), $m->isHidden(),
+                ['text' => 'message', 'voice' => 'vocal', 'drawing' => 'dessin'][$m->getKind()].($m->getText() !== '' ? ' « '.mb_substr($m->getText(), 0, 60).' »' : ''));
+
+            return;
         }
         $this->em->flush();
     }
@@ -520,6 +526,7 @@ final class ArtifactPlaceService
         $p = $this->find($artifact, $collection, $id);
         $p->report(self::HIDE_AT);
         $this->em->flush();
+        $this->moderation->reported($artifact, 'place', $p->getId(), $p->getReports(), $p->isHidden(), 'balise'.(\is_string($p->getBody()['message'] ?? null) ? ' « '.mb_substr($p->getBody()['message'], 0, 60).' »' : ''));
 
         return ['reports' => $p->getReports(), 'hidden' => $p->isHidden()];
     }

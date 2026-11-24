@@ -36,6 +36,7 @@ final class ArtifactRouteService
         private readonly ArtifactRouteRepository $routes,
         private readonly ArtifactRouteSoundRepository $sounds,
         private readonly EntityManagerInterface $em,
+        private readonly ModerationService $moderation,
     ) {
     }
 
@@ -193,6 +194,7 @@ final class ArtifactRouteService
         $r = $this->find($artifact, $collection, $id);
         $r->report(ArtifactPlaceService::HIDE_AT);
         $this->em->flush();
+        $this->moderation->reported($artifact, 'route', $r->getId(), $r->getReports(), $r->isHidden(), 'parcours « '.mb_substr($r->getTitle(), 0, 60).' »');
 
         return ['reports' => $r->getReports(), 'hidden' => $r->isHidden()];
     }

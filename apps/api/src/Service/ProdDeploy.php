@@ -50,6 +50,12 @@ final class ProdDeploy
         ), static fn (string $e): bool => $e !== ''));
     }
 
+    /** E-mails de OPS_DEPLOY_USERS (le super admin doit en plus avoir ROLE_ADMIN). @return list<string> */
+    public function allowedEmails(): array
+    {
+        return $this->allowedUsers;
+    }
+
     public function isAllowed(User $user): bool
     {
         return \in_array('ROLE_ADMIN', $user->getRoles(), true)

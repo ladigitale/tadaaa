@@ -137,4 +137,13 @@ class ArtifactRoute
     }
 
     public function setHidden(bool $hidden): void { $this->hidden = $hidden; }
+
+    /** Décision de modération : masqué ou rétabli (rétabli : signalements remis à zéro). */
+    public function moderate(bool $hidden): void
+    {
+        $this->hidden = $hidden;
+        if (!$hidden) {
+            $this->reports = 0;
+        }
+    }
 }

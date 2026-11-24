@@ -13,6 +13,7 @@ final class NotificationPreferencesService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        private readonly ProdDeploy $superAdmin,
     ) {
     }
 
@@ -24,7 +25,11 @@ final class NotificationPreferencesService
         $effective = $this->effectivePrefs($user);
         $defaults = NotificationEventType::defaults();
         $rows = [];
+        $admin = $this->superAdmin->isAllowed($user);
         foreach (NotificationEventType::all() as $type) {
+            if (!$admin && \in_array($type, NotificationEventType::adminOnly(), true)) {
+                continue;
+            }
             $rows[] = [
                 'type' => $type,
                 'enabled' => $effective[$type],

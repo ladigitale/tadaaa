@@ -35,6 +35,9 @@ const PREF_LABEL_KEYS: Record<string, string> = {
   todo_unchecked: "notif.pref.todo_unchecked",
   todo_deleted: "notif.pref.todo_deleted",
   todo_created: "notif.pref.todo_created",
+  admin_report: "notif.pref.admin_report",
+  admin_account_request: "notif.pref.admin_account_request",
+  admin_account_created: "notif.pref.admin_account_created",
 };
 
 const STATUS_LABEL: Record<PushStatusCode, string> = {

@@ -112,6 +112,15 @@ class ArtifactPlace
     public function addMessages(int $n): void { $this->messageCount = max(0, $this->messageCount + $n); }
     public function isHidden(): bool { return $this->hidden; }
     public function setHidden(bool $hidden): void { $this->hidden = $hidden; }
+
+    /** Décision de modération : masqué ou rétabli (rétabli : signalements remis à zéro). */
+    public function moderate(bool $hidden): void
+    {
+        $this->hidden = $hidden;
+        if (!$hidden) {
+            $this->reports = 0;
+        }
+    }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
 
     /**

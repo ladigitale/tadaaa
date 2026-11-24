@@ -79,6 +79,12 @@ TXT;
         $this->send($user->getEmail(), $subject, $intro.$extra."\n\n— Tadaaa");
     }
 
+    /** Avis au super admin (signalement, demande de compte…), quand le push n'a atteint aucun appareil. */
+    public function sendAdminNotice(User $admin, string $subject, string $text, string $url): void
+    {
+        $this->send($admin->getEmail(), $subject.' — Tadaaa', $text."\n\n".$url."\n\n— Tadaaa (notification d'administration)");
+    }
+
     private function send(string $to, string $subject, string $text): void
     {
         $email = (new Email())

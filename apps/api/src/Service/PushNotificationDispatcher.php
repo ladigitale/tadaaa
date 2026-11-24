@@ -169,6 +169,25 @@ final class PushNotificationDispatcher
      *     results: list<array{endpointHost: string, success: bool, reason: string|null, statusCode: int|null}>
      * }
      */
+    /**
+     * Pousse une notification vers les appareils d'un compte, sans filtre de préférence (l'appelant l'a appliqué).
+     * Retourne le nombre d'envois réussis (0 : push coupé côté serveur, aucun appareil abonné ou échec).
+     *
+     * @param array<string, mixed> $payload
+     */
+    public function pushToUser(User $user, array $payload): int
+    {
+        if (!$this->push->isEnabled()) {
+            return 0;
+        }
+        $subs = $this->subscriptions->findActiveForUser($user);
+        if ($subs === []) {
+            return 0;
+        }
+
+        return \count(array_filter($this->deliver($subs, $payload), static fn (array $r): bool => $r['success']));
+    }
+
     public function sendTestToUser(User $user): array
     {
         if (!$this->push->isEnabled()) {
