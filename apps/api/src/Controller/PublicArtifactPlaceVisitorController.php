@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\User;
-use App\Service\ArtifactPlaceTagService;
+use App\Service\ArtifactPlaceVisitorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,27 +17,34 @@ use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * « Passés par là » des lieux partagés (en-tête X-Place-Device : clé aléatoire gardée par l'appareil) :
- *   POST /{slug}/places/{name}/visitor                 {"pseudo"?, "avatar"?: data:image/svg+xml} → {id, pseudo, avatar}
- *   GET  /{slug}/places/{name}/{id}/tags               → {count, tags: [{id, pseudo, avatar, at, mine}], mine}
- *   POST /{slug}/places/{name}/{id}/tags               {"at": {lat, lon, accuracy, seen: true}} → {count, at, first}
+ * Blaze des visiteurs des lieux partagés (en-tête X-Place-Device : clé aléatoire gardée par l'appareil ; ou compte connecté) :
+ *   GET  /{slug}/places/{name}/visitor                 → {id, pseudo, avatar (data: URL), avatarUrl, compte} (tout à null sans blaze)
+ *   POST /{slug}/places/{name}/visitor                 {"pseudo"?, "avatar"?: data:image/svg+xml} → {id, pseudo, avatar, avatarUrl, compte}
  *   GET  /{slug}/places/{name}/avatars/{visitorId}     SVG brut (CSP stricte)
  *   POST /{slug}/places/{name}/avatars/{visitorId}/report  signalement (masqué au 3e)
  */
 #[Route('/api/public/artifacts')]
-final class PublicArtifactPlaceTagController extends AbstractController
+final class PublicArtifactPlaceVisitorController extends AbstractController
 {
     private const SLUG = '[a-z0-9][a-z0-9-]{2,63}';
     private const NAME = '[a-zA-Z][a-zA-Z0-9_-]{0,63}';
     private const ID = '[0-9a-fA-F-]{36}';
 
     public function __construct(
-        private readonly ArtifactPlaceTagService $tags,
+        private readonly ArtifactPlaceVisitorService $visitors,
         #[Autowire(service: 'limiter.artifacts_places')]
         private readonly RateLimiterFactoryInterface $limiter,
         #[Autowire(service: 'limiter.artifacts_public')]
         private readonly RateLimiterFactoryInterface $readLimiter,
     ) {
+    }
+
+    #[Route('/{slug}/places/{name}/visitor', name: 'api_public_artifact_places_visitor_get', methods: ['GET'], requirements: ['slug' => self::SLUG, 'name' => self::NAME])]
+    public function me(string $slug, string $name, Request $request): JsonResponse
+    {
+        $this->consume($this->readLimiter, $request);
+
+        return $this->noStore($this->json($this->visitors->getVisitor($slug, $this->link($request), $name, $request->headers->get('X-Place-Device'), $this->user())));
     }
 
     #[Route('/{slug}/places/{name}/visitor', name: 'api_public_artifact_places_visitor', methods: ['POST'], requirements: ['slug' => self::SLUG, 'name' => self::NAME])]
@@ -54,33 +61,14 @@ final class PublicArtifactPlaceTagController extends AbstractController
             throw new BadRequestHttpException('Corps attendu : {"pseudo"?, "avatar"?: "data:image/svg+xml;base64,…"}.');
         }
 
-        return $this->noStore($this->json($this->tags->saveVisitor($slug, $this->link($request), $name, $request->headers->get('X-Place-Device'), $in['pseudo'] ?? null, $in['avatar'] ?? null, $this->user())));
-    }
-
-    #[Route('/{slug}/places/{name}/{id}/tags', name: 'api_public_artifact_places_tags', methods: ['GET'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID])]
-    public function list(string $slug, string $name, string $id, Request $request): JsonResponse
-    {
-        $this->consume($this->readLimiter, $request);
-
-        return $this->noStore($this->json($this->tags->list($slug, $this->link($request), $name, $id, $request->headers->get('X-Place-Device'), $this->user())));
-    }
-
-    #[Route('/{slug}/places/{name}/{id}/tags', name: 'api_public_artifact_places_tag', methods: ['POST'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID])]
-    public function tag(string $slug, string $name, string $id, Request $request): JsonResponse
-    {
-        $this->consume($this->limiter, $request);
-        /** @var mixed $in */
-        $in = json_decode($request->getContent() ?: '{}', true);
-        $at = \is_array($in) ? ($in['at'] ?? null) : null;
-
-        return $this->noStore($this->json($this->tags->tag($slug, $this->link($request), $name, $id, $request->headers->get('X-Place-Device'), $at, $this->user()), 201));
+        return $this->noStore($this->json($this->visitors->saveVisitor($slug, $this->link($request), $name, $request->headers->get('X-Place-Device'), $in['pseudo'] ?? null, $in['avatar'] ?? null, $this->user())));
     }
 
     #[Route('/{slug}/places/{name}/avatars/{visitorId}', name: 'api_public_artifact_places_avatar', methods: ['GET'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'visitorId' => self::ID])]
     public function avatar(string $slug, string $name, string $visitorId, Request $request): Response
     {
         $this->consume($this->readLimiter, $request);
-        $svg = $this->tags->avatarSvg($slug, $this->link($request), $name, $visitorId, $this->user());
+        $svg = $this->visitors->avatarSvg($slug, $this->link($request), $name, $visitorId, $this->user());
         $r = new Response($svg, 200, ['Content-Type' => 'image/svg+xml; charset=utf-8']);
         // Une image, jamais un document actif : rien ne s'exécute ni ne se charge, même ouverte seule.
         $r->headers->set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
@@ -96,7 +84,7 @@ final class PublicArtifactPlaceTagController extends AbstractController
     public function report(string $slug, string $name, string $visitorId, Request $request): Response
     {
         $this->consume($this->limiter, $request);
-        $this->tags->reportVisitor($slug, $this->link($request), $name, $visitorId, $this->user());
+        $this->visitors->reportVisitor($slug, $this->link($request), $name, $visitorId, $this->user());
 
         return new Response('', Response::HTTP_NO_CONTENT);
     }

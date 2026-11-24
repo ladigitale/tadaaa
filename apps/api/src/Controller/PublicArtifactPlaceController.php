@@ -92,7 +92,7 @@ final class PublicArtifactPlaceController extends AbstractController
             throw new BadRequestHttpException('Corps attendu : {"lat", "lon", "body": {...}}.');
         }
         $size = \strlen((string) json_encode($in['body'], \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES));
-        $out = $this->places->create($slug, $this->link($request), $name, $in['lat'] ?? null, $in['lon'] ?? null, $in['body'], $size, $this->user(), $request->getClientIp() ?: 'anon');
+        $out = $this->places->create($slug, $this->link($request), $name, $in['lat'] ?? null, $in['lon'] ?? null, $in['body'], $size, $this->user(), $request->getClientIp() ?: 'anon', $request->headers->get('X-Place-Device'));
 
         return $this->noStore($this->json($out, 201));
     }
@@ -152,7 +152,7 @@ final class PublicArtifactPlaceController extends AbstractController
         if (!\is_array($in)) {
             throw new BadRequestHttpException('Corps attendu : {"text"?, "media"?, "pseudo"?, "at"?: {"lat", "lon", "accuracy", "seen"}}.');
         }
-        $out = $this->places->postMessage($slug, $this->link($request), $name, $id, $in['text'] ?? null, $in['pseudo'] ?? null, $this->user(), $request->getClientIp() ?: 'anon', $in['media'] ?? null, $in['at'] ?? null, $in['cadre'] ?? null, $in['refId'] ?? null);
+        $out = $this->places->postMessage($slug, $this->link($request), $name, $id, $in['text'] ?? null, $in['pseudo'] ?? null, $this->user(), $request->getClientIp() ?: 'anon', $in['media'] ?? null, $in['at'] ?? null, $in['cadre'] ?? null, $in['refId'] ?? null, $request->headers->get('X-Place-Device'));
 
         return $this->noStore($this->json($out, 201));
     }
@@ -239,7 +239,7 @@ final class PublicArtifactPlaceController extends AbstractController
 
     #[Route('/{slug}/places/{name}', name: 'api_public_artifact_places_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME])]
     #[Route('/{slug}/places/{name}/{id}', name: 'api_public_artifact_places_item_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID])]
-    #[Route('/{slug}/places/{name}/{id}/{action}', name: 'api_public_artifact_places_action_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'action' => 'report|hidden|refs|messages|edit|tags'])]
+    #[Route('/{slug}/places/{name}/{id}/{action}', name: 'api_public_artifact_places_action_options', methods: ['OPTIONS'], requirements: ['slug' => self::SLUG, 'name' => self::NAME, 'id' => self::ID, 'action' => 'report|hidden|refs|messages|edit'])]
     public function options(): Response
     {
         return new Response('', Response::HTTP_NO_CONTENT);

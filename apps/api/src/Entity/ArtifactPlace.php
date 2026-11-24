@@ -58,6 +58,11 @@ class ArtifactPlace
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $author = null;
 
+    /** Blaze de qui a posé le lieu (affiché sur ce qui ouvre la discussion). */
+    #[ORM\ManyToOne(targetEntity: ArtifactPlaceVisitor::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?ArtifactPlaceVisitor $visitor = null;
+
     #[ORM\Column]
     private int $reports = 0;
 
@@ -100,6 +105,8 @@ class ArtifactPlace
     public function getDeleteTokenHash(): string { return $this->deleteTokenHash; }
     public function getAuthor(): ?User { return $this->author; }
     public function setAuthor(?User $author): void { $this->author = $author; }
+    public function getVisitor(): ?ArtifactPlaceVisitor { return $this->visitor; }
+    public function setVisitor(?ArtifactPlaceVisitor $visitor): void { $this->visitor = $visitor; }
     public function getReports(): int { return $this->reports; }
     public function getMessageCount(): int { return $this->messageCount; }
     public function addMessages(int $n): void { $this->messageCount = max(0, $this->messageCount + $n); }

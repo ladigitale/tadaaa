@@ -10,7 +10,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * Visiteur anonyme des lieux d'un artefact : un appareil (empreinte d'une clé aléatoire gardée par l'appareil,
- * en-tête X-Place-Device), avec un pseudo et un avatar dessiné (SVG). Sert aux tags « passés par là ».
+ * en-tête X-Place-Device), avec un pseudo et un avatar dessiné (SVG) : son « blaze », affiché sur ses messages.
+ * Un compte Tadaaa connecté peut le revendiquer : il le retrouve alors sur ses autres appareils.
  */
 #[ORM\Entity(repositoryClass: ArtifactPlaceVisitorRepository::class)]
 #[ORM\Table(name: 'artifact_place_visitors')]
@@ -35,6 +36,11 @@ class ArtifactPlaceVisitor
 
     #[ORM\Column(length: 64)]
     private string $deviceHash;
+
+    /** Compte Tadaaa qui a revendiqué ce blaze (facultatif). */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $user = null;
 
     #[ORM\Column(length: 160, nullable: true)]
     private ?string $pseudo = null;
@@ -68,6 +74,9 @@ class ArtifactPlaceVisitor
     public function getArtifact(): Artifact { return $this->artifact; }
     public function getCollection(): string { return $this->collection; }
     public function getPseudo(): ?string { return $this->pseudo; }
+    public function getUser(): ?User { return $this->user; }
+    public function setUser(?User $user): void { $this->user = $user; }
+    public function getDeviceHash(): string { return $this->deviceHash; }
     public function getAvatar(): ?string { return $this->avatar; }
     public function isHidden(): bool { return $this->hidden; }
     public function getUpdatedAt(): \DateTimeImmutable { return $this->updatedAt; }
