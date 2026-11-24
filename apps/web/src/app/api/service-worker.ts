@@ -78,6 +78,12 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const href = typeof event.notification.data?.href === "string" ? sisterSiteUrl(event.notification.data.href) : null;
+  if (href) {
+    // Lien vers un site frère (page Modération d'Artefacts) : nouvel onglet.
+    event.waitUntil(self.clients.openWindow(href));
+    return;
+  }
   const targetUrl = sanitizeAppPath(
     typeof event.notification.data?.url === "string"
       ? event.notification.data.url
@@ -106,6 +112,17 @@ self.addEventListener("notificationclick", (event) => {
     })(),
   );
 });
+
+/** Site frère seulement : https://artifacts.<domaine de l'app> (app.tadaaa.space → artifacts.tadaaa.space). */
+function sisterSiteUrl(raw: string): string | null {
+  try {
+    const u = new URL(raw);
+    const base = self.location.hostname.replace(/^app\./, "");
+    return u.protocol === "https:" && u.hostname === `artifacts.${base}` ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Same-origin relative path only — blocks //evil, https://evil, javascript:, etc. */
 function sanitizeAppPath(raw: string): string {

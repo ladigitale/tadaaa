@@ -13,6 +13,8 @@ use App\Entity\User;
 use App\Entity\UserStatus;
 use App\Repository\UserRepository;
 use App\Service\AccountMailer;
+use App\Service\ProdDeploy;
+use App\Service\SuperAdminNotifier;
 use App\Service\AuthHandoffService;
 use App\Service\BandwidthQuota;
 use App\Service\StorageQuota;
@@ -46,6 +48,8 @@ final class AuthController extends AbstractController
         private readonly UserDataExport $userDataExport,
         private readonly UserAccountDeletion $userAccountDeletion,
         private readonly AuthHandoffService $authHandoff,
+        private readonly SuperAdminNotifier $adminNotifier,
+        private readonly ProdDeploy $superAdmin,
         #[Autowire(service: 'limiter.register')]
         private readonly RateLimiterFactoryInterface $registerLimiter,
         #[Autowire(service: 'limiter.account_gdpr')]
@@ -92,6 +96,7 @@ final class AuthController extends AbstractController
             $this->entityManager->persist($defaultDataset);
             $this->entityManager->persist($user);
             $this->entityManager->flush();
+            $this->adminNotifier->accountCreated($user);
 
             return $this->json([
                 'status' => UserStatus::Active->value,
@@ -112,6 +117,7 @@ final class AuthController extends AbstractController
         $this->entityManager->persist($defaultDataset);
         $this->entityManager->persist($user);
         $this->entityManager->flush();
+        $this->adminNotifier->accountRequested($user);
 
         try {
             $this->accountMailer->sendEmailVerification($user, $rawToken, $input->returnTo);
@@ -144,10 +150,14 @@ final class AuthController extends AbstractController
             return $this->json(['error' => 'Lien expiré — demandez un nouvel email.'], Response::HTTP_BAD_REQUEST);
         }
 
+        $wasActive = $user->getStatus() === UserStatus::Active;
         $user->setStatus(UserStatus::Active);
         $user->setEmailVerifiedAt(new \DateTimeImmutable());
         $user->clearEmailVerificationChallenge();
         $this->entityManager->flush();
+        if (!$wasActive) {
+            $this->adminNotifier->accountCreated($user);
+        }
 
         return $this->json([
             'status' => UserStatus::Active->value,
@@ -320,6 +330,7 @@ final class AuthController extends AbstractController
             'activeDatasetId' => $user->getActiveDataset()?->getId()->toRfc4122(),
             'status' => $user->getStatus()->value,
             'roles' => $user->getRoles(),
+            'superAdmin' => $this->superAdmin->isAllowed($user),
             'linkDetectors' => $user->getLinkDetectors(),
             'emailVerifiedAt' => $user->getEmailVerifiedAt()?->format(\DateTimeInterface::ATOM),
             'themeId' => $user->getThemeId(),

@@ -24,6 +24,7 @@ final class ArtifactPlaceVisitorService
         private readonly ArtifactPlaceVisitors $resolver,
         private readonly ArtifactPlaceVisitorRepository $visitors,
         private readonly EntityManagerInterface $em,
+        private readonly ModerationService $moderation,
     ) {
     }
 
@@ -137,6 +138,7 @@ final class ArtifactPlaceVisitorService
         $v = $this->visitor($slug, $linkToken, $collection, $visitorId, $user);
         $v->report();
         $this->em->flush();
+        $this->moderation->reported($v->getArtifact(), 'visitor', $v->getId(), $v->getReports(), $v->isHidden(), 'blaze « '.($v->getPseudo() ?? 'sans pseudo').' »');
     }
 
     private function visitor(string $slug, ?string $linkToken, string $collection, string $visitorId, ?User $user): ArtifactPlaceVisitor

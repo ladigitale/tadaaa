@@ -150,6 +150,17 @@ class ArtifactPlaceMessage
         $this->editedAt = new \DateTimeImmutable();
     }
 
+    public function getReports(): int { return $this->reports; }
+
+    /** Décision de modération : masqué ou rétabli (rétabli : signalements remis à zéro). */
+    public function moderate(bool $hidden): void
+    {
+        $this->hidden = $hidden;
+        if (!$hidden) {
+            $this->reports = 0;
+        }
+    }
+
     public function report(int $hideAt): void
     {
         ++$this->reports;
