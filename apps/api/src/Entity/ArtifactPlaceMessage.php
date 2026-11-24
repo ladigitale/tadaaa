@@ -45,6 +45,11 @@ class ArtifactPlaceMessage
     #[ORM\Column(length: 160, nullable: true)]
     private ?string $pseudo;
 
+    /** Auteur (blaze : pseudo et avatar à jour), si l'appareil s'est fait connaître. */
+    #[ORM\ManyToOne(targetEntity: ArtifactPlaceVisitor::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?ArtifactPlaceVisitor $visitor = null;
+
     #[ORM\Column(length: 64)]
     private string $ipHash;
 
@@ -106,6 +111,8 @@ class ArtifactPlaceMessage
     public function getText(): string { return $this->text; }
     public function getMedia(): ?string { return $this->media; }
     public function getPseudo(): ?string { return $this->pseudo; }
+    public function getVisitor(): ?ArtifactPlaceVisitor { return $this->visitor; }
+    public function setVisitor(?ArtifactPlaceVisitor $visitor): void { $this->visitor = $visitor; }
     public function getDeleteTokenHash(): string { return $this->deleteTokenHash; }
     public function isHidden(): bool { return $this->hidden; }
     public function isOnSite(): bool { return $this->onSite; }

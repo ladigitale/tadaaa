@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\Artifact;
 use App\Entity\ArtifactPlace;
 use App\Entity\ArtifactPlaceMessage;
+use App\Entity\ArtifactPlaceVisitor;
 use App\Entity\ArtifactVisibility;
 use App\Entity\User;
 use App\Repository\ArtifactPlaceMessageRepository;
@@ -62,6 +63,7 @@ final class ArtifactPlaceService
         private readonly ArtifactPlaceMessageRepository $messages,
         private readonly DatasetAccessService $access,
         private readonly EntityManagerInterface $em,
+        private readonly ArtifactPlaceVisitors $visitors,
     ) {
     }
 
@@ -156,7 +158,7 @@ final class ArtifactPlaceService
      *
      * @return array{id: string, deleteToken: string, createdAt: string}
      */
-    public function create(string $slug, ?string $linkToken, string $collection, mixed $lat, mixed $lon, mixed $body, int $sizeBytes, ?User $user, string $ip): array
+    public function create(string $slug, ?string $linkToken, string $collection, mixed $lat, mixed $lon, mixed $body, int $sizeBytes, ?User $user, string $ip, ?string $device = null): array
     {
         [$artifact, $conf] = $this->open($slug, $linkToken, $user, $collection);
         if (!is_numeric($lat) || !is_numeric($lon)) {
@@ -181,6 +183,7 @@ final class ArtifactPlaceService
         $token = rtrim(strtr(base64_encode(random_bytes(24)), '+/', '-_'), '=');
         $place = new ArtifactPlace($artifact, $collection, round($lat, 7), round($lon, 7), $body, self::summary($body), $sizeBytes, hash('sha256', $token), $ipHash);
         $place->setAuthor($user);
+        $place->setVisitor($this->visitors->resolve($artifact, $collection, $device, $user, true));
         $this->em->persist($place);
         $this->em->flush();
 
@@ -242,21 +245,28 @@ final class ArtifactPlaceService
         $out = [];
         $at = $p->getCreatedAt()->format(\DateTimeInterface::ATOM);
         $body = $p->getBody();
+        // Blaze de l'auteur, tel qu'il est aujourd'hui (pseudo et avatar redessinés compris).
+        $blaze = static fn (?ArtifactPlaceVisitor $v, ?string $pseudo): array => [
+            'pseudo' => ($v !== null && !$v->isHidden() ? $v->getPseudo() : null) ?? $pseudo,
+            'avatar' => ArtifactPlaceVisitors::avatarPath($slug, $collection, $v),
+            'auteur' => $v?->getId()->toRfc4122(),
+        ];
+        $poseur = $blaze($p->getVisitor(), null);
         // Ce qui a été posé avec le lieu ouvre la discussion (média inclus : deux au plus).
         if (\is_string($body['message'] ?? null) && trim($body['message']) !== '' && ($body['effet'] ?? 'message') !== 'dessin') {
-            $out[] = ['id' => 'origine', 'kind' => 'text', 'text' => mb_substr($body['message'], 0, ArtifactPlaceMessage::MAX_TEXT), 'pseudo' => null, 'at' => $at, 'origin' => true, 'onSite' => true];
+            $out[] = ['id' => 'origine', 'kind' => 'text', 'text' => mb_substr($body['message'], 0, ArtifactPlaceMessage::MAX_TEXT), 'at' => $at, 'origin' => true, 'onSite' => true] + $poseur;
         }
         // Pièces jointes à la pose : data: URL, ou {url, mime, …} (sonic-anchor-ref).
         $dessin = self::mediaUrl($body['dessin'] ?? null);
         if ($dessin !== null && self::mediaKind($dessin) === 'drawing') {
-            $out[] = ['id' => 'origine-dessin', 'kind' => 'drawing', 'text' => '', 'pseudo' => null, 'at' => $at, 'origin' => true, 'onSite' => true, 'media' => $dessin, 'cadre' => $body['cadreDessin'] ?? null];
+            $out[] = ['id' => 'origine-dessin', 'kind' => 'drawing', 'text' => '', 'at' => $at, 'origin' => true, 'onSite' => true, 'media' => $dessin, 'cadre' => $body['cadreDessin'] ?? null] + $poseur;
         }
         $voix = self::mediaUrl($body['voix'] ?? null);
         if ($voix !== null && self::mediaKind($voix) === 'voice') {
-            $out[] = ['id' => 'origine-voix', 'kind' => 'voice', 'text' => '', 'pseudo' => null, 'at' => $at, 'origin' => true, 'onSite' => true, 'media' => $voix];
+            $out[] = ['id' => 'origine-voix', 'kind' => 'voice', 'text' => '', 'at' => $at, 'origin' => true, 'onSite' => true, 'media' => $voix] + $poseur;
         }
         foreach ($this->messages->latestFor($p, self::THREAD_LIMIT) as $m) {
-            $row = ['id' => $m->getId()->toRfc4122(), 'kind' => $m->getKind(), 'text' => $m->getText(), 'pseudo' => $m->getPseudo(), 'at' => $m->getCreatedAt()->format(\DateTimeInterface::ATOM), 'onSite' => $m->isOnSite()];
+            $row = ['id' => $m->getId()->toRfc4122(), 'kind' => $m->getKind(), 'text' => $m->getText(), 'at' => $m->getCreatedAt()->format(\DateTimeInterface::ATOM), 'onSite' => $m->isOnSite()] + $blaze($m->getVisitor(), $m->getPseudo());
             // Retiré ou masqué : une trace sans contenu, pour qu'on sache qu'il y avait quelque chose.
             if ($m->isDeleted() || $m->isHidden()) {
                 $out[] = ['id' => $row['id'], 'kind' => $m->getKind(), 'text' => '', 'pseudo' => null, 'at' => $row['at'], 'onSite' => $m->isOnSite(),
@@ -329,7 +339,7 @@ final class ArtifactPlaceService
      * `at.seen` : le mur a été reconnu par la caméra) : texte, vocal ou dessin. À distance : un commentaire
      * texte seulement, marqué `onSite: false` dans le fil.
      */
-    public function postMessage(string $slug, ?string $linkToken, string $collection, string $id, mixed $text, mixed $pseudo, ?User $user, string $ip, mixed $media = null, mixed $at = null, mixed $frame = null, mixed $refId = null): array
+    public function postMessage(string $slug, ?string $linkToken, string $collection, string $id, mixed $text, mixed $pseudo, ?User $user, string $ip, mixed $media = null, mixed $at = null, mixed $frame = null, mixed $refId = null, ?string $device = null): array
     {
         [$artifact] = $this->open($slug, $linkToken, $user, $collection);
         $p = $this->find($artifact, $collection, $id);
@@ -364,6 +374,7 @@ final class ArtifactPlaceService
         if ($kind === 'drawing') {
             $m->setRefId(self::refId($refId));
         }
+        $m->setVisitor($this->visitors->resolve($artifact, $collection, $device, $user, true));
         $p->addMessages(1);
         $this->em->persist($m);
         $this->em->flush();
