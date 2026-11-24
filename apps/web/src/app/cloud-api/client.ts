@@ -766,6 +766,31 @@ export async function verifyAccountEmail(
   return next;
 }
 
+export async function requestPasswordReset(email: string, returnTo?: string): Promise<string> {
+  const settings: AccountSettings = {apiBaseUrl: loadAccountSettings().apiBaseUrl, token: null, user: null};
+  const result = await cloudFetch<{message?: string}>(
+    "/auth/password/forgot",
+    {method: "POST", body: JSON.stringify({email, returnTo})},
+    settings,
+  );
+  return result.message ?? tx("account.forgot.intro");
+}
+
+/** Nouveau mot de passe avec le jeton du lien ; connecte le compte (comme la confirmation d'email). */
+export async function resetAccountPassword(token: string, password: string): Promise<AccountSettings> {
+  const base = loadAccountSettings().apiBaseUrl;
+  const result = await cloudFetch<{token: string; user: CloudUser}>(
+    "/auth/password/reset",
+    {method: "POST", body: JSON.stringify({token, password})},
+    {apiBaseUrl: base, token: null, user: null},
+  );
+  const next: AccountSettings = {apiBaseUrl: base, token: result.token, user: result.user};
+  saveAccountSettings(next);
+  resetMercureSubscription();
+  syncLinkDetectorsFromUser(result.user);
+  return next;
+}
+
 export async function resendVerificationEmail(
   email: string,
   apiBaseUrl?: string,
