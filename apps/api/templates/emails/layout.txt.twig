@@ -1,0 +1,14 @@
+{{ heading }}
+
+{% for p in paragraphs %}{{ p }}
+
+{% endfor %}{% if quote %}« {{ quote }} »
+
+{% endif %}{% if action_url %}{{ action_label }} :
+{{ action_url }}
+
+{% endif %}{% if note %}{{ note }}
+
+{% endif %}—
+{{ footer }}
+Tadaaa · {{ app_url }}

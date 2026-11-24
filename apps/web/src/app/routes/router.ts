@@ -3,8 +3,10 @@ import { html } from "lit";
 import "@supersoniks/concorde/core/components/functional/router/router";
 
 import layout from "./layout";
+import accountForgotPage from "./account/forgot/page";
 import accountLoginPage from "./account/login/page";
 import accountRegisterPage from "./account/register/page";
+import accountResetPage from "./account/reset/page";
 import accountVerifyPage from "./account/verify/page";
 import accountPage from "./account/page";
 import connectivityActivityPage from "./connectivity/activity/page";
@@ -42,6 +44,10 @@ import tagsPage from "./tags/page";
 import page from "./page";
 import fallback from "./404";
 export const router = (basePath?:string) => {
+const accountForgotDefaultLayoutRoutes = {
+    "/account/forgot$": accountForgotPage
+}        
+
 const accountLoginDefaultLayoutRoutes = {
     "/account/login$": accountLoginPage
 }        
@@ -50,13 +56,19 @@ const accountRegisterDefaultLayoutRoutes = {
     "/account/register$": accountRegisterPage
 }        
 
+const accountResetDefaultLayoutRoutes = {
+    "/account/reset$": accountResetPage
+}        
+
 const accountVerifyDefaultLayoutRoutes = {
     "/account/verify$": accountVerifyPage
 }        
 
 const accountDefaultLayoutRoutes = {
+    "/account/forgot\\b": () => html`<sonic-router .basePath=${basePath} .routes=${accountForgotDefaultLayoutRoutes}></sonic-router>`,
     "/account/login\\b": () => html`<sonic-router .basePath=${basePath} .routes=${accountLoginDefaultLayoutRoutes}></sonic-router>`,
     "/account/register\\b": () => html`<sonic-router .basePath=${basePath} .routes=${accountRegisterDefaultLayoutRoutes}></sonic-router>`,
+    "/account/reset\\b": () => html`<sonic-router .basePath=${basePath} .routes=${accountResetDefaultLayoutRoutes}></sonic-router>`,
     "/account/verify\\b": () => html`<sonic-router .basePath=${basePath} .routes=${accountVerifyDefaultLayoutRoutes}></sonic-router>`,
     "/account$": accountPage
 }        

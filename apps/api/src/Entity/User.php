@@ -76,6 +76,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $emailVerifiedAt = null;
 
+    /** SHA-256 hex du jeton de réinitialisation du mot de passe (usage unique), ou null. */
+    #[ORM\Column(length: 64, nullable: true, unique: true)]
+    private ?string $passwordResetToken = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $passwordResetExpiresAt = null;
+
     /** When the user accepted CGU / privacy at registration (null for legacy accounts). */
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $termsAcceptedAt = null;
@@ -290,6 +297,20 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setTermsAcceptedAt(?\DateTimeImmutable $termsAcceptedAt): static
     {
         $this->termsAcceptedAt = $termsAcceptedAt;
+
+        return $this;
+    }
+
+    public function getPasswordResetExpiresAt(): ?\DateTimeImmutable
+    {
+        return $this->passwordResetExpiresAt;
+    }
+
+    /** Nouveau jeton de réinitialisation (on garde son empreinte) ; null efface la demande. */
+    public function setPasswordResetChallenge(?string $tokenHash, ?\DateTimeImmutable $expiresAt): static
+    {
+        $this->passwordResetToken = $tokenHash;
+        $this->passwordResetExpiresAt = $tokenHash === null ? null : $expiresAt;
 
         return $this;
     }

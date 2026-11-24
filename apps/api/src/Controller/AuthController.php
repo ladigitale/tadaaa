@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Dto\DeleteAccountInput;
+use App\Dto\ForgotPasswordInput;
 use App\Dto\RegisterInput;
+use App\Dto\ResetPasswordInput;
 use App\Dto\ResendVerificationInput;
 use App\Dto\VerifyEmailInput;
 use App\Entity\Dataset;
@@ -164,6 +166,79 @@ final class AuthController extends AbstractController
             'token' => $this->jwtManager->create($user),
             'user' => $this->serializeUser($user),
             'message' => 'Email confirmé — compte activé.',
+        ]);
+    }
+
+    /**
+     * Mot de passe oublié : envoie un lien de réinitialisation (60 min, usage unique). Même réponse que le compte
+     * existe ou non (pas d'énumération) ; rien pour un compte refusé ou désactivé.
+     */
+    #[Route('/password/forgot', name: 'api_auth_password_forgot', methods: ['POST'])]
+    public function forgotPassword(
+        #[MapRequestPayload] ForgotPasswordInput $input,
+    ): JsonResponse {
+        $request = $this->requestStack->getCurrentRequest();
+        if (!$this->registerLimiter->create('forgot-'.($request?->getClientIp() ?? 'anonymous'))->consume(1)->isAccepted()) {
+            return $this->json(['error' => 'Trop de tentatives — réessayez plus tard.'], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+        $ok = ['message' => 'Si un compte existe pour cette adresse, un lien pour choisir un nouveau mot de passe vient d’être envoyé.'];
+        $user = $this->users->findOneBy(['email' => strtolower(trim($input->email))]);
+        if ($user === null || !\in_array($user->getStatus(), [UserStatus::Active, UserStatus::Pending], true)) {
+            return $this->json($ok);
+        }
+        $raw = bin2hex(random_bytes(32));
+        $user->setPasswordResetChallenge(hash('sha256', $raw), new \DateTimeImmutable(sprintf('+%d minutes', AccountMailer::RESET_MINUTES)));
+        $this->entityManager->flush();
+        try {
+            $this->accountMailer->sendPasswordReset($user, $raw, $input->returnTo);
+        } catch (\Throwable) {
+            // Même réponse : l'utilisateur pourra redemander un lien.
+        }
+
+        return $this->json($ok);
+    }
+
+    /** Nouveau mot de passe avec le jeton reçu par email ; l'adresse est confirmée par la même occasion. */
+    #[Route('/password/reset', name: 'api_auth_password_reset', methods: ['POST'])]
+    public function resetPassword(
+        #[MapRequestPayload] ResetPasswordInput $input,
+    ): JsonResponse {
+        $request = $this->requestStack->getCurrentRequest();
+        if (!$this->registerLimiter->create('reset-'.($request?->getClientIp() ?? 'anonymous'))->consume(1)->isAccepted()) {
+            return $this->json(['error' => 'Trop de tentatives — réessayez plus tard.'], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+        $user = $this->users->findOneBy(['passwordResetToken' => hash('sha256', $input->token)]);
+        if ($user === null || !\in_array($user->getStatus(), [UserStatus::Active, UserStatus::Pending], true)) {
+            return $this->json(['error' => 'Lien invalide ou déjà utilisé : demandez-en un nouveau.'], Response::HTTP_BAD_REQUEST);
+        }
+        $expires = $user->getPasswordResetExpiresAt();
+        if ($expires === null || $expires < new \DateTimeImmutable()) {
+            $user->setPasswordResetChallenge(null, null);
+            $this->entityManager->flush();
+
+            return $this->json(['error' => 'Lien expiré : demandez-en un nouveau.'], Response::HTTP_BAD_REQUEST);
+        }
+        $user->setPassword($this->passwordHasher->hashPassword($user, $input->password));
+        $user->setPasswordResetChallenge(null, null);
+        // Le lien reçu prouve l'adresse : un compte en attente de confirmation devient actif.
+        $wasActive = $user->getStatus() === UserStatus::Active;
+        if (!$wasActive) {
+            $user->setStatus(UserStatus::Active);
+            $user->clearEmailVerificationChallenge();
+        }
+        if ($user->getEmailVerifiedAt() === null) {
+            $user->setEmailVerifiedAt(new \DateTimeImmutable());
+        }
+        $this->entityManager->flush();
+        if (!$wasActive) {
+            $this->adminNotifier->accountCreated($user);
+        }
+
+        return $this->json([
+            'status' => UserStatus::Active->value,
+            'token' => $this->jwtManager->create($user),
+            'user' => $this->serializeUser($user),
+            'message' => 'Mot de passe changé : vous êtes connecté.',
         ]);
     }
 

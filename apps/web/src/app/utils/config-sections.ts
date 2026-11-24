@@ -192,6 +192,20 @@ export const CONFIG_SECTIONS: ConfigSectionChoice[] = [
     icon: "mail",
     href: configSectionPath("accountVerify"),
   },
+  {
+    id: "accountForgot",
+    labelKey: "config.section.accountForgot",
+    descriptionKey: "config.section.accountForgot.help",
+    icon: "lock",
+    href: configSectionPath("accountForgot"),
+  },
+  {
+    id: "accountReset",
+    labelKey: "config.section.accountReset",
+    descriptionKey: "config.section.accountReset.help",
+    icon: "lock",
+    href: configSectionPath("accountReset"),
+  },
 ];
 
 export function groupForSection(

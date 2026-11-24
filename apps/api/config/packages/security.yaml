@@ -57,6 +57,7 @@ security:
         - { path: ^/api/auth/register$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/verify-email$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/resend-verification$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/password/(forgot|reset)$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/handoff/exchange$, roles: PUBLIC_ACCESS }
         - { path: ^/api/public/embeds/, roles: PUBLIC_ACCESS }

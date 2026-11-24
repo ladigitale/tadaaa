@@ -202,6 +202,9 @@ export class ConfigAccountLoginPage extends LitElement {
             >
               ${t("account.go_register")}
             </sonic-button>
+            <sonic-button variant="link" href="/account/forgot" pushstate>
+              ${t("account.forgot_link")}
+            </sonic-button>
           </sonic-form-actions>
         </div>
       </page-shell>
