@@ -557,6 +557,14 @@ final class ArtifactService
         );
     }
 
+    /** Préfixe https des URL d'assets de l'artefact `slug` (comme `expandAssets`), ou `null`. */
+    public function assetUrlPrefix(string $slug, ?string $requestBaseUrl = null): ?string
+    {
+        $assetBase = $this->assetsBaseUrl !== '' ? $this->assetsBaseUrl : ($requestBaseUrl ?? '');
+
+        return str_starts_with($assetBase, 'https://') ? rtrim($assetBase, '/').'/api/public/artifacts/'.$slug.'/assets/' : null;
+    }
+
     /** Document « wire » d'une version (fichiers @file développés, assets non résolus). */
     public function versionWireDocument(Artifact $artifact, int $version): mixed
     {

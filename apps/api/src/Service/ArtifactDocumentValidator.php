@@ -330,7 +330,7 @@ final class ArtifactDocumentValidator
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
     /** Compétences (config/artifacts/skills/*.md) : servies à la demande par rules=["design", "<archétype>"], jamais par défaut. */
     public const SKILLS = ['design', 'vitrine', 'jeu', 'outil', 'dashboard', 'experience', 'multivue', 'carte'];
-    public const LONG_RULES = ['listes', 'a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'monde', 'monde2d', 'mobilier', 'animation', 'appareil', 'bluetooth', 'salons', 'laser', 'ia', 'collecte', 'lieux', 'io'];
+    public const LONG_RULES = ['listes', 'a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'monde', 'monde2d', 'mobilier', 'animation', 'appareil', 'bluetooth', 'salons', 'laser', 'ia', 'collecte', 'lieux', 'io', 'image'];
 
     private readonly ArtifactA2uiValidator $a2uiValidator;
 
@@ -480,6 +480,7 @@ final class ArtifactDocumentValidator
                 'tagName' => 'Uniquement composants Concorde (sonic-*) ou balises HTML sûres du catalogue.',
                 'recettes' => $this->recipesRule(),
                 'icone' => 'Optionnel : icône d’application, "icon": {"emoji": "📍", "background": "#111", "color": "#fff"} (ou "text": 1 à 3 lettres ; ou "src": "@asset:icone.png", carré 512 px) : favicon de l’onglet, couleur du navigateur et icône quand on installe l’artefact sur l’écran d’accueil (manifeste servi par l’API). Sans icon : initiale du titre sur fond sombre.',
+                'image' => 'Image de partage du lien (og:image) : capture de la vue par défaut. "image": {"view": "id", "wait": 2000} | {"mode": "carte"} | {"src": "@asset:apercu.png", "alt": "…"} (1200 × 630).',
                 'page' => 'Optionnel : cadre de la page, "page": {"padding": "none"|"compact"|"normal" (défaut normal : marge du viewer ; none = plein cadre, pour un jeu ou une scène), "background": couleur CSS du fond de toute la page (#hex, rgb(), hsl(), nom ou var(--sc-…)), "nav": "tabs"|"none" (défaut tabs : barre d’onglets du viewer quand il y a plusieurs vues ; none = le document dessine ses onglets, voir la règle « navigation »)}.',
                 'navigation' => 'views[].id = hash URL (#stats). defaultView si hash absent. views[].hidden = true : vue absente des onglets (accessible par son #id). '
                     .'Onglets : le viewer affiche un sonic-menu de sonic-menu-item radio branchés sur le DataProvider artifactView ({view} = id de la vue affichée), l’onglet actif est rendu par Concorde. Pour des onglets dans la palette de l’artefact : "page": {"nav": "none"} puis, dans les vues, {"tagName":"sonic-menu","attributes":{"direction":"row"},"nodes":[{"tagName":"sonic-menu-item","attributes":{"radio":true,"formDataProvider":"artifactView","name":"view","value":"stats"},"textContent":"Stats"}, …]} (à répéter dans chaque vue, ou dans une vue qui les contient toutes) ; lire la vue courante : sonic-value dataProvider="artifactView" key="view". Jamais de sonic-button à variant calculé pour des onglets.',
@@ -875,6 +876,7 @@ final class ArtifactDocumentValidator
             'page' => true,
             'io' => true,
             'icon' => true,
+            'image' => true,
         ];
         foreach (array_keys($document) as $key) {
             if (!isset($allowedTop[$key])) {
@@ -889,6 +891,9 @@ final class ArtifactDocumentValidator
         }
         if (\array_key_exists('icon', $document)) {
             $errors = [...$errors, ...ArtifactAppIcon::validate($document['icon'])];
+        }
+        if (\array_key_exists('image', $document)) {
+            $errors = [...$errors, ...ArtifactPageImage::validate($document['image'])];
         }
 
         return ['valid' => $errors === [], 'errors' => $errors];

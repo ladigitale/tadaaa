@@ -3,6 +3,23 @@
 	root * /artifacts
 	# SPA : /, /admin…, /cloud…, /<slug> (même regex que l'API ; slug inconnu = 200, seul l'API le sait)
 	@spa_route path_regexp ^/(?:|admin(?:/.*)?|cloud(?:/.*)?|[a-z0-9][a-z0-9-]{2,63}/?)$
+
+	# Robots d'aperçu de liens (Slack, WhatsApp, Discord, X…, pas les moteurs de recherche qui exécutent le
+	# viewer) : page de partage de l'API, avec titre, description et image de page de l'artefact (Open Graph).
+	@share_bot {
+		path_regexp share_slug ^/([a-z0-9][a-z0-9-]{2,63})/?$
+		not path /admin /admin/ /cloud /cloud/ /demarrer /demarrer/
+		header_regexp User-Agent (?i)(facebookexternalhit|facebookcatalog|meta-externalagent|twitterbot|slackbot|discordbot|linkedinbot|whatsapp|telegrambot|skypeuripreview|pinterest|redditbot|embedly|iframely|mastodon|bluesky|cardyb|vkshare|viber|snapchat|google-pagerenderer|microsoftpreview)
+	}
+	handle @share_bot {
+		rewrite * /api/public/artifacts/{re.share_slug.1}/share?{query}
+		reverse_proxy tadaaa-php:80 {
+			header_up Host {$API_SERVER_NAME:api.example.com}
+			header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Host {$API_SERVER_NAME:api.example.com}
+		}
+	}
+
 	import agent_ready
 
 	# Intégration sur d'autres sites : <script src="/embed.js" data-artifact="…">.
