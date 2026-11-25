@@ -7,12 +7,16 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Service\ArtifactAppIcon;
 use App\Service\ArtifactDataService;
+use App\Service\ArtifactPageImage;
 use App\Service\ArtifactService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
@@ -23,6 +27,7 @@ final class PublicArtifactController extends AbstractController
     public function __construct(
         private readonly ArtifactService $artifacts,
         private readonly ArtifactDataService $artifactData,
+        private readonly ArtifactPageImage $pageImage,
         #[Autowire(service: 'limiter.artifacts_public')]
         private readonly RateLimiterFactoryInterface $artifactsPublicLimiter,
         #[Autowire(service: 'limiter.artifacts_intake')]
@@ -202,6 +207,11 @@ final class PublicArtifactController extends AbstractController
             'background_color' => $icon['background'],
             'theme_color' => $icon['background'],
             'icons' => $icons,
+            // Captures d'application (fenêtre d'installation enrichie) : image de page large et format téléphone.
+            'screenshots' => [
+                ['src' => $this->pageImageUrl($request, $slug, $body, $k), 'sizes' => '1200x630', 'type' => 'image/png', 'form_factor' => 'wide', 'label' => mb_substr($title, 0, 60)],
+                ['src' => $this->pageImageUrl($request, $slug, $body, $k, true), 'sizes' => '540x1170', 'type' => 'image/png', 'form_factor' => 'narrow', 'label' => mb_substr($title, 0, 60)],
+            ],
         ];
         $response = $this->json($manifest);
         $response->headers->set('Content-Type', 'application/manifest+json');
@@ -209,6 +219,144 @@ final class PublicArtifactController extends AbstractController
         $response->headers->set('Cache-Control', 'public, max-age=300');
 
         return $response;
+    }
+
+    /**
+     * Image de page d'un artefact (PNG 1200 × 630, `?f=narrow` : 540 × 1170) : `document.image.src` (redirection),
+     * sinon capture du viewer (ou carte icône + titre), rendue une fois par version puis servie du cache.
+     */
+    #[Route('/{slug}/og.png', name: 'api_public_artifact_page_image', methods: ['GET'], requirements: ['slug' => '[a-z0-9][a-z0-9-]{2,63}'])]
+    public function pageImage(string $slug, Request $request): Response
+    {
+        $this->consumeRate($request);
+        $user = $this->getUser();
+        $k = $request->query->getString('k') ?: null;
+        $body = $this->artifacts->publicRead($slug, $k, $user instanceof User ? $user : null, false, $request->getSchemeAndHttpHost())['body'];
+        $narrow = $request->query->getString('f') === 'narrow';
+        $image = ArtifactPageImage::fromDocument($body['document'] ?? null);
+        if ($image['src'] !== null && !$narrow) {
+            $response = new RedirectResponse($image['src'], Response::HTTP_FOUND);
+            $response->headers->set('Cache-Control', 'public, max-age=300');
+
+            return $response;
+        }
+        set_time_limit(120);
+        $file = $this->pageImage->png($body, $narrow, $this->artifacts->assetUrlPrefix($slug, $request->getSchemeAndHttpHost()));
+        if ($file === null) {
+            // Rendu indisponible : image générique du site Artefacts.
+            $response = new RedirectResponse($this->siteUrl($slug).'/og.png', Response::HTTP_FOUND);
+            $response->headers->set('Cache-Control', 'public, max-age=60');
+
+            return $response;
+        }
+        $response = new BinaryFileResponse($file);
+        $response->headers->set('Content-Type', 'image/png');
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        $response->headers->set('Access-Control-Allow-Origin', '*');
+        $response->headers->set('Cross-Origin-Resource-Policy', 'cross-origin');
+        // L'adresse porte la version (?v=) : une nouvelle version change d'URL.
+        $response->headers->set('Cache-Control', ($body['visibility'] ?? '') === 'public' ? 'public, max-age=86400' : 'private, max-age=3600');
+
+        return $response;
+    }
+
+    /**
+     * Page de partage d'un artefact pour les robots d'aperçu de liens (Slack, WhatsApp, Discord, X…), qui
+     * n'exécutent pas le viewer : titre, description et image de page en balises Open Graph. Le site Artefacts
+     * y envoie ces robots seulement (Caddy, `deploy/cohost/artifacts.caddy`) ; les visiteurs ont le viewer.
+     */
+    #[Route('/{slug}/share', name: 'api_public_artifact_share', methods: ['GET'], requirements: ['slug' => '[a-z0-9][a-z0-9-]{2,63}'])]
+    public function share(string $slug, Request $request): Response
+    {
+        $this->consumeRate($request);
+        $user = $this->getUser();
+        $k = $request->query->getString('k') ?: null;
+        $site = $this->siteUrl($slug);
+        try {
+            $body = $this->artifacts->publicRead($slug, $k, $user instanceof User ? $user : null, false, $request->getSchemeAndHttpHost())['body'];
+        } catch (NotFoundHttpException) {
+            $body = null;
+        }
+        $esc = static fn (string $s): string => htmlspecialchars($s, \ENT_QUOTES | \ENT_HTML5, 'UTF-8');
+        if ($body === null) {
+            // Artefact privé ou inconnu : rien n'en sort, aperçu générique du site.
+            $title = 'Artefacts';
+            $description = 'Pages interactives publiées par des agents IA via Tadaaa.';
+            $url = $site.'/';
+            $image = $site.'/og.png';
+            $alt = 'Artefacts';
+            $icon = null;
+        } else {
+            $title = trim((string) ($body['title'] ?? '')) ?: $slug;
+            $description = trim((string) ($body['description'] ?? '')) ?: 'Un artefact publié sur Artefacts.';
+            $url = $this->artifacts->publicUrl($slug, $k);
+            $page = ArtifactPageImage::fromDocument($body['document'] ?? null);
+            $image = $page['src'] ?? $this->pageImageUrl($request, $slug, $body, $k);
+            $alt = $page['alt'] ?? $title;
+            $icon = ArtifactAppIcon::fromDocument($body['document'] ?? null)['src']
+                ?? $request->getSchemeAndHttpHost().'/api/public/artifacts/'.rawurlencode($slug).'/icon.svg'.($k ? '?k='.rawurlencode($k) : '');
+        }
+        $description = mb_strlen($description) > 300 ? rtrim(mb_substr($description, 0, 299)).'…' : $description;
+        $meta = [
+            ['property', 'og:type', 'website'],
+            ['property', 'og:site_name', 'Artefacts'],
+            ['property', 'og:title', $title],
+            ['property', 'og:description', $description],
+            ['property', 'og:url', $url],
+            ['property', 'og:image', $image],
+            ['property', 'og:image:alt', $alt],
+            ['name', 'twitter:card', 'summary_large_image'],
+            ['name', 'twitter:title', $title],
+            ['name', 'twitter:description', $description],
+            ['name', 'twitter:image', $image],
+            ['name', 'twitter:image:alt', $alt],
+            ['name', 'description', $description],
+        ];
+        if ($body !== null && ($page['src'] ?? null) === null) {
+            $meta[] = ['property', 'og:image:type', 'image/png'];
+            $meta[] = ['property', 'og:image:width', '1200'];
+            $meta[] = ['property', 'og:image:height', '630'];
+        }
+        $html = "<!doctype html>\n<html lang=\"fr\">\n<head>\n<meta charset=\"utf-8\">\n<title>".$esc($title)."</title>\n";
+        foreach ($meta as [$attr, $name, $content]) {
+            $html .= '<meta '.$attr.'="'.$name.'" content="'.$esc($content).'">'."\n";
+        }
+        $html .= '<link rel="canonical" href="'.$esc($url).'">'."\n";
+        if ($icon !== null) {
+            $html .= '<link rel="icon" href="'.$esc($icon).'">'."\n";
+        }
+        $html .= "</head>\n<body>\n<h1>".$esc($title)."</h1>\n<p>".$esc($description)."</p>\n"
+            .'<p><a href="'.$esc($url).'">'.$esc($url)."</a></p>\n</body>\n</html>\n";
+
+        $response = new Response($html, $body === null ? Response::HTTP_NOT_FOUND : Response::HTTP_OK);
+        $response->headers->set('Content-Type', 'text/html; charset=utf-8');
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        $response->headers->set('Content-Security-Policy', "default-src 'none'; img-src https:; base-uri 'none'");
+        $response->headers->set('Cache-Control', $k !== null || $user instanceof User ? 'private, max-age=60' : 'public, max-age=300');
+
+        return $response;
+    }
+
+    /** URL de l'image de page (versionnée : une nouvelle version change d'adresse et de cache). */
+    private function pageImageUrl(Request $request, string $slug, array $body, ?string $k, bool $narrow = false): string
+    {
+        $q = ['v' => ($body['version'] ?? 0).'-'.substr(sha1((string) ($body['title'] ?? '').'|'.($body['description'] ?? '')), 0, 6)];
+        if ($narrow) {
+            $q['f'] = 'narrow';
+        }
+        if ($k !== null) {
+            $q['k'] = $k;
+        }
+
+        return $request->getSchemeAndHttpHost().'/api/public/artifacts/'.rawurlencode($slug).'/og.png?'.http_build_query($q);
+    }
+
+    /** Origine du site Artefacts (sans « / » final). */
+    private function siteUrl(string $slug): string
+    {
+        $url = $this->artifacts->publicUrl($slug);
+
+        return substr($url, 0, -\strlen('/'.rawurlencode($slug)));
     }
 
     /** Icône SVG d'un artefact (emoji ou lettres sur un fond), pour l'onglet et l'installation. */

@@ -23,7 +23,8 @@
  *     ],
  *     "settleMs": 800,                        // attente avant la capture finale
  *     "fps": true,                            // mesure sur 2 s : images/s, durée des images (p50/p95/max), tâches longues, mémoire JS → perf
- *     "outDir": "/tmp/render"                 // dossier des PNG (défaut : ./render-out)
+ *     "outDir": "/tmp/render",                // dossier des PNG (défaut : ./render-out)
+ *     "assetPrefix": "https://api…/api/public/artifacts/<slug>/assets/" // assets de l'artefact chargés pour de vrai (image de page)
  *   }
  * Sortie JSON : {ok, errors[], warnings[], failedRequests[], assertions[], shaderErrors[], fps?, perf?, screenshots[], text}
  * `ok` = aucune erreur console/page, aucune erreur de shader et aucune assertion en échec.
@@ -45,6 +46,8 @@ const allowedCdn = new Set(scriptAssets.flatMap((a) => [a?.src, ...(a?.css ?? []
 // Jamais d'adresse IP littérale ni d'hôte interne : l'outil tourne côté serveur (protection SSRF).
 const DEFAULT_ALLOWED_HOSTS = "cdn.jsdelivr.net cdnjs.cloudflare.com fonts.googleapis.com fonts.gstatic.com tiles.openfreemap.org";
 const allowedHosts = (process.env.RENDER_ALLOWED_HOSTS ?? DEFAULT_ALLOWED_HOSTS).split(/[\s,]+/).map((h) => h.trim().toLowerCase()).filter(Boolean);
+// Assets de l'artefact rendu (posé par l'API, jamais par le document) : seul ce préfixe https exact passe.
+const assetPrefix = typeof req.assetPrefix === "string" && /^https:\/\/[a-z0-9.-]+\/api\/public\/artifacts\/[a-z0-9-]+\/assets\/$/.test(req.assetPrefix) ? req.assetPrefix : null;
 const IP_LITERAL = /^(\d{1,3}(\.\d{1,3}){3}|\[.*\])$/;
 function externalAllowed(url, method) {
   if (url.protocol !== "https:" || !["GET", "HEAD"].includes(method)) return false;
@@ -131,6 +134,7 @@ try {
   await page.route((url) => !/^(127\.0\.0\.1|localhost)$/.test(url.hostname) && !["data:", "blob:"].includes(url.protocol), async (route) => {
     const target = route.request().url();
     const {pathname, search} = new URL(target);
+    if (assetPrefix && target.startsWith(assetPrefix) && ["GET", "HEAD"].includes(route.request().method())) return route.continue();
     // Le viewer construit appelle son API en URL absolue (VITE_API_BASE_URL, ex. https://api.tadaaa.space) :
     // on sert ces chemins depuis le serveur local au lieu de les bloquer (sinon « Impossible de joindre … »).
     if (pathname.startsWith("/api/public/artifacts/") || pathname.startsWith("/api/appearance")) {

@@ -56,7 +56,8 @@ COPY --from=simulate_store_deps /tools/render-artifact/node_modules /app/tools/r
 # compose.prod.yaml) pointe vers le dist/ du viewer (ladigitale/artifacts), monté en volume
 # depuis ARTIFACTS_DIST (défaut apps/artifacts/dist), reconstruit par scripts/update-prod.sh.
 # hadolint ignore=DL3008
-RUN apt-get update && apt-get install -y --no-install-recommends chromium fonts-liberation \
+# fonts-noto-color-emoji : emojis des captures et de la carte de l'image de page (ArtifactPageImage).
+RUN apt-get update && apt-get install -y --no-install-recommends chromium fonts-liberation fonts-noto-color-emoji \
 	&& rm -rf /var/lib/apt/lists/*
 ENV RENDER_CHROME=/usr/bin/chromium
 
