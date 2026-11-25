@@ -271,7 +271,16 @@ disk_report() {
   df -i "$(docker_dir)" "$ROOT" 2>&1 | sed 's/^/    /' >&2 || true
   docker system df 2>&1 | sed 's/^/    /' >&2 || true
 }
+# Volumes anonymes (nom de 64 caractères hexadécimaux) qu'aucun conteneur n'utilise plus : laissés par les
+# conteneurs recréés ou lancés à la volée. Les volumes nommés (base, clés, données Caddy) ne sont jamais visés,
+# quelle que soit la version de Docker (`docker volume prune` retirait aussi les volumes nommés avant Docker 23).
+anonymous_volumes_cleanup() {
+  docker volume ls -qf dangling=true 2>/dev/null | grep -E '^[0-9a-f]{64}$' | xargs -r docker volume rm >/dev/null 2>&1 \
+    || warn "retrait des volumes anonymes inutilisés incomplet."
+  return 0
+}
 docker_cleanup() {
+  anonymous_volumes_cleanup
   docker image prune -f >/dev/null 2>&1 || warn "docker image prune a échoué."
   docker builder prune -f --filter until=72h >/dev/null 2>&1 || warn "docker builder prune a échoué."
   # Plusieurs déploiements par jour : le cache récent grossit sans limite si on ne le plafonne pas.
@@ -301,7 +310,7 @@ ensure_space() {
   local when="$1"
   info "Disque ${when} : $(free_gb) Go et $(free_inodes_pct) % d'inodes libres (minimum ${MIN_FREE_GB} Go, ${MIN_FREE_INODES_PCT} %)."
   space_ok && return 0
-  warn "Disque court : retrait des node_modules des builds, des images orphelines et du vieux cache de build…"
+  warn "Disque court : retrait des node_modules des builds, des volumes anonymes inutilisés, des images orphelines et du vieux cache de build…"
   build_leftovers_cleanup
   docker_cleanup
   info "Disque après nettoyage : $(free_gb) Go, $(free_inodes_pct) % d'inodes libres."
@@ -513,7 +522,7 @@ else
   warn "API not reachable yet — check DNS / logs: ${COMPOSE[*]} logs -f edge php"
 fi
 
-info "Nettoyage Docker (images orphelines, cache de build de plus de 72 h, cache plafonné à ${BUILD_CACHE_GB} Go)…"
+info "Nettoyage Docker (volumes anonymes inutilisés, images orphelines, cache de build de plus de 72 h, cache plafonné à ${BUILD_CACHE_GB} Go)…"
 docker_cleanup
 ok "Disque : $(free_gb) Go et $(free_inodes_pct) % d'inodes libres."
 
