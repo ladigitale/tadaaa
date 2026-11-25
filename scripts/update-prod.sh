@@ -18,6 +18,8 @@
 # still short, stops if still short. A failed image build is retried once after
 # a full Docker cleanup, with df -h / df -i / docker system df in the log.
 # At the end, prunes again and caps the build cache (BUILD_CACHE_GB, default 8).
+# node_modules left on the host by the SPA builds are removed right after each
+# build (and first when the disk is short): they are reinstalled every build.
 #
 # Optional cohost (.env) — re-applied on edge after the main stack up:
 #   GLANE_ROOT=/root/glane
@@ -284,11 +286,23 @@ docker_deep_cleanup() {
   docker builder prune -af >/dev/null 2>&1 || warn "docker builder prune -a a échoué."
   docker image prune -af >/dev/null 2>&1 || warn "docker image prune -a a échoué."
 }
+# node_modules laissés sur l'hôte par les builds des SPA (conteneur node éphémère, dépôt monté) : réinstallés
+# à chaque build, inutiles entre deux déploiements, et des centaines de milliers de fichiers chacun (inodes).
+build_leftovers_cleanup() {
+  local d
+  for d in "$ROOT" "$ROOT/apps/web" \
+    ${ARTIFACTS_DIST:+"${ARTIFACTS_SRC:-$ROOT/apps/artifacts}"} \
+    ${BELTS_DIST:+"${BELTS_SRC:-$ROOT/apps/belts}"}; do
+    [[ -d "$d/node_modules" ]] && rm -rf "$d/node_modules"
+  done
+  return 0
+}
 ensure_space() {
   local when="$1"
   info "Disque ${when} : $(free_gb) Go et $(free_inodes_pct) % d'inodes libres (minimum ${MIN_FREE_GB} Go, ${MIN_FREE_INODES_PCT} %)."
   space_ok && return 0
-  warn "Disque court : retrait des images orphelines et du vieux cache de build…"
+  warn "Disque court : retrait des node_modules des builds, des images orphelines et du vieux cache de build…"
+  build_leftovers_cleanup
   docker_cleanup
   info "Disque après nettoyage : $(free_gb) Go, $(free_inodes_pct) % d'inodes libres."
   space_ok && return 0
@@ -326,6 +340,7 @@ if [[ "$BUILD_TADAAA" -eq 1 ]]; then
     node:22-bookworm \
     bash -lc 'corepack enable && yarn install --frozen-lockfile && yarn --cwd apps/web build'
   [[ -f "$ROOT/apps/web/dist/index.html" ]] || die "Front build failed."
+  rm -rf "$ROOT/node_modules" "$ROOT/apps/web/node_modules"
   ok "Front build ready."
 fi
 
@@ -364,6 +379,7 @@ build_sibling_spa() {
     node:22-bookworm \
     bash -lc 'corepack enable && yarn install --frozen-lockfile && yarn build'
   [[ -f "$src/dist/index.html" ]] || die "$name build failed ($src/dist/index.html missing)."
+  rm -rf "$src/node_modules"
   mkdir -p "$dist"
   if [[ "$(cd "$src/dist" && pwd -P)" != "$(cd "$dist" && pwd -P)" ]]; then
     if command -v rsync >/dev/null 2>&1; then
