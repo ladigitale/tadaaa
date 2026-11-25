@@ -12,9 +12,11 @@
 #
 # Merges missing .env keys (mail, quotas, …), rebuilds SPAs via ephemeral
 # node:22 (no host yarn), recreates containers, Doctrine migrate.
-# Checks free disk before building and again right before the image build
-# (MIN_FREE_GB, default 10): prunes dangling images and old build cache, then
-# all build cache and unused images if still short, stops if still short.
+# Checks free disk (MIN_FREE_GB, default 10) and free inodes (MIN_FREE_INODES_PCT,
+# default 10) before building and again right before the image build: prunes
+# dangling images and old build cache, then all build cache and unused images if
+# still short, stops if still short. A failed image build is retried once after
+# a full Docker cleanup, with df -h / df -i / docker system df in the log.
 # At the end, prunes again and caps the build cache (BUILD_CACHE_GB, default 8).
 #
 # Optional cohost (.env) — re-applied on edge after the main stack up:
@@ -242,11 +244,30 @@ need_cmd curl
 # On les retire, on vérifie qu'il reste assez de place AVANT de compiler, et on nettoie à la fin.
 MIN_FREE_GB="${MIN_FREE_GB:-10}"
 BUILD_CACHE_GB="${BUILD_CACHE_GB:-8}"
-free_gb() {
+MIN_FREE_INODES_PCT="${MIN_FREE_INODES_PCT:-10}"
+docker_dir() {
   local dir
   dir="$(docker info -f '{{.DockerRootDir}}' 2>/dev/null || true)"
   [[ -d "$dir" ]] || dir="$ROOT"
-  df -Pk "$dir" "$ROOT" | awk 'NR > 1 { if (min == "" || $4 < min) min = $4 } END { printf "%d", min / 1048576 }'
+  printf '%s' "$dir"
+}
+free_gb() {
+  df -Pk "$(docker_dir)" "$ROOT" | awk 'NR > 1 { if (min == "" || $4 < min) min = $4 } END { printf "%d", min / 1048576 }'
+}
+# Inodes libres (%) : un disque peut refuser de créer des fichiers (« No space left on device ») avec
+# des gigaoctets libres quand les couches Docker et les node_modules ont épuisé les inodes.
+# Un système de fichiers sans compte d'inodes (btrfs, zfs : 0 au total) compte comme 100 %.
+free_inodes_pct() {
+  df -Pi "$(docker_dir)" "$ROOT" | awk 'NR > 1 { p = ($2 > 0) ? int($4 * 100 / $2) : 100; if (min == "" || p < min) min = p } END { printf "%d", min }'
+}
+space_ok() {
+  (( $(free_gb) >= MIN_FREE_GB && $(free_inodes_pct) >= MIN_FREE_INODES_PCT ))
+}
+disk_report() {
+  warn "État du disque :"
+  df -h "$(docker_dir)" "$ROOT" 2>&1 | sed 's/^/    /' >&2 || true
+  df -i "$(docker_dir)" "$ROOT" 2>&1 | sed 's/^/    /' >&2 || true
+  docker system df 2>&1 | sed 's/^/    /' >&2 || true
 }
 docker_cleanup() {
   docker image prune -f >/dev/null 2>&1 || warn "docker image prune a échoué."
@@ -265,16 +286,18 @@ docker_deep_cleanup() {
 }
 ensure_space() {
   local when="$1"
-  info "Disque ${when} : $(free_gb) Go libres (minimum ${MIN_FREE_GB} Go)."
-  (( $(free_gb) >= MIN_FREE_GB )) && return 0
-  warn "Moins de ${MIN_FREE_GB} Go libres : retrait des images orphelines et du vieux cache de build…"
+  info "Disque ${when} : $(free_gb) Go et $(free_inodes_pct) % d'inodes libres (minimum ${MIN_FREE_GB} Go, ${MIN_FREE_INODES_PCT} %)."
+  space_ok && return 0
+  warn "Disque court : retrait des images orphelines et du vieux cache de build…"
   docker_cleanup
-  info "Disque après nettoyage : $(free_gb) Go libres."
-  (( $(free_gb) >= MIN_FREE_GB )) && return 0
+  info "Disque après nettoyage : $(free_gb) Go, $(free_inodes_pct) % d'inodes libres."
+  space_ok && return 0
   warn "Toujours court : retrait de tout le cache de build et des images inutilisées…"
   docker_deep_cleanup
-  info "Disque après nettoyage complet : $(free_gb) Go libres."
-  (( $(free_gb) >= MIN_FREE_GB )) || die "Pas assez de place sur le disque ($(free_gb) Go < ${MIN_FREE_GB} Go) : libérer de l'espace (docker system df, yarn cache, journaux) puis relancer."
+  info "Disque après nettoyage complet : $(free_gb) Go, $(free_inodes_pct) % d'inodes libres."
+  space_ok && return 0
+  disk_report
+  die "Pas assez de place sur le disque ($(free_gb) Go, $(free_inodes_pct) % d'inodes libres) : libérer de l'espace (docker system df, yarn cache, journaux) puis relancer."
 }
 ensure_space "avant la mise à jour"
 
@@ -437,7 +460,17 @@ update_glane
 if [[ "$BUILD_TADAAA" -eq 1 ]]; then
   info "Building images (base images pulled)…"
   ensure_space "avant la construction des images"
-  "${COMPOSE[@]}" build --pull
+  if ! "${COMPOSE[@]}" build --pull; then
+    # Souvent un disque plein en cours de construction (cache, couches, inodes) : nettoyage complet, un essai de plus.
+    disk_report
+    warn "Construction échouée : nettoyage complet de Docker puis nouvel essai…"
+    docker_deep_cleanup
+    info "Disque après nettoyage complet : $(free_gb) Go, $(free_inodes_pct) % d'inodes libres."
+    if ! "${COMPOSE[@]}" build --pull; then
+      disk_report
+      die "La construction des images a échoué deux fois (voir l'état du disque ci-dessus)."
+    fi
+  fi
   info "Recreating stack…"
   "${COMPOSE[@]}" up -d --build
   ok "Containers up."
@@ -466,7 +499,7 @@ fi
 
 info "Nettoyage Docker (images orphelines, cache de build de plus de 72 h, cache plafonné à ${BUILD_CACHE_GB} Go)…"
 docker_cleanup
-ok "Disque : $(free_gb) Go libres."
+ok "Disque : $(free_gb) Go et $(free_inodes_pct) % d'inodes libres."
 
 say ""
 say "${BLD}Update complete.${RST}"
