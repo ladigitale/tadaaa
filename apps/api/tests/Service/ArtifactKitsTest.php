@@ -8,6 +8,8 @@ use App\Service\ArtifactDocumentValidator;
 use App\Service\ArtifactIntakeSchema;
 use App\Service\ArtifactKits;
 use App\Service\ArtifactScriptsCatalog;
+use App\Service\BaseResources;
+use App\Service\StoreSimulator;
 use PHPUnit\Framework\TestCase;
 
 final class ArtifactKitsTest extends TestCase
@@ -75,13 +77,9 @@ final class ArtifactKitsTest extends TestCase
 
     public function testShippedKitsBuildValidDocuments(): void
     {
-        $kits = new ArtifactKits(self::API.'/config/artifacts/kits');
-        self::assertSame(['appareil', 'direct', 'gestemidi', 'grid', 'inscription', 'onepage', 'quiz', 'regie', 'sentinel', 'shader', 'survey'], $kits->ids());
-        $validator = new ArtifactDocumentValidator(
-            self::API.'/config/artifacts/catalog.json',
-            self::API.'/config/artifacts/sdui.schema.json',
-            new ArtifactScriptsCatalog(self::API.'/config/artifacts/scripts-catalog.json'),
-        );
+        $kits = self::shipped();
+        self::assertSame(['appareil', 'clip-exportable', 'dictee', 'direct', 'gestemidi', 'grid', 'inscription', 'onepage', 'quiz', 'regie', 'sentinel', 'shader', 'survey', 'visite-xr'], $kits->ids());
+        $validator = self::validator();
         foreach ($kits->ids() as $id) {
             $params = (string) file_get_contents(self::API.'/tests/Fixtures/kits/'.$id.'.json');
             $built = $kits->build($id, json_decode($params, false));
@@ -91,13 +89,142 @@ final class ArtifactKitsTest extends TestCase
             self::assertTrue($result['valid'], $id.' : '.json_encode($result['errors'], JSON_UNESCAPED_UNICODE));
             // Le gain : quelques centaines d'octets de paramètres pour un document complet.
             self::assertLessThan(\strlen((string) json_encode($built['document'])) / 5, \strlen($params), $id);
+            // Un nœud sans attribut ({} devient [] côté PHP et casse le rendu).
+            self::assertSame([], self::emptyAttributes($document), $id);
         }
 
         $summary = $kits->summary();
-        self::assertLessThan(8400, \strlen($summary));
-        foreach (['quiz :', 'grid :', 'Presets : snake', 'correct: integer', 'shader :', 'survey :', 'sentinel :', 'Presets : presence, bruit, geste', 'gestemidi :', 'Presets : frappe, doigts, tenue', 'direct :', 'regie :', 'Presets : deux-equipes, solo', 'appareil :', 'inscription :'] as $needle) {
+        // 2026-11-26 : 8400 → 10800 avec visite-xr, dictee et clip-exportable (~2,2 Ko).
+        self::assertLessThan(10_800, \strlen($summary));
+        foreach (['quiz :', 'grid :', 'Presets : snake', 'correct: integer', 'shader :', 'survey :', 'sentinel :', 'Presets : presence, bruit, geste', 'gestemidi :', 'Presets : frappe, doigts, tenue', 'direct :', 'regie :', 'Presets : deux-equipes, solo', 'appareil :', 'inscription :', 'visite-xr :', 'modele: lit|bureau|table', 'dictee :', 'action: vider|ligne|annuler', 'clip-exportable :', 'bibliotheque : degrade, feu, formes, plasma, smoke.'] as $needle) {
             self::assertStringContainsString($needle, $summary);
         }
+    }
+
+    public function testVisiteXrPlacesFurnitureAndShowsXrButtons(): void
+    {
+        $kits = self::shipped();
+        $built = $kits->build('visite-xr', json_decode((string) file_get_contents(self::API.'/tests/Fixtures/kits/visite-xr.json'), false));
+        self::assertSame([], $built['errors']);
+        $doc = json_decode((string) json_encode($built['document']), true);
+        self::assertSame(['xr'], $doc['capabilities']);
+        $monde = $doc['data']['stores']['visite']['initial']['monde'];
+        self::assertSame([[0, 0], [4.2, 0], [4.2, 3.4], [0, 3.4]], $monde['espace']['contour']);
+        self::assertSame('chevron', $monde['espace']['zones'][0]['revetement']);
+        self::assertSame(['type' => 'fenetre', 'bord' => 1, 'at' => 1.6, 'largeur' => 1.4, 'allege' => 0.9], $monde['ouvertures'][0]);
+        $place = array_column($monde['place'], null, 'name');
+        // contre un mur (sol), accroché au mur, posé sur un meuble, au plafond, au sol de la pièce
+        self::assertSame(['model' => 'lit', 'name' => 'lit', 'against' => 'mur2', 'at' => 0.9, 'params' => ['couette' => '#e07a5f']], $place['lit']);
+        self::assertSame(['model' => 'etagere', 'name' => 'meuble4', 'on' => 'mur0', 'at' => [1.2, 1.25]], $place['meuble4']);
+        self::assertSame(['model' => 'lampe', 'name' => 'meuble3', 'on' => 'bureau', 'at' => [-0.5, 0]], $place['meuble3']);
+        self::assertSame(['on' => 'plafond', 'at' => [2.1, 1.7]], array_intersect_key($place['meuble5'], ['on' => 1, 'at' => 1]));
+        self::assertSame(['on' => 'plancher', 'at' => [2.3, 1.5], 'rot' => [0, 15, 0]], array_intersect_key($place['meuble6'], ['on' => 1, 'at' => 1, 'rot' => 1]));
+
+        $tags = self::tags($doc);
+        self::assertSame('scene', $tags['sonic-xr'][0]['target']);
+        self::assertSame('immersion.xr', $tags['sonic-xr'][0]['control']);
+        self::assertSame('visite', $tags['sonic-3d'][0]['dataProvider']);
+        $conditions = array_map(static fn (array $a): string => $a['key'].'|'.($a['equals'] ?? ($a['truthy'] ?? false ? 'truthy' : '')), $tags['sonic-if']);
+        self::assertSame(['modes.vr|truthy', 'modes.ar|truthy', 'status|unsupported', 'status|denied'], $conditions);
+        self::assertSame(['{"mode":"vr"}', '{"mode":"ar"}'], array_column($tags['sonic-action'], 'payload'));
+
+        // Paramètres invalides : modèle hors catalogue, mur inexistant, ouverture sans position.
+        $r = $kits->build('visite-xr', json_decode('{"title":"P","largeur":40,"meubles":[{"modele":"canape"},{"modele":"lit","mur":4}],"ouvertures":[{"type":"porte","mur":0}]}', false));
+        self::assertNull($r['document']);
+        foreach (['params.largeur : maximum 20.', 'params.meubles[0].modele : une valeur parmi', 'params.meubles[1].mur : maximum 3.', 'params.ouvertures[0].x : requis.'] as $expected) {
+            self::assertNotEmpty(array_filter($r['errors'], static fn (string $e): bool => str_starts_with($e, $expected)), $expected.' | '.implode(' | ', $r['errors']));
+        }
+    }
+
+    public function testDicteeWiresListeningKeywordsAndReadBack(): void
+    {
+        $kits = self::shipped();
+        $built = $kits->build('dictee', json_decode((string) file_get_contents(self::API.'/tests/Fixtures/kits/dictee.json'), false));
+        $doc = json_decode((string) json_encode($built['document']), true);
+        self::assertSame(['microphone'], $doc['capabilities']);
+        $tags = self::tags($doc);
+        $listen = $tags['sonic-listen'][0];
+        self::assertSame(['btn-dicter', 'fr-FR', true, 'dictee'], [$listen['for'], $listen['lang'], $listen['continuous'], $listen['target']]);
+        self::assertSame('dictee.texte', $tags['sonic-speak'][0]['text-from']);
+        self::assertSame(['btn-dicter', 'btn-relire'], array_values(array_filter(array_column($tags['sonic-button'], 'id'))));
+        $store = $tags['sonic-store'][0];
+        self::assertSame('annuler', json_decode($store['initial'], true)['commandes'][2]['action']);
+
+        // Sans relecture : ni synthèse vocale ni bouton Relire.
+        $quiet = $kits->build('dictee', json_decode('{"title":"T","lang":"en-US","relecture":false}', false));
+        self::assertSame([], self::validator()->validate(json_decode((string) json_encode($quiet['document']), true))['errors']);
+        $tags = self::tags(json_decode((string) json_encode($quiet['document']), true));
+        self::assertArrayNotHasKey('sonic-speak', $tags);
+        self::assertSame(['btn-dicter'], array_values(array_filter(array_column($tags['sonic-button'], 'id'))));
+        self::assertSame('en-US', $tags['sonic-listen'][0]['lang']);
+
+        $r = $kits->build('dictee', json_decode('{"title":"T","commandes":[{"mot":"stop","action":"quitter"},{"action":"vider"}]}', false));
+        self::assertNull($r['document']);
+        self::assertContains('params.commandes[1].mot : requis.', $r['errors']);
+        self::assertStringStartsWith('params.commandes[0].action : une valeur parmi', $r['errors'][0]);
+
+        // Le réducteur : une ligne par phrase, mots-clés retirés du texte (casse et accents ignorés).
+        $dir = self::API.'/tools/simulate-store';
+        if (!is_dir($dir.'/node_modules/jsonata')) {
+            self::markTestSkipped('Dépendances Node du simulateur non installées (npm install dans tools/simulate-store).');
+        }
+        $said = static fn (string $text): array => ['type' => 'listen:result', 'payload' => ['text' => $text, 'isFinal' => true]];
+        $r = (new StoreSimulator($dir))->simulate(['document' => $doc, 'store' => 'dictee', 'actions' => [
+            $said('Bonjour à tous'),
+            ['type' => 'listen:result', 'payload' => ['text' => 'provisoire', 'isFinal' => false]],
+            $said('Premier point'),
+            $said('Nouvelle LIGNE deuxième point'),
+            $said('Annuler.'),
+            $said('le planning'),
+            $said('Effacer tout'),
+            $said('ensuite, nouvelle ligne la suite'),
+        ]]);
+        self::assertTrue($r['ok'], json_encode($r, JSON_UNESCAPED_UNICODE));
+        self::assertSame(['ensuite', '', 'la suite'], $r['finalState']['lignes']);
+        self::assertSame("ensuite\n\nla suite", $r['finalState']['texte']);
+        $r = (new StoreSimulator($dir))->simulate(['document' => $doc, 'store' => 'dictee', 'actions' => [
+            $said('Bonjour à tous'), $said('Premier point'), $said('nouvelle ligne Deuxième'), $said('annuler'), $said('Troisième'),
+        ]]);
+        self::assertSame(['Bonjour à tous', 'Premier point', 'Troisième'], $r['finalState']['lignes']);
+        $r = (new StoreSimulator($dir))->simulate(['document' => $doc, 'store' => 'dictee', 'actions' => [$said('Un'), ['type' => 'vider']]]);
+        self::assertSame(['lignes' => [], 'texte' => ''], array_intersect_key($r['finalState'], ['lignes' => 1, 'texte' => 1]));
+    }
+
+    public function testClipExportableFilmsAWrittenOrLibraryShader(): void
+    {
+        $kits = self::shipped();
+        $built = $kits->build('clip-exportable', json_decode((string) file_get_contents(self::API.'/tests/Fixtures/kits/clip-exportable.json'), false));
+        $doc = json_decode((string) json_encode($built['document']), true);
+        $plasma = (new BaseResources(self::API.'/config/artifacts/library.json'))->get('shader/plasma');
+        self::assertSame($plasma['source'], $doc['files']['clip.glsl']);
+        self::assertSame(['ref' => 'base:shader/plasma', 'version' => $plasma['version'], 'sha256' => $plasma['sha256']], $doc['resources']['clip.glsl']);
+        // Réglages : valeurs par défaut de la bibliothèque.
+        self::assertSame(['param0' => 1, 'param1' => 4, 'param2' => 0.6, 'param3' => 0], $doc['data']['stores']['clipreglages']['initial']);
+        $tags = self::tags($doc);
+        self::assertSame('@file:clip.glsl', $tags['sonic-shader'][0]['image']);
+        self::assertSame('1080 / 1080', $tags['sonic-shader'][0]['aspect-ratio']);
+        $export = $tags['sonic-video-export'][0];
+        self::assertSame(['#clip-image', 'frames', 6, 30, 1080, 1080, 'btn-export'], [$export['source'], $export['mode'], $export['duration'], $export['fps'], $export['width'], $export['height'], $export['for']]);
+        self::assertSame('exportState.file', $tags['sonic-media-download'][0]['source']);
+        self::assertSame(['data-bind' => '', '::value' => '$progress', 'max' => '1'], array_intersect_key($tags['sonic-progress'][0], ['data-bind' => 1, '::value' => 1, 'max' => 1]));
+        self::assertArrayNotHasKey('capabilities', $doc);
+
+        // GLSL écrit : pas de fichier ni de provenance, réglages donnés.
+        $glsl = 'void mainImage(out vec4 o, in vec2 f){ o = vec4(f / iResolution.xy, 0.5 + 0.5 * sin(iTime * uParam0), 1.0); }';
+        $own = $kits->build('clip-exportable', (object) ['title' => 'Dégradé', 'shader' => $glsl, 'reglages' => [2], 'fps' => 60]);
+        $doc = json_decode((string) json_encode($own['document']), true);
+        self::assertSame([], self::validator()->validate($doc)['errors']);
+        self::assertArrayNotHasKey('files', $doc);
+        self::assertArrayNotHasKey('resources', $doc);
+        self::assertSame($glsl, self::tags($doc)['sonic-shader'][0]['image']);
+        self::assertSame(['param0' => 2, 'param1' => 0, 'param2' => 0, 'param3' => 0], $doc['data']['stores']['clipreglages']['initial']);
+
+        // Refusés : ni shader ni bibliothèque, shader d'effet (il lui faut une image), cadence hors liste.
+        self::assertSame(['params : donner shader ou bibliotheque.'], $kits->build('clip-exportable', (object) ['title' => 'T'])['errors']);
+        self::assertStringStartsWith('params.bibliotheque : ressource inconnue (degrade, feu, formes, plasma, smoke)', $kits->build('clip-exportable', (object) ['title' => 'T', 'bibliotheque' => 'sobel'])['errors'][0]);
+        self::assertStringStartsWith('params.fps : une valeur parmi', $kits->build('clip-exportable', (object) ['title' => 'T', 'bibliotheque' => 'feu', 'fps' => 12])['errors'][0]);
+        // Sans bibliothèque de ressources (service absent) : seul le GLSL écrit passe.
+        self::assertNotSame([], (new ArtifactKits(self::API.'/config/artifacts/kits'))->build('clip-exportable', (object) ['title' => 'T', 'bibliotheque' => 'feu'])['errors']);
     }
 
     public function testRegieDeclaresOneCodePerTeam(): void
@@ -257,6 +384,72 @@ final class ArtifactKitsTest extends TestCase
         $record = ['vient' => 'Oui', 'personnes' => 1, 'plat' => 'Dessert', 'aide' => 'Ranger, Cuisiner', 'nom' => 'Julien', 'remarque' => ''];
         self::assertSame([], ArtifactIntakeSchema::validateRecord($fields, $record)['errors']);
         self::assertNotSame([], ArtifactIntakeSchema::validateRecord($fields, ['vient' => 'Peut-être', 'plat' => 'Dessert'])['errors']);
+    }
+
+    private static function shipped(): ArtifactKits
+    {
+        return new ArtifactKits(self::API.'/config/artifacts/kits', new BaseResources(self::API.'/config/artifacts/library.json'));
+    }
+
+    private static function validator(): ArtifactDocumentValidator
+    {
+        return new ArtifactDocumentValidator(
+            self::API.'/config/artifacts/catalog.json',
+            self::API.'/config/artifacts/sdui.schema.json',
+            new ArtifactScriptsCatalog(self::API.'/config/artifacts/scripts-catalog.json'),
+        );
+    }
+
+    /**
+     * Attributs des nœuds SDUI par balise, dans l'ordre du document.
+     *
+     * @param array<mixed> $doc
+     *
+     * @return array<string, list<array<string, mixed>>>
+     */
+    private static function tags(array $doc): array
+    {
+        $tags = [];
+        $walk = static function (mixed $node) use (&$walk, &$tags): void {
+            if (!\is_array($node)) {
+                return;
+            }
+            if (\is_string($node['tagName'] ?? null)) {
+                $tags[$node['tagName']][] = \is_array($node['attributes'] ?? null) ? $node['attributes'] : [];
+            }
+            foreach ($node as $child) {
+                $walk($child);
+            }
+        };
+        $walk($doc['views'] ?? []);
+
+        return $tags;
+    }
+
+    /**
+     * Chemins des nœuds dont `attributes` est vide.
+     *
+     * @param array<mixed> $doc
+     *
+     * @return list<string>
+     */
+    private static function emptyAttributes(array $doc): array
+    {
+        $found = [];
+        $walk = static function (mixed $node, string $path) use (&$walk, &$found): void {
+            if (!\is_array($node)) {
+                return;
+            }
+            if (\is_string($node['tagName'] ?? null) && \array_key_exists('attributes', $node) && $node['attributes'] === []) {
+                $found[] = $path;
+            }
+            foreach ($node as $key => $child) {
+                $walk($child, $path.'/'.$key);
+            }
+        };
+        $walk($doc['views'] ?? [], '/views');
+
+        return $found;
     }
 
     /** @param array<string, mixed> $kit */

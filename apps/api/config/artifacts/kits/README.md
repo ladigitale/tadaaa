@@ -19,6 +19,9 @@ Le sommaire des kits (une ligne par kit, avec la signature de ses paramètres) e
 | `regie` | Régie appairée par QR à des téléphones (`io.stream.pair` à rôles : un QR par équipe) : tuile nom + score par écran, manches diffusées, défi ciblé (`to`), retrait (`kick`), inscriptions fermables (`lock`), classement en sortie ; paramètre `guichet` : les QR passent sur un kit `inscription` (`io.stream.desk`) et la régie y publie des annonces | `deux-equipes`, `solo` |
 | `inscription` | Écran de salle d'une régie (`io.stream.inscription`) : QR de chaque équipe lus sur la régie, places, inscrits, annonces publiées par la régie | `deux-equipes` |
 | `appareil` | Téléphone d'une régie : nom, gros bouton qui compte, score envoyé par la file d'envoi ; reçoit `manche`, `defi`, `fin` | — |
+| `visite-xr` | Pièce meublée au format `monde` de `sonic-3d` (dimensions, sol, couleur des murs, portes et fenêtres, meubles du catalogue contre un mur, accrochés, posés sur un autre ou au sol) ; `sonic-xr` : boutons VR / AR montrés selon `xrState.modes`, badge sinon ; capacité `xr` | — |
+| `dictee` | Dictée continue `sonic-listen` : une ligne par phrase dans le store `dictee`, mots-clés (`vider`, `ligne`, `annuler`) retirés du texte, bouton Vider ; relecture `sonic-speak` en option ; capacité `microphone` | — |
+| `clip-exportable` | `sonic-shader` (GLSL écrit, ou shader de la bibliothèque sans image en entrée : `files` + `resources`) filmé par `sonic-video-export` (mode `frames`, durée, fps, taille), `sonic-progress` lié à `exportState.progress`, `sonic-media-download` | — |
 
 ## Format d'un fichier `<id>.json`
 
@@ -41,7 +44,12 @@ Le sommaire des kits (une ligne par kit, avec la signature de ses paramètres) e
 - `type`, `properties`, `required`, `items`, `enum` ;
 - `default` (appliqué aux valeurs absentes) ;
 - `minimum` / `maximum`, `minLength` / `maxLength`, `minItems` / `maxItems` ;
-- `description` (reprise dans le sommaire).
+- `description` (reprise dans le sommaire) ;
+- `anyOf` : liste de `{"required": [...]}`, au moins un jeu de champs doit être donné (`clip-exportable` : `shader` ou `bibliotheque`).
+
+### `resources`
+
+`"resources": {"bibliotheque": {"kind": "shader", "standalone": true}}` : le paramètre `bibliotheque` nomme une ressource de la bibliothèque de base (`config/artifacts/library.json`), par son nom court (`plasma`) ou son id (`shader/plasma`). Le kit la lit dans `_resource.bibliotheque` : `ref`, `version`, `sha256`, `source`, `title`, `defaults` (valeurs de `uParam0…3`). `standalone` n'accepte que les ressources sans canal d'image obligatoire. Les noms acceptés sont listés dans le sommaire.
 
 ### `presets`
 
@@ -53,7 +61,7 @@ Une directive est un objet dont la clé commence par `$` :
 
 | Directive | Résultat |
 | --- | --- |
-| `{"$param": "a.b", "default": …}` | Valeur d'un paramètre. |
+| `{"$param": "a.b", "default": …}` | Valeur d'un paramètre. Le défaut peut être une directive (`clip-exportable` : réglage donné, sinon celui de la bibliothèque). |
 | `{"$json": …}` | Valeur développée puis encodée en chaîne JSON. À utiliser pour les attributs SDUI : `initial` d'un store, `payload`, `keymap`… |
 | `{"$if": "a.b", "then": …, "else": …}` | Branche selon que le paramètre est vrai. Voir les variantes de condition ci-dessous. |
 | `{"$each": "a.b", "template": …}` | Répète le gabarit pour chaque élément. Dans une liste, le résultat est mis à plat. `".x"` désigne une liste prise dans l'élément courant. |

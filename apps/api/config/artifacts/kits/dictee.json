@@ -1,0 +1,377 @@
+{
+ "id": "dictee",
+ "title": "Dictée",
+ "description": "Dictée continue (sonic-listen) : une ligne par phrase, mots-clés (vider, sauter une ligne, annuler la dernière), bouton Vider, relecture (sonic-speak) en option.",
+ "use": "notes à la voix, liste dictée, compte rendu",
+ "params": {
+  "type": "object",
+  "required": [
+   "title"
+  ],
+  "properties": {
+   "title": {
+    "type": "string",
+    "maxLength": 120
+   },
+   "lang": {
+    "type": "string",
+    "maxLength": 12,
+    "default": "fr-FR"
+   },
+   "commandes": {
+    "type": "array",
+    "default": [],
+    "maxItems": 8,
+    "items": {
+     "type": "object",
+     "required": [
+      "mot",
+      "action"
+     ],
+     "properties": {
+      "mot": {
+       "type": "string",
+       "minLength": 2,
+       "maxLength": 40,
+       "description": "ex. « effacer », « nouvelle ligne »"
+      },
+      "action": {
+       "type": "string",
+       "enum": [
+        "vider",
+        "ligne",
+        "annuler"
+       ],
+       "description": "tout vider, sauter une ligne, retirer la dernière"
+      }
+     }
+    }
+   },
+   "relecture": {
+    "type": "boolean",
+    "default": true,
+    "description": "bouton Relire"
+   }
+  }
+ },
+ "document": {
+  "schema": "artifacts/1",
+  "title": {
+   "$param": "title"
+  },
+  "capabilities": [
+   "microphone"
+  ],
+  "defaultView": "dictee",
+  "views": [
+   {
+    "id": "dictee",
+    "title": {
+     "$param": "title"
+    },
+    "root": {
+     "nodes": [
+      {
+       "tagName": "div",
+       "attributes": {
+        "style": "display:flex;flex-direction:column;gap:.8rem;max-width:56rem;margin:1rem auto;padding:0 1rem"
+       },
+       "nodes": [
+        {
+         "tagName": "sonic-store",
+         "attributes": {
+          "id": "dictee",
+          "budget-ms": "40",
+          "reducer": "(\n  $s := $state; $a := $action; $t := $a.type;\n  $plain := function($x) { $lowercase($x) ~> $replace('é', 'e') ~> $replace('è', 'e') ~> $replace('ê', 'e') ~> $replace('ë', 'e') ~> $replace('à', 'a') ~> $replace('â', 'a') ~> $replace('ç', 'c') ~> $replace('î', 'i') ~> $replace('ï', 'i') ~> $replace('ô', 'o') ~> $replace('ù', 'u') ~> $replace('û', 'u') };\n  $clean := function($x) { $trim($replace($replace($x, /^[\\s,.;:!?]+/, ''), /[\\s,;:]+$/, '')) };\n  $push := function($ls, $x) { $x = '' ? $ls : $append($ls, [$x]) };\n  $drop := function($ls) { $count($ls) > 1 ? [$ls[[0..$count($ls) - 2]]] : [] };\n  $done := function($ls) { $merge([$s, {'lignes': $ls, 'texte': $join($ls, '\\n'), 'n': $s.n + 1}]) };\n  $t = 'vider' ? $done([]) :\n  $t = 'listen:result' and $a.payload.isFinal ? (\n    $raw := $trim($string($a.payload.text));\n    $low := $plain($raw);\n    $hit := $s.commandes[$contains($low, $plain(mot))][0];\n    $done($hit ? (\n      $k := $plain($hit.mot);\n      $i := $length($substringBefore($low, $k));\n      $ls := $push($s.lignes, $clean($substring($raw, 0, $i)));\n      $ls := $hit.action = 'vider' ? [] :\n             $hit.action = 'annuler' ? ($x := $drop($ls); $x[-1] = '' ? $drop($x) : $x) :\n             $hit.action = 'ligne' and $count($ls) > 0 ? $append($ls, ['']) : $ls;\n      $push($ls, $clean($substring($raw, $i + $length($k))))\n    ) : $push($s.lignes, $raw))\n  ) : $s\n)",
+          "initial": {
+           "$json": {
+            "lignes": [],
+            "texte": "",
+            "n": 0,
+            "commandes": {
+             "$param": "commandes"
+            }
+           }
+          }
+         }
+        },
+        {
+         "tagName": "sonic-listen",
+         "attributes": {
+          "id": "ecoute",
+          "for": "btn-dicter",
+          "lang": {
+           "$param": "lang"
+          },
+          "continuous": true,
+          "interim": true,
+          "target": "dictee"
+         }
+        },
+        {
+         "$if": "relecture",
+         "then": {
+          "tagName": "sonic-speak",
+          "attributes": {
+           "id": "voix",
+           "for": "btn-relire",
+           "lang": {
+            "$param": "lang"
+           },
+           "text-from": "dictee.texte"
+          }
+         }
+        },
+        {
+         "tagName": "h1",
+         "attributes": {
+          "style": "font-size:1.5rem;font-weight:700;margin:0;color:var(--sc-base-content)"
+         },
+         "textContent": {
+          "$param": "title"
+         }
+        },
+        {
+         "tagName": "div",
+         "attributes": {
+          "style": "display:flex;flex-wrap:wrap;gap:.5rem;align-items:center"
+         },
+         "nodes": [
+          {
+           "tagName": "sonic-button",
+           "attributes": {
+            "id": "btn-dicter",
+            "type": "primary"
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-icon",
+             "attributes": {
+              "library": "heroicons",
+              "name": "microphone",
+              "prefix": "outline",
+              "slot": "prefix"
+             }
+            },
+            {
+             "tagName": "sonic-if",
+             "attributes": {
+              "dataProvider": "ecouteState",
+              "key": "active",
+              "truthy": true
+             },
+             "nodes": [
+              {
+               "tagName": "span",
+               "attributes": {
+                "style": ""
+               },
+               "textContent": "Arrêter"
+              }
+             ]
+            },
+            {
+             "tagName": "sonic-if",
+             "attributes": {
+              "dataProvider": "ecouteState",
+              "key": "active",
+              "not": "true"
+             },
+             "nodes": [
+              {
+               "tagName": "span",
+               "attributes": {
+                "style": ""
+               },
+               "textContent": "Dicter"
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "$if": "relecture",
+           "then": {
+            "tagName": "sonic-button",
+            "attributes": {
+             "id": "btn-relire",
+             "type": "default"
+            },
+            "nodes": [
+             {
+              "tagName": "sonic-icon",
+              "attributes": {
+               "library": "iconoir",
+               "name": "sound-high",
+               "slot": "prefix"
+              }
+             },
+             {
+              "tagName": "span",
+              "attributes": {
+               "style": ""
+              },
+              "textContent": "Relire"
+             }
+            ]
+           }
+          },
+          {
+           "tagName": "sonic-action",
+           "attributes": {
+            "target": "dictee",
+            "type": "vider"
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-button",
+             "attributes": {
+              "type": "default",
+              "data-vider": ""
+             },
+             "nodes": [
+              {
+               "tagName": "sonic-icon",
+               "attributes": {
+                "library": "iconoir",
+                "name": "trash",
+                "slot": "prefix"
+               }
+              },
+              {
+               "tagName": "span",
+               "attributes": {
+                "style": ""
+               },
+               "textContent": "Vider"
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "tagName": "sonic-if",
+           "attributes": {
+            "dataProvider": "ecouteState",
+            "key": "listening",
+            "truthy": true
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-badge",
+             "attributes": {
+              "type": "success"
+             },
+             "textContent": "À l'écoute (transcription par le navigateur)"
+            }
+           ]
+          },
+          {
+           "tagName": "sonic-if",
+           "attributes": {
+            "dataProvider": "ecouteState",
+            "key": "status",
+            "equals": "unsupported"
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-badge",
+             "attributes": {
+              "type": "warning",
+              "data-dictee": "indisponible"
+             },
+             "textContent": "Dictée indisponible dans ce navigateur : essayez Chrome ou Edge"
+            }
+           ]
+          },
+          {
+           "tagName": "sonic-if",
+           "attributes": {
+            "dataProvider": "ecouteState",
+            "key": "status",
+            "equals": "denied"
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-badge",
+             "attributes": {
+              "type": "danger"
+             },
+             "textContent": "Micro refusé"
+            }
+           ]
+          },
+          {
+           "tagName": "sonic-if",
+           "attributes": {
+            "dataProvider": "ecouteState",
+            "key": "status",
+            "equals": "error"
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-badge",
+             "attributes": {
+              "type": "danger"
+             },
+             "nodes": [
+              {
+               "tagName": "sonic-value",
+               "attributes": {
+                "dataProvider": "ecouteState",
+                "key": "error"
+               }
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "tagName": "div",
+         "attributes": {
+          "style": "border-radius:.75rem;overflow:hidden;background:var(--sc-base-100,var(--sc-base));border:1px solid var(--sc-base-200,rgba(127,127,127,.25));padding:1rem;min-height:12rem;display:flex;flex-direction:column;gap:.5rem"
+         },
+         "nodes": [
+          {
+           "tagName": "div",
+           "attributes": {
+            "style": "white-space:pre-wrap;line-height:1.6;color:var(--sc-base-content)",
+            "data-texte": ""
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-value",
+             "attributes": {
+              "dataProvider": "dictee",
+              "key": "texte"
+             }
+            }
+           ]
+          },
+          {
+           "tagName": "div",
+           "attributes": {
+            "style": "white-space:pre-wrap;font-style:italic;color:var(--sc-base-content);opacity:.6"
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-value",
+             "attributes": {
+              "dataProvider": "ecouteState",
+              "key": "interim"
+             }
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

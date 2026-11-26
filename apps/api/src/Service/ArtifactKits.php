@@ -15,10 +15,15 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * Un kit = `config/artifacts/kits/<id>.json` :
  * - `id`, `title`, `description` (une ligne), `use` (quand le choisir) ;
  * - `params` : schéma (sous-ensemble de JSON Schema : type, properties, required, items,
- *   enum, default, minimum/maximum, minLength/maxLength, minItems/maxItems, description) ;
+ *   enum, default, minimum/maximum, minLength/maxLength, minItems/maxItems, description,
+ *   anyOf de `required`) ;
  * - `presets` (optionnel) : jeux de paramètres nommés, choisis par le paramètre `preset` ;
+ * - `resources` (optionnel) : `{"<paramètre>": {"kind": "shader", "standalone": true}}` : le paramètre
+ *   nomme une ressource de la bibliothèque de base (`plasma` ou `shader/plasma`), résolue dans
+ *   `_resource.<paramètre>` = {ref, version, sha256, source, title, defaults: [uParam0…3]} ;
+ *   `standalone` : seulement les ressources sans canal d'image obligatoire ;
  * - `document` : le squelette, avec ces directives (objets à une clé `$…`) :
- *     {"$param": "a.b", "default": …}   valeur d'un paramètre
+ *     {"$param": "a.b", "default": …}   valeur d'un paramètre (le défaut peut être une directive)
  *     {"$json": …}                       valeur développée puis encodée en chaîne JSON
  *                                        (attributs SDUI : initial d'un store, payload…)
  *     {"$if": "a.b", "then": …, "else": …} selon que le paramètre est vrai ("!a.b" : faux ;
@@ -45,6 +50,7 @@ final class ArtifactKits
     public function __construct(
         #[Autowire('%kernel.project_dir%/config/artifacts/kits')]
         private readonly string $dir,
+        private readonly ?BaseResources $resources = null,
     ) {
     }
 
@@ -62,13 +68,18 @@ final class ArtifactKits
         $lines = [];
         foreach ($this->all() as $id => $kit) {
             $presets = $kit->presets ?? null;
+            $library = '';
+            foreach ($this->resourceParams($kit) as $name => $spec) {
+                $library .= sprintf(' %s : %s.', $name, implode(', ', $this->resourceChoices($spec)));
+            }
             $lines[] = sprintf(
-                '- %s : %s %s%s Paramètres : %s',
+                '- %s : %s %s%s Paramètres : %s%s',
                 $id,
                 (string) ($kit->description ?? ''),
                 isset($kit->use) ? '('.$kit->use.')' : '',
                 $presets instanceof \stdClass ? ' Presets : '.implode(', ', array_keys(get_object_vars($presets))).' (avec preset, tout le reste est facultatif).' : '',
                 self::signature($kit->params ?? new \stdClass()),
+                $library,
             );
         }
 
@@ -111,6 +122,10 @@ final class ArtifactKits
 
         $errors = [];
         $params = self::check($kit->params ?? new \stdClass(), $params, 'params', $errors);
+        if ($params instanceof \stdClass) {
+            unset($params->_resource);
+            $this->resolveResources($kit, $params, $errors);
+        }
         if ($errors !== []) {
             return ['document' => null, 'errors' => $errors];
         }
@@ -137,6 +152,89 @@ final class ArtifactKits
         ksort($this->kits);
 
         return $this->kits;
+    }
+
+    // --- Ressources de la bibliothèque ---------------------------------------------
+
+    /** @return array<string, \stdClass> paramètres qui nomment une ressource de base */
+    private function resourceParams(\stdClass $kit): array
+    {
+        $out = [];
+        foreach (get_object_vars(($kit->resources ?? null) instanceof \stdClass ? $kit->resources : new \stdClass()) as $name => $spec) {
+            if ($spec instanceof \stdClass && \is_string($spec->kind ?? null)) {
+                $out[(string) $name] = $spec;
+            }
+        }
+
+        return $out;
+    }
+
+    /** @return list<string> noms courts des ressources acceptées (`plasma` pour `shader/plasma`) */
+    private function resourceChoices(\stdClass $spec): array
+    {
+        $names = [];
+        foreach ($this->resources?->all() ?? [] as $entry) {
+            if (self::acceptsResource($spec, $entry)) {
+                $names[] = substr((string) $entry['id'], \strlen((string) $spec->kind) + 1);
+            }
+        }
+        sort($names);
+
+        return $names;
+    }
+
+    /** @param array<string, mixed> $entry */
+    private static function acceptsResource(\stdClass $spec, array $entry): bool
+    {
+        if (($entry['kind'] ?? null) !== $spec->kind || !str_starts_with((string) $entry['id'], $spec->kind.'/')) {
+            return false;
+        }
+        if (($spec->standalone ?? false) === true) {
+            // Un canal d'image obligatoire (iChannel0 : image / caméra…) ne se remplit pas tout seul.
+            foreach ((array) ($entry['channels'] ?? []) as $channel) {
+                if (!\is_string($channel) || !str_contains($channel, 'facultati')) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /** @param list<string> $errors */
+    private function resolveResources(\stdClass $kit, \stdClass $params, array &$errors): void
+    {
+        $resolved = new \stdClass();
+        foreach ($this->resourceParams($kit) as $name => $spec) {
+            $value = $params->{$name} ?? null;
+            if (!\is_string($value) || $value === '') {
+                continue;
+            }
+            $id = str_contains($value, '/') ? $value : $spec->kind.'/'.$value;
+            $entry = $this->resources?->get($id);
+            if ($entry === null || !self::acceptsResource($spec, $entry)) {
+                $errors[] = sprintf('params.%s : ressource inconnue (%s).', $name, implode(', ', $this->resourceChoices($spec)));
+                continue;
+            }
+            $defaults = [0, 0, 0, 0];
+            foreach ((array) ($entry['params'] ?? []) as $p) {
+                if (\is_array($p) && \is_string($p['name'] ?? null) && preg_match('/^uParam([0-3])$/', $p['name'], $m) === 1 && (\is_int($p['default'] ?? null) || \is_float($p['default'] ?? null))) {
+                    $defaults[(int) $m[1]] = $p['default'];
+                }
+            }
+            $source = (string) $entry['source'];
+            $resolved->{$name} = (object) [
+                'ref' => 'base:'.$entry['id'],
+                'version' => (int) ($entry['version'] ?? 1),
+                'sha256' => (string) ($entry['sha256'] ?? hash('sha256', $source)),
+                'source' => $source,
+                'title' => (string) ($entry['title'] ?? $entry['id']),
+                'defaults' => $defaults,
+            ];
+        }
+        if (get_object_vars($resolved) !== []) {
+            $params->_resource = $resolved;
+        }
     }
 
     // --- Paramètres --------------------------------------------------------------
@@ -203,6 +301,19 @@ final class ArtifactKits
             }
         }
         if ($value instanceof \stdClass) {
+            // anyOf : [{"required": [...]}, …] — au moins un des jeux de champs est donné.
+            if (\is_array($schema->anyOf ?? null) && $schema->anyOf !== []) {
+                $sets = [];
+                $met = false;
+                foreach ($schema->anyOf as $alt) {
+                    $names = $alt instanceof \stdClass && \is_array($alt->required ?? null) ? $alt->required : [];
+                    $sets[] = implode(' + ', $names);
+                    $met = $met || ($names !== [] && array_filter($names, static fn ($n): bool => ($value->{$n} ?? null) === null || $value->{$n} === '') === []);
+                }
+                if (!$met) {
+                    $errors[] = sprintf('%s : donner %s.', $path, implode(' ou ', $sets));
+                }
+            }
             $properties = $schema->properties ?? new \stdClass();
             foreach (\is_array($schema->required ?? null) ? $schema->required : [] as $name) {
                 if (!property_exists($value, $name) || $value->{$name} === null) {
@@ -283,7 +394,7 @@ final class ArtifactKits
             $found = true;
             $value = self::lookup($params, (string) $node->{'$param'}, $found);
 
-            return $found && $value !== null ? self::copy($value) : (property_exists($node, 'default') ? self::copy($node->default) : null);
+            return $found && $value !== null ? self::copy($value) : (property_exists($node, 'default') ? self::expand(self::copy($node->default), $params, $stack) : null);
         }
         if (property_exists($node, '$json')) {
             $value = self::expand($node->{'$json'}, $params, $stack);
