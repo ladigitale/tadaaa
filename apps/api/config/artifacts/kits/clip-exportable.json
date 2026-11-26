@@ -1,0 +1,407 @@
+{
+ "id": "clip-exportable",
+ "title": "Clip exportable",
+ "description": "Shader GLSL (écrit ou de la bibliothèque) exporté en vidéo WebM image par image (sonic-video-export), progression, Télécharger.",
+ "use": "boucle animée ou fond vidéo à télécharger",
+ "params": {
+  "type": "object",
+  "required": [
+   "title"
+  ],
+  "anyOf": [
+   {
+    "required": [
+     "shader"
+    ]
+   },
+   {
+    "required": [
+     "bibliotheque"
+    ]
+   }
+  ],
+  "properties": {
+   "title": {
+    "type": "string",
+    "maxLength": 120
+   },
+   "shader": {
+    "type": "string",
+    "maxLength": 12000,
+    "description": "GLSL ES 3 mainImage(out vec4 o, in vec2 f), iTime, uParam0…3 = reglages"
+   },
+   "bibliotheque": {
+    "type": "string",
+    "maxLength": 64,
+    "description": "nom, à la place de shader"
+   },
+   "reglages": {
+    "type": "array",
+    "maxItems": 4,
+    "items": {
+     "type": "number"
+    },
+    "description": "uParam0…3"
+   },
+   "duree": {
+    "type": "number",
+    "minimum": 1,
+    "maximum": 60,
+    "default": 5,
+    "description": "s"
+   },
+   "fps": {
+    "type": "integer",
+    "enum": [
+     24,
+     25,
+     30,
+     50,
+     60
+    ],
+    "default": 30
+   },
+   "largeur": {
+    "type": "integer",
+    "minimum": 128,
+    "maximum": 1920,
+    "default": 1280
+   },
+   "hauteur": {
+    "type": "integer",
+    "minimum": 128,
+    "maximum": 1920,
+    "default": 720
+   },
+   "fichier": {
+    "type": "string",
+    "maxLength": 60,
+    "default": "clip",
+    "description": "nom"
+   }
+  }
+ },
+ "resources": {
+  "bibliotheque": {
+   "kind": "shader",
+   "standalone": true
+  }
+ },
+ "document": {
+  "schema": "artifacts/1",
+  "title": {
+   "$param": "title"
+  },
+  "files": {
+   "$if": "shader",
+   "else": {
+    "clip.glsl": {
+     "$param": "_resource.bibliotheque.source"
+    }
+   }
+  },
+  "resources": {
+   "$if": "shader",
+   "else": {
+    "clip.glsl": {
+     "ref": {
+      "$param": "_resource.bibliotheque.ref"
+     },
+     "version": {
+      "$param": "_resource.bibliotheque.version"
+     },
+     "sha256": {
+      "$param": "_resource.bibliotheque.sha256"
+     }
+    }
+   }
+  },
+  "defaultView": "clip",
+  "data": {
+   "stores": {
+    "clipreglages": {
+     "initial": {
+      "param0": {
+       "$param": "reglages.0",
+       "default": {
+        "$param": "_resource.bibliotheque.defaults.0",
+        "default": 0
+       }
+      },
+      "param1": {
+       "$param": "reglages.1",
+       "default": {
+        "$param": "_resource.bibliotheque.defaults.1",
+        "default": 0
+       }
+      },
+      "param2": {
+       "$param": "reglages.2",
+       "default": {
+        "$param": "_resource.bibliotheque.defaults.2",
+        "default": 0
+       }
+      },
+      "param3": {
+       "$param": "reglages.3",
+       "default": {
+        "$param": "_resource.bibliotheque.defaults.3",
+        "default": 0
+       }
+      }
+     },
+     "reducer": "$state"
+    }
+   }
+  },
+  "views": [
+   {
+    "id": "clip",
+    "title": {
+     "$param": "title"
+    },
+    "root": {
+     "nodes": [
+      {
+       "tagName": "div",
+       "attributes": {
+        "style": "display:flex;flex-direction:column;gap:.8rem;max-width:56rem;margin:1rem auto;padding:0 1rem"
+       },
+       "nodes": [
+        {
+         "tagName": "h1",
+         "attributes": {
+          "style": "font-size:1.5rem;font-weight:700;margin:0;color:var(--sc-base-content)"
+         },
+         "textContent": {
+          "$param": "title"
+         }
+        },
+        {
+         "tagName": "div",
+         "attributes": {
+          "style": "border-radius:.75rem;overflow:hidden;background:var(--sc-base-100,var(--sc-base));border:1px solid var(--sc-base-200,rgba(127,127,127,.25))"
+         },
+         "nodes": [
+          {
+           "tagName": "sonic-shader",
+           "attributes": {
+            "id": "clip-image",
+            "image": {
+             "$if": "shader",
+             "then": {
+              "$param": "shader"
+             },
+             "else": "@file:clip.glsl"
+            },
+            "params": "clipreglages",
+            "out-data-provider": "clipShader",
+            "play": true,
+            "dpr-max": "2",
+            "aspect-ratio": {
+             "$text": "{{largeur}} / {{hauteur}}"
+            },
+            "style": "display:block;width:100%"
+           }
+          }
+         ]
+        },
+        {
+         "tagName": "sonic-video-export",
+         "attributes": {
+          "id": "export",
+          "source": "#clip-image",
+          "mode": "frames",
+          "duration": {
+           "$param": "duree"
+          },
+          "fps": {
+           "$param": "fps"
+          },
+          "width": {
+           "$param": "largeur"
+          },
+          "height": {
+           "$param": "hauteur"
+          },
+          "filename": {
+           "$param": "fichier"
+          },
+          "for": "btn-export"
+         }
+        },
+        {
+         "tagName": "div",
+         "attributes": {
+          "style": "display:flex;flex-wrap:wrap;gap:.5rem;align-items:center"
+         },
+         "nodes": [
+          {
+           "tagName": "sonic-button",
+           "attributes": {
+            "id": "btn-export",
+            "type": "primary"
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-icon",
+             "attributes": {
+              "library": "iconoir",
+              "name": "media-video",
+              "slot": "prefix"
+             }
+            },
+            {
+             "tagName": "sonic-if",
+             "attributes": {
+              "dataProvider": "exportState",
+              "key": "active",
+              "truthy": true
+             },
+             "nodes": [
+              {
+               "tagName": "span",
+               "attributes": {
+                "style": ""
+               },
+               "textContent": "Arrêter l'export"
+              }
+             ]
+            },
+            {
+             "tagName": "sonic-if",
+             "attributes": {
+              "dataProvider": "exportState",
+              "key": "active",
+              "not": "true"
+             },
+             "nodes": [
+              {
+               "tagName": "span",
+               "attributes": {
+                "style": ""
+               },
+               "textContent": {
+                "$text": "Exporter la vidéo ({{duree}} s)"
+               }
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "tagName": "sonic-media-download",
+           "attributes": {
+            "source": "exportState.file",
+            "filename": {
+             "$param": "fichier"
+            }
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-button",
+             "attributes": {
+              "type": "success",
+              "data-telecharger": ""
+             },
+             "nodes": [
+              {
+               "tagName": "sonic-icon",
+               "attributes": {
+                "library": "iconoir",
+                "name": "download",
+                "slot": "prefix"
+               }
+              },
+              {
+               "tagName": "span",
+               "attributes": {
+                "style": ""
+               },
+               "textContent": "Télécharger"
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "tagName": "sonic-if",
+           "attributes": {
+            "dataProvider": "exportState",
+            "key": "status",
+            "equals": "unsupported"
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-badge",
+             "attributes": {
+              "type": "warning",
+              "data-export": "indisponible"
+             },
+             "textContent": "Export vidéo indisponible dans ce navigateur : essayez Chrome ou Edge"
+            }
+           ]
+          },
+          {
+           "tagName": "sonic-if",
+           "attributes": {
+            "dataProvider": "exportState",
+            "key": "status",
+            "equals": "error"
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-badge",
+             "attributes": {
+              "type": "danger"
+             },
+             "nodes": [
+              {
+               "tagName": "sonic-value",
+               "attributes": {
+                "dataProvider": "exportState",
+                "key": "error"
+               }
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "tagName": "sonic-if",
+         "attributes": {
+          "dataProvider": "exportState",
+          "key": "encoding",
+          "truthy": true
+         },
+         "nodes": [
+          {
+           "tagName": "div",
+           "attributes": {
+            "dataProvider": "exportState",
+            "style": "display:flex;flex-direction:column;gap:.3rem"
+           },
+           "nodes": [
+            {
+             "tagName": "sonic-progress",
+             "attributes": {
+              "data-bind": "",
+              "::value": "$progress",
+              "max": "1",
+              "style": "width:100%"
+             }
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   }
+  ]
+ }
+}
