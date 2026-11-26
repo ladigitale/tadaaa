@@ -1,7 +1,7 @@
 {
   "concordeVersion": "7.0.1",
   "creativeStackVersion": "0.1.0",
-  "generatedFrom": "@supersoniks/concorde 7.0.1 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, anchor, animation, audio, blobs, bluetooth, color, controller, cursor, device, grbl, hugging-face-infer, interactive, map, markdown, media, ocr, p2p, paint, physics, plot, predict, procgen, qr, scroll, serial, shader, sketch, sound, stage, swarm, tape, text, vector, vectorize, vision, webgpu)",
+  "generatedFrom": "@supersoniks/concorde 7.0.1 component-catalog.json + @supersoniks/creative-stack 0.1.0 manifests (2d, 3d, anchor, animation, audio, blobs, bluetooth, color, controller, cursor, device, grbl, hugging-face-infer, interactive, map, markdown, media, ocr, p2p, paint, physics, plot, predict, procgen, qr, scroll, serial, shader, sketch, sound, speech, stage, swarm, tape, text, vector, vectorize, vision, webgpu)",
   "components": [
     {
       "name": "sonic-2d",
@@ -641,10 +641,18 @@
         },
         "out-data-provider": {
           "type": "string"
+        },
+        "features": {
+          "type": "string",
+          "description": "analyses musicales séparées par des espaces : pitch onset tempo (défaut : aucune)"
+        },
+        "target": {
+          "type": "string",
+          "description": "id du sonic-store qui reçoit audio:onset (features onset) et audio:beat (features tempo)"
         }
       },
       "addon": "audio",
-      "description": "Analyse master ou #id : DP {status, error, rms, peak, db, bands[], centroidHz, onset, onsetCount, pitchHz, settings} + texture lisible par sonic-shader channel0='#id' (ligne 0 spectre, ligne 1 onde) ; DP params {bands, fft, smoothing, pitch, onsetThreshold, rate} en direct (analyseur reconfiguré sans couper le son)"
+      "description": "Analyse master ou #id : DP {status, error, rms, peak, db, bands[], centroidHz, onset, onsetCount, pitchHz, settings} + texture lisible par sonic-shader channel0='#id' (ligne 0 spectre, ligne 1 onde) ; DP params {bands, fft, smoothing, pitch, onsetThreshold, rate} en direct (analyseur reconfiguré sans couper le son). Analyse musicale à la demande, features=\"pitch onset tempo\" (rien de calculé sans) : pitch = {hz, note (\"A4\"), midi, cents, clarity} ou null (YIN) ; attack = {count, lastOnsetAt (ms, horloge performance.now), strength 0..1} (flux spectral, seuil = médiane mobile × onset-threshold) + action {type: \"audio:onset\", payload: {count, strength, at}} vers target ; tempo = {bpm (null au début, ~4 s d'écoute), confidence 0..1, beat (compteur), phase 0..1} (autocorrélation sur 8 s, 60..200 BPM) + action {type: \"audio:beat\", payload: {beat, bpm, confidence, at}} vers target ; state.features = liste active"
     },
     {
       "name": "sonic-audio-input",
@@ -944,10 +952,14 @@
         "rate": {
           "type": "number",
           "description": "publications par seconde au plus pour les notifications (30)"
+        },
+        "target": {
+          "type": "string",
+          "description": "profil midi : id du sonic-store qui reçoit chaque message en action midi:message"
         }
       },
       "addon": "bluetooth",
-      "description": "Un appareil Bluetooth LE choisi par l'utilisateur (sélecteur du navigateur, geste obligatoire : for=\"idBouton\"). profile = luck (imprimantes Fichero / D11s), escpos, uart-nus (ESP32, micro:bit, Espruino), uart-issc, uart-hm10, cat, niimbot (imprimantes d'étiquettes Niimbot), midi, heart-rate, battery, csc, cycling-power ; sans profil : filters + channels. Commandes control {connect:n, disconnect:n, toggle:n, write:{n, channel, hex|bytes|text, response}, read:{n, channel}, subscribe:{n, channel}, unsubscribe:{n, channel}, forget:n}. État <id>State {status, error, supported, allowed, active, available, connected, device{id,name}, profile, services[{uuid, characteristics[{uuid, props}]}], channels, values{<alias>:{hex, bytes, text, n, at}}, rx (compteur de notifications), tx{queued, sent, n}, reconnecting}. Événements sonic-bluetooth-connect, sonic-bluetooth-disconnect, sonic-bluetooth-data {channel, bytes}. Écritures de 512 octets au plus ; services de mise à jour de micrologiciel, HID et FIDO refusés. Sert de transport aux pilotes (sonic-label-printer transport=\"#id\")"
+      "description": "Un appareil Bluetooth LE choisi par l'utilisateur (sélecteur du navigateur, geste obligatoire : for=\"idBouton\"). profile = luck (imprimantes Fichero / D11s), escpos, uart-nus (ESP32, micro:bit, Espruino), uart-issc, uart-hm10, cat (imprimantes « chat » GB01…MX10), phomemo (M02, T02, M110, D30), niimbot (imprimantes d'étiquettes Niimbot), midi (clavier ou contrôleur MIDI Bluetooth, décodé ici), heart-rate, battery, csc, cycling-power ; sans profil : filters + channels. Commandes control {connect:n, disconnect:n, toggle:n, write:{n, channel, hex|bytes|text, response}, read:{n, channel}, subscribe:{n, channel}, unsubscribe:{n, channel}, forget:n, midiSend:{n, bytes:[144,60,100] | hex} (profil midi : messages MIDI complets, SysEx refusé)}. État <id>State {status, error, supported, allowed, active, available, connected, device{id,name}, profile, services[{uuid, characteristics[{uuid, props}]}], channels, values{<alias>:{hex, bytes, text, n, at}}, rx (compteur de notifications), tx{queued, sent, n}, reconnecting, midi}. Profil midi : midi = {last, notes[{note, name, channel, velocity}] (notes tenues), n (compteur de messages reçus), sent} ; événement {type noteon|noteoff|cc|pitchbend|program|aftertouch|sysex|start|continue|stop, channel 1..16, note, name, velocity 0..1, value 0..1 (pitchbend -1..1), cc, program, data (octets), t (ms)} ; chaque message part en action {type: \"midi:message\", payload: événement} vers le store target ; non testé sur matériel. Événements sonic-bluetooth-connect, sonic-bluetooth-disconnect, sonic-bluetooth-data {channel, bytes}. Écritures de 512 octets au plus ; services de mise à jour de micrologiciel, HID et FIDO refusés. Sert de transport aux pilotes (sonic-label-printer transport=\"#id\")"
     },
     {
       "name": "sonic-body",
@@ -1360,7 +1372,7 @@
         }
       },
       "addon": "media",
-      "description": "Caméra : aperçu, source d'images (#id) pour sonic-shader, photos (control.snapshot compteur → snapshot-provider) ; démarrage sur geste ; état {status, error, width, height, snapshot, snapshots} ; réglages de la piste (zoom, torche, focus, exposition, balance des blancs…) : capacités publiées dans <id>Capabilities {status, controls, list[{key, kind, label, min, max, step, values}], unsupported}, demandes par le DP adjust {zoom: 2, torch: true, focusMode: \"manual\"}, résultat dans <id>Settings {desired, applied, pending, errors} (lire applied, jamais desired)"
+      "description": "Caméra : aperçu, source d'images (#id) pour sonic-shader, photos (control.snapshot compteur → snapshot-provider) ; démarrage sur geste ; état {status, error, active, supported, allowed (Permissions Policy camera : true|false|\"unknown\"), width, height, snapshot, snapshots} ; réglages de la piste (zoom, torche, focus, exposition, balance des blancs…) : capacités publiées dans <id>Capabilities {status, controls, list[{key, kind, label, min, max, step, values}], unsupported}, demandes par le DP adjust {zoom: 2, torch: true, focusMode: \"manual\"}, résultat dans <id>Settings {desired, applied, pending, errors} (lire applied, jamais desired)"
     },
     {
       "name": "sonic-capabilities",
@@ -1375,7 +1387,7 @@
         }
       },
       "addon": "device",
-      "description": "Ce que l'environnement autorise, en un DataProvider, sans ouvrir de demande de permission : pour fullscreen, pointerLock, wakeLock, gamepad, midi, orientation, clipboard, share, vibrate, camera, microphone, audio, screen, bluetooth, serial → {supported, allowed (Permissions Policy), permission}, plus embedded (iframe) et secureContext. À lire pour dégrader proprement. control {refresh:n} relit. État <id>State {status:\"ready\", embedded, secureContext, fullscreen:{…}, …}"
+      "description": "Ce que l'environnement autorise, en un DataProvider, sans ouvrir de demande de permission : pour fullscreen, pointerLock, wakeLock, gamepad, midi, orientation, clipboard, share, vibrate, camera, microphone, audio, screen, bluetooth, serial, nfc, hid, usb, xr, speechSynthesis, speechRecognition → {supported, allowed (Permissions Policy), permission}, plus embedded (iframe) et secureContext. À lire pour dégrader proprement. control {refresh:n} relit. État <id>State {status:\"ready\", embedded, secureContext, fullscreen:{…}, …}"
     },
     {
       "name": "sonic-captcha",
@@ -1741,14 +1753,15 @@
           "type": "number"
         },
         "control": {
-          "type": "string"
+          "type": "string",
+          "description": "DP {rumble: {n, duration, strong, weak, pad}, stopRumble: n}"
         },
         "out-data-provider": {
           "type": "string"
         }
       },
       "addon": "controller",
-      "description": "Manettes : keymap {\"a\":\"jump\",\"start\":\"pause\",\"ls-left\":\"left\"} → actions au store (release : aussi <type>:up), analog-action=\"stick\" → {type:\"stick\", payload:{pad, lx, ly, rx, ry, lt, rt}} quand un axe bouge ; état <id>State {status, count, pads:[{index, id, lx, ly, rx, ry, lt, rt, pressed}]} ; control DP {rumble:{n: compteur, ms, strong, weak}}. Boutons : a b x y lb rb lt rt select start ls rs up down left right home, ls-left/right/up/down"
+      "description": "Manettes : keymap {\"a\":\"jump\",\"start\":\"pause\",\"ls-left\":\"left\"} → actions au store (release : aussi <type>:up), analog-action=\"stick\" → {type:\"stick\", payload:{pad, lx, ly, rx, ry, lt, rt}} quand un axe bouge ; état <id>State {status, count, pads:[{index, id, lx, ly, rx, ry, lt, rt, pressed}], error, rumble: {supported, active}} ; control DP (compteurs) {rumble:{n, duration (ou ms, ≤ 5000), strong (0..1), weak (0..1), pad (index ; absent : toutes les manettes suivies)}, stopRumble: n} (vibration impossible : message dans error ; non testé sur matériel). Boutons : a b x y lb rb lt rt select start ls rs up down left right home, ls-left/right/up/down"
     },
     {
       "name": "sonic-css-vars",
@@ -2460,15 +2473,19 @@
         },
         "dataProvider": {
           "type": "string",
-          "description": "Reçoit {status, error, connected, id, deadzone}"
+          "description": "Reçoit {status, error, connected, id, deadzone, rumble: {supported, active}}"
         },
         "out-data-provider": {
           "type": "string",
           "description": "Même état que dataProvider"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage {rumble: {n, duration, strong, weak, pad}, stopRumble: n}"
         }
       },
       "addon": "interactive",
-      "description": "Manette (disposition standard, première manette) : boutons et stick gauche poussé à fond (ls-x-, ls-x+, ls-y-, ls-y+) -> actions store ; params (DP) {deadzone, keymap, repeat} en direct ; dataProvider / out-data-provider publie {status: idle|ready|error|unsupported, error, connected, id, deadzone}. Axes analogiques, gâchettes, plusieurs manettes, vibration : voir sonic-controller (addon controller)"
+      "description": "Manette (disposition standard, première manette) : boutons et stick gauche poussé à fond (ls-x-, ls-x+, ls-y-, ls-y+) -> actions store ; params (DP) {deadzone, keymap, repeat} en direct ; control (DP, compteurs) {rumble: {n, duration (ms, ≤ 5000, défaut 200), strong (0..1, défaut 0.8), weak (0..1, défaut 0.5), pad (index, défaut 0)}} fait vibrer, {stopRumble: n} arrête ; dataProvider / out-data-provider publie {status: idle|ready|error|unsupported, error, connected, id, deadzone, rumble: {supported, active}} (vibration impossible : message dans error, status inchangé). Vibration non testée sur matériel. Axes analogiques, gâchettes, plusieurs manettes : voir sonic-controller (addon controller)"
     },
     {
       "name": "sonic-gcode",
@@ -2740,7 +2757,7 @@
         },
         "state-provider": {
           "type": "string",
-          "description": "DataProvider qui reçoit {active, pointers, scale, rotation, panX, panY, x, y}"
+          "description": "DataProvider qui reçoit {active, pointers, scale, rotation, panX, panY, x, y, drag: {active, x, y, nx, ny, dx, dy, vx, vy}}"
         },
         "dispatch-event": {
           "type": "boolean",
@@ -2756,11 +2773,23 @@
         },
         "params": {
           "type": "string",
-          "description": "DP de réglages en direct {swipeThreshold, longPressMs, doubleTapMs, drag, pan, pinch, wheel, press}"
+          "description": "DP de réglages en direct {swipeThreshold, longPressMs, doubleTapMs, drag, pan, pinch, wheel, press, dragEvents, rate}"
+        },
+        "drag-events": {
+          "type": "boolean",
+          "description": "Émet drag:start / drag:move (≤ rate par seconde) / drag:end en px et fraction, avec vitesse"
+        },
+        "rate": {
+          "type": "number",
+          "description": "drag:move par seconde au plus (1..120, défaut 30)"
+        },
+        "scroll": {
+          "type": "string",
+          "description": "y ou x : laisse la page défiler dans ce sens (touch-action pan-y / pan-x) ; vide : la zone garde tous les gestes"
         }
       },
       "addon": "interactive",
-      "description": "Gestes tactiles multipoints -> actions vers target. Toujours : tap / double-tap / long-press {x, y (px dans la zone), u, v (fraction)}, swipe-up|down|left|right. drag : drag {dx, dy} cumulés en fraction de la zone + drag-end. pan : pan {dx, dy, x, y} en px depuis l'action précédente + pan-end {dx, dy, vx, vy}, sans swipe. pinch : pinch-start, pinch {scale, dScale, rotation, dRotation, cx, cy}, pinch-end. wheel : molette -> pinch {source:\"wheel\"}. Continues regroupées par image. passthrough : zone traversante (aucune capture) qui n'émet que les gestes à deux doigts (pan, pinch avec rotation) et la molette, un doigt seul allant aux éléments dessous (dessiner d'un doigt, déplacer / zoomer / tourner à deux). press : press {id, x, y, u, v} au contact de chaque doigt, release au lever (jeu instrumental). params (DP) {swipeThreshold, longPressMs, doubleTapMs, drag, pan, pinch, wheel, press} en direct, prioritaire sur les attributs."
+      "description": "Gestes tactiles multipoints -> actions vers target. Toujours : tap / double-tap / long-press {x, y (px dans la zone), u, v (fraction), nx, ny (fraction bornée 0..1)}, swipe-up|down|left|right {x, y, nx, ny (point de départ), dx, dy (px), start {x, y, nx, ny}, end {x, y, nx, ny}}. drag-events : glisser continu d'un doigt drag:start {x, y, nx, ny} (après 10 px), drag:move {x, y, nx, ny, dx, dy (px depuis le départ), vx, vy (px/s)} au plus rate par seconde (défaut 30), drag:end {x, y, nx, ny, dx, dy, vx, vy, start, cancelled?} (cancelled : deuxième doigt ou geste annulé) ; plus de swipe pour ce geste ; état drag dans state-provider. drag (historique) : drag {dx, dy} cumulés en fraction de la zone + drag-end. pan : pan {dx, dy, x, y} en px depuis l'action précédente + pan-end {dx, dy, vx, vy}, sans swipe. pinch : pinch-start, pinch {scale, dScale, rotation, dRotation, cx, cy}, pinch-end. wheel : molette -> pinch {source:\"wheel\"}. Continues regroupées par image. passthrough : zone traversante (aucune capture) qui n'émet que les gestes à deux doigts (pan, pinch avec rotation) et la molette, un doigt seul allant aux éléments dessous (dessiner d'un doigt, déplacer / zoomer / tourner à deux). press : press {id, x, y, u, v} au contact de chaque doigt, release au lever (jeu instrumental). scroll=\"y\" (ou x) : la page défile encore dans ce sens depuis la zone (par défaut la zone bloque tout défilement tactile). params (DP) {swipeThreshold, longPressMs, doubleTapMs, drag, pan, pinch, wheel, press, dragEvents, rate} en direct, prioritaire sur les attributs."
     },
     {
       "name": "sonic-grain",
@@ -2795,6 +2824,80 @@
       },
       "addon": "audio",
       "description": "Granulaire (natif) : sample = URL https/blob ou chemin DP d'un SonicMediaRef (prise de sonic-audio-recorder) ; position, spread, size-s, density (grains/s), pitch, jitter réglables en direct (sonic-param) ; dans une voix, la hauteur suit la note (C4 = original)"
+    },
+    {
+      "name": "sonic-graph",
+      "props": {
+        "data-provider": {
+          "type": "string"
+        },
+        "layout": {
+          "type": "string",
+          "enum": [
+            "force",
+            "circle",
+            "grid",
+            "tree"
+          ]
+        },
+        "seed": {
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        },
+        "charge": {
+          "type": "number"
+        },
+        "link-distance": {
+          "type": "number"
+        },
+        "gravity": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "directed": {
+          "type": "boolean"
+        },
+        "pin": {
+          "type": "boolean"
+        },
+        "labels": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "always",
+            "none"
+          ]
+        },
+        "target": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "selection": {
+          "type": "string"
+        },
+        "publish-positions": {
+          "type": "boolean"
+        },
+        "out-data-provider": {
+          "type": "string"
+        },
+        "gestures": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "capture",
+            "cooperative"
+          ]
+        }
+      },
+      "addon": "plot",
+      "description": "Graphe nœuds / liens en SVG (couleurs par jetons --sc-*) : data-provider (relu en direct) {nodes: [{id, label?, group?, size? (rayon), x?, y?, fixed?}], links: [{source, target, weight?, label?, directed?}]} ou forme de $graphPath ({edges: [[a, b, poids]], directed?} ou liste d'adjacence) ; 2000 nœuds au plus ; layout force (défaut, graine seed, charge, link-distance, gravity) | circle | grid | tree (couches depuis root) ; un changement de données garde les positions des nœuds présents ; glisser un nœud (pin : reste figé), molette / pincement = zoom, glisser le fond = vue, double-clic = recadrer ; tap sur un nœud → action {type: action (défaut graph:select), payload: {id, node}} vers le store target ; survol = voisins mis en avant ; selection = chemin DP (id, liste d'ids ou résultat {path} de $graphPath : chemin surligné) ; directed = flèches sur tous les liens ; labels auto|always|none ; couleur par group, épaisseur par weight ; état <id>State (ou out-data-provider) {status: idle|ready|error, error, nodes, links, layout, alpha, settled, hover, selected, positions? ({id: [x, y]}, 500 au plus, avec publish-positions)}"
     },
     {
       "name": "sonic-grbl",
@@ -2936,6 +3039,49 @@
       },
       "addon": "vision",
       "description": "Suit jusqu'à 2 mains dans une source d'images (for=\"cam\") ; sortie dans output-provider (défaut = id) : count, left/right {present, x, y, z, tipX, tipY, pinch, openness, roll, thumb/index/middle/ring/pinky (ouverture de chaque doigt 0..1), fingerCount (doigts tendus 0..5), pinchMiddle/pinchRing/pinchPinky, spread (écartement), gesture, gestureScore}, hands[].landmarks/world (21 points) ; map = clés dérivées sans latence (« cents=right.x*3600 ; gain=left.present ? 1-left.y : 0 ») ; statut dans status-provider (défaut <id>State) : phase idle|awaiting-consent|declined|downloading|loading|ready|error|unsupported, error {code, message}, backend gpu|cpu, thread worker|main, download {loaded, total}, fps, latencyMs, consent {key, origin, url} ; consent-provider accepted|declined ; inférence locale dans un worker (repli fil principal), modèle téléchargé, plafonné et vérifié par model-sha256 ; aucune image n'est envoyée ; publie aussi frameSeq, frameTime, capturedAt, latencyMs (identité de l'image analysée, pour sonic-frame-sync) ; params = DataProvider de réglages en direct, prioritaires sur les attributs (clé retirée : retour à l'attribut) : minScore, smooth, holdMs, fps, mirror, maxHands, gestures (ceux qui changent le modèle — minScore et les nombres maximaux, categories, gestures, head — recréent le moteur, regroupés en un rechargement) ; control = DataProvider de pilotage {active (false : inférence en pause), load (compteur : une hausse charge le modèle, pour load=\"manual\"), réglages sous params} ; le statut ajoute status idle|requesting|ready|denied|error|unsupported, active, settings (réglages effectifs)"
+    },
+    {
+      "name": "sonic-hid",
+      "props": {
+        "filters": {
+          "type": "string",
+          "description": "JSON [{vendorId, productId, usagePage, usage}] ; vide = tous les appareils HID"
+        },
+        "auto-reconnect": {
+          "type": "boolean",
+          "description": "rouvre un appareil déjà autorisé au chargement et au rebranchement"
+        },
+        "keep": {
+          "type": "number",
+          "description": "rapports gardés dans reports (16 ; 0 à 64)"
+        },
+        "profile": {
+          "type": "string",
+          "description": "décodage : gamepad-generic (aucun) ou buttons (bits du premier octet)"
+        },
+        "target": {
+          "type": "string",
+          "description": "store qui reçoit l'action hid:input"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n} ou {commande: {n, …arguments}}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance connect, dans le geste"
+        },
+        "rate": {
+          "type": "number",
+          "description": "publications et actions par seconde au plus (30)"
+        }
+      },
+      "addon": "device",
+      "description": "Appareil HID (WebHID) : boutons, pédaliers, claviers de macros, manettes non standard, capteurs. for=\"idBouton\" : le clic ouvre le sélecteur du navigateur (un seul appareil déjà autorisé qui correspond aux filtres est rouvert sans sélecteur) ; filters JSON [{vendorId, productId, usagePage, usage}] (identifiants en hexadécimal en chaîne ou nombre ; sans filters le sélecteur liste tous les appareils HID). auto-reconnect : rouvre au chargement et au rebranchement. Commandes control {connect:n | {n, pick:true}, close:n, sendReport:{n, reportId, bytes | hex}, sendFeatureReport:{n, reportId, bytes | hex} (4096 octets au plus), receiveFeatureReport:{n, reportId}, forget:n}. État <id>State {status, error, supported, allowed, active, device:{productName, vendorId, productId, collections:[{usagePage, usage}]}, last:{reportId, bytes, at, buttons?}, reports (keep derniers), feature:{reportId, bytes, at}, count}. profile=\"buttons\" : last.buttons = 8 booléens du premier octet ; gamepad-generic : octets bruts. Action hid:input {reportId, bytes, at, buttons?} vers target, au plus rate par seconde (dernier rapport jamais perdu). Événements sonic-hid-connect, sonic-hid-disconnect. Chromium sur ordinateur, en HTTPS ; claviers et souris masqués par le navigateur. Dans une iframe : allow=\"hid\". Non testé sur matériel"
     },
     {
       "name": "sonic-hugging-face-infer",
@@ -3487,7 +3633,7 @@
         },
         "protocol": {
           "type": "string",
-          "description": "auto, luck-aiyin, luck-lujiang, escpos, niimbot (variante d'après le modèle) ou niimbot-d110 | niimbot-b1 | niimbot-d11v1 | niimbot-b21v1 | niimbot-v4 (variante imposée)"
+          "description": "auto, luck-aiyin, luck-lujiang, escpos, niimbot (variante d'après le modèle) ou niimbot-d110 | niimbot-b1 | niimbot-d11v1 | niimbot-b21v1 | niimbot-v4 (variante imposée), cat, phomemo (famille d'après le nom) ou phomemo-m02 | phomemo-m110 | phomemo-d30"
         },
         "width-px": {
           "type": "number",
@@ -3547,7 +3693,7 @@
         }
       },
       "addon": "bluetooth",
-      "description": "Imprime l'image d'une source (#id : sonic-sketch, sonic-paint, sonic-still, sonic-2d…) sur une imprimante thermique derrière un sonic-bluetooth (transport=\"#id\"). protocol auto (d'après le nom de l'appareil) | luck-aiyin (Fichero D11s d'Action : tête 96 points, 12 mm, étiquette 30x12) | luck-lujiang | escpos (tickets, width-px requis) | niimbot (Niimbot D11, D110, D101, B1, B21, B18 derrière un sonic-bluetooth profile=\"niimbot\" ou \"luck niimbot\" ; modèle et tête lus sur l'imprimante ; non testé sur matériel : si rien ne sort, imposer niimbot-d110, niimbot-b1, niimbot-d11v1, niimbot-b21v1 ou niimbot-v4). Image ramenée à l'étiquette (label-mm \"longueur x largeur\", fit), passée en 1 bit (dither threshold|floyd|atkinson|bayer, threshold), tournée (orientation landscape = texte dans le sens de la longueur). Commandes control {print:n | {n, copies}, preview:n, feed:n, refresh:n, cancel:n} ou for ; réglages en direct dans control {labelMm, orientation, fit, dither, threshold, density, paper, copies}. État <id>State {status, error, active, protocol, model, firmware, head{widthPx, dpi}, battery, charging, paper ok|out|unknown, cover closed|open|unknown, overheated, printing, progress, copy, copies, jobs (compteur), preview{width, height, ink}, issues[], settings}. show-preview affiche l'aperçu 1 bit exact (mêmes points que sur le papier) à la place du composant ; c'est aussi une source d'images (#id). Événements sonic-label-printer-done, sonic-label-printer-error"
+      "description": "Imprime l'image d'une source (#id : sonic-sketch, sonic-paint, sonic-still, sonic-2d…) sur une imprimante thermique derrière un sonic-bluetooth (transport=\"#id\"). protocol auto (d'après le nom de l'appareil) | luck-aiyin (Fichero D11s d'Action : tête 96 points, 12 mm, étiquette 30x12) | luck-lujiang | escpos (tickets, width-px requis) | niimbot (Niimbot D11, D110, D101, B1, B21, B18 derrière un sonic-bluetooth profile=\"niimbot\" ou \"luck niimbot\" ; modèle et tête lus sur l'imprimante ; non testé sur matériel : si rien ne sort, imposer niimbot-d110, niimbot-b1, niimbot-d11v1, niimbot-b21v1 ou niimbot-v4) | cat (imprimantes « chat » GB01, GB02, GB03, GT01, YT01, MX05…MX10, X5 derrière profile=\"cat\" : tête 384 points, papier continu 57 mm, label-mm \"longueur x 48\" ; non testé sur matériel) | phomemo (Phomemo derrière profile=\"phomemo\" : famille d'après le nom, M02/T02 tickets 384 points, M110 étiquettes 384 points, D30 étiquettes 12 mm 96 points ; imposer phomemo-m02, phomemo-m110 ou phomemo-d30 si besoin ; non testé sur matériel). Image ramenée à l'étiquette (label-mm \"longueur x largeur\", fit), passée en 1 bit (dither threshold|floyd|atkinson|bayer, threshold), tournée (orientation landscape = texte dans le sens de la longueur). Commandes control {print:n | {n, copies}, preview:n, feed:n, refresh:n, cancel:n} ou for ; réglages en direct dans control {labelMm, orientation, fit, dither, threshold, density, paper, copies}. État <id>State {status, error, active, protocol, model, firmware, head{widthPx, dpi}, battery, charging, paper ok|out|unknown, cover closed|open|unknown, overheated, printing, progress, copy, copies, jobs (compteur), preview{width, height, ink}, issues[], settings}. show-preview affiche l'aperçu 1 bit exact (mêmes points que sur le papier) à la place du composant ; c'est aussi une source d'images (#id). Événements sonic-label-printer-done, sonic-label-printer-error"
     },
     {
       "name": "sonic-ladder",
@@ -3773,6 +3919,53 @@
           "description": "loadingsize is computed after rendering a loading / doesnt require one but will be used on other renderings"
         }
       }
+    },
+    {
+      "name": "sonic-listen",
+      "props": {
+        "lang": {
+          "type": "string",
+          "description": "langue BCP 47 (fr-FR, en-US…), défaut : langue du navigateur"
+        },
+        "continuous": {
+          "type": "boolean",
+          "description": "écoute continue (relancée si le navigateur coupe)"
+        },
+        "interim": {
+          "type": "boolean",
+          "description": "publie le texte provisoire et envoie listen:result isFinal false"
+        },
+        "max-alternatives": {
+          "type": "number",
+          "description": "nombre d'hypothèses par phrase 1..10 (1)"
+        },
+        "phrases": {
+          "type": "string",
+          "description": "mots-clés séparés par des virgules (« suivant, précédent, stop ») : match et listen:match"
+        },
+        "params": {
+          "type": "string",
+          "description": "DP de réglages en direct {lang, continuous, interim, maxAlternatives, phrases}"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {start, stop, abort, toggle, clear}"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic démarre ou arrête l'écoute, dans le geste"
+        },
+        "target": {
+          "type": "string",
+          "description": "id du store qui reçoit listen:result et listen:match"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        }
+      },
+      "addon": "speech",
+      "description": "Reconnaissance vocale (SpeechRecognition / webkitSpeechRecognition), invisible. Absente de Firefox (status unsupported) ; Chrome envoie l'audio aux serveurs de Google (le dire à l'utilisateur ; pour rester sur l'appareil : sonic-hugging-face-infer avec Whisper). for=\"idBouton\" : le clic démarre ou arrête l'écoute, dans le geste ; control {start:n, stop:n, abort:n, toggle:n, clear:n} (compteurs ; stop livre la dernière phrase, abort l'abandonne, clear vide transcript). Réglages lang (fr-FR…), continuous (écoute sans s'arrêter après une phrase : relancée automatiquement quand le navigateur coupe, délai croissant, abandon après plusieurs coupures rapides), interim (texte provisoire pendant la phrase), max-alternatives 1..10, phrases (mots-clés séparés par des virgules : comparés en mots entiers, sans accents ni casse) ; params = DP {lang, continuous, interim, maxAlternatives, phrases} prioritaire sur les attributs. Permissions-Policy microphone (iframe : allow=\"microphone\"). État <id>State (ou out-data-provider) {status idle|requesting|ready|denied|error|unsupported, error (no-speech, not-allowed, network, audio-capture traduits), supported, allowed, active (écoute voulue), listening (micro ouvert), interim, final (dernière phrase), transcript (phrases cumulées), confidence 0..1, alternatives [{text, confidence}], match {phrase, text, n} (n augmente à chaque mot-clé reconnu) ou null, restarts, settings}. target = store qui reçoit listen:result {text, confidence, isFinal} (phrases définitives ; aussi provisoires avec interim) et listen:match {phrase, text}"
     },
     {
       "name": "sonic-loader",
@@ -4106,10 +4299,30 @@
         },
         "label-key": {
           "type": "string"
+        },
+        "target": {
+          "type": "string",
+          "description": "Id du sonic-store qui reçoit matrix:cell"
+        },
+        "emit": {
+          "type": "string",
+          "description": "cell : un clic sur une case envoie matrix:cell"
+        },
+        "paint": {
+          "type": "boolean",
+          "description": "Glisser pour peindre (une action par case traversée, implique emit=cell)"
+        },
+        "paint-value": {
+          "type": "string",
+          "description": "Valeur recopiée dans payload.paint"
+        },
+        "dispatch-event": {
+          "type": "boolean",
+          "description": "Émet aussi l'événement DOM sonic-action"
         }
       },
       "addon": "interactive",
-      "description": "Grille 2D canvas"
+      "description": "Grille 2D canvas (key = chemin de la matrice number[][] dans le dataProvider, ou tableau plat + cols ; palette valeur→couleur). Interactif : emit=\"cell\" → un clic sur une case envoie l'action matrix:cell {row, col, value (valeur actuelle de la case), index (row × largeur + col), stroke (n° du geste), first} au store target (le défilement de la page reste libre) ; paint : appuyer puis glisser peint les cases traversées, une action matrix:cell par case nouvelle du geste (pas de doublon, cases sautées comblées), payload.paint = paint-value si renseigné (nombre si possible) ; capture du pointeur et touch-action: none seulement en mode paint. Reducer : $set($state, 'grid.' & $action.payload.row & '.' & $action.payload.col, $action.payload.paint)"
     },
     {
       "name": "sonic-media-download",
@@ -4760,6 +4973,37 @@
       },
       "addon": "media",
       "description": "Détection de mouvement sans modèle (différence d'images) d'une source d'images (source=\"#cam\") : état {status, level (part de l'image qui bouge), x, y (centre du mouvement, 0..1), box, zones {nom: {level, active, count}}, fps} ; zones [{name, x, y, w, h}] (fractions) = boutons à agiter devant la caméra, action motion:zone {zone, level, count} vers target quand une zone s'allume ; mirror pour la caméra frontale ; est une source d'images (masque blanc du mouvement) pour sonic-shader channel0=\"#id\""
+    },
+    {
+      "name": "sonic-nfc",
+      "props": {
+        "target": {
+          "type": "string",
+          "description": "store qui reçoit l'action nfc:read {serial, records}"
+        },
+        "allow-lock": {
+          "type": "boolean",
+          "description": "autorise la commande makeReadOnly (irréversible)"
+        },
+        "no-overwrite": {
+          "type": "boolean",
+          "description": "write refuse un tag qui contient déjà un message"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n} ou {commande: {n, …arguments}}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance scan, dans le geste"
+        }
+      },
+      "addon": "device",
+      "description": "Tags NFC (Web NFC) : lecture des tags approchés du téléphone, écriture de texte, d'URL http(s) ou de JSON. for=\"idBouton\" : le clic lance scan (geste obligatoire, permission). Commandes control {scan:n, stop:n (arrête la lecture et annule une écriture en attente), write:{n, text} | {n, url} | {n, records:[{recordType:\"text\"|\"url\"|\"mime\", data, mediaType:\"application/json\"}]} (mime = JSON seulement ; 16 enregistrements, 8 Ko au plus ; attend qu'un tag soit approché), makeReadOnly:n (verrouillage définitif, refusé sans l'attribut allow-lock)}. État <id>State {status, error, supported, allowed, active, scanning, writing, serial, records:[{recordType, mediaType, text | url | json | size}], count, lastWrite:{records, at}}. Action nfc:read {serial, records} vers target à chaque tag lu ; événement sonic-nfc-read. Chrome sous Android seulement, en HTTPS, page visible ; pas d'iframe d'une autre origine. Non testé sur matériel"
     },
     {
       "name": "sonic-noise",
@@ -6545,6 +6789,48 @@
       }
     },
     {
+      "name": "sonic-sample-osc",
+      "props": {
+        "name": {
+          "type": "string"
+        },
+        "sample": {
+          "type": "string"
+        },
+        "root": {
+          "type": "string",
+          "description": "note jouée à la vitesse d'origine (C4 par défaut, ou numéro MIDI)"
+        },
+        "freq-hz": {
+          "type": "string",
+          "description": "voice.pitch (défaut) ou fréquence fixe en Hz"
+        },
+        "semi": {
+          "type": "number"
+        },
+        "detune": {
+          "type": "number"
+        },
+        "start": {
+          "type": "number"
+        },
+        "loop": {
+          "type": "string"
+        },
+        "loop-start": {
+          "type": "number"
+        },
+        "loop-end": {
+          "type": "number"
+        },
+        "level": {
+          "type": "number"
+        }
+      },
+      "addon": "audio",
+      "description": "Module de sonic-patch (dans sonic-voice) : sample joué comme oscillateur, transposé selon la note de la voix (vitesse = fréquence de la note / fréquence de root ; A5 sur root=\"A4\" = vitesse 2). sample = URL https/blob/data:audio/relative ou chemin DP d'un SonicMediaRef (prise de sonic-audio-recorder, même ref qu'un sonic-sampler) ; start (s), loop (attribut présent, on, off), loop-start / loop-end (s, 0 = fin) réglables en direct (sonic-param) ; detune et level modulables ; suit le bend ; note muette tant que le sample n'est pas chargé"
+    },
+    {
       "name": "sonic-sampler",
       "props": {
         "samples": {
@@ -6638,7 +6924,7 @@
         }
       },
       "addon": "media",
-      "description": "Capture d'écran (getDisplayMedia, clic direct requis : sonic-media-start for=\"screen\") : source d'images (#id) pour sonic-shader, photos (control.snapshot), son du partage (audio) pour l'analyseur / l'enregistreur, export par sonic-media-recorder ; état {status, error, surface, width, height, audio, snapshot}"
+      "description": "Capture d'écran (getDisplayMedia, clic direct requis : sonic-media-start for=\"screen\") : source d'images (#id) pour sonic-shader, photos (control.snapshot), son du partage (audio) pour l'analyseur / l'enregistreur, export par sonic-media-recorder ; état {status, error, active, supported, allowed (Permissions Policy display-capture), surface, width, height, audio, snapshot}"
     },
     {
       "name": "sonic-scroll",
@@ -7668,6 +7954,69 @@
       "description": "Moteur son : banque JSON (sfx + songs), pilotage par DP control {music, volume, muted, paused, fade, play:{nom:compteur}}, état publié dans out-data-provider"
     },
     {
+      "name": "sonic-speak",
+      "props": {
+        "text": {
+          "type": "string",
+          "description": "texte à dire"
+        },
+        "text-from": {
+          "type": "string",
+          "description": "DataProvider ou dp.chemin dont la valeur (texte ou nombre) est le texte, lu en direct ; l'emporte sur text"
+        },
+        "auto": {
+          "type": "boolean",
+          "description": "parle à chaque nouvelle valeur de text-from"
+        },
+        "lang": {
+          "type": "string",
+          "description": "langue BCP 47 (fr-FR, en-US…) ; choisit aussi une voix de cette langue"
+        },
+        "voice": {
+          "type": "string",
+          "description": "nom ou partie du nom d'une voix (voir voices dans l'état)"
+        },
+        "rate": {
+          "type": "number",
+          "description": "vitesse 0.1..10 (1)"
+        },
+        "pitch": {
+          "type": "number",
+          "description": "hauteur 0..2 (1)"
+        },
+        "volume": {
+          "type": "number",
+          "description": "volume 0..1 (1)"
+        },
+        "params": {
+          "type": "string",
+          "description": "DP de réglages en direct {lang, voice, rate, pitch, volume}, prioritaire sur les attributs"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {say, stop, pause, resume, toggle} ; say accepte {n, text}"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic dit le texte courant, dans le geste"
+        },
+        "boundary": {
+          "type": "boolean",
+          "description": "envoie aussi speak:word à chaque mot (si le navigateur le permet)"
+        },
+        "target": {
+          "type": "string",
+          "description": "id du store qui reçoit speak:start, speak:word, speak:end"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        }
+      },
+      "addon": "speech",
+      "description": "Synthèse vocale (speechSynthesis), invisible. Texte : text, ou text-from (DataProvider ou dp.chemin lu en direct, l'emporte sur text), ou commande control {say: {n, text}} (la forme {say: {n, text, lang, voice, rate, pitch, volume}} règle une seule lecture). auto : parle à chaque nouvelle valeur de text-from (pas la valeur présente au chargement). for=\"idBouton\" : le clic dit le texte courant, dans le geste (la première lecture exige un geste sous Chrome et Safari). control {say:n, stop:n, pause:n, resume:n, toggle:n} (compteurs). Réglages lang (fr-FR…), voice (nom ou partie de nom, ex. « Amélie », « Google »), rate 0.1..10 (1), pitch 0..2 (1), volume 0..1 (1) ; params = DP {lang, voice, rate, pitch, volume} prioritaire sur les attributs. Longs textes lus phrase par phrase (Chrome coupe au-delà de ~15 s). État <id>State (ou out-data-provider) {status idle|ready|denied|error|unsupported, error, supported, allowed, active, speaking, paused, pending, voices:[{name, lang, local}] (liste chargée après coup par le navigateur), charIndex (position du mot dit, -1 hors lecture), word, spoken (texte lu), voice (voix utilisée ou null), settings}. target = store qui reçoit speak:start {text, lang, voice}, speak:word {word, charIndex} (seulement avec boundary), speak:end {text, complete, interrupted, error}"
+    },
+    {
       "name": "sonic-split-text",
       "props": {
         "text": {
@@ -8654,6 +9003,45 @@
       "description": "Relie un capteur à une action : surveille une valeur d'un DataProvider (source + key en chemin pointé : labels.person, right.gesture, db, faces.0.blend.jawOpen) et envoie une action au sonic-store target quand la condition tient (equals, not, gt, gte, lt, lte, truthy ; plusieurs opérateurs = ET) pendant hold-ms ; un seul déclenchement par franchissement (mode edge, réarmé au retour à faux) ou à chaque repos (mode repeat), cooldown-ms entre deux ; action {type, payload = payload JSON + value (valeur lue) + count} ; end-type = action au retour à faux ; disabled suspend ; params (DP) {equals, not, gt, gte, lt, lte, truthy, holdMs, cooldownMs, mode, disabled} en direct, prioritaire sur les attributs ; state-provider (ou out-data-provider) publie {status: idle|ready|error, error, disabled, active, armed, count, value, note, vel, settings} ; pas d'évaluation de code ; sortie MIDI directe : emit=note|noteOn (tenue jusqu'au retour à faux puis noteOff) avec emit-provider (→ events de sonic-midi) et emit-trigger (→ trigger de sonic-midi) ; hauteur fixe (note) ou lue dans la source (note-key 0..1, note-range bas,haut, scale en demi-tons) ; vélocité depuis vel-source/vel-key (ex. sonic-motion vel), plancher vel-min ; dur-s, ch"
     },
     {
+      "name": "sonic-usb",
+      "props": {
+        "filters": {
+          "type": "string",
+          "description": "JSON [{vendorId, productId, classCode, subclassCode, protocolCode}] ; vide = tous les appareils USB"
+        },
+        "configuration": {
+          "type": "number",
+          "description": "configuration choisie à l'ouverture (1)"
+        },
+        "interface": {
+          "type": "number",
+          "description": "interface réservée à l'ouverture (0)"
+        },
+        "auto-reconnect": {
+          "type": "boolean",
+          "description": "rouvre un appareil déjà autorisé au chargement et au rebranchement"
+        },
+        "target": {
+          "type": "string",
+          "description": "store qui reçoit l'action usb:in"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {commande: n} ou {commande: {n, …arguments}}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic lance connect, dans le geste"
+        }
+      },
+      "addon": "device",
+      "description": "Appareil USB (WebUSB) : cartes de développement, instruments, appareils à protocole maison. for=\"idBouton\" : le clic ouvre le sélecteur (un seul appareil déjà autorisé qui correspond est rouvert sans sélecteur) ; filters JSON [{vendorId, productId, classCode}] (sans filters : tous les appareils USB). Ouverture = open, selectConfiguration(configuration), claimInterface(interface). auto-reconnect : au chargement et au rebranchement. Commandes control {connect:n | {n, pick:true}, open:n, close:n, transferIn:{n, endpoint (1 à 15), length (64 ; 65536 au plus)}, transferOut:{n, endpoint, bytes | hex | text}, controlTransferIn:{n, setup:{requestType: standard|class|vendor, recipient: device|interface|endpoint|other, request, value, index}, length}, controlTransferOut:{n, setup, bytes | hex | text (facultatif)}, forget:n} ; 64 Ko au plus par transfert, un transfert à la fois. État <id>State {status, error, supported, allowed, active, device:{productName, manufacturerName, vendorId, productId, serialNumber}, claimed:{configuration, interface}, last:{endpoint (nombre ou \"control\"), bytes (4096 premiers), length, truncated, status: ok|stall|babble, at}, lastOut:{endpoint, bytesWritten, status, at}, transfers}. Action usb:in (= last) vers target à chaque réception. Événements sonic-usb-connect, sonic-usb-disconnect. Chromium (ordinateur, Android), en HTTPS ; interfaces HID, stockage, audio, vidéo protégées par le navigateur. Dans une iframe : allow=\"usb\". Non testé sur matériel"
+    },
+    {
       "name": "sonic-value",
       "props": {}
     },
@@ -8927,6 +9315,77 @@
       "description": "Lecteur vidéo (https, relatif, blob:) : DP control {playing, seek, rate, volume, muted, loop, loopStart, loopEnd} ; état {status, timeS, durationS, progress, playing} ; source d'images (#id) ; audio-out=master|#id|none pour l'analyse"
     },
     {
+      "name": "sonic-video-export",
+      "props": {
+        "source": {
+          "type": "string",
+          "description": "#id d'une source d'images"
+        },
+        "mode": {
+          "type": "string",
+          "description": "frames (défaut) | live"
+        },
+        "fps": {
+          "type": "number",
+          "description": "images par seconde, défaut 30"
+        },
+        "duration": {
+          "type": "number",
+          "description": "durée en s, 0 = jusqu'à stop"
+        },
+        "frames": {
+          "type": "number",
+          "description": "nombre d'images (mode frames, prioritaire sur duration)"
+        },
+        "width": {
+          "type": "number",
+          "description": "défaut : largeur de la source, arrondie au pair"
+        },
+        "height": {
+          "type": "number",
+          "description": "défaut : hauteur de la source, arrondie au pair"
+        },
+        "bitrate": {
+          "type": "number",
+          "description": "bits/s, défaut 6000000"
+        },
+        "keyframe-every": {
+          "type": "number",
+          "description": "s entre images clés, défaut 2"
+        },
+        "max-mb": {
+          "type": "number",
+          "description": "taille maximale du fichier en Mo, défaut 200"
+        },
+        "filename": {
+          "type": "string",
+          "description": "nom du fichier sans extension, défaut video"
+        },
+        "target": {
+          "type": "string",
+          "description": "store qui reçoit l'action de fin"
+        },
+        "type": {
+          "type": "string",
+          "description": "type de l'action de fin, défaut video:done"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage {start, stop, cancel, toggle}"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids des boutons dont le clic lance toggle"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP de l'état (défaut <id>State)"
+        }
+      },
+      "addon": "media",
+      "description": "Export vidéo image par image (WebCodecs VP9, repli VP8, fichier WebM sans son) d'une source d'images source=\"#id\" (sonic-shader, sonic-3d, sonic-2d, sonic-camera, sonic-video…) ; mode=\"frames\" (défaut : horodatage fixe image n = n/fps, vidéo fluide même si le rendu est lent, capture jamais plus rapide que fps) ou \"live\" (horodatage réel) ; arrêt automatique après duration (s) ou frames ; pilotage control {start, stop, cancel, toggle} (compteurs) ou for=\"idBouton\" (toggle) ; état <id>State {status, error, supported, allowed, active (capture), encoding, mode, frames, seconds, progress (0..1 ou null), codec, width, height, bytes, file {url blob:, name, type: \"video/webm\", mime, size}} ; file se branche sur sonic-media-download source=\"<id>State.file\" ; action {type: \"video:done\", payload: {file, frames, seconds, codec, width, height, error}} vers target ; dépassement de max-mb : export arrêté, fichier gardé, error renseignée"
+    },
+    {
       "name": "sonic-voice",
       "props": {
         "sample": {
@@ -9042,6 +9501,61 @@
       },
       "addon": "webgpu",
       "description": "Shader / kernel WGSL (kernel image | particles), repli WebGL2 puis Canvas2D. dataProvider : param0…3, channel0…3, targetX/Y ; params (DP) {play, mouse, backend, dprMax, shader} prioritaire sur les attributs (backend redémarre, shader recompile) ; état {status idle|compiling|ready|error, error (ligne WGSL), errors[{line, column, message}], activeBackend, backendLog, notice, playing} dans le DP de sortie (out-data-provider, sinon dataProvider), plus time, frame, mouseX/Y, hovering"
+    },
+    {
+      "name": "sonic-xr",
+      "props": {
+        "target": {
+          "type": "string",
+          "description": "id du sonic-3d à ouvrir en XR"
+        },
+        "mode": {
+          "type": "string",
+          "description": "vr (immersive-vr), ar (immersive-ar) ou auto (défaut : AR si acceptée, sinon VR)"
+        },
+        "reference": {
+          "type": "string",
+          "description": "local-floor (défaut, repli local) ou local"
+        },
+        "features": {
+          "type": "string",
+          "description": "fonctionnalités optionnelles séparées par des espaces : hand-tracking, hit-test (AR), dom-overlay (AR, avec overlay)"
+        },
+        "overlay": {
+          "type": "string",
+          "description": "id de l'élément affiché par-dessus la vue AR (dom-overlay) ; ses touchers ne sélectionnent pas dans la scène"
+        },
+        "offset": {
+          "type": "string",
+          "description": "décalage \"x y z\" en mètres ajouté au placement automatique (défaut 0 0 0)"
+        },
+        "scale": {
+          "type": "number",
+          "description": "échelle de la scène en XR (défaut 1 : une unité = un mètre)"
+        },
+        "reticle": {
+          "type": "boolean",
+          "description": "AR + hit-test : anneau sur le point visé"
+        },
+        "store": {
+          "type": "string",
+          "description": "id du sonic-store qui reçoit xr:select"
+        },
+        "control": {
+          "type": "string",
+          "description": "DP de pilotage : compteurs {enter, exit, toggle, place}"
+        },
+        "out-data-provider": {
+          "type": "string",
+          "description": "DP d'état (défaut <id>State)"
+        },
+        "for": {
+          "type": "string",
+          "description": "ids dont le clic bascule la session, dans le geste"
+        }
+      },
+      "addon": "3d",
+      "description": "Ouvre une scène sonic-3d en réalité virtuelle ou augmentée (WebXR, renderer.xr de three.js). target = id du sonic-3d (même arbre / shadow root, puis la page). for=\"idBouton\" lance la session dans le geste (exigé par le navigateur) ; control {enter:n, exit:n, toggle:n, place:n} (forme {n, mode}). Pendant la session : boucle du casque (setAnimationLoop), rendu direct sans post-effets ni étalonnage, fond transparent en AR ; la scène est décalée pour que le centre de sa boîte soit devant l'utilisateur à hauteur des yeux (offset ajouté, scale). AR + features=\"hit-test\" : état hit {x,y,z} (point du réel visé), reticle montre ce point, place y pose la scène. Sélection d'une manette, d'une main ou d'un toucher AR : rayon dans la scène → même tap que sonic-3d (événement pick, action pick-action-type vers son target si pick) et action {type:\"xr:select\", payload:{objectId|null, instance?, src?, point:[x,y,z]|null (coordonnées de la scène), hand, mode, hit}} vers store. État <id>State {status (idle|requesting|ready|denied|error|unsupported), error, supported, allowed, active, mode (vr|ar|null), modes:{vr,ar} (isSessionSupported au montage), presenting, reference (local-floor|local), hit, inputs:[{handedness, mode, hand}]}. Événements sonic-xr-change, sonic-xr-select, sonic-xr-place. HTTPS ; iframe allow=\"xr-spatial-tracking\". Non testé sur casque."
     }
   ],
   "safeHtmlTags": [
@@ -9088,5 +9602,5 @@
     "u",
     "template"
   ],
-  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d) [requires: three]; anchor (sonic-anchor-ref, sonic-anchor, sonic-anchor-view); animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-audio-player, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); bluetooth (sonic-bluetooth, sonic-label-printer); color (sonic-palette, sonic-palette-editor, sonic-theme-colors); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-geolocation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-page-state, sonic-capabilities); grbl (sonic-grbl, sonic-gcode, sonic-laser-pattern, sonic-gcode-view); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix, sonic-notify, sonic-css-vars, sonic-slider); map (sonic-map) [requires: maplibre-gl]; markdown (sonic-markdown); media (sonic-camera, sonic-video, sonic-frame-sync, sonic-luma, sonic-morse, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-media-download, sonic-still, sonic-file-open, sonic-motion-detector, sonic-color-tracker); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; qr (sonic-qr, sonic-qr-reader, sonic-qr-sender, sonic-qr-receiver); scroll (sonic-scroll); serial (sonic-serial); shader (sonic-shader); sketch (sonic-sketch, sonic-sketch-guide, sonic-painterly); sound (sonic-sound, sonic-sfx); stage (sonic-stage); swarm (sonic-swarm); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
+  "notes": "SDUINode uses tagName+attributes+nodes only. js/css/markup/innerHTML/prefix/suffix rejected for XSS. Optional top-level scripts: IDs from scripts-catalog.json only (CDN jsDelivr pinned). Concorde components: see props (values = allowed values). creative-stack addons: 2d (sonic-2d, sonic-sprite) [requires: pixi.js]; 3d (sonic-3d, sonic-xr) [requires: three]; anchor (sonic-anchor-ref, sonic-anchor, sonic-anchor-view); animation (sonic-animate, sonic-clock, sonic-timeline, sonic-skeleton, sonic-bone, sonic-puppet); audio (sonic-patch, sonic-voice, sonic-osc, sonic-noise, sonic-audio-input, sonic-mixer, sonic-filter, sonic-vca, sonic-env, sonic-lfo, sonic-shaper, sonic-pan, sonic-delay, sonic-reverb, sonic-chorus, sonic-ladder, sonic-fold, sonic-karplus, sonic-resonator, sonic-grain, sonic-sample-osc, sonic-comp, sonic-mod, sonic-param, sonic-sequencer, sonic-sampler, sonic-audio-analyser, sonic-mic, sonic-audio-recorder, sonic-audio-player, sonic-midi, sonic-audio-unlock, sonic-audio-master, sonic-audio-load); blobs (sonic-blobs); bluetooth (sonic-bluetooth, sonic-label-printer); color (sonic-palette, sonic-palette-editor, sonic-theme-colors); controller (sonic-controller); cursor (sonic-cursor); device (sonic-fullscreen, sonic-pointer-lock, sonic-wake-lock, sonic-orientation, sonic-geolocation, sonic-clipboard, sonic-share, sonic-vibrate, sonic-nfc, sonic-hid, sonic-usb, sonic-page-state, sonic-capabilities); grbl (sonic-grbl, sonic-gcode, sonic-laser-pattern, sonic-gcode-view); hugging-face-infer (sonic-hugging-face-infer, sonic-segment-anything) [requires: @huggingface/transformers]; interactive (sonic-store, sonic-keyboard, sonic-gamepad, sonic-gesture, sonic-action, sonic-ticker, sonic-trigger, sonic-motion, sonic-matrix, sonic-notify, sonic-css-vars, sonic-slider); map (sonic-map) [requires: maplibre-gl]; markdown (sonic-markdown); media (sonic-camera, sonic-video, sonic-frame-sync, sonic-luma, sonic-morse, sonic-screen, sonic-media-start, sonic-media-recorder, sonic-video-export, sonic-media-download, sonic-still, sonic-file-open, sonic-motion-detector, sonic-color-tracker); ocr (sonic-ocr); p2p (sonic-p2p); paint (sonic-paint); physics (sonic-physics, sonic-body, sonic-joint, sonic-ragdoll); plot (sonic-plot, sonic-graph); predict (sonic-train, sonic-predict); procgen (sonic-procgen) [requires: three]; qr (sonic-qr, sonic-qr-reader, sonic-qr-sender, sonic-qr-receiver); scroll (sonic-scroll); serial (sonic-serial); shader (sonic-shader); sketch (sonic-sketch, sonic-sketch-guide, sonic-painterly); sound (sonic-sound, sonic-sfx); speech (sonic-speak, sonic-listen); stage (sonic-stage); swarm (sonic-swarm); tape (sonic-tape); text (sonic-split-text); vector (sonic-vector-op, sonic-vector-library); vectorize (sonic-vectorize); vision (sonic-hand-tracker, sonic-face-tracker, sonic-pose-tracker, sonic-object-detector, sonic-segmenter, sonic-click-segmenter, sonic-image-embedder, sonic-landmarks-overlay, sonic-face-mesh, sonic-mask-replace, sonic-example-classifier); webgpu (sonic-webgpu). Capabilities required for camera / microphone / MIDI / screen."
 }
