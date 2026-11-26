@@ -204,7 +204,7 @@ final class ArtifactKitsTest extends TestCase
         self::assertSame('@file:clip.glsl', $tags['sonic-shader'][0]['image']);
         self::assertSame('1080 / 1080', $tags['sonic-shader'][0]['aspect-ratio']);
         $export = $tags['sonic-video-export'][0];
-        self::assertSame(['#clip-image', 'frames', 6, 30, 1080, 1080, 'btn-export'], [$export['source'], $export['mode'], $export['duration'], $export['fps'], $export['width'], $export['height'], $export['for']]);
+        self::assertSame(['#clip-image', 'offline', 6, 30, 1080, 1080, 'btn-export'], [$export['source'], $export['mode'], $export['duration'], $export['fps'], $export['width'], $export['height'], $export['for']]);
         self::assertSame('exportState.file', $tags['sonic-media-download'][0]['source']);
         self::assertSame(['data-bind' => '', '::value' => '$progress', 'max' => '1'], array_intersect_key($tags['sonic-progress'][0], ['data-bind' => 1, '::value' => 1, 'max' => 1]));
         self::assertArrayNotHasKey('capabilities', $doc);

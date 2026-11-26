@@ -1,7 +1,7 @@
 {
  "id": "clip-exportable",
  "title": "Clip exportable",
- "description": "Shader GLSL (écrit ou de la bibliothèque) exporté en vidéo WebM image par image (sonic-video-export), progression, Télécharger.",
+ "description": "Shader GLSL (écrit ou de la bibliothèque) exporté en vidéo WebM image par image hors temps réel (sonic-video-export mode offline : fluide même sur une machine lente), progression, Télécharger.",
  "use": "boucle animée ou fond vidéo à télécharger",
  "params": {
   "type": "object",
@@ -211,7 +211,7 @@
          "attributes": {
           "id": "export",
           "source": "#clip-image",
-          "mode": "frames",
+          "mode": "offline",
           "duration": {
            "$param": "duree"
           },
