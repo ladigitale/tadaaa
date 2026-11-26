@@ -88,7 +88,8 @@ final class ArtifactKitsTest extends TestCase
             $result = $validator->validate($document);
             self::assertTrue($result['valid'], $id.' : '.json_encode($result['errors'], JSON_UNESCAPED_UNICODE));
             // Le gain : quelques centaines d'octets de paramètres pour un document complet.
-            self::assertLessThan(\strlen((string) json_encode($built['document'])) / 5, \strlen($params), $id);
+            // (paramètres mesurés sans espaces, comme le document)
+            self::assertLessThan(\strlen((string) json_encode($built['document'])) / 5, \strlen((string) json_encode(json_decode($params))), $id);
             // Un nœud sans attribut ({} devient [] côté PHP et casse le rendu).
             self::assertSame([], self::emptyAttributes($document), $id);
         }
@@ -122,11 +123,14 @@ final class ArtifactKitsTest extends TestCase
 
         $tags = self::tags($doc);
         self::assertSame('scene', $tags['sonic-xr'][0]['target']);
-        self::assertSame('immersion.xr', $tags['sonic-xr'][0]['control']);
+        // Boutons branchés par `for` (dans le geste), mode choisi par data-xr-mode : ni store ni sonic-action.
+        self::assertSame('btn-vr btn-ar btn-regard', $tags['sonic-xr'][0]['for']);
+        self::assertArrayNotHasKey('control', $tags['sonic-xr'][0]);
+        self::assertArrayNotHasKey('sonic-action', $tags);
         self::assertSame('visite', $tags['sonic-3d'][0]['dataProvider']);
         $conditions = array_map(static fn (array $a): string => $a['key'].'|'.($a['equals'] ?? ($a['truthy'] ?? false ? 'truthy' : '')), $tags['sonic-if']);
-        self::assertSame(['modes.vr|truthy', 'modes.ar|truthy', 'status|unsupported', 'status|denied'], $conditions);
-        self::assertSame(['{"mode":"vr"}', '{"mode":"ar"}'], array_column($tags['sonic-action'], 'payload'));
+        self::assertSame(['modes.vr|truthy', 'modes.ar|truthy', 'status|denied'], $conditions);
+        self::assertSame(['btn-vr' => 'vr', 'btn-ar' => 'ar', 'btn-regard' => 'magic'], array_column(array_filter($tags['sonic-button'], static fn (array $a): bool => isset($a['data-xr-mode'])), 'data-xr-mode', 'id'));
 
         // Paramètres invalides : modèle hors catalogue, mur inexistant, ouverture sans position.
         $r = $kits->build('visite-xr', json_decode('{"title":"P","largeur":40,"meubles":[{"modele":"canape"},{"modele":"lit","mur":4}],"ouvertures":[{"type":"porte","mur":0}]}', false));
