@@ -40,7 +40,7 @@
       "uniqueItems": true,
       "items": {
         "oneOf": [
-          { "enum": ["camera", "microphone", "midi", "screen", "bluetooth", "serial"] },
+          { "enum": ["camera", "microphone", "midi", "screen", "bluetooth", "serial", "nfc", "hid", "usb", "xr"] },
           {
             "type": "object",
             "additionalProperties": false,

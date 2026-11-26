@@ -38,7 +38,7 @@
 		Referrer-Policy strict-origin-when-cross-origin
 		# Caméra / micro / MIDI / écran / Bluetooth / port série : seulement pour l'origine du viewer,
 		# et seulement si le document les déclare dans `capabilities` (garde du viewer).
-		Permissions-Policy "camera=(self), microphone=(self), midi=(self), display-capture=(self), bluetooth=(self), serial=(self), geolocation=(self), payment=(), usb=(), browsing-topics=()"
+		Permissions-Policy "camera=(self), microphone=(self), midi=(self), display-capture=(self), bluetooth=(self), serial=(self), hid=(self), usb=(self), xr-spatial-tracking=(self), geolocation=(self), payment=(), browsing-topics=()"
 		X-Frame-Options DENY
 		# CSP: pas d'inline script / pas d'eval.
 		# fonts.googleapis.com : thèmes Tadaaa (appearance).
