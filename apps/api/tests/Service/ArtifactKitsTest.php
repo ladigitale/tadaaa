@@ -88,7 +88,8 @@ final class ArtifactKitsTest extends TestCase
             $result = $validator->validate($document);
             self::assertTrue($result['valid'], $id.' : '.json_encode($result['errors'], JSON_UNESCAPED_UNICODE));
             // Le gain : quelques centaines d'octets de paramètres pour un document complet.
-            self::assertLessThan(\strlen((string) json_encode($built['document'])) / 5, \strlen($params), $id);
+            // (paramètres mesurés sans espaces, comme le document)
+            self::assertLessThan(\strlen((string) json_encode($built['document'])) / 5, \strlen((string) json_encode(json_decode($params))), $id);
             // Un nœud sans attribut ({} devient [] côté PHP et casse le rendu).
             self::assertSame([], self::emptyAttributes($document), $id);
         }
