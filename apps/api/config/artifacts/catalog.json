@@ -3951,13 +3951,37 @@
           "type": "string",
           "description": "mots-clés séparés par des virgules (« suivant, précédent, stop ») : match et listen:match"
         },
+        "engine": {
+          "type": "string",
+          "description": "native (défaut, navigateur), whisper (sur l'appareil), auto (whisper si configuré, sinon natif)"
+        },
+        "model": {
+          "type": "string",
+          "description": "whisper : alias du modèle dans la liste blanche de l'application (défaut whisper-tiny)"
+        },
+        "silence-ms": {
+          "type": "number",
+          "description": "whisper : silence qui termine une phrase, en ms (700)"
+        },
+        "threshold": {
+          "type": "number",
+          "description": "whisper : seuil d'énergie RMS de la parole 0..1 (0.015), relevé si le bruit de fond est fort"
+        },
+        "load": {
+          "type": "string",
+          "description": "whisper : first-use (défaut, au premier démarrage), auto (préchargement), consent (toujours demander)"
+        },
+        "consent-provider": {
+          "type": "string",
+          "description": "whisper : DP du consentement au téléchargement (\"accepted\" ou true accepte, \"declined\" ou false refuse)"
+        },
         "params": {
           "type": "string",
           "description": "DP de réglages en direct {lang, continuous, interim, maxAlternatives, phrases}"
         },
         "control": {
           "type": "string",
-          "description": "DP de pilotage : compteurs {start, stop, abort, toggle, clear}"
+          "description": "DP de pilotage : compteurs {start, stop, abort, toggle, clear} ; avec engine=whisper aussi {load, accept, decline}"
         },
         "for": {
           "type": "string",
@@ -3973,7 +3997,7 @@
         }
       },
       "addon": "speech",
-      "description": "Reconnaissance vocale (SpeechRecognition / webkitSpeechRecognition), invisible. Absente de Firefox (status unsupported) ; Chrome envoie l'audio aux serveurs de Google (le dire à l'utilisateur ; pour rester sur l'appareil : sonic-hugging-face-infer avec Whisper). for=\"idBouton\" : le clic démarre ou arrête l'écoute, dans le geste ; control {start:n, stop:n, abort:n, toggle:n, clear:n} (compteurs ; stop livre la dernière phrase, abort l'abandonne, clear vide transcript). Réglages lang (fr-FR…), continuous (écoute sans s'arrêter après une phrase : relancée automatiquement quand le navigateur coupe, délai croissant, abandon après plusieurs coupures rapides), interim (texte provisoire pendant la phrase), max-alternatives 1..10, phrases (mots-clés séparés par des virgules : comparés en mots entiers, sans accents ni casse) ; params = DP {lang, continuous, interim, maxAlternatives, phrases} prioritaire sur les attributs. Permissions-Policy microphone (iframe : allow=\"microphone\"). État <id>State (ou out-data-provider) {status idle|requesting|ready|denied|error|unsupported, error (no-speech, not-allowed, network, audio-capture traduits), supported, allowed, active (écoute voulue), listening (micro ouvert), interim, final (dernière phrase), transcript (phrases cumulées), confidence 0..1, alternatives [{text, confidence}], match {phrase, text, n} (n augmente à chaque mot-clé reconnu) ou null, restarts, settings}. target = store qui reçoit listen:result {text, confidence, isFinal} (phrases définitives ; aussi provisoires avec interim) et listen:match {phrase, text}"
+      "description": "Reconnaissance vocale (SpeechRecognition / webkitSpeechRecognition), invisible. Absente de Firefox (status unsupported) ; Chrome envoie l'audio aux serveurs de Google (le dire à l'utilisateur). engine : native (défaut, reconnaissance du navigateur), whisper (sur l'appareil, rien n'est envoyé : modèle Whisper de la liste blanche de l'application, attribut model, défaut whisper-tiny ≈ 40 Mo téléchargés au premier usage puis en cache, consentement demandé par l'application ; première phrase lente ; fonctionne aussi sous Firefox), auto (whisper si l'application l'a configuré, sinon natif). Whisper : phrases découpées au silence (silence-ms, défaut 700 ; 15 s au plus), interim = « … » pendant la transcription, confidence 0, pas d'alternatives ; load first-use (défaut) | auto (préchargement) | consent ; consent-provider = DP (\"accepted\"/true accepte, \"declined\"/false refuse) ; control {load:n, accept:n, decline:n} en plus. for=\"idBouton\" : le clic démarre ou arrête l'écoute, dans le geste ; control {start:n, stop:n, abort:n, toggle:n, clear:n} (compteurs ; stop livre la dernière phrase, abort l'abandonne, clear vide transcript). Réglages lang (fr-FR…), continuous (écoute sans s'arrêter après une phrase : relancée automatiquement quand le navigateur coupe, délai croissant, abandon après plusieurs coupures rapides), interim (texte provisoire pendant la phrase), max-alternatives 1..10, phrases (mots-clés séparés par des virgules : comparés en mots entiers, sans accents ni casse) ; params = DP {lang, continuous, interim, maxAlternatives, phrases} prioritaire sur les attributs. Permissions-Policy microphone (iframe : allow=\"microphone\"). État <id>State (ou out-data-provider) {status idle|requesting|ready|denied|error|unsupported, error (no-speech, not-allowed, network, audio-capture traduits), supported, allowed, active (écoute voulue), listening (micro ouvert), interim, final (dernière phrase), transcript (phrases cumulées), confidence 0..1, alternatives [{text, confidence}], match {phrase, text, n} (n augmente à chaque mot-clé reconnu) ou null, restarts, settings, engine (native|whisper effectif), loading (0..100 pendant le téléchargement du modèle, sinon null), modelReady, modelPhase (idle|checking|awaiting-consent|declined|downloading|loading|ready|error|unsupported : afficher un bouton de consentement sur awaiting-consent), modelSize (octets ou null), transcribing}. target = store qui reçoit listen:result {text, confidence, isFinal} (phrases définitives ; aussi provisoires avec interim) et listen:match {phrase, text}"
     },
     {
       "name": "sonic-loader",
@@ -9342,7 +9366,11 @@
         },
         "mode": {
           "type": "string",
-          "description": "frames (défaut) | live"
+          "description": "frames (défaut, temps fixe au rythme du rendu) | offline (temps virtuel, vidéo exacte, sans son) | live (temps réel, son possible)"
+        },
+        "audio-source": {
+          "type": "string",
+          "description": "son, mode live seulement : none (défaut) | master (tout ce qu'on entend) | #id d'une source audio"
         },
         "fps": {
           "type": "number",
@@ -9354,7 +9382,7 @@
         },
         "frames": {
           "type": "number",
-          "description": "nombre d'images (mode frames, prioritaire sur duration)"
+          "description": "nombre d'images (modes frames et offline, prioritaire sur duration)"
         },
         "width": {
           "type": "number",
@@ -9402,7 +9430,7 @@
         }
       },
       "addon": "media",
-      "description": "Export vidéo image par image (WebCodecs VP9, repli VP8, fichier WebM sans son) d'une source d'images source=\"#id\" (sonic-shader, sonic-3d, sonic-2d, sonic-camera, sonic-video…) ; mode=\"frames\" (défaut : horodatage fixe image n = n/fps, vidéo fluide même si le rendu est lent, capture jamais plus rapide que fps) ou \"live\" (horodatage réel) ; arrêt automatique après duration (s) ou frames ; pilotage control {start, stop, cancel, toggle} (compteurs) ou for=\"idBouton\" (toggle) ; état <id>State {status, error, supported, allowed, active (capture), encoding, mode, frames, seconds, progress (0..1 ou null), codec, width, height, bytes, file {url blob:, name, type: \"video/webm\", mime, size}} ; file se branche sur sonic-media-download source=\"<id>State.file\" ; action {type: \"video:done\", payload: {file, frames, seconds, codec, width, height, error}} vers target ; dépassement de max-mb : export arrêté, fichier gardé, error renseignée"
+      "description": "Export vidéo image par image (WebCodecs VP9, repli VP8, fichier WebM) d'une source d'images source=\"#id\" (sonic-shader, sonic-3d, sonic-2d, sonic-camera, sonic-video…) ; mode=\"frames\" (défaut : horodatage fixe image n = n/fps, capture au rythme réel du rendu, jamais plus vite que fps ; si le rendu est lent la vidéo paraît accélérée), \"offline\" (rendu hors temps réel, vidéo exacte : pendant la capture le temps de la page est virtuel — requestAnimationFrame, performance.now, Date.now — et avance de exactement 1/fps par image ; sonic-shader, sonic-3d, sonic-2d, sonic-clock + sonic-timeline, sonic-animate suivent sans réglage ; l'écran n'est plus en temps réel pendant l'export ; pas de son ; caméra, vidéo, setTimeout/setInterval et animations CSS restent en temps réel ; une seule capture offline à la fois par page) ou \"live\" (horodatage réel ; seul mode avec son : audio-source=\"master|#id|none\", défaut none, Opus) ; arrêt automatique après duration (s) ou frames ; pilotage control {start, stop, cancel, toggle} (compteurs) ou for=\"idBouton\" (toggle) ; état <id>State {status, error, warning (non bloquant : son non capturé…), supported, allowed, active (capture), encoding, mode, frames, seconds, progress (0..1 ou null), codec, width, height, bytes, audio (piste son présente), file {url blob:, name, type: \"video/webm\", mime, size}} ; file se branche sur sonic-media-download source=\"<id>State.file\" ; action {type: \"video:done\", payload: {file, frames, seconds, codec, width, height, audio, error}} vers target ; dépassement de max-mb : export arrêté, fichier gardé, error renseignée"
     },
     {
       "name": "sonic-voice",
