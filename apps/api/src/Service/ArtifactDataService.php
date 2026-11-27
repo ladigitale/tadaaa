@@ -34,6 +34,7 @@ final class ArtifactDataService
         private readonly DatasetAccessService $access,
         private readonly EntityManagerInterface $em,
         private readonly CacheItemPoolInterface $cache,
+        private readonly ArtifactCollectionLive $live,
     ) {
     }
 
@@ -128,15 +129,7 @@ final class ArtifactDataService
      */
     public function readPublic(string $slug, string $collectionName, ?string $linkToken = null, ?string $readKey = null, ?User $user = null, ?string $sort = null, ?int $limit = null): array
     {
-        $artifact = $this->resolveArtifact($slug);
-        $this->assertPublicAccess($artifact, $linkToken, $user);
-        $collection = $this->requireCollection($artifact, $collectionName);
-        $isMember = $user !== null && $this->access->getRole($user, $artifact->getDataset()) !== null;
-        $token = $collection->getReadToken();
-        $secretOk = $token !== null && $readKey !== null && $readKey !== '' && hash_equals($token, $readKey);
-        if (!$collection->isPublicRead() && !$secretOk && !$isMember) {
-            throw new NotFoundHttpException('Collection introuvable.');
-        }
+        $collection = $this->requirePublicReadable($slug, $collectionName, $linkToken, $readKey, $user);
 
         return ArtifactIntakeSchema::sortAndLimit(array_map(
             static fn (ArtifactRecord $r): array => [
@@ -147,6 +140,47 @@ final class ArtifactDataService
             ],
             $this->records->findForCollection($collection, null),
         ), $sort, $limit);
+    }
+
+    /**
+     * Abonnement en direct à une collection (mêmes droits que {@see readPublic()}) : hub Mercure,
+     * JWT d'abonné et topic, ou `mercure: null` sans hub (le viewer garde sa relecture).
+     *
+     * @return array{mercure: array{hubUrl: string, token: string, topic: string, expiresIn: int}|null}
+     */
+    public function livePublic(string $slug, string $collectionName, ?string $linkToken = null, ?string $readKey = null, ?User $user = null): array
+    {
+        $collection = $this->requirePublicReadable($slug, $collectionName, $linkToken, $readKey, $user);
+        // Collection par utilisateur : chacun ne voit que ses records, pas de diffusion commune.
+        $live = $collection->getScope() === ArtifactCollectionScope::PerUser ? null : $this->live->credentials($collection);
+
+        return ['mercure' => $live];
+    }
+
+    private function requirePublicReadable(string $slug, string $collectionName, ?string $linkToken, ?string $readKey, ?User $user): ArtifactCollection
+    {
+        $artifact = $this->resolveArtifact($slug);
+        $this->assertPublicAccess($artifact, $linkToken, $user);
+        $collection = $this->requireCollection($artifact, $collectionName);
+        $isMember = $user !== null && $this->access->getRole($user, $artifact->getDataset()) !== null;
+        $token = $collection->getReadToken();
+        $secretOk = $token !== null && $readKey !== null && $readKey !== '' && hash_equals($token, $readKey);
+        if (!$collection->isPublicRead() && !$secretOk && !$isMember) {
+            throw new NotFoundHttpException('Collection introuvable.');
+        }
+
+        return $collection;
+    }
+
+    /**
+     * @param list<ArtifactRecord> $upserted
+     * @param list<string>         $removed
+     */
+    private function publishLive(ArtifactCollection $collection, array $upserted, array $removed = []): void
+    {
+        if ($collection->getScope() !== ArtifactCollectionScope::PerUser) {
+            $this->live->publish($collection, $upserted, $removed);
+        }
     }
 
     /**
@@ -216,6 +250,7 @@ final class ArtifactDataService
                 if (ArtifactIntakeSchema::beats($keep, $result['data'], $row->getData())) {
                     $row->setData($result['data']);
                     $this->em->flush();
+                    $this->publishLive($collection, [$row]);
                 }
 
                 return ['id' => $row->getId()->toRfc4122()];
@@ -238,6 +273,7 @@ final class ArtifactDataService
                 $victim = end($existing) ?: null; // findForCollection est trié du plus récent au plus ancien
             }
             if ($victim !== null) {
+                $evicted = $victim->getId()->toRfc4122();
                 $this->em->remove($victim);
             }
         }
@@ -245,6 +281,7 @@ final class ArtifactDataService
         $record = new ArtifactRecord($collection, $result['data'], null);
         $this->em->persist($record);
         $this->em->flush();
+        $this->publishLive($collection, [$record], isset($evicted) ? [$evicted] : []);
 
         return ['id' => $record->getId()->toRfc4122()];
     }
@@ -288,6 +325,9 @@ final class ArtifactDataService
             $this->records->deleteForCollection($collection);
         }
         $this->em->flush();
+        if ($purge) {
+            $this->live->publishReset($collection);
+        }
 
         return $this->describeCollection($collection, true);
     }
@@ -390,6 +430,7 @@ final class ArtifactDataService
         $record = new ArtifactRecord($collection, $data, $user);
         $this->em->persist($record);
         $this->em->flush();
+        $this->publishLive($collection, [$record]);
 
         return [
             'id' => $record->getId()->toRfc4122(),
@@ -418,6 +459,7 @@ final class ArtifactDataService
 
         $record->setData($data);
         $this->em->flush();
+        $this->publishLive($collection, [$record]);
 
         return [
             'id' => $record->getId()->toRfc4122(),
@@ -439,8 +481,10 @@ final class ArtifactDataService
             }
         }
 
+        $removedId = $record->getId()->toRfc4122();
         $this->em->remove($record);
         $this->em->flush();
+        $this->publishLive($collection, [], [$removedId]);
     }
 
     private function resolveArtifact(string $idOrSlug): Artifact
