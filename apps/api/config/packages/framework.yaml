@@ -43,9 +43,10 @@ framework:
             interval: '1 minute'
             lock_factory: null
         # Envois anonymes (collecte contrôlée) : en plus du quota / intervalle par collection.
+        # Par IP : une salle (réunion, classe) derrière une même IP publique le partage.
         artifacts_intake:
             policy: sliding_window
-            limit: 60
+            limit: 300
             interval: '1 minute'
             lock_factory: null
         # Flux des runs (rejoindre, rattraper sans Mercure, progression du viewer) : par IP.

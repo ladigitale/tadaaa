@@ -57,6 +57,27 @@ final class PublicArtifactController extends AbstractController
     }
 
     /**
+     * Abonnement en direct à une collection : {mercure: {hubUrl, token, topic, expiresIn} | null}.
+     * Les records créés, modifiés ou retirés arrivent ensuite par le hub, sans relire la collection.
+     */
+    #[Route('/{slug}/collections/{name}/live', name: 'api_public_artifact_collection_live', methods: ['GET'], requirements: ['slug' => '[a-z0-9][a-z0-9-]{2,63}', 'name' => '[a-z][a-z0-9_]{0,63}'])]
+    public function collectionLive(string $slug, string $name, Request $request): JsonResponse
+    {
+        $this->consumeRate($request);
+        $user = $this->getUser();
+        $response = $this->json($this->artifactData->livePublic(
+            $slug,
+            $name,
+            $request->query->getString('k') ?: null,
+            $request->query->getString('rk') ?: null,
+            $user instanceof User ? $user : null,
+        ));
+        $response->headers->set('Cache-Control', 'private, no-store');
+
+        return $response;
+    }
+
+    /**
      * Envoi anonyme dans une collecte contrôlée (schéma + session ouverte + quota).
      * Corps : {"data": {...}, "code": "1234"?}
      */
