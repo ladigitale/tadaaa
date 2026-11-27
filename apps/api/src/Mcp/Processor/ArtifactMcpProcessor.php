@@ -17,6 +17,8 @@ use App\Mcp\Tool\DeleteArtifactAssetTool;
 use App\Mcp\Tool\DeleteArtifactTool;
 use App\Mcp\Tool\GetArtifactCatalogTool;
 use App\Mcp\Tool\GetArtifactTool;
+use App\Mcp\Tool\GetArtifactSkillTool;
+use App\Mcp\Tool\RestoreArtifactVersionTool;
 use App\Mcp\Tool\DeleteResourceTool;
 use App\Mcp\Tool\GetResourceTool;
 use App\Mcp\Tool\ListArtifactAssetsTool;
@@ -50,6 +52,7 @@ use App\Service\ArtifactKits;
 use App\Service\ArtifactRenderer;
 use App\Service\ArtifactRunService;
 use App\Service\ArtifactService;
+use App\Service\ArtifactSkills;
 use App\Service\AuditLogger;
 use App\Service\DatasetAccessService;
 use App\Service\JsonPatch;
@@ -90,6 +93,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         private readonly \App\Service\ArtifactRunStreamService $streams,
         private readonly \App\Service\ArtifactRunLinkService $runLinks,
         private readonly ?\App\Service\ArtifactValidationStats $stats = null,
+        private readonly ?ArtifactSkills $skills = null,
     ) {
     }
 
@@ -147,6 +151,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $data instanceof UpdateArtifactTool => $this->update($user, $data, $context),
             $data instanceof PromoteArtifactTool => $this->promote($user, $data),
             $data instanceof GetArtifactTool => $this->get($user, $data),
+            $data instanceof RestoreArtifactVersionTool => $this->restoreVersion($user, $data),
+            $data instanceof GetArtifactSkillTool => $this->skill($data),
             $data instanceof ListArtifactsTool => [
                 'artifacts' => $this->artifacts->listForUser($user, $this->emptyToNull($data->datasetId)),
             ],
@@ -605,6 +611,52 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         return $out;
     }
 
+    /** @return array<string, mixed> */
+    private function restoreVersion(User $user, RestoreArtifactVersionTool $tool): array
+    {
+        $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
+        if ($idOrSlug === null) {
+            throw new BadRequestHttpException('id ou slug requis.');
+        }
+        if ($tool->version === null || $tool->version < 1) {
+            throw new BadRequestHttpException('version requise (numéro lu par get_artifact versions=true).');
+        }
+
+        return $this->artifacts->restoreVersion($user, $idOrSlug, $tool->version);
+    }
+
+    /** @return array<string, mixed> */
+    private function skill(GetArtifactSkillTool $tool): array
+    {
+        if ($this->skills === null) {
+            throw new BadRequestHttpException('Skills indisponibles.');
+        }
+        $name = $this->emptyToNull($tool->name);
+        if ($name === null) {
+            return ['skills' => $this->skills->index(), 'hint' => 'Commencer par name="demarrer".'];
+        }
+        $skill = $this->skills->byName($name);
+        if ($skill === null) {
+            throw new BadRequestHttpException(sprintf('Skill inconnue : %s. Noms disponibles : %s.', $name, implode(', ', array_keys($this->skills->all()))));
+        }
+        $file = $this->emptyToNull($tool->file);
+        if ($file !== null) {
+            if (!isset($skill['files'][$file])) {
+                throw new BadRequestHttpException(sprintf('Fichier inconnu : %s (fichiers : %s).', $file, implode(', ', array_keys($skill['files']))));
+            }
+
+            return ['name' => $name, 'uri' => ArtifactSkills::uri($skill['path'], $file), 'content' => $skill['files'][$file]];
+        }
+
+        return [
+            'name' => $name,
+            'uri' => ArtifactSkills::uri($skill['path']),
+            'description' => (string) ($skill['frontmatter']['description'] ?? ''),
+            'content' => ArtifactSkills::body($skill['files']['SKILL.md']),
+            'files' => array_values(array_filter(array_keys($skill['files']), static fn (string $f): bool => $f !== 'SKILL.md')),
+        ];
+    }
+
     private function get(User $user, GetArtifactTool $tool): array
     {
         $idOrSlug = $this->resolveIdOrSlug($tool->id, $tool->slug);
@@ -612,6 +664,9 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             throw new BadRequestHttpException('id ou slug requis.');
         }
 
+        if ($tool->versions === true) {
+            return ['versions' => $this->artifacts->listVersions($user, $idOrSlug)];
+        }
         $detail = $this->artifacts->getForUser($user, $idOrSlug, $tool->version);
         if ($tool->path === null || $tool->path === '') {
             return $detail;
@@ -829,6 +884,8 @@ final class ArtifactMcpProcessor implements ProcessorInterface
     {
         return match (true) {
             $data instanceof GetArtifactCatalogTool => 'get_artifact_catalog',
+            $data instanceof RestoreArtifactVersionTool => 'restore_artifact_version',
+            $data instanceof GetArtifactSkillTool => 'get_artifact_skill',
             $data instanceof BuildArtifactFromKitTool => 'build_artifact_from_kit',
             $data instanceof FindIconsTool => 'find_icons',
             $data instanceof ValidateArtifactTool => 'validate_artifact',

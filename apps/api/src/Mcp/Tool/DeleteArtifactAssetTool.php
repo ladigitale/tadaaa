@@ -13,6 +13,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
     name: 'delete_artifact_asset',
     description: 'Supprime un asset d’un artefact (`slug` ou `id`, `name`). Les références `@asset:nom` restantes dans le document restent telles quelles (non résolues) : les retirer ou ré-envoyer l’asset.',
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class DeleteArtifactAssetTool
 {

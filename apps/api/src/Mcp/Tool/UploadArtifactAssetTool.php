@@ -25,6 +25,7 @@ Référencer ensuite l'asset dans le document par la valeur exacte `@asset:<name
 Exemple : {"slug":"mon-jeu","name":"heros.png","fetch":{"url":"https://raw.githubusercontent.com/org/repo/main/heros.png","sha256":"…"}}
 DESC,
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class UploadArtifactAssetTool
 {

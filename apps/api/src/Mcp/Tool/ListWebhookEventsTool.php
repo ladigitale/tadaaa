@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'list_webhook_events',
     description: 'Liste le catalogue d’événements webhook normés (types découvrables pour create_webhook).',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class ListWebhookEventsTool
 {

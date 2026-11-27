@@ -20,6 +20,7 @@ Cherche des noms exacts d’icônes pour `sonic-icon` (les noms inventés sont r
 Retourne `{library, names}` ; utilisation : `<sonic-icon library="iconoir" name="trophy" size="lg">`.
 DESC,
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class FindIconsTool
 {

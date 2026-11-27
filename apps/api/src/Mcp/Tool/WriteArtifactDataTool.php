@@ -17,6 +17,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
 Droits : `writeMode` de la collection + membership dataset.
 DESC,
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => false, 'openWorldHint' => false],
 )]
 final class WriteArtifactDataTool
 {

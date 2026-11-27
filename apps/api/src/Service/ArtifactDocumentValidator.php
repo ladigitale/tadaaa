@@ -333,7 +333,7 @@ final class ArtifactDocumentValidator
     private const DEFAULT_CONCORDE_VERSION = '7.0.1';
 
     /** Règles longues, envoyées seulement sur demande (`rules`) quand on filtre. */
-    /** Compétences (config/artifacts/skills/*.md) : servies à la demande par rules=["design", "<archétype>"], jamais par défaut. */
+    /** Compétences de conception (config/artifacts/skills/<nom>/SKILL.md) listées dans le sommaire de l'atelier ; toute skill en fichier se demande aussi par rules=[…]. */
     public const SKILLS = ['design', 'vitrine', 'jeu', 'outil', 'dashboard', 'experience', 'multivue', 'carte'];
     public const LONG_RULES = ['listes', 'a2ui', 'son', 'audio', 'media', 'physique', '3d', '2d', 'procgen', 'monde', 'monde2d', 'mobilier', 'animation', 'appareil', 'bluetooth', 'salons', 'laser', 'ia', 'collecte', 'lieux', 'io', 'image'];
 
@@ -561,7 +561,7 @@ final class ArtifactDocumentValidator
             $payload['recipes'] = $this->recipes();
         }
         if ($rules !== null && $rules !== []) {
-            $skills = $this->skills();
+            $skills = $this->fileSkills();
             foreach ($rules as $name) {
                 if (\is_string($name) && isset($skills[$name])) {
                     $payload['skills'][$name] = $skills[$name]['body'];
@@ -583,22 +583,38 @@ final class ArtifactDocumentValidator
      */
     public function skills(): array
     {
+        $all = $this->fileSkills();
+
+        return array_intersect_key($all, array_fill_keys(self::SKILLS, true));
+    }
+
+    /**
+     * Toutes les skills écrites en fichiers (config/artifacts/skills, un SKILL.md par dossier : conception, actions, pilote),
+     * par nom de frontmatter. Les briques (générées) sont servies par ArtifactSkills ; leur contenu est déjà dans
+     * les règles longues.
+     *
+     * @return array<string, array{description: string, body: string}>
+     */
+    public function fileSkills(): array
+    {
         $dir = \dirname($this->catalogPath).'/skills';
         $out = [];
-        foreach (self::SKILLS as $name) {
-            $file = $dir.'/'.$name.'.md';
-            if (!is_file($file)) {
-                continue;
+        if (!is_dir($dir)) {
+            return [];
+        }
+        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS));
+        $files = [];
+        foreach ($iterator as $file) {
+            if ($file instanceof \SplFileInfo && $file->getFilename() === 'SKILL.md') {
+                $files[] = $file->getPathname();
             }
+        }
+        sort($files);
+        foreach ($files as $file) {
             $text = (string) file_get_contents($file);
-            $description = '';
-            if (preg_match('/\A---\R(.*?)\R---\R(.*)\z/s', $text, $m) === 1) {
-                if (preg_match('/^description:\s*(.+)$/m', $m[1], $d) === 1) {
-                    $description = trim($d[1]);
-                }
-                $text = $m[2];
-            }
-            $out[$name] = ['description' => $description, 'body' => trim($text)];
+            $front = ArtifactSkills::frontmatter($text);
+            $name = \is_string($front['name'] ?? null) ? $front['name'] : basename(\dirname($file));
+            $out[$name] = ['description' => \is_string($front['description'] ?? null) ? $front['description'] : '', 'body' => ArtifactSkills::body($text)];
         }
 
         return $out;

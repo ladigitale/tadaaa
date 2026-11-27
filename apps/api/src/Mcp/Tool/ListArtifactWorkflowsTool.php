@@ -15,6 +15,7 @@ use App\Mcp\Processor\ArtifactWorkflowMcpProcessor;
 Liste les workflows d'artefacts du compte ({slug, title, steps}). Avec `slug` : le workflow complet (définition) et ses 10 derniers runs.
 DESC,
     processor: ArtifactWorkflowMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class ListArtifactWorkflowsTool
 {

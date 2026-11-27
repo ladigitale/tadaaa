@@ -26,6 +26,7 @@ Essai d'un brouillon avant publication : `document` (document complet) + `input`
 Le run est enregistré (get_artifact_run) et déclenche les webhooks artifact.run.completed / artifact.run.failed. Contrats disponibles : list_artifact_tools.
 DESC,
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false, 'openWorldHint' => false],
     // MCP Apps : interface affichée par l'hôte avec le résultat (clé plate gardée pour les hôtes antérieurs).
     meta: ['ui' => ['resourceUri' => ArtifactRunnerUiResource::URI], 'ui/resourceUri' => ArtifactRunnerUiResource::URI],
 )]

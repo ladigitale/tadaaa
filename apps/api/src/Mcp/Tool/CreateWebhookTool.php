@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'create_webhook',
     description: 'Inscrit un webhook HTTP. url http(s) requis. events : liste de types (vide = tous). datasetId optionnel pour restreindre à un jeu. Retourne une seule fois plainSecret (HMAC de l’en-tête X-Tadaaa-Signature) et standardSecret (whsec_…, pour les bibliothèques Standard Webhooks : en-têtes webhook-id, webhook-timestamp, webhook-signature).',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false, 'openWorldHint' => true],
 )]
 final class CreateWebhookTool
 {

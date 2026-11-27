@@ -17,6 +17,7 @@ Crée ou remplace un workflow d'artefacts : enchaînement d'artefacts-outils (co
 Expressions JSONata évaluées sur {input, steps: {<id>: {status, output, files}}, previous} ; input absent : l'entrée du workflow pour la 1re étape, previous ensuite. Une étape `if` fausse est sautée ; une étape `optional` en échec n'arrête pas le workflow. Vérifie la syntaxe JSONata, que chaque artefact existe, déclare io et le mode demandé (version en ligne). 20 étapes max. Lancer : run_artifact_workflow.
 DESC,
     processor: ArtifactWorkflowMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class SaveArtifactWorkflowTool
 {

@@ -1,6 +1,8 @@
 ---
 name: carte
-description: Carte interactive pilotée par DataProviders (sonic-map) : points cliquables, vue publiée, fond de carte, état de la carte. À lire avant d'écrire une carte.
+description: "Carte interactive pilotée par DataProviders (sonic-map) : points cliquables, vue publiée, fond de carte, état de la carte. À lire avant d'écrire une carte."
+metadata:
+  famille: conception
 ---
 `sonic-map` (addon map, MapLibre GL) se pilote entièrement par DataProviders ; aucun code.
 - `points-provider="pts"` : DP `{ "data": [ {"id", "lat", "lon", "label"} ] }`. Ignore les points sans coordonnées (`$f[lat != null]`) ; sans cela ils tombent en (0,0).

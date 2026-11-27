@@ -29,6 +29,7 @@ Retourne `{id, status: "queued", …}` tout de suite ; suivre ensuite avec `get_
 (le serveur MCP redémarre pendant la mise à jour : quelques appels peuvent échouer, réessayer).
 DESC,
     processor: OpsMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => false, 'openWorldHint' => false],
     security: "is_granted('ROLE_ADMIN')",
 )]
 final class TriggerProdUpdateTool

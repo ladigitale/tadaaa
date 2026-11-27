@@ -21,6 +21,7 @@ Relie deux runs en flux : chaque élément de la file d'envoi du run source (`io
 Retourne le lien (linkId, compteurs forwarded / failed, lastError). Le lien s'arrête quand l'un des runs se termine ; get_artifact_run montre les liens d'un run ; unlink_artifact_runs le coupe. 8 liens actifs au plus par run source (une télécommande peut piloter plusieurs scènes).
 DESC,
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false, 'openWorldHint' => false],
 )]
 final class LinkArtifactRunsTool
 {

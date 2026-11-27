@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'activate_dataset',
     description: 'Active un jeu cloud pour les outils MCP (id uuid ou baseId). N’affecte pas l’édition web.',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class ActivateDatasetTool
 {

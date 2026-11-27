@@ -15,6 +15,7 @@ use App\Mcp\Processor\ArtifactWorkflowMcpProcessor;
 Supprime un workflow d'artefacts (`slug`) et l'historique de ses runs. Les artefacts ne sont pas touchés.
 DESC,
     processor: ArtifactWorkflowMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class DeleteArtifactWorkflowTool
 {

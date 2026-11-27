@@ -13,6 +13,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
     name: 'unlink_artifact_runs',
     description: 'Coupe un lien entre runs (link_artifact_runs) : `linkId`. Retourne le lien avec ses compteurs.',
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class UnlinkArtifactRunsTool
 {

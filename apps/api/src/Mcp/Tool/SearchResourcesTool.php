@@ -19,6 +19,7 @@ Cherche dans la bibliothèque de ressources réutilisables : celles du compte (`
 Lire le contenu avec `get_resource`. Exemple : {"kind":"shader","query":"contours caméra"}
 DESC,
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class SearchResourcesTool
 {

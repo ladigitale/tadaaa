@@ -13,6 +13,8 @@
 
 Root scripts: `yarn dev`, `yarn ai:sync`, `yarn api:up`. MorseAttack: `yarn morse:dev` / `yarn morse:test` (port 3100).
 
+MCP artifact skills (served to agents over MCP, SEP-2640): `apps/api/config/artifacts/skills/` (one folder per skill with `SKILL.md`, strict YAML frontmatter; generated "briques" from `briques.json`), registry `App\Service\ArtifactSkills`, server `instructions` in `apps/api/config/packages/mcp.yaml`. See `docs/artifact-skills.md`.
+
 Prod edge (`deploy/Caddyfile.edge`): the `agent_ready` snippet serves the agent files of each SPA `public/` (robots, sitemap, llms.txt, `*.md`, `.well-known/`) and answers a real 404 outside `@spa_route`. A new top-level folder under `apps/web/src/app/routes/` must be added to `@spa_route` of the app site block.
 
 ---

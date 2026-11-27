@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'update_link_detector',
     description: 'Met à jour un détecteur de liens du compte (name, pattern, urlTemplate). Voir list_link_detectors.',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class UpdateLinkDetectorTool
 {

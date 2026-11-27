@@ -19,6 +19,7 @@ Messages : `{"type":"action","name":"<action déclarée>","payload":…}` (rédu
 Pour des évolutions longues ou rapides, préférer une partition (score) aux messages un par un : elle se joue à pleine vitesse chez le viewer. Débit max : io.stream.rate messages/s. Un émetteur sans compte utilise POST /api/public/artifacts/{slug}/runs/{runId}/events avec stream.emitToken (Bearer).
 DESC,
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false, 'openWorldHint' => false],
 )]
 final class StreamArtifactEventsTool
 {

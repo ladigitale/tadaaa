@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'create_link_detector',
     description: 'Ajoute un détecteur de liens au compte. pattern = regexp JS/PHP sans flags, 1er groupe = id ; urlTemplate doit contenir {id}. Ex. name="Redmine", pattern="RM-(\\\\d+)", urlTemplate="https://redmine.example/issues/{id}".',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false, 'openWorldHint' => false],
 )]
 final class CreateLinkDetectorTool
 {

@@ -15,6 +15,7 @@ use App\Mcp\Processor\ArtifactWorkflowMcpProcessor;
 Lit un run de workflow d'artefacts (`workflowRunId`) : statut, étapes (status, runId, output, files), étape en attente (`waiting` : url, runToken), sortie. `cancel: true` annule le run (et le run de l'étape en attente).
 DESC,
     processor: ArtifactWorkflowMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => false, 'openWorldHint' => false],
 )]
 final class GetArtifactWorkflowRunTool
 {

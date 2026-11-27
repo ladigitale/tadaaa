@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'bulk_update_todos',
     description: 'Applique un patch (done, archived, priority, tagIds…) à toutes les tâches correspondant au filtre.',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class BulkUpdateTodosTool
 {

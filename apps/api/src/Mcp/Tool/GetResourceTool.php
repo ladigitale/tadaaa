@@ -21,6 +21,7 @@ Contenu : shader, données JSON et scène JSON sont renvoyés en texte (`content
 Quand tu copies le contenu dans un artefact (fichier de `files`), note sa provenance dans `resources` du document : {"<fichier>": {"ref", "version", "sha256"}} avec les valeurs de la fiche, pour que l'utilisateur soit prévenu des mises à jour.
 DESC,
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class GetResourceTool
 {

@@ -1,6 +1,8 @@
 ---
 name: vitrine
-description: Site vitrine, landing, one-page qui défile, page d'événement, portfolio, CV, récit éditorial, diaporama. Structure de sections, héros, typographie expressive, révélations au défilement, fonds shader ou procéduraux.
+description: "Site vitrine, landing, one-page qui défile, page d'événement, portfolio, CV, récit éditorial, diaporama. Structure de sections, héros, typographie expressive, révélations au défilement, fonds shader ou procéduraux."
+metadata:
+  famille: conception
 ---
 Prérequis : la compétence `design` (demande `rules=["design","vitrine"]` ensemble), puis les règles du catalogue utiles (`["listes","animation"]`). Une vitrine se juge en 5 secondes sur téléphone : qui, quoi, pourquoi maintenant, que faire.
 

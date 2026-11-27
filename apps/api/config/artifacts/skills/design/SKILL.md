@@ -1,8 +1,10 @@
 ---
 name: design
-description: À lire en premier avant toute interface visible. Ce qui marche vraiment pour styler un artefact (style inline, jetons, palettes de zone), le brief, le choix de l'archétype (vitrine, jeu, outil, dashboard, expérience), la checklist et le contrôle visuel.
+description: "À lire en premier avant toute interface visible. Ce qui marche vraiment pour styler un artefact (style inline, jetons, palettes de zone), le brief, le choix de l'archétype (vitrine, jeu, outil, dashboard, expérience), la checklist et le contrôle visuel."
+metadata:
+  famille: conception
 ---
-Fondations communes à tous les artefacts. Lis ensuite UNE compétence d'archétype (§3). Tout ce qui suit a été vérifié dans le viewer (Concorde 5.1, creative-stack).
+Fondations communes à tous les artefacts. Lis ensuite UNE compétence d'archétype (§3). Tout ce qui suit a été vérifié dans le viewer (Concorde 7, creative-stack).
 
 ## 1. Comment on style ici (faits vérifiés)
 - **Le style inline est la voie normale.** `attributes.style` accepte tout le CSS moderne : grid, flex, `clamp()`, `min()`, `color-mix()`, dégradés, `backdrop-filter`, `box-shadow`, `aspect-ratio`, `position:sticky`, `text-wrap:balance`, `font-variant-numeric`, `container-type` + unités `cqi`. Pas de `<style>`, pas de feuille CSS.

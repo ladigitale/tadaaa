@@ -13,6 +13,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
     name: 'delete_resource',
     description: 'Supprime une ressource du compte (`slug`) avec toutes ses versions. Les artefacts qui en ont déjà copié le contenu ne sont pas modifiés. Les ressources de base ne se suppriment pas.',
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class DeleteResourceTool
 {

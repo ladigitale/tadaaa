@@ -1,6 +1,8 @@
 ---
 name: dashboard
-description: Tableaux de bord, KPI, rapports chiffrés, suivi en direct : hiérarchie des chiffres, grille de panneaux, graphiques sonic-plot (line, area, bar, barh, scatter, pie, donut, histogram, heatmap, sparkline) pilotés par DataProvider, filtres en radios, survol et clic publiés, formats de nombres, données collectées.
+description: 'Tableaux de bord, KPI, rapports chiffrés, suivi en direct : hiérarchie des chiffres, grille de panneaux, graphiques sonic-plot (line, area, bar, barh, scatter, pie, donut, histogram, heatmap, sparkline) pilotés par DataProvider, filtres en radios, survol et clic publiés, formats de nombres, données collectées.'
+metadata:
+  famille: conception
 ---
 Prérequis : la compétence `design` (demande `rules=["design","dashboard"]` ensemble) et la règle `["listes"]`. Un dashboard répond à 3 questions en 5 secondes : ça va ? qu'est-ce qui a changé ? où regarder ? Les bibliothèques de graphiques du catalogue `scripts` se chargent mais ne peuvent pas être appelées (aucun JS) : les graphiques sont des `sonic-plot` (§2), les autres recettes servent aux visuels sur mesure.
 
