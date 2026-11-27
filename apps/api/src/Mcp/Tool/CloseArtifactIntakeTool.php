@@ -13,6 +13,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
     name: 'close_artifact_intake',
     description: 'Ferme immédiatement une collecte contrôlée (plus aucun envoi anonyme). `purge: true` supprime aussi tous les records de la collection. `rotateReadToken: true` invalide l’ancien lien secret de lecture.',
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class CloseArtifactIntakeTool
 {

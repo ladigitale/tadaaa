@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'create_tag',
     description: 'Crée une étiquette (name, color).',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false, 'openWorldHint' => false],
 )]
 final class CreateTagTool
 {

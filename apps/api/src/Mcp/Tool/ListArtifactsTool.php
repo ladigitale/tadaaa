@@ -13,6 +13,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
     name: 'list_artifacts',
     description: 'Liste les artefacts accessibles (datasets lisibles). Filtre optionnel `datasetId`.',
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class ListArtifactsTool
 {

@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'list_todos',
     description: 'Liste les tâches du jeu cloud actif MCP (filtre status/q).',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class ListTodosTool
 {

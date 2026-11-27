@@ -13,6 +13,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
     name: 'list_artifact_tools',
     description: 'Liste les artefacts lisibles qui déclarent un contrat `io` (utilisables comme outils) : `{slug, id, title, description, modes, inputSchema, outputSchema}` (JSON Schema). `datasetId` optionnel. Pour en exécuter un : run_artifact.',
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class ListArtifactToolsTool
 {

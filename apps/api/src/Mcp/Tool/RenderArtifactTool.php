@@ -24,6 +24,7 @@ Exemple :
 ```
 DESC,
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class RenderArtifactTool
 {

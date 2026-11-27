@@ -1,6 +1,8 @@
 ---
 name: multivue
-description: Interfaces à plusieurs panneaux ou vues (onglets, liste + détail, modal, carte + liste) avec un état partagé. À lire avant d'écrire des onglets, un modal ou une sélection.
+description: "Interfaces à plusieurs panneaux ou vues (onglets, liste + détail, modal, carte + liste) avec un état partagé. À lire avant d'écrire des onglets, un modal ou une sélection."
+metadata:
+  famille: conception
 ---
 ## Principe : un store `etat`, des vues qui le lisent
 Un store (`data.stores.etat = {initial, reducer}`) porte l'état d'interface ; les actions sont envoyées par `sonic-action` (`target:"etat"`, `type`, `payload`). Le réducteur gère les événements ; les simples choix (onglet sans modal, filtre, sélection dans une liste) s'écrivent directement dans le même store par des radios Concorde (`formDataProvider="etat" name="…" value="…" radio`, voir `design` §1 bis), dont l'état actif s'affiche seul. Ne stocke que des identifiants (`sel`) ; les fiches se retrouvent par filtre JSONata (sonic-jsonata, outputProvider "fiche").

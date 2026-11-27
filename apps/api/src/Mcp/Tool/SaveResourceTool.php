@@ -21,6 +21,7 @@ Contenu, un seul des deux : `content` (texte : shader, JSON) ou `contentBase64` 
 Retourne la fiche (`ref`, `version`, `created`, `changed`). Exemple : {"kind":"shader","name":"Plasma lent","tags":["fond"],"prompt":"un plasma très lent","from":"base:shader/plasma","content":"void mainImage(out vec4 o, in vec2 f){ … }"}
 DESC,
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false, 'openWorldHint' => false],
 )]
 final class SaveResourceTool
 {

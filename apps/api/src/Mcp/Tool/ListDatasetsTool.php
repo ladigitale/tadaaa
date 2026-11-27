@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'list_datasets',
     description: 'Liste les jeux de données cloud du compte (indique le jeu actif MCP).',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class ListDatasetsTool
 {

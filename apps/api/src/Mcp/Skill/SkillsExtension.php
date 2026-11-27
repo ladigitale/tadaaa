@@ -1,0 +1,27 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Mcp\Skill;
+
+use Mcp\Schema\Extension\ServerExtensionInterface;
+
+/**
+ * Déclaration de l'extension Skills (SEP-2640) dans `capabilities.extensions` : le client peut appeler skills/list
+ * et skills/get (SkillsRequestListener). Pas de resources/directory/read : chaque entrée de skills/list donne déjà
+ * le manifeste complet des fichiers.
+ */
+final class SkillsExtension implements ServerExtensionInterface
+{
+    public const ID = 'io.modelcontextprotocol/skills';
+
+    public function getId(): string
+    {
+        return self::ID;
+    }
+
+    public function getCapabilities(): array
+    {
+        return ['directoryRead' => false];
+    }
+}

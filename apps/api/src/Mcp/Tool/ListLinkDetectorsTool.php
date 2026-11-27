@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'list_link_detectors',
     description: 'Liste les détecteurs de liens du compte. Chaque détecteur transforme un jeton (regexp + groupe capturant) en URL ({id}) dans le texte et les descriptions des tâches (affichage web).',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class ListLinkDetectorsTool
 {

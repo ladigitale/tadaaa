@@ -13,6 +13,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
     name: 'list_artifact_assets',
     description: 'Liste les assets binaires d’un artefact (`slug` ou `id`) : `{name, contentType, sizeBytes, sha256, ref}` où `ref` est la valeur `@asset:nom` à placer dans le document.',
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class ListArtifactAssetsTool
 {

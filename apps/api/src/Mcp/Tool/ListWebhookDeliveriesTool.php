@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'list_webhook_deliveries',
     description: 'Liste les derniers appels (succès / échecs) d’un webhook.',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class ListWebhookDeliveriesTool
 {

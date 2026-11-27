@@ -24,6 +24,7 @@ Une règle compte une fois par document. Règles : `refus:<balise>` (balise remp
 Seuls des compteurs sont gardés : ni document ni utilisateur.
 DESC,
     processor: OpsMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
     security: "is_granted('ROLE_ADMIN')",
 )]
 final class GetArtifactValidationStatsTool

@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'delete_webhook',
     description: 'Désinscrit (supprime) un webhook par id.',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class DeleteWebhookTool
 {

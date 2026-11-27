@@ -20,6 +20,7 @@ Exemple :
 ```
 DESC,
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class PromoteArtifactTool
 {

@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'list_tags',
     description: 'Liste les étiquettes du jeu cloud actif.',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class ListTagsTool
 {

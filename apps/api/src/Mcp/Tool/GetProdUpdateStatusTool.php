@@ -26,6 +26,7 @@ Aussi : `command`, `fromSha` / `toSha` (commit de Tadaaa avant / après), `exitC
 `startedAt`, `finishedAt`, `lastStep` (dernière étape du script) et `log`.
 DESC,
     processor: OpsMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
     security: "is_granted('ROLE_ADMIN')",
 )]
 final class GetProdUpdateStatusTool

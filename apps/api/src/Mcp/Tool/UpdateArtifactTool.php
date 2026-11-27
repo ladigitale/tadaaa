@@ -27,6 +27,7 @@ Exemples :
 ```
 DESC,
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class UpdateArtifactTool
 {

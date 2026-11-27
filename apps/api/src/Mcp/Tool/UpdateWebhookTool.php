@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'update_webhook',
     description: 'Met à jour un webhook (url, events, active, datasetId). Passer datasetId vide pour le rendre account-wide.',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => true],
 )]
 final class UpdateWebhookTool
 {

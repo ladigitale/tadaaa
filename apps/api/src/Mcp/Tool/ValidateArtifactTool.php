@@ -20,6 +20,7 @@ Exemple (erreur volontaire) :
 ```
 DESC,
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class ValidateArtifactTool
 {

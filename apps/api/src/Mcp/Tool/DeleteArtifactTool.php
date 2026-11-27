@@ -13,6 +13,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
     name: 'delete_artifact',
     description: 'Supprime un artefact (writer du dataset). `id` ou `slug`.',
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => true, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class DeleteArtifactTool
 {

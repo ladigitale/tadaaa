@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'copy_todo',
     description: 'Duplique une tâche du jeu cloud actif MCP (texte, description, priorité, tags, parent, dates, récurrence). La copie est non terminée et non archivée. includeChildren=true copie aussi les sous-tâches (reparentées sous la nouvelle tâche).',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false, 'openWorldHint' => false],
 )]
 final class CopyTodoTool
 {

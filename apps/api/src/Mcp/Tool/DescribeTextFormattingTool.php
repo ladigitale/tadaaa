@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'describe_text_formatting',
     description: 'Guide de formatage des descriptions de tâches pour agents : Markdown basique supporté à l’affichage web, et jetons transformés en liens via les détecteurs du compte (list_link_detectors / create_link_detector).',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class DescribeTextFormattingTool
 {

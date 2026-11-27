@@ -13,6 +13,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
     name: 'open_artifact_intake',
     description: 'Ouvre (ou prolonge) une collecte contrôlée sur une collection déclarée avec `intake` dans data.sources. Les envois anonymes ne sont acceptés que pendant `minutes` (1…1440, défaut 60), dans la limite de `maxRecords` (défaut : celui du schéma, plafond 500). Retourne l’état, le code de session si `requireCode`, et `readToken` (lien secret de lecture : ajouter `&rk=<readToken>` à l’URL de l’artefact).',
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class OpenArtifactIntakeTool
 {

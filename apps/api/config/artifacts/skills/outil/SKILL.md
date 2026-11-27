@@ -1,6 +1,8 @@
 ---
 name: outil
-description: Interfaces expertes et multi-pages (back-office, catalogue filtrable, recherche, CRUD, configurateur, formulaire long, gestion de stock ou de planning) : densité, barre d'outils, filtres, liste/détail, tables, raccourcis, formulaires. À combiner avec multivue.
+description: "Interfaces expertes et multi-pages (back-office, catalogue filtrable, recherche, CRUD, configurateur, formulaire long, gestion de stock ou de planning) : densité, barre d'outils, filtres, liste/détail, tables, raccourcis, formulaires. À combiner avec multivue."
+metadata:
+  famille: conception
 ---
 Prérequis : les compétences `design` et `multivue` (demande `rules=["design","outil","multivue","listes"]` ensemble : mécanique onglets, modal, état partagé), la règle `listes` (sonic-list, gabarits, filtres). Un outil se juge à la vitesse d'une tâche répétée : trouver, comparer, modifier, recommencer.
 

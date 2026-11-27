@@ -13,6 +13,7 @@ use App\Mcp\Processor\ArtifactMcpProcessor;
     name: 'read_artifact_data',
     description: 'Lit les records d’une collection (`slug` + `collection`). Respecte le scope `per_user` (uniquement vos records). `sort` (ex. "-score,nom" : champs de data ou createdAt/updatedAt, - = décroissant) et `limit` (≤ 500) trient et bornent côté serveur.',
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class ReadArtifactDataTool
 {

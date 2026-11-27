@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'list_webhooks',
     description: 'Liste les webhooks HTTP du compte (URL, events, dataset optionnel, échecs).',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => true, 'openWorldHint' => false],
 )]
 final class ListWebhooksTool
 {

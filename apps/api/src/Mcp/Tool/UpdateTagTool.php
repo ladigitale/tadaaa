@@ -13,6 +13,7 @@ use App\Mcp\Processor\CloudTodoMcpProcessor;
     name: 'update_tag',
     description: 'Met à jour une étiquette (name, color). Couleurs : default, primary, neutral, warning, info, success, danger, contrast.',
     processor: CloudTodoMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false],
 )]
 final class UpdateTagTool
 {

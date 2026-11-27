@@ -20,6 +20,7 @@ Exemple : `{"kit": "quiz", "params": {"title": "Capitales", "timer": 10, "speed"
 Avec preset : `{"kit": "grid", "params": {"preset": "snake"}}`
 DESC,
     processor: ArtifactMcpProcessor::class,
+    annotations: ['readOnlyHint' => false, 'destructiveHint' => false, 'idempotentHint' => false, 'openWorldHint' => false],
 )]
 final class BuildArtifactFromKitTool
 {
