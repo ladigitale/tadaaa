@@ -1,7 +1,9 @@
 # config/packages/mcp.yaml
 mcp:
     app: tadaaa
-    version: '0.4.0'
+    version: '0.4.1'
+    # 61 outils, 52 ressources : une seule page pour les clients qui ne suivent pas nextCursor.
+    pagination_limit: 200
     description: 'Tadaaa — todos & tags cloud + publication d’artefacts SDUI Concorde (get_artifact_catalog, validate_artifact, publish_artifact, …). Markdown basique + détecteurs de liens (describe_text_formatting).'
     # Pilote lu par le client à la connexion : où commencer, quelle skill pour quelle tâche, règles d'or.
     instructions: |

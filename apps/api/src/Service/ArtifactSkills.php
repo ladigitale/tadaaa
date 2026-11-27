@@ -75,6 +75,49 @@ final class ArtifactSkills
         return null;
     }
 
+    /**
+     * Enfants directs d'un dossier de l'espace skill:// (resources/directory/read) : fichiers avec leur fiche,
+     * sous-dossiers en inode/directory. Null si l'URI n'est pas un dossier servi.
+     *
+     * @return list<array{uri: string, name: string, mimeType: string, size?: int}>|null
+     */
+    public function directory(string $uri): ?array
+    {
+        if (!str_starts_with($uri, self::SCHEME)) {
+            return null;
+        }
+        $dir = trim(substr($uri, \strlen(self::SCHEME)), '/');
+        if ($dir === '' || $uri !== rtrim($uri, '/')) {
+            return null;
+        }
+        $files = [];
+        $dirs = [];
+        $found = false;
+        foreach ($this->all() as $skill) {
+            foreach ($skill['files'] as $file => $content) {
+                $path = $skill['path'].'/'.$file;
+                if (!str_starts_with($path, $dir.'/')) {
+                    continue;
+                }
+                $found = true;
+                $rest = substr($path, \strlen($dir) + 1);
+                $segment = explode('/', $rest, 2)[0];
+                if (str_contains($rest, '/')) {
+                    $dirs[$segment] = ['uri' => self::SCHEME.$dir.'/'.$segment, 'name' => $segment, 'mimeType' => 'inode/directory'];
+                } else {
+                    $files[$segment] = ['uri' => self::SCHEME.$path, 'name' => $segment, 'mimeType' => str_ends_with($segment, '.md') ? 'text/markdown' : (str_ends_with($segment, '.json') ? 'application/json' : 'text/plain'), 'size' => \strlen($content)];
+                }
+            }
+        }
+        if (!$found) {
+            return null;
+        }
+        ksort($files);
+        ksort($dirs);
+
+        return array_values($files + $dirs);
+    }
+
     public static function uri(string $path, string $file = 'SKILL.md'): string
     {
         return self::SCHEME.$path.'/'.$file;
