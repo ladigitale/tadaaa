@@ -8,8 +8,7 @@ use Mcp\Schema\Extension\ServerExtensionInterface;
 
 /**
  * Déclaration de l'extension Skills (SEP-2640) dans `capabilities.extensions` : le client peut appeler skills/list
- * et skills/get (SkillsRequestListener). Pas de resources/directory/read : chaque entrée de skills/list donne déjà
- * le manifeste complet des fichiers.
+ * et skills/get, et resources/directory/read sur tout dossier de l'espace skill:// (SkillsRequestListener).
  */
 final class SkillsExtension implements ServerExtensionInterface
 {
@@ -22,6 +21,6 @@ final class SkillsExtension implements ServerExtensionInterface
 
     public function getCapabilities(): array
     {
-        return ['directoryRead' => false];
+        return ['directoryRead' => true];
     }
 }

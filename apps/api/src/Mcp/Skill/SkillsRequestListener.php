@@ -11,7 +11,7 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
- * Méthodes skills/list et skills/get de l'extension Skills (SEP-2640) sur le point MCP HTTP.
+ * Méthodes skills/list, skills/get et resources/directory/read de l'extension Skills (SEP-2640) sur le point MCP HTTP.
  *
  * Le SDK MCP (mcp/sdk 0.6) refuse toute méthode JSON-RPC absente de sa liste fixe (MessageFactory) avant même
  * d'appeler les gestionnaires enregistrés : ces deux requêtes sont donc servies ici, après le pare-feu
@@ -21,7 +21,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
 #[AsEventListener(event: KernelEvents::REQUEST, priority: 4)]
 final class SkillsRequestListener
 {
-    public const METHODS = ['skills/list', 'skills/get'];
+    public const METHODS = ['skills/list', 'skills/get', 'resources/directory/read'];
 
     /** Durée de fraîcheur annoncée (ttlMs) : les skills changent au déploiement seulement. */
     private const TTL_MS = 300000;
@@ -40,7 +40,7 @@ final class SkillsRequestListener
             return;
         }
         $raw = (string) $request->getContent();
-        if ($raw === '' || $raw[0] !== '{' || !str_contains($raw, '"skills/')) {
+        if ($raw === '' || $raw[0] !== '{' || (!str_contains($raw, '"skills/') && !str_contains($raw, '"resources/directory/read"'))) {
             return;
         }
         $message = json_decode($raw, true);
@@ -78,6 +78,22 @@ final class SkillsRequestListener
         }
 
         $uri = \is_string($params['uri'] ?? null) ? $params['uri'] : '';
+        if ($message['method'] === 'resources/directory/read') {
+            $children = $uri !== '' ? $this->skills->directory($uri) : null;
+            if ($children === null) {
+                return ['jsonrpc' => '2.0', 'id' => $id, 'error' => [
+                    'code' => -32602,
+                    'message' => $uri === '' ? 'params.uri requis (URI d\'un dossier skill://).' : sprintf('Dossier inconnu : %s', $uri),
+                ]];
+            }
+
+            return ['jsonrpc' => '2.0', 'id' => $id, 'result' => [
+                'resultType' => 'complete',
+                'resources' => $children,
+                'ttlMs' => self::TTL_MS,
+                'cacheScope' => 'public',
+            ]];
+        }
         $skill = $uri !== '' ? $this->skills->byUri($uri) : null;
         if ($skill === null) {
             return ['jsonrpc' => '2.0', 'id' => $id, 'error' => [

@@ -133,6 +133,16 @@ final class ArtifactSkillsTest extends TestCase
         $get = $listener->handle(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'skills/get', 'params' => ['uri' => 'skill://briques/audio/SKILL.md']]);
         self::assertSame('audio', $get['result']['skill']['frontmatter']['name']);
 
+        $dir = $listener->handle(['jsonrpc' => '2.0', 'id' => 4, 'method' => 'resources/directory/read', 'params' => ['uri' => 'skill://demarrer']]);
+        self::assertSame(['SKILL.md', 'references'], array_column($dir['result']['resources'], 'name'));
+        self::assertSame('inode/directory', $dir['result']['resources'][1]['mimeType']);
+        $refs = $listener->handle(['jsonrpc' => '2.0', 'id' => 5, 'method' => 'resources/directory/read', 'params' => ['uri' => 'skill://demarrer/references']]);
+        self::assertSame('skill://demarrer/references/outils.md', $refs['result']['resources'][0]['uri']);
+        $prefix = $listener->handle(['jsonrpc' => '2.0', 'id' => 6, 'method' => 'resources/directory/read', 'params' => ['uri' => 'skill://actions']]);
+        self::assertContains('modifier-artefact', array_column($prefix['result']['resources'], 'name'));
+        $file = $listener->handle(['jsonrpc' => '2.0', 'id' => 7, 'method' => 'resources/directory/read', 'params' => ['uri' => 'skill://demarrer/SKILL.md']]);
+        self::assertSame(-32602, $file['error']['code']);
+
         $missing = $listener->handle(['jsonrpc' => '2.0', 'id' => 3, 'method' => 'skills/get', 'params' => ['uri' => 'skill://inconnue/SKILL.md']]);
         self::assertSame(-32602, $missing['error']['code']);
     }

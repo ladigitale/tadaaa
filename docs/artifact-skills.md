@@ -9,7 +9,7 @@ Les agents qui écrivent des artefacts sont guidés par des Agent Skills servies
 |---|---|
 | `instructions` du serveur (le pilote : où commencer, règles d'or) | `apps/api/config/packages/mcp.yaml` |
 | extension déclarée dans `capabilities.extensions["io.modelcontextprotocol/skills"]` | `SkillsExtension`, passe de compilation dans `Kernel` |
-| `skills/list`, `skills/get` (manifeste complet, empreintes sha256) | `SkillsRequestListener` (le SDK 0.6 refuse les méthodes inconnues : servies avant lui, après le pare-feu) |
+| `skills/list`, `skills/get` (manifeste complet, empreintes sha256), `resources/directory/read` (`directoryRead: true`) | `SkillsRequestListener` (le SDK 0.6 refuse les méthodes inconnues : servies avant lui, après le pare-feu) |
 | ressources `skill://<chemin>/SKILL.md` et fichiers annexes | `SkillLoader` (`resources/list`, `resources/read`) |
 | outil `get_artifact_skill` (clients sans ressources) | `GetArtifactSkillTool` |
 | `get_artifact_catalog rules=[…]` (skills en fichiers) | `ArtifactDocumentValidator::fileSkills()` |
