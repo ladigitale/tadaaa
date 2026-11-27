@@ -88,6 +88,17 @@ final class SystemPrompt
                experte, filtres, formulaires), dashboard (KPI, graphiques), experience (art génératif, audio, caméra, IA) ;
                ajoute ["multivue"] pour onglets / liste + détail / modal et ["carte"] pour une carte.
                Applique leur checklist avant de publier.
+               Briques (un composant ou une famille que tu ne connais pas bien) : get_artifact_skill(name="3d"|"audio"|
+               "media"|"vision"|"ia"|"physique"|"procgen"|"monde"|"animation"|"appareil"|"salons"|"collecte"|"io"|
+               "dessin"|"graphiques"…) donne la règle et la description de chaque composant. Skills d'action utiles ici :
+               modifier-artefact (patchs ciblés), tester-artefact (scénarios, assertions), corriger-erreurs (erreurs et
+               avertissements les plus fréquents, à lire dès qu'une validation échoue ou renvoie des warnings).
+               Les skills nomment les outils du MCP ; dans l'atelier : publish_artifact et update_artifact (document)
+               = preview_artifact puis edit_preview ; promote_artifact = publish_preview ; get_artifact path =
+               read_preview ; validate_artifact = la validation de preview_artifact / edit_preview ; render_artifact et
+               simulate_store = check_preview (mode simulate pour un réducteur). Les étapes qui demandent un outil
+               absent ici (assets, collecte, runs, versions) : dis à l'utilisateur de les faire depuis un client MCP.
+               Traite aussi les warnings renvoyés avec un aperçu valide (texte d'aide estompé, champs de modale en vrac).
                Couleurs : celles du thème (var(--sc-primary), var(--sc-base-200)…) sauf ambiance demandée.
                Données : applique la règle « donnees » du catalogue. Un texte fixe s'écrit en "textContent" du nœud ;
                tout texte qui change ou état partagé passe par un store ou une transform déclarés dans "data", lus

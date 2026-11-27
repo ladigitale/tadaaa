@@ -106,6 +106,21 @@ final class ArtifactSkillsTest extends TestCase
         }
     }
 
+    public function testAtelierPromptNamesExistingSkills(): void
+    {
+        $prompt = \App\Agent\SystemPrompt::artifacts(new \DateTimeImmutable(), [], '', '');
+        self::assertStringContainsString('get_artifact_skill', $prompt);
+        preg_match('/get_artifact_skill\(name=(.*?)…\)/s', $prompt, $m);
+        preg_match_all('/"([a-z0-9-]+)"/', $m[1] ?? '', $names);
+        preg_match_all('/\b(modifier-artefact|tester-artefact|corriger-erreurs)\b/', $prompt, $actions);
+        $skills = self::skills();
+        self::assertGreaterThan(10, \count($names[1]));
+        foreach ([...$names[1], ...$actions[1]] as $name) {
+            self::assertNotNull($skills->byName($name), 'prompt de l\'atelier : '.$name);
+        }
+        self::assertContains(\App\Mcp\Tool\GetArtifactSkillTool::class, \App\Agent\ToolboxFactory::ARTIFACT_TOOLS);
+    }
+
     public function testLoaderRegistersOneResourcePerFile(): void
     {
         $skills = self::skills();

@@ -46,6 +46,8 @@ final class ToolboxFactory
     /** @var list<class-string> */
     public const ARTIFACT_TOOLS = [
         Tool\GetArtifactCatalogTool::class,
+        // Skills (même contenu que skill:// du MCP) : actions, briques par famille de composants.
+        Tool\GetArtifactSkillTool::class,
         Tool\FindIconsTool::class,
         Tool\ListArtifactsTool::class,
         // Métadonnées (titre, visibilité). Le document passe par le brouillon :

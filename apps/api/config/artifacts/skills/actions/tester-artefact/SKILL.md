@@ -9,6 +9,7 @@ metadata:
 
 ## 1. Validation (statique)
 - `validate_artifact(document)` → `{valid, errors: [{path, message}], warnings}`. Les messages nomment souvent la correction (recette, icône proche, prop attendue). Voir `corriger-erreurs`.
+- Un document valide peut porter des `warnings` (texte d'aide estompé, champs en vrac, onglet en action, pointerdown) : les traiter comme des erreurs avant de livrer (`corriger-erreurs`).
 - La validation ne voit pas : noms de DataProvider mal écrits, JSONata faux à l'exécution, GLSL qui ne compile pas, mise en page.
 
 ## 2. Réducteurs (sans navigateur)
