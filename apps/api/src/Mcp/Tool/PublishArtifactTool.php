@@ -42,7 +42,7 @@ final class PublishArtifactTool
 {
     /**
      * @param array<string, mixed>|null $document
-     * @param list<string>|null         $tags
+     * @param list<string>|string|null  $tags noms ; une chaîne (JSON ou « Jeu, 3D ») est aussi acceptée
      */
     public function __construct(
         public string $title = '',
@@ -51,7 +51,7 @@ final class PublishArtifactTool
         public ?string $slug = null,
         public string $visibility = 'private',
         public ?string $description = null,
-        public ?array $tags = null,
+        public array|string|null $tags = null,
     ) {
     }
 }

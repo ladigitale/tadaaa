@@ -21,13 +21,15 @@ final class ArtifactTagsTest extends TestCase
         self::assertSame(['Jeu', 'Jeu 3D'], ArtifactTags::normalizeNames(['  Jeu ', 'jeu', 'Jeu   3D', '']));
         self::assertSame([], ArtifactTags::normalizeNames(null));
         self::assertSame([], ArtifactTags::normalizeNames([]));
+        // liste envoyée en texte par un client dont le schéma d'outil est en retard
+        self::assertSame(['Jeu', '3D'], ArtifactTags::normalizeNames('["Jeu","3D"]'));
+        self::assertSame(['Jeu', '3D'], ArtifactTags::normalizeNames('Jeu, 3D'));
     }
 
     /** @return iterable<string, array{mixed}> */
     public static function invalid(): iterable
     {
         yield 'pas une liste' => [['a' => 'Jeu']];
-        yield 'chaîne seule' => ['Jeu'];
         yield 'nombre' => [[3]];
         yield 'trop long' => [[str_repeat('x', 41)]];
         yield 'trop nombreux' => [['a', 'b', 'c', 'd', 'e', 'f', 'g']];
