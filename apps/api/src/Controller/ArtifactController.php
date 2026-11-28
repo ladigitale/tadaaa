@@ -72,6 +72,7 @@ final class ArtifactController extends AbstractController
             \is_string($body['description'] ?? null) ? $body['description'] : null,
             $request->getClientIp(),
             JsonShape::emptyObjectPathsInJson($request->getContent(), '/document'),
+            \is_array($body['tags'] ?? null) ? $body['tags'] : null,
         );
 
         return $this->json($created, 201, [], self::JSON_CONTEXT);

@@ -16,6 +16,7 @@ Publie un nouvel artefact SDUI. Valide le document avant enregistrement ; refuse
 
 - `datasetId` : optionnel : par défaut le jeu « Artefacts » (créé automatiquement, non supprimable).
 - `visibility` : `private` | `link` | `public`
+- `tags` : catégories, noms d'étiquettes de l'espace (ex. `["Jeu"]`, `["Instrument", "Audio"]`, 6 au plus) ; un nom inconnu crée l'étiquette. La première est la catégorie affichée sur les cartes de la vitrine : toujours en donner une (Jeu, Instrument, Outil, Dessin, Musique, Visualisation, Expérience…).
 - Retourne `{id, slug, url, version}` — `url` absolue (viewer Artefacts).
 
 Exemple minimal :
@@ -39,7 +40,10 @@ DESC,
 )]
 final class PublishArtifactTool
 {
-    /** @param array<string, mixed>|null $document */
+    /**
+     * @param array<string, mixed>|null $document
+     * @param list<string>|null         $tags
+     */
     public function __construct(
         public string $title = '',
         public ?array $document = null,
@@ -47,6 +51,7 @@ final class PublishArtifactTool
         public ?string $slug = null,
         public string $visibility = 'private',
         public ?string $description = null,
+        public ?array $tags = null,
     ) {
     }
 }

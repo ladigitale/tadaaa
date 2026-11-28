@@ -59,6 +59,15 @@ class Artifact
     #[ORM\Column]
     private \DateTimeImmutable $updatedAt;
 
+    /**
+     * Étiquettes de l'espace (`Tag`) qui servent de catégories : la première est la catégorie
+     * principale (vitrine, galerie).
+     *
+     * @var list<string>
+     */
+    #[ORM\Column(type: 'json')]
+    private array $tagIds = [];
+
     /** @var Collection<int, ArtifactVersion> */
     #[ORM\OneToMany(mappedBy: 'artifact', targetEntity: ArtifactVersion::class, orphanRemoval: true)]
     #[ORM\OrderBy(['version' => 'ASC'])]
@@ -125,6 +134,21 @@ class Artifact
     public function setDescription(?string $description): static
     {
         $this->description = $description;
+        $this->touch();
+
+        return $this;
+    }
+
+    /** @return list<string> */
+    public function getTagIds(): array
+    {
+        return array_values(array_filter($this->tagIds, 'is_string'));
+    }
+
+    /** @param list<string> $tagIds */
+    public function setTagIds(array $tagIds): static
+    {
+        $this->tagIds = array_values(array_unique(array_values($tagIds)));
         $this->touch();
 
         return $this;

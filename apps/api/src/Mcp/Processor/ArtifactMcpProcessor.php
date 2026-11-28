@@ -247,6 +247,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             $this->emptyToNull($tool->description),
             null,
             $this->rawArguments->emptyObjects($context, 'publish_artifact', 'document'),
+            $tool->tags,
         );
 
         return [
@@ -270,7 +271,7 @@ final class ArtifactMcpProcessor implements ProcessorInterface
         }
 
         $result = null;
-        if ($tool->title !== null || $tool->visibility !== null || $tool->description !== null) {
+        if ($tool->title !== null || $tool->visibility !== null || $tool->description !== null || $tool->tags !== null) {
             $patch = [];
             if ($tool->title !== null) {
                 $patch['title'] = $tool->title;
@@ -280,6 +281,9 @@ final class ArtifactMcpProcessor implements ProcessorInterface
             }
             if ($tool->description !== null) {
                 $patch['description'] = $tool->description;
+            }
+            if ($tool->tags !== null) {
+                $patch['tags'] = $tool->tags;
             }
             $result = $this->artifacts->patch($user, $idOrSlug, $patch);
         }

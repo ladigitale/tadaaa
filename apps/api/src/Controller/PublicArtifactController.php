@@ -113,6 +113,22 @@ final class PublicArtifactController extends AbstractController
         return $response;
     }
 
+    /**
+     * Cartes d'artefacts publics (vitrine, galerie) : `?slugs=a,b,c` (48 au plus) → titre, description et
+     * catégories (étiquettes) de chacun, dans l'ordre demandé ; les autres sont omis. `_` ne peut pas
+     * commencer un slug : pas de collision avec `/{slug}`.
+     */
+    #[Route('/_cards', name: 'api_public_artifact_cards', methods: ['GET'])]
+    public function cards(Request $request): JsonResponse
+    {
+        $this->consumeRate($request);
+        $slugs = array_values(array_filter(array_map('trim', explode(',', $request->query->getString('slugs'))), static fn (string $s) => $s !== ''));
+        $response = $this->json(['cards' => $this->artifacts->publicCards($slugs)]);
+        $response->headers->set('Cache-Control', 'public, max-age=60');
+
+        return $response;
+    }
+
     #[Route('/{slug}', name: 'api_public_artifact_get', methods: ['GET'], requirements: ['slug' => '[a-z0-9][a-z0-9-]{2,63}'])]
     public function get(string $slug, Request $request): JsonResponse
     {
