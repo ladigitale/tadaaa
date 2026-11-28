@@ -44,7 +44,7 @@
     {"name": "bluetooth", "rules": ["bluetooth"], "addons": ["bluetooth"], "skills": ["outil"],
      "description": "Web Bluetooth (sonic-bluetooth, sonic-label-printer) : appareils BLE, imprimantes d'étiquettes, MIDI BLE ; Chromium en HTTPS seulement, capacité bluetooth à déclarer. À lire avant de piloter un objet Bluetooth."},
     {"name": "laser", "rules": ["laser"], "addons": ["serial", "grbl"], "skills": ["outil"],
-     "description": "Port série et graveur laser GRBL (sonic-serial, sonic-gcode, sonic-grbl, sonic-gcode-view, sonic-laser-pattern) : dessin vers G-code, aperçu, cadrage, lancement sur geste, garde-fous. À lire avant de piloter une machine par port série."},
+     "description": "Port série et graveur laser GRBL (sonic-serial, sonic-laser-import, sonic-gcode, sonic-grbl, sonic-gcode-view, sonic-laser-pattern) : ouverture des fichiers laser (SVG, DXF, PDF, AI, EPS, PLT, LightBurn, G-code, TIFF), modèles d'assemblage avec conseils de montage, dessin vers G-code, aperçu, cadrage, lancement sur geste, garde-fous. À lire avant de piloter une machine par port série."},
     {"name": "salons", "rules": ["salons"], "addons": ["p2p"], "skills": ["jeu"],
      "description": "Salons temps réel entre visiteurs (sonic-p2p : un par page, état partagé, pairs, messages, accès par code) : jeux multijoueur, tableau blanc. À lire avant un artefact où plusieurs personnes jouent ou dessinent ensemble."},
     {"name": "collecte", "rules": ["collecte"], "components": [], "skills": ["dashboard"],
