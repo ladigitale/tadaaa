@@ -40,6 +40,11 @@ final class ArtifactTags
         if ($raw === null) {
             return [];
         }
+        // Client qui envoie la liste en texte (schéma d'outil pas à jour) : JSON, sinon noms séparés par des virgules.
+        if (\is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            $raw = \is_array($decoded) ? $decoded : explode(',', $raw);
+        }
         if (!\is_array($raw) || !array_is_list($raw)) {
             throw new BadRequestHttpException('tags : liste de noms attendue, ex. ["Jeu", "3D"].');
         }

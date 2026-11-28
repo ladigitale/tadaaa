@@ -37,7 +37,7 @@ final class UpdateArtifactTool
      * @param list<mixed>|null         $edits
      * @param list<mixed>|null         $fetch
      * @param array<string, mixed>|null $opsFrom
-     * @param list<string>|null         $tags
+     * @param list<string>|string|null  $tags noms ; une chaîne (JSON ou « Jeu, 3D ») est aussi acceptée
      */
     public function __construct(
         public ?string $id = null,
@@ -52,7 +52,7 @@ final class UpdateArtifactTool
         public ?bool $draft = null,
         public ?array $fetch = null,
         public ?array $opsFrom = null,
-        public ?array $tags = null,
+        public array|string|null $tags = null,
     ) {
     }
 }

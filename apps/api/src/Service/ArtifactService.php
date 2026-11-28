@@ -80,7 +80,7 @@ final class ArtifactService
         ?string $description = null,
         ?string $ip = null,
         array $emptyObjects = [],
-        ?array $tags = null,
+        array|string|null $tags = null,
     ): array {
         $dataset = $this->requireWritableDataset($user, $datasetId);
         $tagNames = ArtifactTags::normalizeNames($tags);
