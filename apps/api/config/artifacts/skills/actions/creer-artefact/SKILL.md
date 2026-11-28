@@ -30,7 +30,7 @@ metadata:
 
 ## 5. Valider puis publier
 - `validate_artifact` → corriger TOUTES les erreurs en une réécriture, recommencer jusqu'à `valid: true` ; lire aussi `warnings`.
-- `publish_artifact(title, document, visibility: "private")` → `{id, slug, url, version}`. Privé tant que les tests ne sont pas passés.
+- `publish_artifact(title, document, visibility: "private", tags: ["Jeu"])` → `{id, slug, url, version}`. Privé tant que les tests ne sont pas passés. `tags` : la catégorie (première étiquette) affichée sur les cartes de la vitrine (voir `publier-artefact`).
 - Gros document : publier un squelette (data + une vue minimale), puis remplir par `update_artifact` + `ops` : une erreur ne force pas à tout renvoyer.
 
 ## 6. Tester, puis livrer

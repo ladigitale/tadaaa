@@ -44,6 +44,7 @@ final class ArtifactService
         #[Autowire('%env(ARTIFACT_ASSETS_BASE_URL)%')]
         private readonly string $assetsBaseUrl = '',
         private readonly ?ArtifactValidationStats $stats = null,
+        private readonly ?ArtifactTags $tags = null,
     ) {
     }
 
@@ -79,8 +80,10 @@ final class ArtifactService
         ?string $description = null,
         ?string $ip = null,
         array $emptyObjects = [],
+        ?array $tags = null,
     ): array {
         $dataset = $this->requireWritableDataset($user, $datasetId);
+        $tagNames = ArtifactTags::normalizeNames($tags);
         $vis = $this->parseVisibility($visibility);
         $result = $this->validator->validate($document);
         $this->stats?->record(ArtifactValidationStats::SOURCE_SAVE, $result, $result['valid'] ? ArtifactUiRules::lint($document) : []);
@@ -96,6 +99,9 @@ final class ArtifactService
         $artifact->setDescription($description);
         $artifact->setVisibility($vis);
         $artifact->setConcordeVersion($this->validator->concordeVersion());
+        if ($tagNames !== []) {
+            $this->tags?->assign($artifact, $tagNames);
+        }
         if ($vis === ArtifactVisibility::Link) {
             $artifact->setLinkToken($this->newLinkToken());
         }
@@ -176,6 +182,9 @@ final class ArtifactService
         if (\array_key_exists('description', $patch)) {
             $desc = $patch['description'];
             $artifact->setDescription(\is_string($desc) ? $desc : null);
+        }
+        if (\array_key_exists('tags', $patch) && $this->tags !== null) {
+            $this->tags->assign($artifact, ArtifactTags::normalizeNames($patch['tags']));
         }
         if (isset($patch['slug']) && \is_string($patch['slug'])) {
             $slug = strtolower(trim($patch['slug']));
@@ -521,6 +530,7 @@ final class ArtifactService
             'slug' => $artifact->getSlug(),
             'title' => $artifact->getTitle(),
             'description' => $artifact->getDescription(),
+            'tags' => $this->publicTags($artifact),
             'visibility' => $artifact->getVisibility()->value,
             'document' => $document,
             'scriptAssets' => $scriptAssets,
@@ -583,10 +593,42 @@ final class ArtifactService
         return [
             'title' => $full['body']['title'],
             'description' => $full['body']['description'],
+            'tags' => $full['body']['tags'],
             'slug' => $full['body']['slug'],
             'updatedAt' => $full['body']['updatedAt'],
             'url' => $this->publicUrl($full['body']['slug'], $linkToken),
         ];
+    }
+
+    /**
+     * Cartes publiques (vitrine, galerie) : titre, description et catégories d'artefacts publics en ligne,
+     * dans l'ordre demandé ; un slug inconnu, privé ou « par lien » est omis.
+     *
+     * @param list<string> $slugs
+     *
+     * @return list<array{slug: string, title: string, description: ?string, tags: list<array{name: string, color: string}>}>
+     */
+    public function publicCards(array $slugs): array
+    {
+        $out = [];
+        foreach (array_slice(array_values(array_unique($slugs)), 0, 48) as $slug) {
+            if (!\is_string($slug) || !preg_match(self::SLUG_PATTERN, $slug)) {
+                continue;
+            }
+            $artifact = $this->artifacts->findOneBySlug($slug);
+            if ($artifact === null || $artifact->getVisibility() !== ArtifactVisibility::Public || $artifact->getLiveVersion() < 1) {
+                continue;
+            }
+            $out[] = ['slug' => $slug, 'title' => $artifact->getTitle(), 'description' => $artifact->getDescription(), 'tags' => $this->publicTags($artifact)];
+        }
+
+        return $out;
+    }
+
+    /** @return list<array{name: string, color: string}> */
+    private function publicTags(Artifact $artifact): array
+    {
+        return array_map(static fn (array $t) => ['name' => $t['name'], 'color' => $t['color']], $this->tags?->describe($artifact) ?? []);
     }
 
     public function publicUrl(string $slug, ?string $linkToken = null): string
@@ -798,6 +840,7 @@ final class ArtifactService
             'slug' => $artifact->getSlug(),
             'title' => $artifact->getTitle(),
             'description' => $artifact->getDescription(),
+            'tags' => $this->tags?->describe($artifact) ?? [],
             'visibility' => $artifact->getVisibility()->value,
             'currentVersion' => $artifact->getCurrentVersion(),
             'liveVersion' => $artifact->getLiveVersion(),

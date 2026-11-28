@@ -16,6 +16,10 @@ metadata:
 
 Changer : `update_artifact(slug, visibility: "link")`. Jamais `public` sans accord explicite de l'utilisateur.
 
+## Catégorie
+- `tags` : noms d'étiquettes de l'espace (`publish_artifact(…, tags: ["Jeu"])`, `update_artifact(slug, tags: ["Instrument", "Audio"])`, 6 au plus ; `[]` les retire). Un nom inconnu crée l'étiquette ; `list_tags` montre celles qui existent : réutiliser le même mot (casse ignorée).
+- La première est la catégorie affichée sur les cartes de la vitrine et de la galerie : toujours en donner une, courte (Jeu, Instrument, Outil, Dessin, Musique, Visualisation, Expérience…).
+
 ## Brouillon puis mise en ligne
 - `update_artifact(…, draft: true)` enregistre sans mettre en ligne ; `promote_artifact(slug)` publie la dernière version (et applique les collections, collecte et lecture publique).
 - Le résultat donne `version` (dernière) et `liveVersion` (en ligne), `hasDraft`.
